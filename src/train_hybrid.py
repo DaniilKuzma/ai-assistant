@@ -52,21 +52,28 @@ def train_hybrid(
     learning_rate: float = 1e-4,
     candidate_min_freq: int = 1,
     candidate_max_distance: int = 1,
-    candidate_top_k: int = 5,
+    candidate_top_k: int = 8,
     safe_split_candidates: bool = True,
-    min_dictionary_score: float = 1.0,
+    long_oov_max_distance: int = 2,
+    long_oov_min_length: int = 8,
+    min_dictionary_score: float = 0.25,
     keep_candidate_augmentation: bool = True,
     keep_candidate_probability: float = 0.35,
     keep_candidate_max_per_example: int = 3,
     keep_candidate_max_searches: int = 8_000,
     keep_candidate_clean_only: bool = True,
     clean_audit_max_word_searches: int = 5_000,
+    clean_action_keep_weight: float = 2.0,
+    dirty_action_keep_weight: float = 1.0,
+    action_change_weight: float = 3.0,
     punct_change_weight: float = 8.0,
     final_punct_weight: float = 8.0,
     clean_punct_keep_weight: float = 2.0,
     dirty_punct_keep_weight: float = 1.0,
     context_reranker_enabled: bool = True,
     context_model_name: str = "DeepPavlov/rubert-base-cased",
+    context_device: str = "cpu",
+    context_margin: float = 0.25,
 ) -> dict:
     os.makedirs(output_dir, exist_ok=True)
     os.makedirs("report", exist_ok=True)
@@ -78,6 +85,8 @@ def train_hybrid(
         max_distance=candidate_max_distance,
         allow_split_candidates=False,
         safe_split_only=True,
+        long_oov_max_distance=long_oov_max_distance,
+        long_oov_min_length=long_oov_min_length,
     )
     all_rows = pd.concat([train_df, val_df, test_df], ignore_index=True)
     filtered_rows, noise_audit, suspicious_texts = filter_noisy_clean_rows(
@@ -106,6 +115,8 @@ def train_hybrid(
         max_distance=candidate_max_distance,
         allow_split_candidates=safe_split_candidates,
         safe_split_only=True,
+        long_oov_max_distance=long_oov_max_distance,
+        long_oov_min_length=long_oov_min_length,
     )
     candidate_path = str(Path(output_dir) / "candidate_generator.pkl")
     candidate_generator.save(candidate_path)
@@ -178,6 +189,9 @@ def train_hybrid(
 
     x_train, y_train, sw_train = preprocessor.vectorize_examples(
         train_examples,
+        clean_action_keep_weight=clean_action_keep_weight,
+        dirty_action_keep_weight=dirty_action_keep_weight,
+        action_change_weight=action_change_weight,
         clean_punct_keep_weight=clean_punct_keep_weight,
         dirty_punct_keep_weight=dirty_punct_keep_weight,
         punct_change_weight=punct_change_weight,
@@ -185,6 +199,9 @@ def train_hybrid(
     )
     x_val, y_val, sw_val = preprocessor.vectorize_examples(
         val_examples,
+        clean_action_keep_weight=clean_action_keep_weight,
+        dirty_action_keep_weight=dirty_action_keep_weight,
+        action_change_weight=action_change_weight,
         clean_punct_keep_weight=clean_punct_keep_weight,
         dirty_punct_keep_weight=dirty_punct_keep_weight,
         punct_change_weight=punct_change_weight,
@@ -230,7 +247,7 @@ def train_hybrid(
 
     model.save(model_path)
     config = {
-        "model_version": 6,
+        "model_version": 8,
         "requires_source_punct_ids": True,
         "requires_top_k_candidates": True,
         "requires_context_reranker": context_reranker_enabled,
@@ -245,6 +262,8 @@ def train_hybrid(
         "candidate_max_distance": candidate_max_distance,
         "candidate_top_k": candidate_top_k,
         "safe_split_candidates": safe_split_candidates,
+        "long_oov_max_distance": long_oov_max_distance,
+        "long_oov_min_length": long_oov_min_length,
         "min_dictionary_score": min_dictionary_score,
         "keep_candidate_augmentation": keep_candidate_augmentation,
         "keep_candidate_probability": keep_candidate_probability,
@@ -252,12 +271,17 @@ def train_hybrid(
         "keep_candidate_max_searches": keep_candidate_max_searches,
         "keep_candidate_clean_only": keep_candidate_clean_only,
         "clean_audit_max_word_searches": clean_audit_max_word_searches,
+        "clean_action_keep_weight": clean_action_keep_weight,
+        "dirty_action_keep_weight": dirty_action_keep_weight,
+        "action_change_weight": action_change_weight,
         "punct_change_weight": punct_change_weight,
         "final_punct_weight": final_punct_weight,
         "clean_punct_keep_weight": clean_punct_keep_weight,
         "dirty_punct_keep_weight": dirty_punct_keep_weight,
         "context_reranker_enabled": context_reranker_enabled,
         "context_model_name": context_model_name,
+        "context_device": context_device,
+        "context_margin": context_margin,
         "action_classes": preprocessor.action_classes,
         "punct_classes": preprocessor.punct_classes,
         "d_model": d_model,
@@ -302,21 +326,28 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--learning-rate", type=float, default=1e-4)
     parser.add_argument("--candidate-min-freq", type=int, default=1)
     parser.add_argument("--candidate-max-distance", type=int, default=1)
-    parser.add_argument("--candidate-top-k", type=int, default=5)
+    parser.add_argument("--candidate-top-k", type=int, default=8)
     parser.add_argument("--disable-safe-split-candidates", action="store_true")
-    parser.add_argument("--min-dictionary-score", type=float, default=1.0)
+    parser.add_argument("--long-oov-max-distance", type=int, default=2)
+    parser.add_argument("--long-oov-min-length", type=int, default=8)
+    parser.add_argument("--min-dictionary-score", type=float, default=0.25)
     parser.add_argument("--disable-keep-candidate-augmentation", action="store_true")
     parser.add_argument("--keep-candidate-probability", type=float, default=0.35)
     parser.add_argument("--keep-candidate-max-per-example", type=int, default=3)
     parser.add_argument("--keep-candidate-max-searches", type=int, default=8_000)
     parser.add_argument("--keep-candidate-include-dirty", action="store_true")
     parser.add_argument("--clean-audit-max-word-searches", type=int, default=5_000)
+    parser.add_argument("--clean-action-keep-weight", type=float, default=2.0)
+    parser.add_argument("--dirty-action-keep-weight", type=float, default=1.0)
+    parser.add_argument("--action-change-weight", type=float, default=3.0)
     parser.add_argument("--punct-change-weight", type=float, default=8.0)
     parser.add_argument("--final-punct-weight", type=float, default=8.0)
     parser.add_argument("--clean-punct-keep-weight", type=float, default=2.0)
     parser.add_argument("--dirty-punct-keep-weight", type=float, default=1.0)
     parser.add_argument("--disable-context-reranker", action="store_true")
     parser.add_argument("--context-model-name", default="DeepPavlov/rubert-base-cased")
+    parser.add_argument("--context-device", default="cpu", choices=["cpu", "cuda", "auto"])
+    parser.add_argument("--context-margin", type=float, default=0.25)
     return parser.parse_args()
 
 
@@ -339,6 +370,8 @@ def main() -> None:
         candidate_max_distance=args.candidate_max_distance,
         candidate_top_k=args.candidate_top_k,
         safe_split_candidates=not args.disable_safe_split_candidates,
+        long_oov_max_distance=args.long_oov_max_distance,
+        long_oov_min_length=args.long_oov_min_length,
         min_dictionary_score=args.min_dictionary_score,
         keep_candidate_augmentation=not args.disable_keep_candidate_augmentation,
         keep_candidate_probability=args.keep_candidate_probability,
@@ -346,12 +379,17 @@ def main() -> None:
         keep_candidate_max_searches=args.keep_candidate_max_searches,
         keep_candidate_clean_only=not args.keep_candidate_include_dirty,
         clean_audit_max_word_searches=args.clean_audit_max_word_searches,
+        clean_action_keep_weight=args.clean_action_keep_weight,
+        dirty_action_keep_weight=args.dirty_action_keep_weight,
+        action_change_weight=args.action_change_weight,
         punct_change_weight=args.punct_change_weight,
         final_punct_weight=args.final_punct_weight,
         clean_punct_keep_weight=args.clean_punct_keep_weight,
         dirty_punct_keep_weight=args.dirty_punct_keep_weight,
         context_reranker_enabled=not args.disable_context_reranker,
         context_model_name=args.context_model_name,
+        context_device=args.context_device,
+        context_margin=args.context_margin,
     )
 
 

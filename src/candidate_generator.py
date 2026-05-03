@@ -15,6 +15,40 @@ from text_utils import apply_case_like, is_word, normalize_word, word_tokens
 
 
 RUSSIAN_ALPHABET = "абвгдеёжзийклмнопрстуфхцчшщъыьэюя"
+SPLIT_PREFIX_BLOCKLIST = {
+    "само",
+    "сверх",
+    "пост",
+    "супер",
+    "тур",
+    "мат",
+    "зам",
+    "зампред",
+    "трехсот",
+    "много",
+    "спец",
+    "гос",
+    "авто",
+    "кино",
+    "фото",
+    "радио",
+    "теле",
+    "евро",
+    "мини",
+    "микро",
+}
+SPLIT_SERVICE_WHITELIST = {
+    ("из", "них"),
+    ("в", "них"),
+    ("к", "ним"),
+    ("с", "ним"),
+    ("тот", "же"),
+    ("так", "же"),
+}
+SPLIT_SHORT_LEFT_WHITELIST = {"в", "во", "к", "ко", "с", "со", "о", "об", "от", "из", "на", "по", "при", "за", "до"}
+SPLIT_SHORT_RIGHT_WHITELIST = {"об", "от", "из", "их", "им", "ей", "её", "ее", "его", "ее", "же", "ли", "бы"}
+SPLIT_SERVICE_LEFT_WHITELIST = {"не", "ни", "их"}
+SPLIT_SERVICE_RIGHT_WHITELIST = {"в", "во", "на", "не", "ни", "о", "об", "обо", "по", "за", "до", "к", "ко", "с", "со", "из", "от"}
 
 
 @dataclass(frozen=True)
@@ -36,6 +70,9 @@ class CandidateGenerator:
         allow_split_candidates: bool = False,
         safe_split_only: bool = True,
         min_dictionary_word_length: int = 4,
+        long_oov_max_distance: int = 2,
+        long_oov_min_length: int = 8,
+        long_oov_max_bucket_size: int = 2000,
     ):
         self.min_freq = min_freq
         self.max_distance = max_distance
@@ -43,8 +80,24 @@ class CandidateGenerator:
         self.allow_split_candidates = allow_split_candidates
         self.safe_split_only = safe_split_only
         self.min_dictionary_word_length = min_dictionary_word_length
+        self.long_oov_max_distance = max(1, int(long_oov_max_distance))
+        self.long_oov_min_length = max(1, int(long_oov_min_length))
+        self.long_oov_max_bucket_size = max(1, int(long_oov_max_bucket_size))
         self.frequencies: Counter[str] = Counter()
         self.length_buckets: Dict[int, List[str]] = defaultdict(list)
+
+        self.exact_confusions: Dict[str, Sequence[str]] = {
+            "фсе": ("все",),
+            "щто": ("что",),
+            "што": ("что",),
+            "ыть": ("быть",),
+            "эсть": ("есть",),
+            "чтто": ("что",),
+            "ччто": ("что",),
+            "дэло": ("дело",),
+            "ллет": ("лет",),
+            "ууже": ("уже",),
+        }
 
         self.single_token_confusions: Dict[str, Sequence[str]] = {
             "тся": ("ться",),
@@ -85,12 +138,16 @@ class CandidateGenerator:
         max_distance: int = 1,
         allow_split_candidates: bool = False,
         safe_split_only: bool = True,
+        long_oov_max_distance: int = 2,
+        long_oov_min_length: int = 8,
     ) -> "CandidateGenerator":
         generator = cls(
             min_freq=min_freq,
             max_distance=max_distance,
             allow_split_candidates=allow_split_candidates,
             safe_split_only=safe_split_only,
+            long_oov_max_distance=long_oov_max_distance,
+            long_oov_min_length=long_oov_min_length,
         )
         generator.fit(texts)
         return generator
@@ -127,6 +184,28 @@ class CandidateGenerator:
             generator.safe_split_only = True
         if not hasattr(generator, "min_dictionary_word_length"):
             generator.min_dictionary_word_length = 4
+        if not hasattr(generator, "long_oov_max_distance"):
+            generator.long_oov_max_distance = 2
+        if not hasattr(generator, "long_oov_min_length"):
+            generator.long_oov_min_length = 8
+        if not hasattr(generator, "long_oov_max_bucket_size"):
+            generator.long_oov_max_bucket_size = 2000
+        if not hasattr(generator, "exact_confusions"):
+            generator.exact_confusions = {}
+        generator.exact_confusions.update(
+            {
+                "фсе": ("все",),
+                "щто": ("что",),
+                "што": ("что",),
+                "ыть": ("быть",),
+                "эсть": ("есть",),
+                "чтто": ("что",),
+                "ччто": ("что",),
+                "дэло": ("дело",),
+                "ллет": ("лет",),
+                "ууже": ("уже",),
+            }
+        )
         if getattr(generator, "max_distance", 2) > 1:
             generator.max_distance = 1
         return generator
@@ -146,7 +225,11 @@ class CandidateGenerator:
         return not self.is_known(norm) or self._has_rule_candidate(norm)
 
     def _has_rule_candidate(self, norm: str) -> bool:
+        if norm in self.exact_confusions:
+            return True
         if norm in self.phrase_confusions:
+            return True
+        if self._short_repeated_first_candidate(norm) is not None:
             return True
         return any(key in norm for key in self.single_token_confusions)
 
@@ -155,6 +238,7 @@ class CandidateGenerator:
         word: str,
         max_candidates: int = 8,
         include_known_dictionary: bool = False,
+        allow_long_oov: bool = True,
     ) -> List[Candidate]:
         norm = normalize_word(word)
         if len(norm) < 3 or any(ch.isdigit() for ch in norm):
@@ -173,6 +257,9 @@ class CandidateGenerator:
                 dictionary_candidates = self._edit_distance_candidates(norm)
             for cand, distance in dictionary_candidates:
                 self._add_candidate(candidates, cand, word, "dictionary", distance=distance)
+            if allow_long_oov and self.long_oov_max_distance > 1 and len(norm) >= self.long_oov_min_length:
+                for cand, distance in self._long_oov_edit_candidates(norm):
+                    self._add_candidate(candidates, cand, word, "dictionary", distance=distance)
 
         if self.allow_split_candidates and not self.is_known(norm):
             split_candidates = (
@@ -220,7 +307,12 @@ class CandidateGenerator:
         parts = [normalize_word(part) for part in candidate.split()]
         if not parts:
             return
-        if source != "rule" and not all(self.frequencies.get(part, 0) >= self.min_freq for part in parts):
+        is_allowed_split = source == "split" and self._is_allowed_service_split_pair(parts)
+        if (
+            source != "rule"
+            and not is_allowed_split
+            and not all(self.frequencies.get(part, 0) >= self.min_freq for part in parts)
+        ):
             return
 
         freq_score = sum(math.log1p(self.frequencies.get(part, 0)) for part in parts)
@@ -229,6 +321,8 @@ class CandidateGenerator:
             score += 0.75
         if source == "split":
             score += 0.5
+            if is_allowed_split:
+                score += 3.0
 
         text = apply_case_like(candidate, source_word)
         old = target.get(text)
@@ -237,8 +331,15 @@ class CandidateGenerator:
             target[text] = new
 
     def _rule_candidates(self, norm: str) -> Iterable[str]:
+        if norm in self.exact_confusions:
+            yield from self.exact_confusions[norm]
+
         if norm in self.phrase_confusions:
             yield from self.phrase_confusions[norm]
+
+        repeated_first = self._short_repeated_first_candidate(norm)
+        if repeated_first is not None:
+            yield repeated_first
 
         for key, replacements in self.single_token_confusions.items():
             start = 0
@@ -249,6 +350,18 @@ class CandidateGenerator:
                 for repl in replacements:
                     yield norm[:pos] + repl + norm[pos + len(key) :]
                 start = pos + 1
+
+    def _short_repeated_first_candidate(self, norm: str) -> str | None:
+        if len(norm) < 4 or len(norm) > 5:
+            return None
+        if norm[0] != norm[1]:
+            return None
+        candidate = norm[1:]
+        if len(candidate) > 4:
+            return None
+        if self.frequencies.get(candidate, 0) < self.min_freq:
+            return None
+        return candidate
 
     def _edit_distance_candidates(self, norm: str) -> Iterable[tuple[str, int]]:
         min_len = max(1, len(norm) - self.max_distance)
@@ -309,6 +422,21 @@ class CandidateGenerator:
             if item is not None:
                 yield item
 
+    def _long_oov_edit_candidates(self, norm: str) -> Iterable[tuple[str, int]]:
+        """Scan a bounded frequency bucket for long OOV distance-2 candidates."""
+        max_distance = max(2, int(self.long_oov_max_distance))
+        min_len = max(1, len(norm) - max_distance)
+        max_len = len(norm) + max_distance
+        seen: set[str] = set()
+        for length in range(min_len, max_len + 1):
+            for candidate in self.length_buckets.get(length, [])[: self.long_oov_max_bucket_size]:
+                if candidate in seen:
+                    continue
+                distance = bounded_damerau_levenshtein(norm, candidate, max_distance)
+                if 1 < distance <= max_distance:
+                    seen.add(candidate)
+                    yield candidate, distance
+
     def _split_candidates(self, norm: str) -> Iterable[str]:
         for split_at in range(2, len(norm) - 1):
             left = norm[:split_at]
@@ -324,9 +452,10 @@ class CandidateGenerator:
         as ``говориться -> говорить ся``.
         """
         source = str(source_word or "")
-        if len(norm) < 5:
+        if len(norm) < 4:
             return
-        if source != source.lower() or source.isupper():
+        source_is_titlecase = bool(source[:1].isupper() and source[1:] == source[1:].lower() and not source.isupper())
+        if source.isupper() or (source != source.lower() and not source_is_titlecase):
             return
         if any("A" <= ch <= "Z" or "a" <= ch <= "z" for ch in source):
             return
@@ -337,15 +466,41 @@ class CandidateGenerator:
         if norm.endswith(("ться", "тся", "ся")):
             return
 
-        for split_at in range(2, len(norm) - 1):
+        for split_at in range(1, len(norm) - 1):
             left = norm[:split_at]
             right = norm[split_at:]
-            if len(right) < 2:
+            pair = (left, right)
+            if pair in SPLIT_SERVICE_WHITELIST:
+                yield f"{left} {right}"
                 continue
-            if right in {"ся", "сь"}:
+            if self._is_allowed_service_split_pair([left, right]):
+                yield f"{left} {right}"
+                continue
+            if len(left) < 3 or len(right) < 3:
+                continue
+            if left in SPLIT_PREFIX_BLOCKLIST or right in {"ся", "сь"}:
                 continue
             if self.is_known(left) and self.is_known(right):
                 yield f"{left} {right}"
+
+    def _is_allowed_service_split_pair(self, parts: Sequence[str]) -> bool:
+        if len(parts) != 2:
+            return False
+        left, right = parts
+        pair = (left, right)
+        if pair in SPLIT_SERVICE_WHITELIST:
+            return True
+        if left in SPLIT_PREFIX_BLOCKLIST:
+            return False
+        if left in SPLIT_SERVICE_LEFT_WHITELIST and len(right) >= 5 and self.is_known(right):
+            return True
+        if right in SPLIT_SERVICE_RIGHT_WHITELIST and len(left) >= 5 and self.is_known(left):
+            return True
+        if left in SPLIT_SHORT_LEFT_WHITELIST and len(right) >= 3 and self.is_known(right):
+            return True
+        if right in SPLIT_SHORT_RIGHT_WHITELIST and len(left) >= 3 and self.is_known(left):
+            return True
+        return False
 
 
 def bounded_damerau_levenshtein(a: str, b: str, max_distance: int) -> int:

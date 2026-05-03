@@ -15,7 +15,7 @@ class TokenCandidateEmbedding(layers.Layer):
         max_length: int,
         d_model: int,
         punct_classes: int = 8,
-        candidate_top_k: int = 5,
+        candidate_top_k: int = 8,
         dropout_rate: float = 0.1,
         **kwargs,
     ):
@@ -34,6 +34,9 @@ class TokenCandidateEmbedding(layers.Layer):
         self.position_embedding = layers.Embedding(max_length, d_model, name="position_embedding")
         self.layer_norm = layers.LayerNormalization(epsilon=1e-6)
         self.dropout = layers.Dropout(dropout_rate)
+
+    def build(self, input_shape):
+        super().build(input_shape)
 
     def call(self, inputs, training=False):
         if len(inputs) == 2:
@@ -99,6 +102,9 @@ class TransformerEncoderBlock(layers.Layer):
         self.dropout1 = layers.Dropout(dropout_rate)
         self.dropout2 = layers.Dropout(dropout_rate)
 
+    def build(self, input_shape):
+        super().build(input_shape)
+
     def call(self, inputs, training=False):
         attn_output = self.attention(inputs, inputs, training=training)
         attn_output = self.dropout1(attn_output, training=training)
@@ -131,7 +137,7 @@ def build_hybrid_model(
     num_layers: int = 2,
     dropout_rate: float = 0.30,
     learning_rate: float = 1e-4,
-    candidate_top_k: int = 5,
+    candidate_top_k: int = 8,
 ) -> keras.Model:
     token_ids = layers.Input(shape=(max_length,), dtype="int32", name="token_ids")
     candidate_ids = layers.Input(shape=(max_length, candidate_top_k), dtype="int32", name="candidate_ids")

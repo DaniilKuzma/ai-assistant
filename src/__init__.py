@@ -7,7 +7,7 @@ try:
 except ImportError:
     from hybrid_corrector import HybridCorrector
 
-__version__ = "2.5.0"
+__version__ = "2.7.0"
 __author__ = "Student"
 
 __all__ = ["HybridCorrector"]

@@ -60,6 +60,10 @@ def is_word_edit_action(action: str) -> bool:
     return action == "DELETE" or action == "REPLACE" or action.startswith("REPLACE_")
 
 
+def is_space_edit_action(action: str) -> bool:
+    return str(action) == "SPACE"
+
+
 def explode_error_types(value: str) -> list[str]:
     value = str(value or "unknown")
     labels: list[str] = []
@@ -86,6 +90,7 @@ def summarize(df: pd.DataFrame, include_slices: bool = False) -> dict:
         "clean_overcorrection_rate": float(df.loc[clean_mask, "clean_overcorrection"].mean()) if clean_mask.any() else None,
         "word_overcorrection_rate": float(df.loc[clean_mask, "word_overcorrection"].mean()) if clean_mask.any() and "word_overcorrection" in df else None,
         "punct_overcorrection_rate": float(df.loc[clean_mask, "punct_overcorrection"].mean()) if clean_mask.any() and "punct_overcorrection" in df else None,
+        "space_overcorrection_rate": float(df.loc[clean_mask, "space_overcorrection"].mean()) if clean_mask.any() and "space_overcorrection" in df else None,
         "punct_input_similarity": float(df["punct_input_similarity"].mean()),
         "punct_pred_similarity": float(df["punct_pred_similarity"].mean()),
         "punct_similarity_delta": float(df["punct_pred_similarity"].mean() - df["punct_input_similarity"].mean()),
@@ -170,11 +175,15 @@ def evaluate_hybrid(
     output_dir: str = "report",
     strictness: str = "normal",
     punctuation_mode: str = "conservative",
-    min_dictionary_score: float = 1.0,
+    min_dictionary_score: float = 0.25,
     use_morphology_guard: bool = True,
-    candidate_top_k: int = 5,
+    candidate_top_k: int = 8,
     context_reranker_enabled: bool = True,
     context_model_name: str = "DeepPavlov/rubert-base-cased",
+    context_device: str = "cpu",
+    context_margin: float = 0.25,
+    use_entity_guard: bool = True,
+    deterministic_spacing: bool = True,
 ) -> dict:
     os.makedirs(output_dir, exist_ok=True)
     df = pd.read_csv(dataset_path)
@@ -193,12 +202,17 @@ def evaluate_hybrid(
         candidate_top_k=candidate_top_k,
         context_reranker_enabled=context_reranker_enabled,
         context_model_name=context_model_name,
+        context_device=context_device,
+        context_margin=context_margin,
+        use_entity_guard=use_entity_guard,
+        deterministic_spacing=deterministic_spacing,
     )
     if not corrector.is_trained:
         raise RuntimeError("Hybrid model is missing or obsolete. Retrain from the notebook before evaluation.")
 
     rows = []
     word_edit_rows = []
+    word_decision_rows = []
     punct_decision_rows = []
     coverage_totals = Counter()
     target_rank_distribution: Counter[str] = Counter()
@@ -208,6 +222,7 @@ def evaluate_hybrid(
         correct_text = str(row["correct_text"])
         result = corrector.correct(error_text, return_details=True)
         predicted_text = result.corrected
+        aligned_example = build_training_example(error_text, correct_text)
         coverage = candidate_coverage_for_pair(
             error_text,
             correct_text,
@@ -226,6 +241,7 @@ def evaluate_hybrid(
 
         word_edit_count = sum(1 for edit in result.edits if is_word_edit_action(edit.action))
         punct_edit_count = sum(1 for edit in result.edits if edit.action == "PUNCT")
+        space_edit_count = sum(1 for edit in result.edits if is_space_edit_action(edit.action))
 
         row_data = {
             "error_text": error_text,
@@ -249,6 +265,7 @@ def evaluate_hybrid(
             "layout_changed_without_edits": bool(len(result.edits) == 0 and predicted_text != error_text),
             "word_overcorrection": bool(is_clean and word_edit_count > 0),
             "punct_overcorrection": bool(is_clean and punct_edit_count > 0),
+            "space_overcorrection": bool(is_clean and space_edit_count > 0),
             "punct_input_similarity": punctuation_similarity(error_text, correct_text),
             "punct_pred_similarity": punctuation_similarity(predicted_text, correct_text),
             "punct_count_error": punctuation_count_error(predicted_text, correct_text),
@@ -258,6 +275,7 @@ def evaluate_hybrid(
             "edit_count": len(result.edits),
             "word_edit_count": word_edit_count,
             "punct_edit_count": punct_edit_count,
+            "space_edit_count": space_edit_count,
             "replace_token_count": int(coverage["replace_token_count"]),
             "target_candidate_hit_count": int(coverage["target_candidate_hit_count"]),
         }
@@ -294,6 +312,60 @@ def evaluate_hybrid(
                     "context_margin": edit.context_margin,
                     "reranked": edit.reranked,
                     "reranker_reason": edit.reranker_reason,
+                    "text": error_text,
+                    "predicted": predicted_text,
+                    "target_text": correct_text,
+                }
+            )
+        expected_targets = aligned_example.target_words if aligned_example is not None else []
+        for decision in result.word_diagnostics:
+            expected_target = expected_targets[decision.index] if decision.index < len(expected_targets) else ""
+            target_is_replace = bool(
+                expected_target and normalize_word(expected_target) != normalize_word(decision.word)
+            )
+            target_present = bool(
+                target_is_replace
+                and any(normalize_word(candidate) == normalize_word(expected_target) for candidate in decision.candidate_texts)
+            )
+            word_decision_rows.append(
+                {
+                    "row_index": i,
+                    "difficulty": row_data["difficulty"],
+                    "error_types": row_data["error_types"],
+                    "is_clean": is_clean,
+                    "row_improved": row_data["improved"],
+                    "row_worse": row_data["worse"],
+                    "row_unchanged": row_data["unchanged"],
+                    "input_cer": input_cer,
+                    "pred_cer": pred_cer,
+                    "cer_delta": row_data["cer_delta"],
+                    "index": decision.index,
+                    "word": decision.word,
+                    "expected_target": expected_target,
+                    "target_is_replace": target_is_replace,
+                    "target_present": target_present,
+                    "target_present_but_not_applied": bool(target_present and not decision.applied),
+                    "predicted_action": decision.predicted_action,
+                    "confidence": decision.confidence,
+                    "margin": decision.margin,
+                    "selected_rank": decision.selected_rank,
+                    "selected_text": decision.selected_text,
+                    "selected_source": decision.selected_source,
+                    "selected_score": decision.selected_score,
+                    "applied": decision.applied,
+                    "blocked_reason": decision.blocked_reason,
+                    "candidate_texts": json.dumps(decision.candidate_texts, ensure_ascii=False),
+                    "candidate_sources": json.dumps(decision.candidate_sources, ensure_ascii=False),
+                    "candidate_scores": json.dumps(decision.candidate_scores, ensure_ascii=False),
+                    "context_best": decision.context_best,
+                    "context_scores": json.dumps(decision.context_scores, ensure_ascii=False),
+                    "context_margin": decision.context_margin,
+                    "reranker_reason": decision.reranker_reason,
+                    "protected_source": decision.protected_source,
+                    "entity_context": decision.entity_context,
+                    "clean_lexicon_frequency": decision.clean_lexicon_frequency,
+                    "window_id": decision.window_id,
+                    "window_conflict_resolved": decision.window_conflict_resolved,
                     "text": error_text,
                     "predicted": predicted_text,
                     "target_text": correct_text,
@@ -344,6 +416,20 @@ def evaluate_hybrid(
     ]
     word_edit_df = pd.DataFrame(word_edit_rows, columns=word_edit_columns)
     word_edit_df.to_csv(Path(output_dir) / "word_edit_diagnostics.csv", index=False, encoding="utf-8")
+    word_decision_columns = [
+        "row_index", "difficulty", "error_types", "is_clean", "row_improved",
+        "row_worse", "row_unchanged", "input_cer", "pred_cer", "cer_delta",
+        "index", "word", "expected_target", "target_is_replace", "target_present",
+        "target_present_but_not_applied", "predicted_action", "confidence", "margin",
+        "selected_rank", "selected_text", "selected_source", "selected_score",
+        "applied", "blocked_reason", "candidate_texts", "candidate_sources",
+        "candidate_scores", "context_best", "context_scores", "context_margin",
+        "reranker_reason", "protected_source", "entity_context",
+        "clean_lexicon_frequency", "window_id", "window_conflict_resolved",
+        "text", "predicted", "target_text",
+    ]
+    word_decision_df = pd.DataFrame(word_decision_rows, columns=word_decision_columns)
+    word_decision_df.to_csv(Path(output_dir) / "word_decision_diagnostics.csv", index=False, encoding="utf-8")
     punct_decision_columns = [
         "row_index", "difficulty", "error_types", "is_clean", "row_improved",
         "row_worse", "row_unchanged", "index", "word", "source_punct",
@@ -355,6 +441,10 @@ def evaluate_hybrid(
     punct_decision_df.to_csv(Path(output_dir) / "punct_edit_diagnostics.csv", index=False, encoding="utf-8")
 
     summary = summarize(analysis, include_slices=True)
+    summary["runtime_version"] = "8.1"
+    summary["deterministic_spacing_enabled"] = bool(deterministic_spacing)
+    summary["context_device"] = getattr(getattr(corrector, "context_reranker", None), "device", context_device)
+    summary["protected_lexicon_size"] = int(getattr(getattr(corrector, "entity_guard", None), "size", 0))
     summary["elapsed_minutes"] = (time.time() - start) / 60
     summary["guard_reason_counts"] = value_counts_dict(analysis["guard_reason"])
     summary["accepted_guard_reason_counts"] = value_counts_dict(
@@ -367,6 +457,20 @@ def evaluate_hybrid(
         value_counts_dict(word_edit_df["candidate_source"])
         if not word_edit_df.empty
         else {}
+    )
+    summary["word_blocked_reason_counts"] = (
+        value_counts_dict(word_decision_df.loc[~word_decision_df["applied"], "blocked_reason"])
+        if not word_decision_df.empty
+        else {}
+    )
+    target_present_count = int(word_decision_df["target_present"].sum()) if not word_decision_df.empty else 0
+    target_present_but_not_applied_count = (
+        int(word_decision_df["target_present_but_not_applied"].sum()) if not word_decision_df.empty else 0
+    )
+    summary["target_present_count"] = target_present_count
+    summary["target_present_but_not_applied_count"] = target_present_but_not_applied_count
+    summary["target_present_but_not_applied_rate"] = (
+        float(target_present_but_not_applied_count / target_present_count) if target_present_count else None
     )
     punct_change_mask = (
         punct_decision_df["predicted_punct"] != punct_decision_df["source_punct"]
@@ -393,6 +497,19 @@ def evaluate_hybrid(
     summary["reranker_changed_top1_count"] = int(runtime_stats.get("reranker_changed_top1_count", 0))
     summary["reranker_source_preferred_count"] = int(runtime_stats.get("reranker_source_preferred_count", 0))
     summary["reranker_fail_open_count"] = int(runtime_stats.get("reranker_fail_open_count", 0))
+    summary["reranker_non_finite_count"] = int(runtime_stats.get("reranker_non_finite_count", 0))
+    summary["reranker_error_reason_counts"] = {
+        key.split(":", 1)[1]: int(value)
+        for key, value in runtime_stats.items()
+        if str(key).startswith("reranker_error_reason:")
+    }
+    summary["split_blocked_by_context_count"] = int(runtime_stats.get("split_blocked_by_context_count", 0))
+    summary["deterministic_spacing_applied_count"] = int(runtime_stats.get("deterministic_spacing_applied_count", 0))
+    summary["space_edit_count"] = int(analysis["space_edit_count"].sum()) if "space_edit_count" in analysis else 0
+    summary["entity_guard_blocked_count"] = int(runtime_stats.get("entity_guard_blocked_count", 0))
+    summary["context_source_veto_relaxed_count"] = int(runtime_stats.get("context_source_veto_relaxed_count", 0))
+    summary["comma_delete_blocked_count"] = int(runtime_stats.get("comma_delete_blocked_count", 0))
+    summary["comma_insert_blocked_count"] = int(runtime_stats.get("comma_insert_blocked_count", 0))
     split_seen = int(runtime_stats.get("split_candidates_seen", 0))
     split_applied = int((word_edit_df["candidate_source"] == "split").sum()) if not word_edit_df.empty else 0
     summary["split_candidate_accept_rate"] = float(split_applied / split_seen) if split_seen else None
@@ -440,11 +557,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", default="report")
     parser.add_argument("--strictness", default="strict", choices=["strict", "normal", "aggressive"])
     parser.add_argument("--punctuation-mode", default="conservative", choices=["conservative", "none", "legacy"])
-    parser.add_argument("--min-dictionary-score", type=float, default=1.0)
-    parser.add_argument("--candidate-top-k", type=int, default=5)
+    parser.add_argument("--min-dictionary-score", type=float, default=0.25)
+    parser.add_argument("--candidate-top-k", type=int, default=8)
     parser.add_argument("--disable-morphology-guard", action="store_true")
     parser.add_argument("--disable-context-reranker", action="store_true")
+    parser.add_argument("--disable-entity-guard", action="store_true")
+    parser.add_argument("--disable-deterministic-spacing", action="store_true")
     parser.add_argument("--context-model-name", default="DeepPavlov/rubert-base-cased")
+    parser.add_argument("--context-device", default="cpu", choices=["cpu", "cuda", "auto"])
+    parser.add_argument("--context-margin", type=float, default=0.25)
     return parser.parse_args()
 
 
@@ -461,6 +582,10 @@ def main() -> None:
         candidate_top_k=args.candidate_top_k,
         context_reranker_enabled=not args.disable_context_reranker,
         context_model_name=args.context_model_name,
+        context_device=args.context_device,
+        context_margin=args.context_margin,
+        use_entity_guard=not args.disable_entity_guard,
+        deterministic_spacing=not args.disable_deterministic_spacing,
     )
 
 

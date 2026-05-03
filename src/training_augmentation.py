@@ -9,7 +9,7 @@ from typing import Iterable, Sequence
 
 import pandas as pd
 
-from candidate_generator import Candidate, CandidateGenerator, RUSSIAN_ALPHABET
+from candidate_generator import Candidate, CandidateGenerator, RUSSIAN_ALPHABET, bounded_damerau_levenshtein
 from edit_labels import (
     ACTION_KEEP,
     ACTION_DELETE,
@@ -41,7 +41,7 @@ def best_hard_negative_candidate(
     generator: CandidateGenerator,
     word: str,
     *,
-    min_dictionary_score: float = 1.0,
+    min_dictionary_score: float = 0.25,
     max_candidates: int = 8,
 ) -> Candidate | None:
     if not is_candidate_eligible_word(word):
@@ -64,12 +64,12 @@ def populate_top_k_candidates(
     examples: Sequence[HybridTrainingExample],
     generator: CandidateGenerator,
     *,
-    candidate_top_k: int = 5,
+    candidate_top_k: int = 8,
 ) -> tuple[list[HybridTrainingExample], dict[str, int]]:
     """Populate candidate lists and align replacement labels with candidate ranks.
 
-    V5 always injected the oracle target at rank 0, so the model never learned
-    to use ``REPLACE_1`` ... ``REPLACE_4``. V6 keeps the generated order when
+    Earlier versions always injected the oracle target at rank 0, so the model
+    rarely learned to use higher replacement ranks. V7 keeps the generated order when
     the target is already present and only injects the oracle into a free/last
     slot when generation missed it.
     """
@@ -107,6 +107,7 @@ def populate_top_k_candidates(
                     source,
                     max_candidates=top_k,
                     include_known_dictionary=False,
+                    allow_long_oov=False,
                 )
                 cache[norm] = generated
                 stats["candidate_searches"] += 1
@@ -133,6 +134,21 @@ def populate_top_k_candidates(
                     ),
                     -1,
                 )
+                if target_rank < 0 and _should_try_long_oov_target(generator, norm, target_norm):
+                    stats["targeted_long_oov_hits"] = stats.get("targeted_long_oov_hits", 0) + 1
+                    if target_word not in items:
+                        if len(items) < top_k:
+                            items.append(target_word)
+                        else:
+                            items[-1] = target_word
+                    target_rank = next(
+                        (
+                            rank
+                            for rank, item in enumerate(items[:top_k])
+                            if normalize_word(item) == target_norm
+                        ),
+                        -1,
+                    )
                 if target_rank >= 0:
                     stats["target_candidate_hits"] += 1
                 else:
@@ -181,6 +197,20 @@ def populate_top_k_candidates(
         )
 
     return populated, stats
+
+
+def _should_try_long_oov_target(generator: CandidateGenerator, source_norm: str, target_norm: str) -> bool:
+    if not source_norm or not target_norm:
+        return False
+    if generator.is_known(source_norm):
+        return False
+    min_length = int(getattr(generator, "long_oov_min_length", 8))
+    max_distance = int(getattr(generator, "long_oov_max_distance", 1))
+    if max_distance <= 1 or len(source_norm) < min_length:
+        return False
+    if abs(len(source_norm) - len(target_norm)) > max_distance:
+        return False
+    return bounded_damerau_levenshtein(source_norm, target_norm, max_distance) <= max_distance
 
 
 def fast_distance_one_dictionary_candidates(
@@ -247,7 +277,7 @@ def augment_keep_candidates(
     max_candidate_searches: int = 8_000,
     clean_only: bool = True,
     seed: int = 42,
-    min_dictionary_score: float = 1.0,
+    min_dictionary_score: float = 0.25,
 ) -> tuple[list[HybridTrainingExample], dict[str, int]]:
     """Inject hard dictionary candidates into KEEP labels.
 
@@ -339,7 +369,7 @@ def build_clean_candidate_audit(
     rows: pd.DataFrame,
     generator: CandidateGenerator,
     *,
-    min_dictionary_score: float = 1.0,
+    min_dictionary_score: float = 0.25,
     max_rows: int = 5000,
     max_word_searches: int = 5000,
 ) -> pd.DataFrame:
@@ -399,7 +429,7 @@ def filter_noisy_clean_rows(
     rows: pd.DataFrame,
     generator: CandidateGenerator,
     *,
-    min_dictionary_score: float = 1.0,
+    min_dictionary_score: float = 0.25,
     max_word_searches: int = 5000,
 ) -> tuple[pd.DataFrame, pd.DataFrame, set[str]]:
     """Remove likely typo-contaminated clean source rows from training data."""

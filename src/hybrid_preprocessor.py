@@ -28,7 +28,7 @@ class HybridPreprocessor:
         max_length: int = 128,
         min_freq: int = 1,
         max_vocab_size: int = 80_000,
-        candidate_top_k: int = 5,
+        candidate_top_k: int = 8,
     ):
         self.max_length = max_length
         self.min_freq = min_freq
@@ -109,7 +109,9 @@ class HybridPreprocessor:
     def vectorize_examples(
         self,
         examples: Sequence[HybridTrainingExample],
-        clean_action_weight: float = 1.5,
+        clean_action_keep_weight: float = 2.0,
+        dirty_action_keep_weight: float = 1.0,
+        action_change_weight: float = 3.0,
         clean_punct_keep_weight: float = 2.0,
         dirty_punct_keep_weight: float = 1.0,
         punct_change_weight: float = 8.0,
@@ -135,7 +137,12 @@ class HybridPreprocessor:
                 source_punct_ids[i, j] = self.punct_id(example.source_punct_labels[j])
                 action_ids[i, j] = self.action_to_id.get(example.action_labels[j], 0)
                 punct_ids[i, j] = self.punct_id(example.target_punct_labels[j])
-                action_weights[i, j] = clean_action_weight if example.is_clean else 1.0
+                if example.action_labels[j] != ACTION_KEEP:
+                    action_weights[i, j] = action_change_weight
+                elif example.is_clean:
+                    action_weights[i, j] = clean_action_keep_weight
+                else:
+                    action_weights[i, j] = dirty_action_keep_weight
                 is_final_token = j + 1 >= limit
                 if example.source_punct_labels[j] != example.target_punct_labels[j]:
                     punct_weights[i, j] = final_punct_weight if is_final_token else punct_change_weight

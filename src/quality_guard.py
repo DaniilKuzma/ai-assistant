@@ -66,6 +66,9 @@ class QualityGuard:
         if length_delta > self.max_length_delta_ratio:
             return GuardDecision(False, "length_delta")
 
+        if self._without_spacing(original) == self._without_spacing(corrected):
+            return GuardDecision(True, "spacing_only")
+
         change_ratio = levenshtein_distance(original, corrected) / base_len
         if change_ratio > self.max_change_ratio:
             return GuardDecision(False, "too_many_changes")
@@ -82,6 +85,10 @@ class QualityGuard:
     @staticmethod
     def _structural_punctuation(text: str) -> str:
         return "".join(ch for ch in str(text) if ch in STRUCTURAL_PUNCT)
+
+    @staticmethod
+    def _without_spacing(text: str) -> str:
+        return "".join(str(text).split())
 
     def _simple_punctuation_drop_too_large(self, original: str, corrected: str) -> bool:
         orig = "".join(ch for ch in str(original) if ch in SIMPLE_PUNCT)

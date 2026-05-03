@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass, field
 import json
+import math
 import os
 from pathlib import Path
 from typing import Dict, List, Sequence
@@ -14,11 +15,13 @@ import numpy as np
 from candidate_generator import CandidateGenerator
 from context_reranker import ContextReranker
 from edit_labels import ACTION_DELETE, ACTION_KEEP, action_replace_rank
+from entity_guard import ProtectedLexicon
 from hybrid_preprocessor import HybridPreprocessor
 from morphology_guard import is_morphological_dictionary_word, is_same_lemma_inflection
 from quality_guard import QualityGuard
 from text_utils import (
     apply_case_like,
+    deterministic_spacing_correction,
     extract_word_slots,
     is_protected_punctuation_gap,
     is_trainable_punctuation_gap,
@@ -26,6 +29,28 @@ from text_utils import (
     punctuation_labels_for_slots,
     rebuild_preserving_layout,
 )
+
+
+GLUED_SERVICE_TOKENS = {
+    "в",
+    "во",
+    "на",
+    "не",
+    "ни",
+    "о",
+    "об",
+    "обо",
+    "по",
+    "за",
+    "до",
+    "к",
+    "ко",
+    "с",
+    "со",
+    "из",
+    "от",
+    "их",
+}
 
 
 @dataclass
@@ -71,6 +96,44 @@ class PunctuationDecision:
     punct_position_type: str = "internal"
 
 
+@dataclass(frozen=True)
+class WordDecision:
+    index: int
+    word: str
+    predicted_action: str
+    confidence: float
+    margin: float
+    selected_rank: int = -1
+    selected_text: str = ""
+    selected_source: str = ""
+    selected_score: float = 0.0
+    applied: bool = False
+    blocked_reason: str = ""
+    candidate_texts: List[str] = field(default_factory=list)
+    candidate_sources: List[str] = field(default_factory=list)
+    candidate_scores: List[float] = field(default_factory=list)
+    context_best: str = ""
+    context_scores: List[str] = field(default_factory=list)
+    context_margin: float = 0.0
+    reranker_reason: str = ""
+    window_id: int = 0
+    window_conflict_resolved: bool = False
+    protected_source: bool = False
+    entity_context: bool = False
+    clean_lexicon_frequency: int = 0
+
+
+@dataclass(frozen=True)
+class RerankOutcome:
+    selected: RuntimeCandidate | None
+    context_score: float = 0.0
+    context_margin: float = 0.0
+    reranked: bool = False
+    reason: str = ""
+    context_best: str = ""
+    context_scores: List[str] = field(default_factory=list)
+
+
 @dataclass
 class CorrectionResult:
     original: str
@@ -80,6 +143,7 @@ class CorrectionResult:
     guard_reason: str
     edits: List[CorrectionEdit]
     punctuation_diagnostics: List[PunctuationDecision] = field(default_factory=list)
+    word_diagnostics: List[WordDecision] = field(default_factory=list)
 
 
 class HybridCorrector:
@@ -92,12 +156,16 @@ class HybridCorrector:
         candidate_generator_path: str = "models/candidate_generator.pkl",
         strictness: str = "normal",
         punctuation_mode: str = "conservative",
-        candidate_top_k: int = 5,
-        min_dictionary_score: float = 1.0,
+        candidate_top_k: int = 8,
+        min_dictionary_score: float = 0.25,
         use_morphology_guard: bool = True,
         context_reranker_enabled: bool = True,
         context_model_name: str = "DeepPavlov/rubert-base-cased",
+        context_device: str = "cpu",
         context_margin: float = 0.25,
+        use_entity_guard: bool = True,
+        protected_lexicon_paths: Sequence[str] | None = None,
+        deterministic_spacing: bool = True,
     ):
         self.model_path = model_path
         self.preprocessor_path = preprocessor_path
@@ -109,12 +177,17 @@ class HybridCorrector:
         self.use_morphology_guard = use_morphology_guard
         self.context_reranker_enabled = context_reranker_enabled
         self.context_model_name = context_model_name
+        self.context_device = context_device
         self.context_margin = float(context_margin)
+        self.use_entity_guard = use_entity_guard
+        self.deterministic_spacing = bool(deterministic_spacing)
         self.thresholds = self._thresholds(strictness)
         self.runtime_stats: Counter[str] = Counter()
+        self.entity_guard = self._load_entity_guard(protected_lexicon_paths)
         self.context_reranker = ContextReranker(
             model_name=context_model_name,
             enabled=context_reranker_enabled,
+            device=context_device,
         )
 
         self.candidate_generator = self._load_candidate_generator(candidate_generator_path)
@@ -134,15 +207,17 @@ class HybridCorrector:
     def _thresholds(strictness: str) -> Dict[str, float]:
         table = {
             "strict": {
-                "action": 0.85,
-                "dictionary_action": 0.93,
+                "action": 0.82,
+                "dictionary_action": 0.88,
                 "rule_action": 0.88,
                 "action_margin": 0.18,
                 "delete": 0.995,
                 "punct": 0.92,
                 "punct_delete": 0.995,
+                "comma_delete": 0.9995,
                 "punct_margin": 0.12,
                 "punct_delete_margin": 0.45,
+                "comma_delete_margin": 0.70,
                 "guard_confidence": 0.70,
                 "max_change_ratio": 0.12,
                 "max_length_delta_ratio": 0.10,
@@ -157,8 +232,10 @@ class HybridCorrector:
                 "delete": 0.995,
                 "punct": 0.94,
                 "punct_delete": 0.99,
+                "comma_delete": 0.999,
                 "punct_margin": 0.20,
                 "punct_delete_margin": 0.40,
+                "comma_delete_margin": 0.60,
                 "guard_confidence": 0.65,
                 "max_change_ratio": 0.18,
                 "max_length_delta_ratio": 0.12,
@@ -173,8 +250,10 @@ class HybridCorrector:
                 "delete": 0.98,
                 "punct": 0.88,
                 "punct_delete": 0.97,
+                "comma_delete": 0.995,
                 "punct_margin": 0.14,
                 "punct_delete_margin": 0.30,
+                "comma_delete_margin": 0.45,
                 "guard_confidence": 0.55,
                 "max_change_ratio": 0.28,
                 "max_length_delta_ratio": 0.20,
@@ -195,6 +274,8 @@ class HybridCorrector:
             max_distance=1,
             allow_split_candidates=True,
             safe_split_only=True,
+            long_oov_max_distance=2,
+            long_oov_min_length=8,
         )
         return generator
 
@@ -210,8 +291,8 @@ class HybridCorrector:
         if config_path.exists():
             try:
                 config = json.loads(config_path.read_text(encoding="utf-8"))
-                if config.get("model_version", 0) < 6:
-                    print("Hybrid model is obsolete: missing v6 top-k/reranker changes. Retrain the notebook.")
+                if config.get("model_version", 0) < 7:
+                    print("Hybrid model is obsolete: missing v7 reranker/top-k changes. Retrain the notebook.")
                     return None
                 if not config.get("requires_source_punct_ids", False):
                     print("Hybrid model is obsolete: missing source_punct_ids input. Retrain the notebook.")
@@ -262,6 +343,16 @@ class HybridCorrector:
                 return path.read_text(encoding="utf-8").splitlines()
         return []
 
+    def _load_entity_guard(self, paths: Sequence[str] | None = None) -> ProtectedLexicon:
+        if not getattr(self, "use_entity_guard", True):
+            return ProtectedLexicon.empty()
+        try:
+            if paths is None:
+                return ProtectedLexicon.from_default_paths()
+            return ProtectedLexicon.from_paths(paths)
+        except Exception:
+            return ProtectedLexicon.empty()
+
     @property
     def is_trained(self) -> bool:
         return self.model is not None and self.preprocessor is not None
@@ -278,6 +369,7 @@ class HybridCorrector:
         corrected_lines: List[str] = []
         all_edits: List[CorrectionEdit] = []
         all_punctuation_diagnostics: List[PunctuationDecision] = []
+        all_word_diagnostics: List[WordDecision] = []
         confidences: List[float] = []
         accepted = True
         reasons: List[str] = []
@@ -291,6 +383,7 @@ class HybridCorrector:
             corrected_lines.append(line_result.corrected)
             all_edits.extend(line_result.edits)
             all_punctuation_diagnostics.extend(line_result.punctuation_diagnostics)
+            all_word_diagnostics.extend(line_result.word_diagnostics)
             confidences.append(line_result.confidence)
             accepted = accepted and line_result.accepted
             reasons.append(line_result.guard_reason)
@@ -307,6 +400,7 @@ class HybridCorrector:
                 decision.reason,
                 [],
                 all_punctuation_diagnostics,
+                all_word_diagnostics,
             )
 
         reason = "accepted" if accepted else ",".join(sorted(set(reasons)))
@@ -318,6 +412,7 @@ class HybridCorrector:
             reason,
             all_edits,
             all_punctuation_diagnostics,
+            all_word_diagnostics,
         )
 
     def _correct_segment(self, text: str) -> CorrectionResult:
@@ -334,14 +429,14 @@ class HybridCorrector:
         candidate_options = self._candidate_options(source_words)
 
         if self.is_trained:
-            corrected_words, corrected_puncts, edits, punctuation_diagnostics, confidence = self._model_correct(
+            corrected_words, corrected_puncts, edits, punctuation_diagnostics, word_diagnostics, confidence = self._model_correct(
                 source_words,
                 candidate_options,
                 source_puncts,
                 source_gaps,
             )
         else:
-            corrected_words, corrected_puncts, edits, confidence = self._dictionary_correct(
+            corrected_words, corrected_puncts, edits, word_diagnostics, confidence = self._dictionary_correct(
                 source_words,
                 candidate_options,
                 source_puncts,
@@ -349,23 +444,49 @@ class HybridCorrector:
             )
             punctuation_diagnostics = []
 
-        if not edits:
-            return CorrectionResult(text, text, confidence, True, "unchanged", [], punctuation_diagnostics)
+        if edits:
+            corrected = rebuild_preserving_layout(
+                text,
+                slots,
+                corrected_words,
+                corrected_puncts,
+                punctuation_mode=self.punctuation_mode,
+                source_puncts=source_puncts,
+                rewrite_punct_indices=[edit.index for edit in edits if edit.action == "PUNCT"],
+            )
+        else:
+            corrected = text
 
-        corrected = rebuild_preserving_layout(
-            text,
-            slots,
-            corrected_words,
-            corrected_puncts,
-            punctuation_mode=self.punctuation_mode,
-            source_puncts=source_puncts,
-            rewrite_punct_indices=[edit.index for edit in edits if edit.action == "PUNCT"],
-        )
+        corrected, spacing_edits = self._apply_deterministic_spacing(corrected)
+        if spacing_edits:
+            edits = edits + spacing_edits
+
+        if not edits:
+            return CorrectionResult(text, text, confidence, True, "unchanged", [], punctuation_diagnostics, word_diagnostics)
+
         decision = self.guard.check(text, corrected, confidence, len(edits))
         if not decision.accepted:
-            return CorrectionResult(text, text, confidence, False, decision.reason, [], punctuation_diagnostics)
+            return CorrectionResult(text, text, confidence, False, decision.reason, [], punctuation_diagnostics, word_diagnostics)
 
-        return CorrectionResult(text, corrected, confidence, True, decision.reason, edits, punctuation_diagnostics)
+        return CorrectionResult(text, corrected, confidence, True, decision.reason, edits, punctuation_diagnostics, word_diagnostics)
+
+    def _apply_deterministic_spacing(self, text: str) -> tuple[str, List[CorrectionEdit]]:
+        if not getattr(self, "deterministic_spacing", True):
+            return text, []
+        corrected, changed = deterministic_spacing_correction(text)
+        if not changed:
+            return text, []
+        self._increment_stat("deterministic_spacing_applied_count")
+        return corrected, [
+            CorrectionEdit(
+                index=-1,
+                source=text,
+                target=corrected,
+                action="SPACE",
+                confidence=1.0,
+                candidate_source="deterministic_spacing",
+            )
+        ]
 
     def _candidate_options_for_word(self, word: str) -> List[RuntimeCandidate]:
         raw_candidates = self.candidate_generator.get_candidates(word, max_candidates=self.candidate_top_k)
@@ -445,16 +566,23 @@ class HybridCorrector:
             self.runtime_stats = Counter()
         self.runtime_stats[key] += value
 
+    def _entity_metadata(self, word: str, prev_word: str = "", next_word: str = "") -> dict[str, object]:
+        guard = getattr(self, "entity_guard", None)
+        if not getattr(self, "use_entity_guard", True) or guard is None:
+            return {"protected_source": False, "entity_context": False, "clean_lexicon_frequency": 0}
+        return guard.metadata(word, prev_word=prev_word, next_word=next_word)
+
     def _dictionary_correct(
         self,
         source_words: Sequence[str],
         candidate_options: Sequence[Sequence[RuntimeCandidate]],
         source_puncts: Sequence[str],
         source_gaps: Sequence[str],
-    ) -> tuple[List[str], List[str], List[CorrectionEdit], float]:
+    ) -> tuple[List[str], List[str], List[CorrectionEdit], List[WordDecision], float]:
         corrected_words: List[str] = []
         corrected_puncts: List[str] = []
         edits: List[CorrectionEdit] = []
+        word_diagnostics: List[WordDecision] = []
         confidences: List[float] = []
 
         for i, (source, candidates, punct) in enumerate(zip(source_words, candidate_options, source_puncts)):
@@ -463,18 +591,23 @@ class HybridCorrector:
             context_margin = 0.0
             reranked = False
             reranker_reason = ""
+            context_best = ""
+            context_scores: List[str] = []
+            blocked_reason = "no_candidate"
             prev_word = source_words[i - 1] if i > 0 else ""
             next_word = source_words[i + 1] if i + 1 < len(source_words) else ""
             for candidate in candidates:
-                if candidate.text != source and self._can_apply_candidate(
+                blocked_reason = self._candidate_block_reason(
                     source,
                     candidate,
                     0.90,
                     0.25,
                     prev_word=prev_word,
                     next_word=next_word,
-                ):
-                    selected, context_score, context_margin, reranked, reranker_reason = self._maybe_rerank_candidate(
+                    skip_context=True,
+                )
+                if candidate.text != source and not blocked_reason:
+                    outcome = self._maybe_rerank_candidate(
                         source_words,
                         i,
                         source,
@@ -485,8 +618,27 @@ class HybridCorrector:
                         prev_word=prev_word,
                         next_word=next_word,
                     )
+                    selected = outcome.selected
+                    context_score = outcome.context_score
+                    context_margin = outcome.context_margin
+                    reranked = outcome.reranked
+                    reranker_reason = outcome.reason
+                    context_best = outcome.context_best
+                    context_scores = outcome.context_scores
+                    if selected is None:
+                        blocked_reason = outcome.reason
+                    else:
+                        blocked_reason = self._candidate_block_reason(
+                            source,
+                            selected,
+                            0.90,
+                            0.25,
+                            prev_word=prev_word,
+                            next_word=next_word,
+                            context_margin=outcome.context_margin,
+                        )
                     break
-            if selected is not None:
+            if selected is not None and not blocked_reason:
                 corrected_words.append(selected.text)
                 edits.append(
                     CorrectionEdit(
@@ -506,12 +658,40 @@ class HybridCorrector:
                     )
                 )
                 confidences.append(0.55)
+                blocked_reason = "applied"
             else:
                 corrected_words.append(source)
                 confidences.append(0.90)
+            if self._should_log_word_decision(candidates, "REPLACE_0"):
+                entity_meta = self._entity_metadata(source, prev_word, next_word)
+                word_diagnostics.append(
+                    WordDecision(
+                        index=i,
+                        word=source,
+                        predicted_action="REPLACE_0",
+                        confidence=0.90,
+                        margin=0.25,
+                        selected_rank=selected.rank if selected is not None else -1,
+                        selected_text=selected.text if selected is not None else "",
+                        selected_source=selected.source if selected is not None else "",
+                        selected_score=selected.score if selected is not None else 0.0,
+                        applied=selected is not None and blocked_reason == "applied",
+                        blocked_reason=blocked_reason,
+                        candidate_texts=[candidate.text for candidate in candidates],
+                        candidate_sources=[candidate.source for candidate in candidates],
+                        candidate_scores=[candidate.score for candidate in candidates],
+                        context_best=context_best,
+                        context_scores=context_scores,
+                        context_margin=context_margin,
+                        reranker_reason=reranker_reason,
+                        protected_source=bool(entity_meta["protected_source"]),
+                        entity_context=bool(entity_meta["entity_context"]),
+                        clean_lexicon_frequency=int(entity_meta["clean_lexicon_frequency"]),
+                    )
+                )
             corrected_puncts.append(punct)
 
-        return corrected_words, corrected_puncts, edits, float(np.mean(confidences) if confidences else 1.0)
+        return corrected_words, corrected_puncts, edits, word_diagnostics, float(np.mean(confidences) if confidences else 1.0)
 
     def _model_correct(
         self,
@@ -519,13 +699,14 @@ class HybridCorrector:
         candidate_options: Sequence[Sequence[RuntimeCandidate]],
         source_puncts: Sequence[str],
         source_gaps: Sequence[str],
-    ) -> tuple[List[str], List[str], List[CorrectionEdit], List[PunctuationDecision], float]:
+    ) -> tuple[List[str], List[str], List[CorrectionEdit], List[PunctuationDecision], List[WordDecision], float]:
         assert self.preprocessor is not None
         length = len(source_words)
         corrected_words = list(source_words)
         corrected_puncts = list(source_puncts)
         selected_edits: List[List[CorrectionEdit]] = [[] for _ in range(length)]
         selected_punct_diagnostics: List[PunctuationDecision | None] = [None] * length
+        selected_word_diagnostics: List[WordDecision | None] = [None] * length
         selected_scores: List[tuple[int, float]] = [(-1, -1.0)] * length
         selected_confidences: List[float] = [0.0] * length
         conflict_flags = [False] * length
@@ -560,25 +741,30 @@ class HybridCorrector:
 
                 output_word = source
                 token_edits: List[CorrectionEdit] = []
+                word_applied = False
+                word_blocked_reason = "keep"
+                word_selected: RuntimeCandidate | None = None
+                context_score = 0.0
+                context_margin = 0.0
+                reranked = False
+                reranker_reason = ""
+                context_best = ""
+                context_scores: List[str] = []
                 replace_rank = action_replace_rank(action)
                 if replace_rank is not None and replace_rank < len(candidates):
                     candidate = candidates[replace_rank]
-                    context_score = 0.0
-                    context_margin = 0.0
-                    reranked = False
-                    reranker_reason = ""
-                    if (
-                        candidate.text != source
-                        and self._can_apply_candidate(
-                            source,
-                            candidate,
-                            action_conf,
-                            action_margin,
-                            prev_word=prev_word,
-                            next_word=next_word,
-                        )
-                    ):
-                        candidate, context_score, context_margin, reranked, reranker_reason = self._maybe_rerank_candidate(
+                    word_selected = candidate
+                    word_blocked_reason = self._candidate_block_reason(
+                        source,
+                        candidate,
+                        action_conf,
+                        action_margin,
+                        prev_word=prev_word,
+                        next_word=next_word,
+                        skip_context=True,
+                    )
+                    if candidate.text != source and not word_blocked_reason:
+                        outcome = self._maybe_rerank_candidate(
                             source_words,
                             i,
                             source,
@@ -589,15 +775,30 @@ class HybridCorrector:
                             prev_word=prev_word,
                             next_word=next_word,
                         )
-                        if candidate is not None and self._can_apply_candidate(
-                            source,
-                            candidate,
-                            action_conf,
-                            action_margin,
-                            prev_word=prev_word,
-                            next_word=next_word,
-                        ):
+                        candidate = outcome.selected
+                        context_score = outcome.context_score
+                        context_margin = outcome.context_margin
+                        reranked = outcome.reranked
+                        reranker_reason = outcome.reason
+                        context_best = outcome.context_best
+                        context_scores = outcome.context_scores
+                        word_selected = candidate
+                        if candidate is None:
+                            word_blocked_reason = outcome.reason
+                        else:
+                            word_blocked_reason = self._candidate_block_reason(
+                                source,
+                                candidate,
+                                action_conf,
+                                action_margin,
+                                prev_word=prev_word,
+                                next_word=next_word,
+                                context_margin=outcome.context_margin,
+                            )
+                        if candidate is not None and not word_blocked_reason:
                             output_word = candidate.text
+                            word_applied = True
+                            word_blocked_reason = "applied"
                             token_edits.append(
                                 CorrectionEdit(
                                     i,
@@ -615,9 +816,44 @@ class HybridCorrector:
                                     reranker_reason,
                                 )
                             )
+                elif replace_rank is not None:
+                    word_blocked_reason = "replace_rank_out_of_range"
                 elif action == ACTION_DELETE and action_conf >= self.thresholds["delete"]:
                     output_word = ""
+                    word_applied = True
+                    word_blocked_reason = "applied"
                     token_edits.append(CorrectionEdit(i, source, "", action, action_conf))
+                elif action == ACTION_DELETE:
+                    word_blocked_reason = "low_delete_confidence"
+
+                word_diag = None
+                if self._should_log_word_decision(candidates, action):
+                    entity_meta = self._entity_metadata(source, prev_word, next_word)
+                    word_diag = WordDecision(
+                        index=i,
+                        word=source,
+                        predicted_action=action,
+                        confidence=action_conf,
+                        margin=action_margin,
+                        selected_rank=word_selected.rank if word_selected is not None else -1,
+                        selected_text=word_selected.text if word_selected is not None else "",
+                        selected_source=word_selected.source if word_selected is not None else "",
+                        selected_score=word_selected.score if word_selected is not None else 0.0,
+                        applied=word_applied,
+                        blocked_reason=word_blocked_reason,
+                        candidate_texts=[candidate.text for candidate in candidates],
+                        candidate_sources=[candidate.source for candidate in candidates],
+                        candidate_scores=[candidate.score for candidate in candidates],
+                        context_best=context_best,
+                        context_scores=context_scores,
+                        context_margin=context_margin,
+                        reranker_reason=reranker_reason,
+                        window_id=window_id,
+                        window_conflict_resolved=False,
+                        protected_source=bool(entity_meta["protected_source"]),
+                        entity_context=bool(entity_meta["entity_context"]),
+                        clean_lexicon_frequency=int(entity_meta["clean_lexicon_frequency"]),
+                    )
 
                 punct_id = int(np.argmax(punct_probs[local_i]))
                 punct_conf = float(np.max(punct_probs[local_i]))
@@ -679,13 +915,44 @@ class HybridCorrector:
                     corrected_puncts[i] = output_punct
                     selected_edits[i] = token_edits
                     selected_punct_diagnostics[i] = punct_diag
+                    selected_word_diagnostics[i] = word_diag
                     selected_scores[i] = score
                     selected_confidences[i] = token_conf
 
         edits: List[CorrectionEdit] = []
         punctuation_diagnostics: List[PunctuationDecision] = []
+        word_diagnostics: List[WordDecision] = []
         for i, diag in enumerate(selected_punct_diagnostics):
             edits.extend(selected_edits[i])
+            word_diag = selected_word_diagnostics[i]
+            if word_diag is not None:
+                word_diagnostics.append(
+                    WordDecision(
+                        index=word_diag.index,
+                        word=word_diag.word,
+                        predicted_action=word_diag.predicted_action,
+                        confidence=word_diag.confidence,
+                        margin=word_diag.margin,
+                        selected_rank=word_diag.selected_rank,
+                        selected_text=word_diag.selected_text,
+                        selected_source=word_diag.selected_source,
+                        selected_score=word_diag.selected_score,
+                        applied=word_diag.applied,
+                        blocked_reason=word_diag.blocked_reason,
+                        candidate_texts=word_diag.candidate_texts,
+                        candidate_sources=word_diag.candidate_sources,
+                        candidate_scores=word_diag.candidate_scores,
+                        context_best=word_diag.context_best,
+                        context_scores=word_diag.context_scores,
+                        context_margin=word_diag.context_margin,
+                        reranker_reason=word_diag.reranker_reason,
+                        window_id=word_diag.window_id,
+                        window_conflict_resolved=conflict_flags[i],
+                        protected_source=word_diag.protected_source,
+                        entity_context=word_diag.entity_context,
+                        clean_lexicon_frequency=word_diag.clean_lexicon_frequency,
+                    )
+                )
             if diag is not None:
                 punctuation_diagnostics.append(
                     PunctuationDecision(
@@ -710,6 +977,7 @@ class HybridCorrector:
             corrected_puncts,
             edits,
             punctuation_diagnostics,
+            word_diagnostics,
             float(np.mean([c for c in selected_confidences if c > 0]) if selected_confidences else 1.0),
         )
 
@@ -731,6 +999,45 @@ class HybridCorrector:
             start += stride
         return ranges
 
+    @staticmethod
+    def _context_score_payload(scores) -> List[str]:
+        payload = []
+        for score in scores or []:
+            value = score.score
+            value_text = f"{float(value):.4f}" if isinstance(value, (int, float)) and math.isfinite(value) else str(value)
+            payload.append(f"{score.text}:{value_text}:{score.reason}")
+        return payload
+
+    @staticmethod
+    def _best_context_text(scores) -> str:
+        finite = [score for score in scores or [] if math.isfinite(float(score.score))]
+        if not finite:
+            return ""
+        return max(finite, key=lambda item: item.score).text
+
+    def _should_relax_source_veto(
+        self,
+        source: str,
+        selected: RuntimeCandidate,
+        confidence: float,
+        context_margin: float,
+        *,
+        prev_word: str = "",
+        next_word: str = "",
+    ) -> bool:
+        if selected.source != "dictionary":
+            return False
+        if context_margin >= 0.75 or confidence < 0.95:
+            return False
+        if selected.distance != 1:
+            return False
+        if source != source.lower() or any("A" <= ch <= "Z" or "a" <= ch <= "z" for ch in source):
+            return False
+        if self.candidate_generator.is_known(source) or is_morphological_dictionary_word(source):
+            return False
+        entity_meta = self._entity_metadata(source, prev_word, next_word)
+        return not bool(entity_meta["protected_source"] or entity_meta["entity_context"])
+
     def _maybe_rerank_candidate(
         self,
         source_words: Sequence[str],
@@ -743,9 +1050,14 @@ class HybridCorrector:
         margin: float,
         prev_word: str = "",
         next_word: str = "",
-    ) -> tuple[RuntimeCandidate | None, float, float, bool, str]:
-        if selected.source not in {"dictionary", "split"} or not getattr(self, "context_reranker_enabled", False):
-            return selected, 0.0, 0.0, False, "not_called"
+    ) -> RerankOutcome:
+        if selected.source not in {"dictionary", "split"}:
+            return RerankOutcome(selected=selected, reason="not_called")
+        if not getattr(self, "context_reranker_enabled", False):
+            if selected.source == "split":
+                self._increment_stat("split_blocked_by_context_count")
+                return RerankOutcome(selected=None, reason="split_context_disabled")
+            return RerankOutcome(selected=selected, reason="not_called")
 
         viable = [
             candidate
@@ -753,24 +1065,59 @@ class HybridCorrector:
             if candidate.source in {"dictionary", "split"} and normalize_word(candidate.text) != normalize_word(source)
         ]
         if not viable:
-            return selected, 0.0, 0.0, False, "no_viable_candidates"
+            return RerankOutcome(selected=selected, reason="no_viable_candidates")
 
         self._increment_stat("reranker_called_count")
         texts = [source] + [candidate.text for candidate in viable]
         scores = self.context_reranker.score_candidates(source_words, index, source, texts)
+        context_payload = self._context_score_payload(scores)
+        context_best = self._best_context_text(scores)
+        for score in scores or []:
+            if not score.available or score.reason != "ok" or not math.isfinite(float(score.score)):
+                self._increment_stat(f"reranker_error_reason:{score.reason}")
         if not scores or not all(score.available for score in scores):
             self._increment_stat("reranker_fail_open_count")
             reason = scores[0].reason if scores else "no_scores"
-            return selected, 0.0, 0.0, False, reason
+            if selected.source == "split":
+                self._increment_stat("split_blocked_by_context_count")
+                return RerankOutcome(
+                    selected=None,
+                    reason=f"split_context_unavailable:{reason}",
+                    context_best=context_best,
+                    context_scores=context_payload,
+                )
+            return RerankOutcome(selected=selected, reason=reason, context_best=context_best, context_scores=context_payload)
 
-        score_by_norm = {normalize_word(score.text): score for score in scores}
-        ranked = sorted(scores, key=lambda item: item.score, reverse=True)
+        finite_scores = [score for score in scores if math.isfinite(float(score.score))]
+        non_finite_count = len(scores) - len(finite_scores)
+        if non_finite_count:
+            self._increment_stat("reranker_non_finite_count", non_finite_count)
+        if len(finite_scores) < 2:
+            reason = "context_non_finite"
+            if selected.source == "split":
+                self._increment_stat("split_blocked_by_context_count")
+                reason = "split_context_non_finite"
+                return RerankOutcome(
+                    selected=None,
+                    reason=reason,
+                    context_best=context_best,
+                    context_scores=context_payload,
+                )
+            return RerankOutcome(
+                selected=selected,
+                reason=reason,
+                context_best=context_best,
+                context_scores=context_payload,
+            )
+
+        score_by_norm = {normalize_word(score.text): score for score in finite_scores}
+        ranked = sorted(finite_scores, key=lambda item: item.score, reverse=True)
         best = ranked[0]
         second_score = ranked[1].score if len(ranked) > 1 else best.score
         context_margin = float(best.score - second_score)
         source_score = score_by_norm.get(normalize_word(source))
         selected_score = score_by_norm.get(normalize_word(selected.text))
-        context_score = float(selected_score.score) if selected_score is not None else 0.0
+        context_score = float(selected_score.score) if selected_score is not None else -math.inf
 
         if (
             source_score is not None
@@ -778,7 +1125,35 @@ class HybridCorrector:
             and context_margin >= self.context_margin
         ):
             self._increment_stat("reranker_source_preferred_count")
-            return None, float(source_score.score), context_margin, True, "context_prefers_source"
+            if self._should_relax_source_veto(
+                source,
+                selected,
+                confidence,
+                context_margin,
+                prev_word=prev_word,
+                next_word=next_word,
+            ):
+                self._increment_stat("context_source_veto_relaxed_count")
+                return RerankOutcome(
+                    selected=selected,
+                    context_score=context_score,
+                    context_margin=context_margin,
+                    reranked=False,
+                    reason="context_source_veto_relaxed",
+                    context_best=best.text,
+                    context_scores=context_payload,
+                )
+            if selected.source == "split":
+                self._increment_stat("split_blocked_by_context_count")
+            return RerankOutcome(
+                selected=None,
+                context_score=float(source_score.score),
+                context_margin=context_margin,
+                reranked=True,
+                reason="context_prefers_source",
+                context_best=best.text,
+                context_scores=context_payload,
+            )
 
         if normalize_word(best.text) != normalize_word(source) and context_margin >= self.context_margin:
             best_candidate = next(
@@ -797,11 +1172,37 @@ class HybridCorrector:
                 changed = normalize_word(best_candidate.text) != normalize_word(selected.text)
                 if changed:
                     self._increment_stat("reranker_changed_top1_count")
-                return best_candidate, float(best.score), context_margin, changed, (
-                    "context_changed_top1" if changed else "context_confirmed"
+                return RerankOutcome(
+                    selected=best_candidate,
+                    context_score=float(best.score),
+                    context_margin=context_margin,
+                    reranked=changed,
+                    reason="context_changed_top1" if changed else "context_confirmed",
+                    context_best=best.text,
+                    context_scores=context_payload,
                 )
 
-        return selected, context_score, context_margin, False, "context_low_margin"
+        if selected.source == "split":
+            self._increment_stat("split_blocked_by_context_count")
+            return RerankOutcome(
+                selected=None,
+                context_score=context_score,
+                context_margin=context_margin,
+                reranked=False,
+                reason="split_context_low_margin",
+                context_best=best.text,
+                context_scores=context_payload,
+            )
+
+        return RerankOutcome(
+            selected=selected,
+            context_score=context_score,
+            context_margin=context_margin,
+            reranked=False,
+            reason="context_low_margin",
+            context_best=best.text,
+            context_scores=context_payload,
+        )
 
     def _can_apply_candidate(
         self,
@@ -813,47 +1214,421 @@ class HybridCorrector:
         prev_word: str = "",
         next_word: str = "",
         skip_context: bool = False,
+        context_margin: float | None = None,
     ) -> bool:
+        return not self._candidate_block_reason(
+            source,
+            candidate,
+            confidence,
+            margin,
+            prev_word=prev_word,
+            next_word=next_word,
+            skip_context=skip_context,
+            context_margin=context_margin,
+        )
+
+    def _candidate_block_reason(
+        self,
+        source: str,
+        candidate: RuntimeCandidate,
+        confidence: float,
+        margin: float,
+        *,
+        prev_word: str = "",
+        next_word: str = "",
+        skip_context: bool = False,
+        context_margin: float | None = None,
+    ) -> str:
         if candidate.source == "original" or candidate.text == source:
-            return False
+            return "same_as_source"
         if confidence < self.thresholds["action"] or margin < self.thresholds["action_margin"]:
-            return False
+            return "low_action_confidence_or_margin"
 
         norm = normalize_word(source)
         known = self.candidate_generator.is_known(source)
+        morph_known = is_morphological_dictionary_word(source)
         is_lower_word = source == source.lower()
         has_latin = any("A" <= ch <= "Z" or "a" <= ch <= "z" for ch in source)
         is_upper = source.isupper()
+        entity_meta = self._entity_metadata(source, prev_word, next_word)
 
         if candidate.source in {"dictionary", "split"}:
-            return (
-                confidence >= self.thresholds["dictionary_action"]
-                and (candidate.source == "split" or candidate.score >= self.min_dictionary_score)
-                and not known
-                and not is_morphological_dictionary_word(source)
-                and is_lower_word
-                and not has_latin
-                and not is_upper
-                and len(norm) >= 5
-                and (candidate.source == "split" or candidate.distance == 1)
-                and not (
-                    self.use_morphology_guard
-                    and is_same_lemma_inflection(source, candidate.text)
-                )
+            if bool(entity_meta["entity_context"]):
+                self._increment_stat("entity_guard_blocked_count")
+                return "entity_context_guard"
+            if bool(entity_meta["protected_source"]):
+                self._increment_stat("entity_guard_blocked_count")
+                return "protected_lexicon_word"
+            if candidate.source == "dictionary" and self._dictionary_drops_glued_service_token(source, candidate.text):
+                return "dictionary_drops_glued_service_token"
+            dirty_recovery = self._is_dirty_dictionary_recovery(
+                source,
+                candidate,
+                confidence,
+                known=known,
+                morph_known=morph_known,
+                has_latin=has_latin,
+                is_upper=is_upper,
+                entity_meta=entity_meta,
+                prev_word=prev_word,
+                next_word=next_word,
             )
+            short_recovery = self._is_safe_short_dictionary_recovery(
+                source,
+                candidate,
+                confidence,
+                margin,
+                known=known,
+                morph_known=morph_known,
+                has_latin=has_latin,
+                is_upper=is_upper,
+                entity_meta=entity_meta,
+                prev_word=prev_word,
+                next_word=next_word,
+                context_margin=context_margin,
+            )
+            low_score_recovery = self._is_low_score_dictionary_recovery(
+                source,
+                candidate,
+                confidence,
+                margin,
+                known=known,
+                morph_known=morph_known,
+                has_latin=has_latin,
+                is_upper=is_upper,
+                entity_meta=entity_meta,
+                prev_word=prev_word,
+                next_word=next_word,
+                skip_context=skip_context,
+                context_margin=context_margin,
+            )
+            if confidence < self.thresholds["dictionary_action"] and not (dirty_recovery or short_recovery):
+                return "low_dictionary_confidence"
+            if (
+                candidate.source == "dictionary"
+                and candidate.score < self.min_dictionary_score
+                and not low_score_recovery
+            ):
+                return "low_dictionary_score"
+            if (
+                candidate.source == "dictionary"
+                and candidate.score < 1.0
+                and not skip_context
+                and (context_margin is None or context_margin < 0.50)
+                and not low_score_recovery
+            ):
+                return "low_score_needs_context_margin"
+            if known or morph_known:
+                return "known_or_dictionary_word"
+            if candidate.source == "dictionary" and (not is_lower_word or has_latin or is_upper):
+                if not (short_recovery or self._can_apply_titlecase_dictionary_candidate(
+                    source,
+                    candidate,
+                    confidence,
+                    prev_word=prev_word,
+                    next_word=next_word,
+                    skip_context=skip_context,
+                    context_margin=context_margin,
+                )):
+                    return "protected_word_shape"
+            if candidate.source == "split" and (
+                has_latin
+                or is_upper
+                or (
+                    not is_lower_word
+                    and not self._can_apply_titlecase_split_candidate(
+                        source,
+                        candidate,
+                        prev_word=prev_word,
+                        next_word=next_word,
+                    )
+                )
+            ):
+                return "protected_word_shape"
+            if len(norm) < 5 and not short_recovery:
+                return "too_short"
+            if candidate.source == "dictionary" and not (
+                candidate.distance == 1 or (candidate.distance == 2 and len(norm) >= 8)
+            ):
+                return "bad_dictionary_distance"
+            if self.use_morphology_guard and is_same_lemma_inflection(source, candidate.text):
+                return "same_lemma_inflection"
+            return ""
 
         if candidate.source in {"rule", "phrase"}:
             if confidence < self.thresholds["rule_action"] or has_latin or is_upper:
-                return False
+                return "low_rule_confidence_or_shape"
+            if bool(entity_meta["entity_context"]) or bool(entity_meta["protected_source"]):
+                self._increment_stat("entity_guard_blocked_count")
+                return "entity_context_guard" if bool(entity_meta["entity_context"]) else "protected_lexicon_word"
+            if candidate.source == "phrase" and self._collapses_next_word(source, candidate.text, next_word):
+                return "phrase_context_guard"
             if normalize_word(source) == "так" and normalize_word(candidate.text) == "также" and normalize_word(next_word) == "же":
-                return False
+                return "phrase_context_guard"
             if self._looks_like_name_context(source, prev_word, next_word):
-                return False
+                return "name_context_guard"
             if self._blocked_tsya_context(source, candidate.text, prev_word):
-                return False
-            return True
+                return "tsya_context_guard"
+            return ""
 
+        return "unsupported_candidate_source"
+
+    def _is_dirty_dictionary_recovery(
+        self,
+        source: str,
+        candidate: RuntimeCandidate,
+        confidence: float,
+        *,
+        known: bool,
+        morph_known: bool,
+        has_latin: bool,
+        is_upper: bool,
+        entity_meta: dict[str, object],
+        prev_word: str = "",
+        next_word: str = "",
+    ) -> bool:
+        if candidate.source != "dictionary":
+            return False
+        if self._candidate_rank(candidate) > 1:
+            return False
+        if candidate.distance != 1 or candidate.score < 1.0:
+            return False
+        if confidence < self.thresholds["action"]:
+            return False
+        return self._is_dirty_oov_source_shape(
+            source,
+            candidate,
+            known=known,
+            morph_known=morph_known,
+            has_latin=has_latin,
+            is_upper=is_upper,
+            entity_meta=entity_meta,
+            prev_word=prev_word,
+            next_word=next_word,
+            allow_short=False,
+            allow_titlecase=False,
+        )
+
+    def _is_low_score_dictionary_recovery(
+        self,
+        source: str,
+        candidate: RuntimeCandidate,
+        confidence: float,
+        margin: float,
+        *,
+        known: bool,
+        morph_known: bool,
+        has_latin: bool,
+        is_upper: bool,
+        entity_meta: dict[str, object],
+        prev_word: str = "",
+        next_word: str = "",
+        skip_context: bool = False,
+        context_margin: float | None = None,
+    ) -> bool:
+        if candidate.source != "dictionary":
+            return False
+        if self._candidate_rank(candidate) > 1:
+            return False
+        if candidate.score < -1.5 or confidence < 0.95 or margin < self.thresholds["action_margin"]:
+            return False
+        if not (candidate.distance == 1 or (candidate.distance == 2 and len(normalize_word(source)) >= 8)):
+            return False
+        if not skip_context and (context_margin is None or context_margin < 0.75):
+            return False
+        return self._is_dirty_oov_source_shape(
+            source,
+            candidate,
+            known=known,
+            morph_known=morph_known,
+            has_latin=has_latin,
+            is_upper=is_upper,
+            entity_meta=entity_meta,
+            prev_word=prev_word,
+            next_word=next_word,
+            allow_short=False,
+            allow_titlecase=False,
+        )
+
+    def _is_safe_short_dictionary_recovery(
+        self,
+        source: str,
+        candidate: RuntimeCandidate,
+        confidence: float,
+        margin: float,
+        *,
+        known: bool,
+        morph_known: bool,
+        has_latin: bool,
+        is_upper: bool,
+        entity_meta: dict[str, object],
+        prev_word: str = "",
+        next_word: str = "",
+        context_margin: float | None = None,
+    ) -> bool:
+        norm = normalize_word(source)
+        if candidate.source != "dictionary":
+            return False
+        if not (3 <= len(norm) <= 4):
+            return False
+        if self._candidate_rank(candidate) > 1:
+            return False
+        if candidate.distance != 1 or candidate.score < 1.0:
+            return False
+        if confidence < 0.95 or margin < 0.50:
+            return False
+        if context_margin is not None and context_margin < 0.50:
+            return False
+        return self._is_dirty_oov_source_shape(
+            source,
+            candidate,
+            known=known,
+            morph_known=morph_known,
+            has_latin=has_latin,
+            is_upper=is_upper,
+            entity_meta=entity_meta,
+            prev_word=prev_word,
+            next_word=next_word,
+            allow_short=True,
+            allow_titlecase=True,
+        )
+
+    def _is_dirty_oov_source_shape(
+        self,
+        source: str,
+        candidate: RuntimeCandidate,
+        *,
+        known: bool,
+        morph_known: bool,
+        has_latin: bool,
+        is_upper: bool,
+        entity_meta: dict[str, object],
+        prev_word: str = "",
+        next_word: str = "",
+        allow_short: bool = False,
+        allow_titlecase: bool = False,
+    ) -> bool:
+        norm = normalize_word(source)
+        if known or morph_known:
+            return False
+        if bool(entity_meta["protected_source"]) or bool(entity_meta["entity_context"]):
+            return False
+        if " " in candidate.text or has_latin or is_upper:
+            return False
+        if len(norm) < 5 and not allow_short:
+            return False
+        if source == source.lower():
+            return True
+        if not allow_titlecase:
+            return False
+        if not source[:1].isupper() or source.isupper():
+            return False
+        if prev_word:
+            return False
+        if self._looks_like_name_context(source, prev_word, next_word):
+            return False
+        if not candidate.text[:1].isupper() or candidate.text.isupper():
+            return False
+        return True
+
+    @staticmethod
+    def _candidate_rank(candidate: RuntimeCandidate) -> int:
+        return int(candidate.rank) if int(candidate.rank) >= 0 else 0
+
+    def _dictionary_drops_glued_service_token(self, source: str, candidate: str) -> bool:
+        source_norm = normalize_word(source)
+        candidate_norm = normalize_word(candidate)
+        if not source_norm or not candidate_norm or " " in str(candidate):
+            return False
+        if len(source_norm) >= 2 and source_norm[0] == source_norm[1] and candidate_norm == source_norm[1:]:
+            return False
+        if len(candidate_norm) < 5 or len(source_norm) <= len(candidate_norm):
+            return False
+        if source_norm.startswith(candidate_norm):
+            dropped = source_norm[len(candidate_norm) :]
+            return self._is_real_glued_service_pair(candidate_norm, dropped)
+        elif source_norm.endswith(candidate_norm):
+            dropped = source_norm[: -len(candidate_norm)]
+            return self._is_real_glued_service_pair(dropped, candidate_norm)
         return False
+
+    def _is_real_glued_service_pair(self, left: str, right: str) -> bool:
+        left_norm = normalize_word(left)
+        right_norm = normalize_word(right)
+        if left_norm in GLUED_SERVICE_TOKENS and len(left_norm) >= 2 and len(right_norm) >= 3:
+            return self.candidate_generator.is_known(right_norm)
+        if right_norm in GLUED_SERVICE_TOKENS and len(right_norm) >= 2 and len(left_norm) >= 5:
+            return self.candidate_generator.is_known(left_norm)
+        return False
+
+    @staticmethod
+    def _can_apply_titlecase_split_candidate(
+        source: str,
+        candidate: RuntimeCandidate,
+        *,
+        prev_word: str = "",
+        next_word: str = "",
+    ) -> bool:
+        if candidate.source != "split" or prev_word:
+            return False
+        source_s = str(source or "")
+        candidate_s = str(candidate.text or "")
+        if not source_s[:1].isupper() or source_s.isupper() or source_s[1:] != source_s[1:].lower():
+            return False
+        if any("A" <= ch <= "Z" or "a" <= ch <= "z" for ch in source_s + candidate_s):
+            return False
+        parts = candidate_s.split()
+        if len(parts) != 2:
+            return False
+        if not parts[0][:1].isupper() or parts[0].isupper():
+            return False
+        if parts[1] != parts[1].lower():
+            return False
+        return True
+
+    def _can_apply_titlecase_dictionary_candidate(
+        self,
+        source: str,
+        candidate: RuntimeCandidate,
+        confidence: float,
+        *,
+        prev_word: str = "",
+        next_word: str = "",
+        skip_context: bool = False,
+        context_margin: float | None = None,
+    ) -> bool:
+        if candidate.source != "dictionary":
+            return False
+        if confidence < 0.995:
+            return False
+        if not skip_context and (context_margin is None or context_margin < 0.75):
+            return False
+        if self._looks_like_name_context(source, prev_word, next_word):
+            return False
+        if self._entity_metadata(source, prev_word, next_word)["entity_context"]:
+            return False
+        if " " in candidate.text:
+            return False
+        if not source[:1].isupper() or source.isupper():
+            return False
+        if not candidate.text[:1].isupper() or candidate.text.isupper():
+            return False
+        return True
+
+    @staticmethod
+    def _collapses_next_word(source: str, candidate: str, next_word: str = "") -> bool:
+        if not next_word:
+            return False
+        return normalize_word(candidate) == normalize_word(source + next_word)
+
+    @staticmethod
+    def _should_log_word_decision(candidates: Sequence[RuntimeCandidate], action: str) -> bool:
+        if action != ACTION_KEEP:
+            return True
+        return any(
+            candidate.source != "original" and normalize_word(candidate.text) != ""
+            for candidate in candidates
+        )
 
     @staticmethod
     def _looks_like_name_context(source: str, prev_word: str = "", next_word: str = "") -> bool:
@@ -930,9 +1705,30 @@ class HybridCorrector:
             if predicted_punct in {".", "?", "!"} and not (source_punct == "." and predicted_punct == ","):
                 return False, "internal_sentence_end"
 
-        threshold = self.thresholds["punct_delete"] if predicted_punct == "" else self.thresholds["punct"]
-        margin_threshold = self.thresholds["punct_delete_margin"] if predicted_punct == "" else self.thresholds["punct_margin"]
+        comma_delete = source_punct == "," and predicted_punct == ""
+        if comma_delete:
+            comma_guard_reason = self._comma_delete_guard_reason(word, next_word)
+            if comma_guard_reason:
+                self._increment_stat("comma_delete_blocked_count")
+                return False, comma_guard_reason
+
+        comma_insert = source_punct == "" and predicted_punct == ","
+        if comma_insert:
+            comma_insert_guard = self._comma_insert_guard_reason(word, next_word)
+            if comma_insert_guard:
+                self._increment_stat("comma_insert_blocked_count")
+                return False, comma_insert_guard
+
+        if comma_delete:
+            threshold = self.thresholds["comma_delete"]
+            margin_threshold = self.thresholds["comma_delete_margin"]
+        else:
+            threshold = self.thresholds["punct_delete"] if predicted_punct == "" else self.thresholds["punct"]
+            margin_threshold = self.thresholds["punct_delete_margin"] if predicted_punct == "" else self.thresholds["punct_margin"]
         if confidence < threshold or margin < margin_threshold:
+            if comma_delete:
+                self._increment_stat("comma_delete_blocked_count")
+                return False, "low_comma_delete_confidence_or_margin"
             return False, "low_confidence_or_margin"
 
         if is_final and source_punct in {".", "!", "?"} and predicted_punct == "":
@@ -942,6 +1738,83 @@ class HybridCorrector:
         if source_punct and predicted_punct == "" and self._is_protected_next_token(next_word):
             return False, "delete_before_protected"
         return True, "applied"
+
+    @staticmethod
+    def _comma_delete_guard_reason(word: str, next_word: str) -> str:
+        next_norm = normalize_word(next_word)
+        if not next_norm:
+            return ""
+        if next_norm.startswith("котор") or next_norm in {"что", "чтобы"}:
+            return "comma_delete_clause_guard"
+        if next_norm in {"пожалуй", "наверное", "конечно", "возможно", "вероятно", "однако", "например"}:
+            return "comma_delete_introductory_guard"
+        if HybridCorrector._looks_like_participle_or_descriptor(next_norm):
+            return "comma_delete_participle_guard"
+        if str(word or "")[:1].isupper() and str(next_word or "")[:1].isupper():
+            return "comma_delete_titlecase_list_guard"
+        return ""
+
+    @staticmethod
+    def _comma_insert_guard_reason(word: str, next_word: str) -> str:
+        word_norm = normalize_word(word)
+        next_norm = normalize_word(next_word)
+        if not next_norm:
+            return ""
+        if next_norm.startswith("котор") or next_norm in {"что", "чтобы"}:
+            return ""
+        if word_norm in {
+            "сообщалось",
+            "сообщается",
+            "сообщили",
+            "сообщил",
+            "сообщила",
+            "сообщают",
+            "сообщает",
+        } and next_norm in {"о", "об", "обо", "ранее"}:
+            return "comma_insert_after_reporting_verb_guard"
+        if next_norm == "также":
+            return "comma_insert_before_takzhe_guard"
+        if next_norm in {"на", "с", "со", "в", "во", "по", "при"}:
+            return "comma_insert_preposition_phrase_guard"
+        if next_norm.startswith("друг"):
+            return "comma_insert_descriptor_guard"
+        if word_norm.endswith(("ен", "на", "но", "ны", "ый", "ий", "ая", "ое", "ые")) and len(next_norm) >= 4:
+            return "comma_insert_descriptor_guard"
+        return ""
+
+    @staticmethod
+    def _looks_like_participle_or_descriptor(norm: str) -> bool:
+        endings = (
+            "вший",
+            "вшая",
+            "вшее",
+            "вшие",
+            "нный",
+            "нная",
+            "нное",
+            "нные",
+            "енный",
+            "енная",
+            "енное",
+            "енные",
+            "емый",
+            "емая",
+            "емое",
+            "емые",
+            "ющий",
+            "ющая",
+            "ющее",
+            "ющие",
+            "ший",
+            "шая",
+            "шее",
+            "шие",
+            "тый",
+            "тая",
+            "тое",
+            "тые",
+        )
+        return norm.endswith(endings)
 
     @staticmethod
     def _is_protected_next_token(word: str) -> bool:

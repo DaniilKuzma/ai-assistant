@@ -31,12 +31,14 @@ class ContextReranker:
         *,
         enabled: bool = True,
         window: int = 12,
-        device: str | None = None,
+        device: str | None = "cpu",
+        batch_size: int = 16,
     ):
         self.model_name = model_name
         self.enabled = enabled
         self.window = max(1, int(window))
-        self.device = device
+        self.device = device or "cpu"
+        self.batch_size = max(1, int(batch_size))
         self.cache: dict[tuple[str, str, tuple[str, ...]], list[ContextScore]] = {}
         self._load_attempted = False
         self._available = False
@@ -69,7 +71,7 @@ class ContextReranker:
             self.cache[cache_key] = result
             return result
 
-        result = [self._score_one(words, index, candidate) for candidate in unique_candidates]
+        result = self._score_batch(words, index, unique_candidates)
         self.cache[cache_key] = result
         return result
 
@@ -86,12 +88,19 @@ class ContextReranker:
         try:
             import torch
             from transformers import AutoModelForMaskedLM, AutoTokenizer
+            from transformers.utils import logging as hf_logging
 
             self.torch = torch
+            hf_logging.set_verbosity_error()
+            try:
+                from huggingface_hub.utils import logging as hub_logging
+
+                hub_logging.set_verbosity_error()
+            except Exception:
+                pass
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
             self.model = AutoModelForMaskedLM.from_pretrained(self.model_name)
-            if self.device is None:
-                self.device = "cuda" if torch.cuda.is_available() else "cpu"
+            self.device = self._resolve_device(torch)
             self.model.to(self.device)
             self.model.eval()
             if not getattr(self.tokenizer, "mask_token", None):
@@ -101,9 +110,81 @@ class ContextReranker:
             self.disabled_reason = "ok"
             return True
         except Exception as exc:
-            self.disabled_reason = f"unavailable:{type(exc).__name__}"
+            self.disabled_reason = self._exception_reason("unavailable", exc)
             self._available = False
             return False
+
+    def _resolve_device(self, torch_module) -> str:
+        requested = str(self.device or "cpu").lower()
+        if requested == "auto":
+            return "cuda" if torch_module.cuda.is_available() else "cpu"
+        if requested in {"cpu", "cuda"}:
+            return requested
+        return "cpu"
+
+    def _score_batch(self, words: Sequence[str], index: int, candidates: Sequence[str]) -> list[ContextScore]:
+        assert self.tokenizer is not None
+        assert self.model is not None
+        assert self.torch is not None
+
+        prepared = []
+        immediate: dict[str, ContextScore] = {}
+        for candidate in candidates:
+            try:
+                candidate_ids = self.tokenizer(candidate, add_special_tokens=False)["input_ids"]
+                if not candidate_ids:
+                    immediate[candidate] = ContextScore(candidate, -math.inf, 0, True, "empty_candidate_tokens")
+                    continue
+                prepared.append((candidate, candidate_ids, self._masked_text(words, index, len(candidate_ids))))
+            except Exception as exc:
+                immediate[candidate] = ContextScore(
+                    candidate,
+                    -math.inf,
+                    0,
+                    True,
+                    self._exception_reason("tokenize_error", exc),
+                )
+
+        result_by_text: dict[str, ContextScore] = dict(immediate)
+        for start in range(0, len(prepared), self.batch_size):
+            chunk = prepared[start : start + self.batch_size]
+            masked_texts = [item[2] for item in chunk]
+            try:
+                encoded = self.tokenizer(masked_texts, return_tensors="pt", padding=True)
+                encoded = {key: value.to(self.device) for key, value in encoded.items()}
+                with self.torch.no_grad():
+                    logits = self.model(**encoded).logits
+                    log_probs = self.torch.log_softmax(logits, dim=-1)
+
+                for row, (candidate, candidate_ids, _) in enumerate(chunk):
+                    mask_positions = (
+                        encoded["input_ids"][row] == self.tokenizer.mask_token_id
+                    ).nonzero(as_tuple=False).flatten()
+                    if len(mask_positions) != len(candidate_ids):
+                        result_by_text[candidate] = ContextScore(
+                            candidate,
+                            -math.inf,
+                            len(candidate_ids),
+                            True,
+                            "mask_count_mismatch",
+                        )
+                        continue
+                    total = 0.0
+                    for position, token_id in zip(mask_positions.tolist(), candidate_ids):
+                        total += float(log_probs[row, position, token_id].detach().cpu())
+                    result_by_text[candidate] = ContextScore(
+                        candidate,
+                        total / max(1, len(candidate_ids)),
+                        len(candidate_ids),
+                        True,
+                        "ok",
+                    )
+            except Exception as exc:
+                reason = self._exception_reason("score_error", exc)
+                for candidate, candidate_ids, _ in chunk:
+                    result_by_text[candidate] = ContextScore(candidate, -math.inf, len(candidate_ids), True, reason)
+
+        return [result_by_text[candidate] for candidate in candidates]
 
     def _score_one(self, words: Sequence[str], index: int, candidate: str) -> ContextScore:
         assert self.tokenizer is not None
@@ -115,12 +196,7 @@ class ContextReranker:
             if not candidate_ids:
                 return ContextScore(candidate, -math.inf, 0, True, "empty_candidate_tokens")
 
-            start = max(0, index - self.window)
-            end = min(len(words), index + self.window + 1)
-            left = [str(word) for word in words[start:index]]
-            right = [str(word) for word in words[index + 1 : end]]
-            mask_tokens = [self.tokenizer.mask_token] * len(candidate_ids)
-            masked_text = " ".join(left + mask_tokens + right)
+            masked_text = self._masked_text(words, index, len(candidate_ids))
             encoded = self.tokenizer(masked_text, return_tensors="pt")
             encoded = {key: value.to(self.device) for key, value in encoded.items()}
             mask_positions = (encoded["input_ids"][0] == self.tokenizer.mask_token_id).nonzero(as_tuple=False).flatten()
@@ -137,7 +213,25 @@ class ContextReranker:
             score = total / max(1, len(candidate_ids))
             return ContextScore(candidate, score, len(candidate_ids), True, "ok")
         except Exception as exc:
-            return ContextScore(candidate, -math.inf, 0, True, f"score_error:{type(exc).__name__}")
+            return ContextScore(candidate, -math.inf, 0, True, self._exception_reason("score_error", exc))
+
+    def _masked_text(self, words: Sequence[str], index: int, mask_count: int) -> str:
+        assert self.tokenizer is not None
+        start = max(0, index - self.window)
+        end = min(len(words), index + self.window + 1)
+        left = [str(word) for word in words[start:index]]
+        right = [str(word) for word in words[index + 1 : end]]
+        mask_tokens = [self.tokenizer.mask_token] * max(1, int(mask_count))
+        return " ".join(left + mask_tokens + right)
+
+    @staticmethod
+    def _exception_reason(prefix: str, exc: Exception, max_len: int = 180) -> str:
+        message = " ".join(str(exc).split())
+        if len(message) > max_len:
+            message = message[: max_len - 3] + "..."
+        if message:
+            return f"{prefix}:{type(exc).__name__}:{message}"
+        return f"{prefix}:{type(exc).__name__}"
 
     def _context_hash(self, words: Sequence[str], index: int) -> str:
         start = max(0, int(index) - self.window)

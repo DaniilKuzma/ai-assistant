@@ -146,7 +146,7 @@ class DatasetGenerator:
                 "word_error_rate": 0.0,
                 "max_word_errors": 0,
                 "punct_ops": (1, 1),
-                "space_ops": (0, 1),
+                "space_ops": (0, 0),
             },
             "mixed": {
                 "word_k_range": (1, 3),
@@ -175,10 +175,10 @@ class DatasetGenerator:
         }
 
         self.profile_weights = {
-            "spelling_light": 0.32,
-            "spelling_medium": 0.16,
-            "punctuation_only": 0.26,
-            "mixed": 0.15,
+            "spelling_light": 0.27,
+            "spelling_medium": 0.15,
+            "punctuation_only": 0.31,
+            "mixed": 0.16,
             "space_errors": 0.08,
             "hard": 0.03,
         }
@@ -507,6 +507,28 @@ class DatasetGenerator:
         i, ch = random.choice(positions)
         return text[:i] + repl[ch] + text[i + 1:], f"punct_wrong_{names[ch]}_to_{names[repl[ch]]}"
 
+    def _wrong_period_to_comma(self, text: str) -> Tuple[str, str | None]:
+        positions = [
+            m.start()
+            for m in re.finditer(r"\.(?=\s+[а-яё])", text)
+            if m.start() < len(text.rstrip()) - 1
+        ]
+        if not positions:
+            return text, None
+        i = random.choice(positions)
+        return text[:i] + "," + text[i + 1:], "punct_wrong_period_to_comma"
+
+    def _remove_internal_comma(self, text: str) -> Tuple[str, str | None]:
+        positions = [
+            m.start()
+            for m in re.finditer(r",(?=\s+\S)", text)
+            if m.start() < len(text.rstrip()) - 1
+        ]
+        if not positions:
+            return text, None
+        i = random.choice(positions)
+        return text[:i] + text[i + 1:], "punct_remove_internal_comma"
+
     def _remove_comma_before_clause_marker(self, text: str) -> Tuple[str, str | None]:
         markers = (
             'что', 'чтобы', 'если', 'когда', 'который', 'которая', 'которое',
@@ -562,6 +584,16 @@ class DatasetGenerator:
             return text, []
 
         operations = [
+            self._wrong_period_to_comma,
+            self._wrong_period_to_comma,
+            self._wrong_period_to_comma,
+            self._remove_comma_before_clause_marker,
+            self._remove_comma_before_clause_marker,
+            self._remove_comma_before_clause_marker,
+            self._remove_internal_comma,
+            self._remove_internal_comma,
+            self._insert_extra_comma,
+            self._insert_extra_comma,
             self._remove_final_punctuation,
             self._remove_final_punctuation,
             self._remove_final_punctuation,
@@ -776,10 +808,10 @@ class DatasetGenerator:
         """
         if curriculum is None:
             curriculum = [
-                {"name": "spelling_light", "profile": "spelling_light", "p": 0.32},
-                {"name": "spelling_medium", "profile": "spelling_medium", "p": 0.16},
-                {"name": "punctuation_only", "profile": "punctuation_only", "p": 0.26},
-                {"name": "mixed", "profile": "mixed", "p": 0.15},
+                {"name": "spelling_light", "profile": "spelling_light", "p": 0.27},
+                {"name": "spelling_medium", "profile": "spelling_medium", "p": 0.15},
+                {"name": "punctuation_only", "profile": "punctuation_only", "p": 0.31},
+                {"name": "mixed", "profile": "mixed", "p": 0.16},
                 {"name": "space_errors", "profile": "space_errors", "p": 0.08},
                 {"name": "hard", "profile": "hard", "p": 0.03},
             ]
@@ -921,10 +953,10 @@ def main():
     # Генерируем датасеты по сплитам
     SAMPLES_PER_TEXT = 3
     CURRICULUM = [
-        {"name": "spelling_light", "profile": "spelling_light", "p": 0.32},
-        {"name": "spelling_medium", "profile": "spelling_medium", "p": 0.16},
-        {"name": "punctuation_only", "profile": "punctuation_only", "p": 0.26},
-        {"name": "mixed", "profile": "mixed", "p": 0.15},
+        {"name": "spelling_light", "profile": "spelling_light", "p": 0.27},
+        {"name": "spelling_medium", "profile": "spelling_medium", "p": 0.15},
+        {"name": "punctuation_only", "profile": "punctuation_only", "p": 0.31},
+        {"name": "mixed", "profile": "mixed", "p": 0.16},
         {"name": "space_errors", "profile": "space_errors", "p": 0.08},
         {"name": "hard", "profile": "hard", "p": 0.03},
     ]
