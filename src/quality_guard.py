@@ -7,12 +7,20 @@ from dataclasses import dataclass
 from difflib import SequenceMatcher
 import re
 
+from text_utils import (
+    TRAINABLE_PUNCT_LABELS,
+    canonical_punctuation_label,
+    extract_word_slots,
+    normalize_word,
+)
+
 
 PROTECTED_RE = re.compile(
     r"(https?://\S+|www\.\S+|[\w.+-]+@[\w-]+\.[\w.-]+|[A-Za-z][A-Za-z0-9._/-]*|\b\d[\d.,:/-]*\b|[A-ZА-ЯЁ]{2,})"
 )
 STRUCTURAL_PUNCT = set('"()[]{}—–«»№/\\')
 SIMPLE_PUNCT = set(".,!?;:")
+STRUCTURAL_PAIRS = (("(", ")"), ("[", "]"), ("{", "}"), ("«", "»"))
 
 
 @dataclass
@@ -52,10 +60,16 @@ class QualityGuard:
         if confidence < self.min_confidence:
             return GuardDecision(False, "low_confidence")
 
-        if self._protected_values(original) != self._protected_values(corrected):
+        if (
+            self._protected_values(original) != self._protected_values(corrected)
+            and not self._protected_change_is_trainable_case(original, corrected)
+        ):
             return GuardDecision(False, "protected_value_changed")
 
-        if self._structural_punctuation(original) != self._structural_punctuation(corrected):
+        if (
+            self._structural_punctuation(original) != self._structural_punctuation(corrected)
+            and not self._structural_change_is_trainable(original, corrected)
+        ):
             return GuardDecision(False, "structural_punctuation_changed")
 
         if self._simple_punctuation_drop_too_large(original, corrected):
@@ -83,12 +97,111 @@ class QualityGuard:
         return [m.group(0) for m in PROTECTED_RE.finditer(text)]
 
     @staticmethod
+    def _protected_change_is_trainable_case(original: str, corrected: str) -> bool:
+        original_slots = extract_word_slots(original)
+        corrected_slots = extract_word_slots(corrected)
+        if len(original_slots) != len(corrected_slots):
+            return False
+        allowed = {("вуз", "ВУЗ")}
+        changed = [
+            (source.word, target.word)
+            for source, target in zip(original_slots, corrected_slots)
+            if source.word != target.word
+        ]
+        if not changed:
+            return False
+        return all((normalize_word(source), target) in allowed for source, target in changed)
+
+    @staticmethod
     def _structural_punctuation(text: str) -> str:
         return "".join(ch for ch in str(text) if ch in STRUCTURAL_PUNCT)
 
     @staticmethod
     def _without_spacing(text: str) -> str:
         return "".join(str(text).split())
+
+    @staticmethod
+    def _structural_change_is_trainable(original: str, corrected: str) -> bool:
+        if QualityGuard._quote_count(corrected) < QualityGuard._quote_count(original):
+            return False
+        if QualityGuard._structural_balance_error(corrected) > QualityGuard._structural_balance_error(original):
+            return False
+        if QualityGuard._lost_opening_structural_pair(original, corrected):
+            return False
+        original_slots = extract_word_slots(original)
+        corrected_slots = extract_word_slots(corrected)
+        if not original_slots or len(original_slots) != len(corrected_slots):
+            return False
+
+        original_words = [normalize_word(slot.word) for slot in original_slots]
+        corrected_words = [normalize_word(slot.word) for slot in corrected_slots]
+        if original_words != corrected_words:
+            return False
+
+        original_gaps = QualityGuard._slot_gap_compacts(original, original_slots)
+        corrected_gaps = QualityGuard._slot_gap_compacts(corrected, corrected_slots)
+        for original_gap, corrected_gap in zip(original_gaps, corrected_gaps):
+            if original_gap == corrected_gap:
+                continue
+            if QualityGuard._has_untrainable_structural_gap(original_gap):
+                return False
+            if QualityGuard._has_untrainable_structural_gap(corrected_gap):
+                return False
+            if canonical_punctuation_label(original_gap) not in TRAINABLE_PUNCT_LABELS:
+                return False
+            if canonical_punctuation_label(corrected_gap) not in TRAINABLE_PUNCT_LABELS:
+                return False
+        return True
+
+    @staticmethod
+    def _quote_count(text: str) -> int:
+        return sum(1 for ch in str(text) if ch in {'"', "«", "»"})
+
+    @staticmethod
+    def _structural_balance_error(text: str) -> int:
+        value = sum(QualityGuard._pair_balance_error(text, left, right) for left, right in STRUCTURAL_PAIRS)
+        value += str(text).count('"') % 2
+        return value
+
+    @staticmethod
+    def _pair_balance_error(text: str, left: str, right: str) -> int:
+        depth = 0
+        unmatched_right = 0
+        for ch in str(text):
+            if ch == left:
+                depth += 1
+            elif ch == right:
+                if depth:
+                    depth -= 1
+                else:
+                    unmatched_right += 1
+        return depth + unmatched_right
+
+    @staticmethod
+    def _lost_opening_structural_pair(original: str, corrected: str) -> bool:
+        original = str(original)
+        corrected = str(corrected)
+        for left, right in STRUCTURAL_PAIRS:
+            lost_left = original.count(left) - corrected.count(left)
+            lost_right = original.count(right) - corrected.count(right)
+            if lost_left > max(lost_right, 0):
+                return True
+        return False
+
+    @staticmethod
+    def _slot_gap_compacts(text: str, slots) -> list[str]:
+        gaps: list[str] = []
+        for i, slot in enumerate(slots):
+            next_start = slots[i + 1].start if i + 1 < len(slots) else len(text)
+            gaps.append("".join(str(text)[slot.end:next_start].split()).replace("–", "—"))
+        return gaps
+
+    @staticmethod
+    def _has_untrainable_structural_gap(gap: str) -> bool:
+        gap = str(gap or "")
+        if any(ch in set("[]{}№/\\") for ch in gap):
+            return True
+        return bool(gap and canonical_punctuation_label(gap) == "" and any(ch in STRUCTURAL_PUNCT for ch in gap))
 
     def _simple_punctuation_drop_too_large(self, original: str, corrected: str) -> bool:
         orig = "".join(ch for ch in str(original) if ch in SIMPLE_PUNCT)

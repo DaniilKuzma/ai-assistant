@@ -3,7 +3,7 @@
 This project now uses one main correction strategy:
 
 ```text
-HybridCorrector = deterministic spacing + top-k candidate generator + edit-based Transformer + source-aware punctuation head + RuBERT context reranker + quality guard
+HybridCorrector = top-k candidate generator + edit-based Transformer + source-aware punctuation head + RuBERT context reranker + quality guard
 ```
 
 The model does not rewrite the whole sentence. It predicts local edit actions for
@@ -11,38 +11,40 @@ tokens and punctuation labels after tokens. The action space is `KEEP`,
 `DELETE`, and `REPLACE_0 ... REPLACE_7`, where each replace action selects one
 of the generated candidates.
 
-The runtime now includes a deterministic spacing layer before the final
-`QualityGuard` decision. It only fixes high-precision whitespace cases:
-duplicate spaces between Cyrillic text, spaces before simple punctuation,
-missing spaces after simple punctuation in Cyrillic context, and spacing around
-`—` between words. URL, email, decimal/date-like fragments, Latin text,
-quotes, brackets, slashes, `№` and structural punctuation are protected.
-
-The runtime preserves structural punctuation from the source text by
-default. Quotes, dashes, brackets, slashes, `№`, numbers and Latin fragments are
-protected; the punctuation head is only allowed to change simple trailing marks
-`, . ? ! : ;` in `punctuation_mode="conservative"`.
+The runtime no longer has a deterministic whitespace correction layer or a
+separate spacing error class. URL, email, decimal/date-like fragments, Latin
+text, slashes, `№`, numbers and unknown structural punctuation are protected.
+The punctuation head can change simple trailing marks and whitelisted
+structural gap labels for quotes, dashes, brackets, ellipsis, direct speech and
+lists in `punctuation_mode="conservative"`.
 The runtime now works on full lines, falling back to overlapping windows for
 long inputs. The current model format has `source_punct_ids` and top-k
-`candidate_ids`; old v6 and earlier models are intentionally treated as
-obsolete and should be retrained. The current runtime is v8.1. It remains
-compatible with v7 model artifacts, but the next trained model should write
-`model_version=8` and use the V8 action sample weights. Ambiguous
-dictionary/split edits are rescored by `DeepPavlov/rubert-base-cased` on CPU by
-default; split edits fail closed when context is not reliable. Dictionary
-corrections use `candidate_min_freq=1`, `min_dictionary_score=0.25`, a
-`pymorphy2` morphology guard, and an entity/noise guard loaded from
-`data/raw/texts.txt` and `data/processed/*.csv` `correct_text` values to avoid
-changing valid clean/raw words, names, toponyms and rare terms.
+`candidate_ids`; stale model artifacts are intentionally treated as obsolete
+and should be retrained. The current training/evaluation scenario is V10.5:
+`model_version=10`, `runtime_version="10.5"`, real spellcheck/punctuation pairs
+in train/val, and external real-pair evaluation kept outside the synthetic
+test split. Spacing-only real rows are filtered out. Ambiguous dictionary/split edits are rescored by
+`DeepPavlov/rubert-base-cased` with `context-device auto`, using CUDA when the
+local PyTorch stack can run it and falling back to CPU on scoring errors; split
+edits fail closed when context is not reliable. Dictionary corrections use `candidate_min_freq=1`,
+`min_dictionary_score=0.25`, a `pymorphy2` morphology guard, and an
+entity/noise guard loaded from `data/raw/texts.txt` and
+`data/processed/*.csv` `correct_text` values to avoid changing valid clean/raw
+words, names, toponyms and rare terms.
 
-V8 adds cautious dirty-aware recall gates: obvious lowercase OOV dictionary
-typos can pass the stricter dictionary threshold when `distance=1`,
-`score>=1.0` and rank is top-2; low-score recovery needs very high model
-confidence and strong context reranker confirmation; short OOV typos of length
-3-4 are allowed only in high-confidence, non-entity contexts. Dynamic short
-rules cover repeated first-letter cases such as `ДДля -> Для` and `ККак -> Как`.
-
-Keyboard-neighbor typo generation is intentionally not implemented.
+V10.5 keeps the cautious dirty-aware recall gates, adds curated compound/case/
+abbreviation/borrowed-word spelling errors, and adds structural punctuation
+labels. AI Forever spellcheck/punctuation train rows are filtered to local
+edit-compatible non-spacing pairs and repeated in train. Runtime guards reject
+structural punctuation edits that worsen bracket or quote balance. A narrow
+low-action recovery can apply safe top-1 dictionary typos without relaxing
+punctuation, entity, protected-word or morphology guards. V10.5 also adds narrow
+comma-delete recovery for extra commas after short service words, a lowercase
+service-word extension, day-month date comma cleanup, safe final-period recovery
+for the last gap, plus punctuation target diagnostics in evaluator summaries.
+Held-out AI Forever
+and RuSpellGold test files stay separate. Keyboard-neighbor typo generation is
+still intentionally not implemented.
 
 ## Main Files
 
@@ -51,6 +53,7 @@ src/hybrid_corrector.py      runtime corrector
 src/candidate_generator.py   dictionary and rule candidates
 src/context_reranker.py      RuBERT/RuRoBERTa candidate reranker
 src/entity_guard.py          protected clean/raw lexicon and entity context
+src/external_datasets.py     external real-pair loading and filtering
 src/morphology_guard.py      morphology guard for dictionary candidates
 src/training_augmentation.py candidate-aware KEEP negatives and clean audit
 src/edit_labels.py           error_text -> token edit labels
@@ -71,19 +74,24 @@ hybrid trainer/evaluator when run directly.
 PYTHONPATH=src .venv/bin/python src/train.py \
   --dataset data/processed/dataset.csv \
   --output-dir models \
+  --model-version 10 \
   --max-length 128 \
   --max-vocab-size 80000 \
   --candidate-min-freq 1 \
   --candidate-max-distance 1 \
-  --candidate-top-k 8 \
+  --candidate-top-k 16 \
   --long-oov-max-distance 2 \
   --long-oov-min-length 8 \
   --min-dictionary-score 0.25 \
   --clean-action-keep-weight 2.0 \
-  --dirty-action-keep-weight 1.0 \
-  --action-change-weight 3.0 \
+  --dirty-action-keep-weight 0.8 \
+  --action-change-weight 4.0 \
+  --punct-change-weight 8.0 \
+  --final-punct-weight 8.0 \
+  --clean-punct-keep-weight 4.0 \
+  --dirty-punct-keep-weight 1.0 \
   --context-model-name DeepPavlov/rubert-base-cased \
-  --context-device cpu \
+  --context-device auto \
   --d-model 128 \
   --num-layers 2 \
   --ff-dim 256 \
@@ -108,79 +116,71 @@ models/hybrid_training_log.csv
 ```bash
 PYTHONPATH=src .venv/bin/python src/evaluate.py \
   --dataset data/processed/test.csv \
-  --all \
-  --output-dir report \
+  --sample-size 1000 \
+  --output-dir report/synthetic_v11 \
   --strictness strict \
   --punctuation-mode conservative \
-  --candidate-top-k 8 \
-  --context-device cpu \
-  --min-dictionary-score 0.25
+  --candidate-top-k 16 \
+  --context-device auto \
+  --min-dictionary-score 0.25 \
+  --no-diagnostics \
+  --inference-batch-size 512
 ```
 
-For an A/B run without the deterministic spacing layer, add:
-
-```bash
---disable-deterministic-spacing
-```
-
-Evaluation writes:
+Smoke evaluation writes:
 
 ```text
-report/summary.json
-report/error_analysis.csv
-report/error_metrics_by_type.csv
+report/synthetic_v11/summary.json
+report/synthetic_v11/error_analysis.csv
+report/synthetic_v11/error_metrics_by_type.csv
+report/synthetic_v11/worst_cases.csv
+```
+
+Full diagnostic runs without `--no-diagnostics` also write:
+
+```text
 report/word_edit_diagnostics.csv
 report/word_decision_diagnostics.csv
 report/punct_edit_diagnostics.csv
 report/clean_candidate_audit.csv
 report/clean_noise_filter.csv
-report/worst_cases.csv
 ```
 
-## Latest Full-Test Snapshot
+## V10.5 Evaluation
 
-The latest full notebook evaluation was written to `report/` with
-`runtime_version="8.1"` after the next evaluation run.
+The main notebook evaluation defaults to a synthetic-compatible smoke report:
 
 ```text
-examples: 5913
-exact_match: 0.475731
-clean exact_match: 0.998555
-dirty exact_match: 0.192859
-mean_cer_delta: 0.003985
-dirty_slice.mean_cer_delta: 0.006150
-worse_rate: 0.003044
-clean_overcorrection_rate: 0.001445
-word_overcorrection_rate: 0.0
-punct_overcorrection_rate: 0.001445
-space_overcorrection_rate: 0.0
-target_present_but_not_applied_rate: 0.491918
-candidate_coverage_rate: 0.802004
-deterministic_spacing_applied_count: 518
-space_edit_count: 508
-reranker_non_finite_count: 0
-entity_guard_blocked_count: 1831
-context_source_veto_relaxed_count: 5
-punct_input_similarity: 0.887929
-punct_pred_similarity: 0.892349
+report/synthetic_v11/summary.json
+report/synthetic_v11/error_analysis.csv
+report/synthetic_v11/error_metrics_by_type.csv
+report/synthetic_v11/worst_cases.csv
 ```
 
-Interpretation:
+External real-pair reports are written separately:
 
 ```text
-V8 keeps clean-safety within the target range.
-Deterministic spacing is useful and has no clean spacing overcorrection.
-The remaining bottleneck is dirty recall, especially punctuation and glued-word splits.
+report/external_ai_forever_v11/summary.json
+report/external_ruspellgold_v11/summary.json
 ```
 
-Current V8.1.1 runtime fix:
+Acceptance targets after full evaluation:
 
 ```text
-1. Prefer safe service-token splits for glued words such as сообщаетсяна and незаставляет.
-2. Block dictionary candidates that delete a glued service token.
-3. Guard reporting-verb comma insertions before о/об/обо/ранее.
-4. Watch clean_overcorrection_rate, worse_rate, target_present_but_not_applied_rate,
-   deterministic_spacing_applied_count, space_edit_count and space_overcorrection_rate.
+clean_overcorrection_rate <= 0.002
+worse_rate <= 0.01
+overall exact_match above 0.5699
+dirty exact_match above 0.3398
+punct_applied_count above the current 856 level
+source_kind_slices and source_dataset_slices present in summary.json
+low_action_dictionary_recovery_count present in summary.json
+safe_comma_delete_recovery_count present in summary.json
+safe_service_comma_delete_recovery_count present in summary.json
+safe_date_comma_delete_recovery_count present in summary.json
+safe_final_period_recovery_count present in summary.json
+safe_final_period_recovery_count at least 74
+punct_target_applied_count present in summary.json
+punct_target_predicted_but_blocked_rate present in summary.json
 ```
 
 ## Runtime

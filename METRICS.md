@@ -12,10 +12,10 @@ PYTHONPATH=src .venv/bin/python src/evaluate.py
 ## Файлы Отчетов
 
 ```text
-report/summary.json
-report/error_analysis.csv
-report/error_metrics_by_type.csv
-report/worst_cases.csv
+report/synthetic_v11/summary.json
+report/synthetic_v11/error_analysis.csv
+report/synthetic_v11/error_metrics_by_type.csv
+report/synthetic_v11/worst_cases.csv
 ```
 
 ## Основные Метрики
@@ -46,19 +46,19 @@ cer_delta < 0  ассистент сделал хуже
 
 `clean_overcorrection_rate` - доля чистых примеров, которые были изменены зря.
 
-`word_overcorrection_rate`, `punct_overcorrection_rate`,
-`space_overcorrection_rate` - разбиение clean-overcorrection по типу правки:
-слово, пунктуация или deterministic spacing.
-
-`space_edit_count` - сколько SPACE-правок появилось в строке.
-
-`deterministic_spacing_applied_count` - сколько раз runtime применил
-детерминированный слой пробелов.
+`word_overcorrection_rate`, `punct_overcorrection_rate` - разбиение
+clean-overcorrection по типу правки: слово или пунктуация.
 
 `punct_input_similarity` и `punct_pred_similarity` - сходство
 последовательностей пунктуации до и после модели.
 
 `punct_count_error` - ошибка по количеству знаков препинания.
+
+`punct_target_change_count`, `punct_target_predicted_count`,
+`punct_target_applied_count`, `punct_target_predicted_but_blocked_rate` -
+диагностика пунктуационных целей: сколько знаков надо было изменить, сколько
+модель предсказала правильно, сколько реально применилось и какая доля
+правильно предсказанных целей была заблокирована runtime.
 
 `confidence` - средняя уверенность runtime-системы.
 
@@ -106,95 +106,120 @@ punct_pred_similarity > punct_input_similarity
 report/worst_cases.csv
 ```
 
-## Текущий V8 Evaluator
+## Текущий V10.5 Evaluator
 
-Новый evaluator пишет:
+Evaluator пишет:
 
 ```text
-runtime_version: 8.1
-deterministic_spacing_enabled
-space_edit_count
-deterministic_spacing_applied_count
-space_overcorrection_rate
+runtime_version: 10.5
+write_diagnostics
+source_kind_slices
+source_dataset_slices
+low_action_dictionary_recovery_count
+safe_comma_delete_recovery_count
+safe_service_comma_delete_recovery_count
+safe_date_comma_delete_recovery_count
+safe_final_period_recovery_count
+punct_target_change_count
+punct_target_predicted_count
+punct_target_applied_count
+punct_target_predicted_but_blocked_count
+punct_target_predicted_but_blocked_rate
 ```
 
-Для A/B сравнения deterministic spacing можно отключить:
+Для быстрых итераций можно отключить большие diagnostic CSV:
 
 ```bash
 PYTHONPATH=src .venv/bin/python src/evaluate.py \
   --dataset data/processed/test.csv \
-  --all \
-  --output-dir report/no_spacing_ab \
+  --sample-size 1000 \
+  --output-dir report/synthetic_v11 \
   --strictness strict \
-  --disable-deterministic-spacing
+  --context-device auto \
+  --no-diagnostics \
+  --inference-batch-size 512
 ```
 
-## Текущий Полный Отчет V8
+## V10.5 Reports
 
-Файл:
+Основной synthetic-compatible отчет:
 
 ```text
-report/summary.json
+report/synthetic_v11/summary.json
+report/synthetic_v11/error_analysis.csv
+report/synthetic_v11/error_metrics_by_type.csv
+report/synthetic_v11/worst_cases.csv
 ```
 
-Ключевые значения:
+Внешние real-pair проверки для отдельного полного прогона:
 
 ```text
-runtime_version: 8.1
-examples: 5913
-exact_match: 0.475731
-clean exact_match: 0.998555
-dirty exact_match: 0.192859
-mean_cer_delta: 0.003985
-dirty_slice.mean_cer_delta: 0.006150
-worse_rate: 0.003044
-clean_overcorrection_rate: 0.001445
-word_overcorrection_rate: 0.0
-punct_overcorrection_rate: 0.001445
-space_overcorrection_rate: 0.0
-target_present_but_not_applied_rate: 0.491918
-candidate_coverage_rate: 0.802004
-deterministic_spacing_applied_count: 518
-space_edit_count: 508
-reranker_non_finite_count: 0
-entity_guard_blocked_count: 1831
-context_source_veto_relaxed_count: 5
-punct_input_similarity: 0.887929
-punct_pred_similarity: 0.892349
-punct_wrong_period_to_comma_improved_rate: 0.386905
+report/external_ai_forever_v11/summary.json
+report/external_ruspellgold_v11/summary.json
 ```
 
-Как читать этот результат:
+V10.5 использует V10-обучение с реальными парами только в train/val, отбрасывает spacing-only пары,
+а основной `test.csv` остается сопоставимым synthetic split. Поэтому после
+полного прогона нужно смотреть два типа результата:
 
 ```text
-clean-тексты почти не портятся;
-word-overcorrection на clean отсутствует;
-deterministic spacing не портит clean;
-основная слабость - dirty recall, пунктуация и space_merge_words.
+1. report/synthetic_v11/summary.json - контролирует clean-safety и сопоставимый synthetic test.
+2. external_*_v9/summary.json - показывает перенос на реальные spellcheck/punctuation пары.
 ```
 
-Почему `exact_match` остается низким:
+Ключевые V10.5 acceptance targets:
 
 ```text
-dirty unchanged_wrong_rate: 0.592390
-punct_applied_count: 85
-punct_change_candidate_count: 3835
-space_merge_words exact_match: 0.057971
-target_present_but_not_applied_rate: 0.491918
+clean_overcorrection_rate <= 0.002
+worse_rate <= 0.01
+overall exact_match выше 0.5699
+dirty exact_match выше 0.3398
+punct_applied_count растет без роста punct_overcorrection_rate
+punct_target_applied_count растет
+punct_target_predicted_but_blocked_rate падает
+safe_comma_delete_recovery_count растет
+safe_service_comma_delete_recovery_count > 0
+safe_date_comma_delete_recovery_count > 0
+safe_final_period_recovery_count >= 74
+target_present_but_not_applied_rate снижается
+low_action_confidence_or_margin заметно падает
 ```
 
-Модель часто уменьшает CER, но не исправляет все ошибки в строке. Для роста
-`exact_match` нужно повышать recall, а не только снижать overcorrection.
+V10.5 сохраняет clean-safety после расширения structural punctuation recall:
+ложные comma-insert и разрушение сбалансированных скобок должны исчезнуть, а
+полный external evaluation запускается только после успешного synthetic-прогона.
+Новый `low_action_dictionary_recovery_count` показывает, сколько безопасных
+top-1 dictionary-кандидатов прошло узкий recovery вместо раннего
+`low_action_confidence_or_margin`.
+Новый `safe_comma_delete_recovery_count` показывает, сколько лишних запятых
+после коротких служебных слов было удалено без ослабления глобального
+`comma_delete` threshold.
+Новые `safe_service_comma_delete_recovery_count` и
+`safe_date_comma_delete_recovery_count` отделяют расширенный lowercase-сценарий
+для служебных слов и day-month даты вроде `11, января -> 11 января`.
+Новый `safe_final_period_recovery_count` показывает, сколько финальных точек
+runtime применил через узкий recovery без ослабления внутренних punctuation
+thresholds.
 
-Главный diagnostic-сигнал:
+Главные diagnostic-сигналы:
 
 ```text
-target_present_but_not_applied_rate: 0.491918
+target_present_but_not_applied_rate
+low_action_confidence_or_margin
+low_action_dictionary_recovery_count
+safe_comma_delete_recovery_count
+safe_service_comma_delete_recovery_count
+safe_date_comma_delete_recovery_count
+safe_final_period_recovery_count
+punct_applied_count
+punct_change_candidate_count
+punct_target_applied_count
+punct_target_predicted_but_blocked_rate
+source_kind_slices
 ```
 
-Правильный кандидат часто есть в candidate list, но runtime-гейты или action
-confidence не дают его применить. V8.1.1 первым делом закрывает вредные
-glued-service-token split случаи и clean-overcorrection по reporting commas.
-После smoke/full evaluation следующий отдельный этап должен снижать
-`low_action_confidence_or_margin` и улучшать punctuation recall, не ослабляя
-clean/entity/protected guards.
+Правильный кандидат часто уже есть в candidate list, но action confidence или
+runtime-гейты не дают его применить. V10.5 исправляет безопасную часть
+word-recall, comma-delete recall и final-period recall; real candidate coverage и bracket-pair
+recovery остаются отдельными направлениями без ослабления clean/entity/protected
+guards.

@@ -46,6 +46,7 @@ models/*training_log.csv
 # Data
 data/raw/*.txt
 data/processed/*.csv
+data/external/
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 

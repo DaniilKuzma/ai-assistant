@@ -1,10 +1,12 @@
 from collections import Counter
 import math
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -13,23 +15,126 @@ sys.path.insert(0, str(ROOT / "src"))
 from candidate_generator import CandidateGenerator
 from context_reranker import ContextReranker, ContextScore
 from data_preparation import DatasetGenerator, safe_normalize_raw_spacing
-from edit_labels import build_training_example
+from edit_labels import build_examples_from_dataframe, build_training_example
 from entity_guard import ProtectedLexicon
-from hybrid_corrector import CorrectionResult, HybridCorrector, RuntimeCandidate
+from external_datasets import (
+    AI_FOREVER_TEST_FILES,
+    AI_FOREVER_TRAIN_FILES,
+    ExternalPair,
+    classify_real_error_types,
+    extract_pair,
+    filter_real_pairs,
+    read_json_records,
+    real_pair_filter_reason,
+)
+from hybrid_corrector import CorrectionEdit, CorrectionResult, HybridCorrector, PunctuationDecision, RuntimeCandidate
 from hybrid_preprocessor import HybridPreprocessor
 from morphology_guard import is_morphological_dictionary_word, is_same_lemma_inflection
 from quality_guard import QualityGuard
 from text_utils import (
     choose_punctuation_label,
-    deterministic_spacing_correction,
     extract_word_slots,
     is_protected_punctuation_gap,
     rebuild_preserving_layout,
 )
 from training_augmentation import augment_keep_candidates, populate_top_k_candidates
+import evaluate_hybrid as evaluate_hybrid_module
 
 
 class ConservativeRuntimeTests(unittest.TestCase):
+    def test_external_jsonl_loader_reads_real_pair_fields(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "sample.json"
+            path.write_text(
+                '{"source":"давольно милый","correction":"довольно милый","domain":"web"}\n',
+                encoding="utf-8",
+            )
+
+            rows = list(read_json_records(path))
+            pair = extract_pair(rows[0], "test/source")
+
+        self.assertEqual(len(rows), 1)
+        self.assertIsNotNone(pair)
+        self.assertEqual(pair.error_text, "давольно милый")
+        self.assertEqual(pair.correct_text, "довольно милый")
+        self.assertEqual(pair.source_domain, "web")
+
+    def test_real_pair_filter_accepts_local_spell_and_punct_but_rejects_spacing(self):
+        pairs = [
+            ExternalPair("Это давольно важно.", "Это довольно важно.", "unit"),
+            ExternalPair("Я думаю что это важно.", "Я думаю, что это важно.", "unit"),
+            ExternalPair("Привет , мир.", "Привет, мир.", "unit"),
+        ]
+
+        df, stats = filter_real_pairs(pairs)
+
+        self.assertEqual(stats["input"], 3)
+        self.assertEqual(stats["kept"], 2)
+        self.assertEqual(stats["spacing_only"], 1)
+        self.assertEqual(set(df["source_kind"]), {"real"})
+        self.assertIn("real_spelling", set("|".join(df["error_types"]).split("|")))
+        self.assertIn("real_punctuation", set("|".join(df["error_types"]).split("|")))
+        self.assertNotIn("real_spacing", set("|".join(df["error_types"]).split("|")))
+
+    def test_real_pair_filter_rejects_bad_pairs(self):
+        self.assertEqual(real_pair_filter_reason("", "Текст."), "empty")
+        self.assertEqual(real_pair_filter_reason("Текст.", "Текст."), "identical")
+        self.assertEqual(real_pair_filter_reason("а" * 241, "а" * 240), "too_long")
+        self.assertEqual(
+            real_pair_filter_reason(
+                "Мама мыла раму.",
+                "Вчера горел музей.",
+            ),
+            "heavy_rewrite",
+        )
+
+    def test_external_pair_normalizes_yo(self):
+        pair = extract_pair(
+            {"source": "Ежик идет.", "correction": "Ёжик идёт.", "domain": "literature"},
+            "unit",
+        )
+
+        self.assertIsNotNone(pair)
+        self.assertEqual(pair.error_text, "Ежик идет.")
+        self.assertEqual(pair.correct_text, "Ежик идет.")
+        self.assertEqual(real_pair_filter_reason(pair.error_text, pair.correct_text), "identical")
+
+    def test_external_test_files_are_not_train_files(self):
+        train_paths = {path for _, _, path in AI_FOREVER_TRAIN_FILES}
+        test_paths = {path for _, _, path in AI_FOREVER_TEST_FILES}
+
+        self.assertTrue(train_paths)
+        self.assertTrue(test_paths)
+        self.assertTrue(all("train.json" in path for path in train_paths))
+        self.assertTrue(all("test.json" in path for path in test_paths))
+        self.assertTrue(train_paths.isdisjoint(test_paths))
+
+    def test_real_source_columns_do_not_break_label_building(self):
+        df = pd.DataFrame(
+            [
+                {
+                    "error_text": "Я думаю что это важно.",
+                    "correct_text": "Я думаю, что это важно.",
+                    "difficulty": "real_spellcheck_punctuation",
+                    "error_types": "real_punctuation",
+                    "source_kind": "real",
+                    "source_dataset": "unit",
+                    "source_domain": "web",
+                }
+            ]
+        )
+
+        examples, stats = build_examples_from_dataframe(df)
+
+        self.assertEqual(stats["kept"], 1)
+        self.assertEqual(len(examples), 1)
+        self.assertFalse(examples[0].is_clean)
+
+    def test_real_error_type_classifier_does_not_emit_spacing_label(self):
+        labels = classify_real_error_types("Привет , мир.", "Привет, мир.")
+
+        self.assertNotIn("real_spacing", labels)
+
     def test_rebuild_preserves_structural_punctuation(self):
         original = "Российская Intel — «Инел А/О» № 143."
         slots = extract_word_slots(original)
@@ -66,6 +171,19 @@ class ConservativeRuntimeTests(unittest.TestCase):
         self.assertNotIn("говорить ся", split_candidates)
         self.assertNotIn("дело", short_candidates)
 
+    def test_candidate_generator_caches_runtime_candidates(self):
+        generator = CandidateGenerator.from_texts(
+            ["инцидент произошел", "интересный инцидент"],
+            min_freq=1,
+            max_distance=1,
+        )
+
+        first = generator.get_candidates("инцедент", max_candidates=8)
+        second = generator.get_candidates("инцедент", max_candidates=8)
+
+        self.assertEqual(first, second)
+        self.assertTrue(any(key[:4] == ("инцедент", 8, False, True) for key in generator._candidate_cache))
+
     def test_service_token_split_candidates_beat_dictionary_deletion(self):
         generator = CandidateGenerator.from_texts(
             [
@@ -100,55 +218,217 @@ class ConservativeRuntimeTests(unittest.TestCase):
                 self.assertEqual(candidates[0].text, expected)
                 self.assertEqual(candidates[0].source, "split")
 
-    def test_deterministic_spacing_layer_fixes_safe_cases(self):
-        cases = {
-            "Привет ,мир": "Привет, мир",
-            "Привет  мир": "Привет мир",
-            "слово—слово": "слово — слово",
+    def test_v10_curated_examples_cover_new_error_types_without_spacing(self):
+        generator = DatasetGenerator()
+        df = generator.curated_v10_examples("test")
+        labels = set("|".join(df["error_types"]).split("|"))
+        expected = {
+            "spelling_compound_joining",
+            "spelling_capitalization",
+            "spelling_abbreviation_case",
+            "spelling_borrowed_word",
+            "punct_quote_style",
+            "punct_remove_quotes",
+            "punct_direct_speech_dash_missing",
+            "punct_direct_speech_inner_punct",
+            "punct_dash_missing",
+            "punct_dash_extra",
+            "punct_bracket_missing_close",
+            "punct_bracket_extra",
+            "punct_ellipsis_extra",
+            "punct_ellipsis_missing",
+            "punct_list_missing_colon",
+            "punct_list_item_punctuation",
+            "punct_quote_punct_order",
         }
 
-        for source, expected in cases.items():
-            with self.subTest(source=source):
-                corrected, changed = deterministic_spacing_correction(source)
-                self.assertTrue(changed)
-                self.assertEqual(corrected, expected)
+        self.assertTrue(expected.issubset(labels))
+        self.assertFalse(any(label.startswith("space_") for label in labels))
 
-    def test_deterministic_spacing_layer_keeps_protected_fragments(self):
-        unchanged = [
-            "Сайт https://example.com,тест",
-            "Почта test@example.com,тест",
-            "Цена 6,30",
-            "Дата 02.05.2026,тест",
-            "Intel,Core",
-            "№  143",
-            "«Привет»  (мир)",
-            "А/О  тест",
+    def test_synthetic_generation_does_not_emit_space_error_labels(self):
+        generator = DatasetGenerator()
+        texts = [
+            "Москва — столица России.",
+            "Он сказал: «Привет!»",
+            "Мы решили действовать по-новому.",
         ]
 
-        for text in unchanged:
-            with self.subTest(text=text):
-                corrected, changed = deterministic_spacing_correction(text)
-                self.assertFalse(changed)
-                self.assertEqual(corrected, text)
+        df = generator.generate_dataset_curriculum(
+            texts,
+            samples_per_text=4,
+            clean_ratio=0.0,
+            curriculum=[
+                {"name": "orthography_rules", "profile": "orthography_rules", "p": 0.5},
+                {"name": "punctuation_structural", "profile": "punctuation_structural", "p": 0.5},
+            ],
+        )
+        labels = set("|".join(df["error_types"]).split("|"))
 
-    def test_runtime_reports_space_edit_only_for_spacing_fix(self):
-        corrector = HybridCorrector(
-            model_path="missing.keras",
-            preprocessor_path="missing.pkl",
-            candidate_generator_path="missing.pkl",
-            context_reranker_enabled=False,
-            deterministic_spacing=True,
+        self.assertFalse(any(label.startswith("space_") for label in labels))
+
+    def test_build_training_example_handles_case_phrase_and_hyphen_pairs(self):
+        cases = [
+            ("москва стала центром.", "Москва стала центром."),
+            ("Мы сделали по новому.", "Мы сделали по-новому."),
+            ("Мини футбол популярен.", "Мини-футбол популярен."),
+            ("Железно-дорожный вокзал открыт.", "Железнодорожный вокзал открыт."),
+        ]
+
+        for error_text, correct_text in cases:
+            with self.subTest(error_text=error_text):
+                example = build_training_example(error_text, correct_text)
+                self.assertIsNotNone(example)
+                self.assertIn("REPLACE_0", example.action_labels)
+
+    def test_v10_candidate_generator_covers_rule_phrase_and_case_candidates(self):
+        generator = CandidateGenerator.from_texts(
+            [
+                "Москва стала центром.",
+                "Президент Российской Федерации подписал указ.",
+                "Этот ВУЗ открыл лабораторию.",
+                "Мягкий поролон лежал рядом.",
+                "Нужно кардинально изменить подход.",
+                "Железнодорожный вокзал открыт.",
+            ],
+            min_freq=1,
+            max_distance=1,
         )
 
-        result = corrector.correct("Привет ,мир", return_details=True)
+        cases = {
+            "москва": "Москва",
+            "президент": "Президент",
+            "вуз": "ВУЗ",
+            "паралон": "поролон",
+            "координально": "кардинально",
+            "железно-дорожный": "железнодорожный",
+        }
+        for source, expected in cases.items():
+            with self.subTest(source=source):
+                candidates = [candidate.text for candidate in generator.get_candidates(source)]
+                self.assertIn(expected, candidates)
+        self.assertEqual(generator.phrase_confusions["по новому"][0], "по-новому")
+        self.assertEqual(generator.phrase_confusions["в виду"][0], "ввиду")
+        self.assertEqual(generator.phrase_confusions["мини футбол"][0], "мини-футбол")
 
-        self.assertEqual(result.corrected, "Привет, мир")
-        self.assertTrue(result.accepted)
-        self.assertEqual([edit.action for edit in result.edits], ["SPACE"])
-        self.assertEqual(result.edits[0].candidate_source, "deterministic_spacing")
+    def test_v11_candidate_generator_covers_safety_first_sources(self):
+        generator = CandidateGenerator.from_texts(
+            [
+                "Нужно рассказать познавательно.",
+                "Утренняя зарядка помогает.",
+                "В общем, это работает.",
+                "Как будто все спокойно.",
+                "Почему-то он пришел.",
+            ],
+            min_freq=1,
+            max_distance=1,
+            allow_split_candidates=True,
+        )
 
-        unchanged = corrector.correct("Привет, мир", return_details=True)
-        self.assertEqual(unchanged.edits, [])
+        cases = {
+            "расказать": "рассказать",
+            "позновательно": "познавательно",
+            "зарадка": "зарядка",
+            "вобщем": "в общем",
+            "какбудто": "как будто",
+            "почемуто": "почему-то",
+        }
+        for source, expected in cases.items():
+            with self.subTest(source=source):
+                candidates = generator.get_candidates(source, max_candidates=16)
+                self.assertIn(expected, [candidate.text for candidate in candidates])
+
+        source_by_text = {
+            candidate.text: candidate.source
+            for candidate in generator.get_candidates("позновательно", max_candidates=16)
+        }
+        self.assertEqual(source_by_text["познавательно"], "orthographic")
+        source_by_text = {
+            candidate.text: candidate.source
+            for candidate in generator.get_candidates("вобщем", max_candidates=16)
+        }
+        self.assertEqual(source_by_text["в общем"], "phrase_safe")
+
+    def test_v11_safe_split_blocks_repeated_first_and_short_vowel_service_splits(self):
+        generator = CandidateGenerator.from_texts(
+            ["Сейчас важный момент. Это винные сорта. Бывают иные варианты."],
+            min_freq=1,
+            max_distance=1,
+            allow_split_candidates=True,
+        )
+
+        self.assertIn("сейчас", [candidate.text.lower() for candidate in generator.get_candidates("ссейчас")])
+        self.assertNotIn("с сейчас", [candidate.text.lower() for candidate in generator.get_candidates("ссейчас")])
+        self.assertNotIn("в иные", [candidate.text.lower() for candidate in generator.get_candidates("виные")])
+
+    def test_v11_mined_confusions_use_train_pairs_only(self):
+        generator = CandidateGenerator.from_texts(
+            ["довольно познавательно рассказать зарядка"],
+            min_freq=1,
+            max_distance=1,
+        )
+
+        stats = generator.fit_mined_confusions(
+            ["давольно интересно", "давольно полезно", "чистый текст"],
+            ["довольно интересно", "довольно полезно", "чистый текст"],
+            min_count=2,
+        )
+
+        self.assertEqual(stats["accepted"], 1)
+        candidates = generator.get_candidates("давольно", max_candidates=16)
+        self.assertIn("довольно", [candidate.text for candidate in candidates])
+        self.assertEqual(
+            next(candidate.source for candidate in candidates if candidate.text == "довольно"),
+            "mined",
+        )
+
+    def test_structural_punctuation_labels_vectorize_and_rebuild(self):
+        example = build_training_example('Он сказал: "Привет".', "Он сказал: «Привет».")
+        self.assertIsNotNone(example)
+        self.assertIn(':"', example.source_punct_labels)
+        self.assertIn(":«", example.target_punct_labels)
+        self.assertIn('".', example.source_punct_labels)
+        self.assertIn("».", example.target_punct_labels)
+
+        preprocessor = HybridPreprocessor(max_length=8)
+        inputs, targets, _ = preprocessor.vectorize_examples([example])
+        self.assertGreater(inputs["source_punct_ids"].max(), 0)
+        self.assertGreater(targets["punct"].max(), 0)
+
+        slots = extract_word_slots('Он сказал: "Привет".')
+        rebuilt = rebuild_preserving_layout(
+            'Он сказал: "Привет".',
+            slots,
+            example.target_words,
+            example.target_punct_labels,
+            punctuation_mode="conservative",
+            source_puncts=example.source_punct_labels,
+            rewrite_punct_indices=[
+                idx
+                for idx, (source, target) in enumerate(zip(example.source_punct_labels, example.target_punct_labels))
+                if source != target
+            ],
+        )
+        self.assertEqual(rebuilt, "Он сказал: «Привет».")
+
+    def test_president_case_candidate_requires_official_context(self):
+        corrector = HybridCorrector.__new__(HybridCorrector)
+        corrector.thresholds = HybridCorrector._thresholds("strict")
+        corrector.min_dictionary_score = 0.25
+        corrector.use_morphology_guard = False
+        corrector.use_entity_guard = False
+        corrector.candidate_generator = CandidateGenerator.from_texts(["Президент Российской Федерации."], min_freq=1)
+        corrector.runtime_stats = Counter()
+
+        candidate = RuntimeCandidate("Президент", source="rule", distance=1, score=1.0)
+
+        self.assertEqual(
+            corrector._candidate_block_reason("президент", candidate, 0.99, 0.50, next_word="сказал"),
+            "president_case_context_guard",
+        )
+        self.assertEqual(
+            corrector._candidate_block_reason("президент", candidate, 0.99, 0.50, next_word="РФ"),
+            "",
+        )
 
     def test_source_punctuation_is_vectorized(self):
         example = build_training_example(
@@ -167,11 +447,19 @@ class ConservativeRuntimeTests(unittest.TestCase):
             example.candidate_words,
             example.source_punct_labels,
         )
+        batch_infer = preprocessor.vectorize_inference_batch(
+            [example.source_words],
+            [example.candidate_words],
+            [example.source_punct_labels],
+        )
 
         self.assertIn("source_punct_ids", inputs)
         self.assertIn("source_punct_ids", infer)
         self.assertEqual(inputs["source_punct_ids"].shape, (1, 16))
-        self.assertEqual(inputs["candidate_ids"].shape, (1, 16, 8))
+        self.assertEqual(inputs["candidate_ids"].shape, (1, 16, preprocessor.candidate_top_k))
+        np.testing.assert_array_equal(batch_infer["token_ids"], infer["token_ids"])
+        np.testing.assert_array_equal(batch_infer["candidate_ids"], infer["candidate_ids"])
+        np.testing.assert_array_equal(batch_infer["source_punct_ids"], infer["source_punct_ids"])
         self.assertEqual(outputs["punct"].shape, (1, 16))
         self.assertEqual(weights["punct"].shape, (1, 16))
         comma_index = example.target_punct_labels.index(",")
@@ -180,7 +468,7 @@ class ConservativeRuntimeTests(unittest.TestCase):
         replacement = build_training_example("Инцедент произошел.", "Инцидент произошел.")
         self.assertIsNotNone(replacement)
         repl_inputs, repl_outputs, repl_weights = preprocessor.vectorize_examples([replacement])
-        self.assertEqual(repl_inputs["candidate_ids"].shape, (1, 16, 8))
+        self.assertEqual(repl_inputs["candidate_ids"].shape, (1, 16, preprocessor.candidate_top_k))
         self.assertEqual(repl_outputs["action"][0, 0], 2)
         self.assertEqual(repl_weights["action"][0, 0], 3.0)
         self.assertEqual(repl_weights["action"][0, 1], 1.0)
@@ -213,7 +501,7 @@ class ConservativeRuntimeTests(unittest.TestCase):
         self.assertIn("source_punct_ids", input_names)
         self.assertEqual(len(model.inputs), 3)
         candidate_shape = [inp.shape for inp in model.inputs if inp.name.split(":")[0].split("/")[-1] == "candidate_ids"][0]
-        self.assertEqual(candidate_shape[-1], 8)
+        self.assertEqual(candidate_shape[-1], 16)
 
     def test_runtime_rejects_risky_dictionary_candidates(self):
         corrector = HybridCorrector.__new__(HybridCorrector)
@@ -398,6 +686,83 @@ class ConservativeRuntimeTests(unittest.TestCase):
                 margin=0.20,
             )
         )
+
+    def test_low_action_dictionary_recovery_allows_safe_top1_typos(self):
+        corrector = HybridCorrector.__new__(HybridCorrector)
+        corrector.thresholds = HybridCorrector._thresholds("strict")
+        corrector.min_dictionary_score = 0.25
+        corrector.use_morphology_guard = True
+        corrector.use_entity_guard = True
+        corrector.entity_guard = ProtectedLexicon.empty()
+        corrector.runtime_stats = Counter()
+        corrector.candidate_generator = CandidateGenerator.from_texts(
+            [
+                "ближайшее структуры Финляндии популярности оперативное "
+                "официальный авиакомпаний добиваться временное"
+            ],
+            min_freq=1,
+            max_distance=1,
+        )
+
+        allowed_cases = [
+            ("ближуайшее", "ближайшее", 1, 3.7, 0.76, 0.54),
+            ("струхтуры", "структуры", 1, 2.5, 0.58, 0.31),
+            ("Финлятндии", "Финляндии", 1, 3.3, 0.64, 0.29),
+            ("популянрости", "популярности", 2, 1.3, 0.75, 0.51),
+            ("операттивное", "оперативное", 1, 1.3, 0.50, 0.06),
+        ]
+        for source, target, distance, score, confidence, margin in allowed_cases:
+            with self.subTest(source=source):
+                reason = corrector._candidate_block_reason(
+                    source,
+                    RuntimeCandidate(target, source="dictionary", distance=distance, score=score, rank=0),
+                    confidence=confidence,
+                    margin=margin,
+                )
+                self.assertEqual(reason, "")
+
+        self.assertEqual(corrector.runtime_stats["low_action_dictionary_recovery_count"], len(allowed_cases))
+
+    def test_low_action_dictionary_recovery_keeps_risky_candidates_blocked(self):
+        corrector = HybridCorrector.__new__(HybridCorrector)
+        corrector.thresholds = HybridCorrector._thresholds("strict")
+        corrector.min_dictionary_score = 0.25
+        corrector.use_morphology_guard = True
+        corrector.use_entity_guard = True
+        corrector.entity_guard = ProtectedLexicon.from_texts(["Финлятндии"])
+        corrector.runtime_stats = Counter()
+        corrector.candidate_generator = CandidateGenerator.from_texts(
+            [
+                "структуры Финляндии официальных авиакомпаний добраться временно "
+                "перевел инцидент"
+            ],
+            min_freq=1,
+            max_distance=1,
+        )
+
+        blocked_cases = [
+            ("струхтуры", RuntimeCandidate("структуры", source="dictionary", distance=1, score=1.19, rank=0)),
+            ("струхтуры", RuntimeCandidate("структуры", source="dictionary", distance=1, score=2.5, rank=1)),
+            ("офисиальный", RuntimeCandidate("официальных", source="dictionary", distance=2, score=0.61, rank=0)),
+            ("авиакмпании", RuntimeCandidate("авиакомпаний", source="dictionary", distance=2, score=-0.1, rank=0)),
+            ("добиаться", RuntimeCandidate("добраться", source="dictionary", distance=2, score=2.4, rank=1)),
+            ("времемное", RuntimeCandidate("временно", source="dictionary", distance=2, score=0.7, rank=0)),
+            ("СТРУХТУРЫ", RuntimeCandidate("СТРУКТУРЫ", source="dictionary", distance=1, score=2.5, rank=0)),
+            ("strukh", RuntimeCandidate("strukt", source="dictionary", distance=1, score=2.5, rank=0)),
+            ("Финлятндии", RuntimeCandidate("Финляндии", source="dictionary", distance=1, score=3.3, rank=0)),
+            ("перевез", RuntimeCandidate("перевел", source="dictionary", distance=1, score=3.3, rank=0)),
+        ]
+        for source, candidate in blocked_cases:
+            with self.subTest(source=source, target=candidate.text):
+                reason = corrector._candidate_block_reason(
+                    source,
+                    candidate,
+                    confidence=0.60,
+                    margin=0.12,
+                )
+                self.assertNotEqual(reason, "")
+
+        self.assertEqual(corrector.runtime_stats["low_action_dictionary_recovery_count"], 0)
 
     def test_short_dictionary_recovery_and_low_score_context_gate(self):
         corrector = HybridCorrector.__new__(HybridCorrector)
@@ -781,7 +1146,6 @@ class ConservativeRuntimeTests(unittest.TestCase):
         corrector.context_reranker = FakeReranker()
         corrector.runtime_stats = Counter()
         corrector.punctuation_mode = "conservative"
-        corrector.deterministic_spacing = True
 
         result = corrector._correct_segment("Об этом сообщаетсяна странице.")
 
@@ -831,7 +1195,6 @@ class ConservativeRuntimeTests(unittest.TestCase):
         corrector.context_reranker = FakeReranker()
         corrector.runtime_stats = Counter()
         corrector.punctuation_mode = "conservative"
-        corrector.deterministic_spacing = True
 
         cases = {
             "Напрошлой неделе цены выросли.": "На прошлой неделе цены выросли.",
@@ -1104,6 +1467,196 @@ class ConservativeRuntimeTests(unittest.TestCase):
             )
         )
 
+    def test_safe_comma_delete_recovery_for_service_words(self):
+        corrector = HybridCorrector.__new__(HybridCorrector)
+        corrector.thresholds = HybridCorrector._thresholds("strict")
+        corrector.punctuation_mode = "conservative"
+        corrector.runtime_stats = Counter()
+
+        cases = [
+            ("на", "мирных"),
+            ("в", "эксплуатацию"),
+            ("до", "приезда"),
+            ("от", "стоимости"),
+            ("по", "фамилии"),
+            ("без", "претензии"),
+        ]
+        for word, next_word in cases:
+            with self.subTest(word=word, next_word=next_word):
+                can_apply, reason = corrector._punctuation_decision(
+                    ",",
+                    "",
+                    ", ",
+                    word,
+                    next_word,
+                    is_final=False,
+                    confidence=0.990,
+                    margin=0.960,
+                )
+                self.assertTrue(can_apply)
+                self.assertEqual(reason, "safe_comma_delete_recovery")
+
+        self.assertEqual(corrector.runtime_stats["safe_comma_delete_recovery_count"], len(cases))
+
+    def test_safe_service_comma_delete_recovery_for_lowercase_service_words(self):
+        corrector = HybridCorrector.__new__(HybridCorrector)
+        corrector.thresholds = HybridCorrector._thresholds("strict")
+        corrector.punctuation_mode = "conservative"
+        corrector.runtime_stats = Counter()
+
+        cases = [
+            ("в", "начале"),
+            ("на", "место"),
+            ("с", "октября"),
+            ("о", "проверке"),
+            ("за", "решение"),
+        ]
+        for word, next_word in cases:
+            with self.subTest(word=word, next_word=next_word):
+                can_apply, reason = corrector._punctuation_decision(
+                    ",",
+                    "",
+                    ", ",
+                    word,
+                    next_word,
+                    is_final=False,
+                    confidence=0.950,
+                    margin=0.900,
+                )
+                self.assertTrue(can_apply)
+                self.assertEqual(reason, "safe_service_comma_delete_recovery")
+
+        self.assertEqual(corrector.runtime_stats["safe_comma_delete_recovery_count"], len(cases))
+        self.assertEqual(corrector.runtime_stats["safe_service_comma_delete_recovery_count"], len(cases))
+
+    def test_safe_date_comma_delete_recovery_for_day_month(self):
+        corrector = HybridCorrector.__new__(HybridCorrector)
+        corrector.thresholds = HybridCorrector._thresholds("strict")
+        corrector.punctuation_mode = "conservative"
+        corrector.runtime_stats = Counter()
+
+        for day, month in [("11", "января"), ("27", "марта"), ("1", "мая")]:
+            with self.subTest(day=day, month=month):
+                can_apply, reason = corrector._punctuation_decision(
+                    ",",
+                    "",
+                    ", ",
+                    day,
+                    month,
+                    is_final=False,
+                    confidence=0.860,
+                    margin=0.700,
+                )
+                self.assertTrue(can_apply)
+                self.assertEqual(reason, "safe_date_comma_delete_recovery")
+
+        self.assertEqual(corrector.runtime_stats["safe_comma_delete_recovery_count"], 3)
+        self.assertEqual(corrector.runtime_stats["safe_date_comma_delete_recovery_count"], 3)
+
+    def test_safe_comma_delete_recovery_keeps_clean_guards(self):
+        corrector = HybridCorrector.__new__(HybridCorrector)
+        corrector.thresholds = HybridCorrector._thresholds("strict")
+        corrector.punctuation_mode = "conservative"
+        corrector.runtime_stats = Counter()
+
+        blocked_cases = [
+            ("на", "который", False, 0.990, 0.960),
+            ("на", "что", False, 0.990, 0.960),
+            ("на", "пожалуй", False, 0.990, 0.960),
+            ("на", "представленный", False, 0.990, 0.960),
+            ("Брянской", "Орловской", False, 0.990, 0.960),
+            ("на", "Intel", False, 0.990, 0.960),
+            ("в", "2008", False, 0.990, 0.960),
+            ("О", "война", False, 0.990, 0.960),
+            ("на", "мирных", True, 0.990, 0.960),
+            ("на", "мирных", False, 0.949, 0.960),
+            ("на", "мирных", False, 0.990, 0.899),
+            ("4", "и", False, 0.990, 0.960),
+            ("32", "января", False, 0.990, 0.960),
+            ("11", "января", False, 0.859, 0.750),
+            ("11", "января", False, 0.900, 0.699),
+        ]
+        for word, next_word, is_final, confidence, margin in blocked_cases:
+            with self.subTest(word=word, next_word=next_word, confidence=confidence, margin=margin):
+                can_apply, reason = corrector._punctuation_decision(
+                    ",",
+                    "",
+                    ", ",
+                    word,
+                    next_word,
+                    is_final=is_final,
+                    confidence=confidence,
+                    margin=margin,
+                    protected_gap=next_word == "Intel",
+                )
+                self.assertFalse(can_apply)
+                self.assertNotEqual(reason, "safe_comma_delete_recovery")
+
+        self.assertEqual(corrector.runtime_stats["safe_comma_delete_recovery_count"], 0)
+        self.assertEqual(corrector.runtime_stats["safe_service_comma_delete_recovery_count"], 0)
+        self.assertEqual(corrector.runtime_stats["safe_date_comma_delete_recovery_count"], 0)
+
+    def test_safe_final_period_recovery_for_final_gap(self):
+        corrector = HybridCorrector.__new__(HybridCorrector)
+        corrector.thresholds = HybridCorrector._thresholds("strict")
+        corrector.punctuation_mode = "conservative"
+        corrector.runtime_stats = Counter()
+
+        cases = [
+            ("", ".", "", 0.820, 0.700),
+            (",", ".", ",", 0.820, 0.700),
+        ]
+        for source_punct, predicted_punct, gap, confidence, margin in cases:
+            with self.subTest(source_punct=source_punct):
+                can_apply, reason = corrector._punctuation_decision(
+                    source_punct,
+                    predicted_punct,
+                    gap,
+                    "текст",
+                    "",
+                    is_final=True,
+                    confidence=confidence,
+                    margin=margin,
+                )
+                self.assertTrue(can_apply)
+                self.assertEqual(reason, "safe_final_period_recovery")
+
+        self.assertEqual(corrector.runtime_stats["safe_final_period_recovery_count"], len(cases))
+
+    def test_safe_final_period_recovery_keeps_guards(self):
+        corrector = HybridCorrector.__new__(HybridCorrector)
+        corrector.thresholds = HybridCorrector._thresholds("strict")
+        corrector.punctuation_mode = "conservative"
+        corrector.runtime_stats = Counter()
+
+        blocked_cases = [
+            ("", ".", " ", "текст", "дальше", False, 0.900, 0.800, False),
+            ("", ".", "", "Elec", "", True, 0.900, 0.800, True),
+            ("", "!", "", "текст", "", True, 0.900, 0.800, False),
+            (":", ".", ":", "текст", "", True, 0.900, 0.800, False),
+            ("", ".", "", "текст", "", True, 0.819, 0.750, False),
+            ("", ".", "", "текст", "", True, 0.900, 0.699, False),
+            (",", ".", ",", "текст", "", True, 0.819, 0.750, False),
+            (",", ".", ",", "текст", "", True, 0.900, 0.699, False),
+        ]
+        for source_punct, predicted_punct, gap, word, next_word, is_final, confidence, margin, protected_gap in blocked_cases:
+            with self.subTest(source_punct=source_punct, predicted_punct=predicted_punct, confidence=confidence, margin=margin):
+                can_apply, reason = corrector._punctuation_decision(
+                    source_punct,
+                    predicted_punct,
+                    gap,
+                    word,
+                    next_word,
+                    is_final=is_final,
+                    confidence=confidence,
+                    margin=margin,
+                    protected_gap=protected_gap,
+                )
+                self.assertFalse(can_apply)
+                self.assertNotEqual(reason, "safe_final_period_recovery")
+
+        self.assertEqual(corrector.runtime_stats["safe_final_period_recovery_count"], 0)
+
     def test_comma_insert_guards(self):
         corrector = HybridCorrector.__new__(HybridCorrector)
         corrector.thresholds = HybridCorrector._thresholds("strict")
@@ -1116,6 +1669,105 @@ class ConservativeRuntimeTests(unittest.TestCase):
                 " ",
                 "актуален",
                 "другой",
+                is_final=False,
+                confidence=0.999,
+                margin=0.90,
+            )[0]
+        )
+        blocked_pairs = [
+            ("словам", "мужчины"),
+            ("информации", "источника"),
+            ("того", "или"),
+            ("того", "чтобы"),
+            ("того", "самого"),
+            ("того", "стоит"),
+            ("тому", "времени"),
+            ("конечно", "же"),
+            ("заявил", "сегодня"),
+            ("добавил", "он"),
+            ("напомнил", "ей"),
+            ("напомнил", "об"),
+            ("рассказал", "женам"),
+            ("спросила", "у"),
+            ("договорились", "о"),
+            ("холодных", "стран"),
+            ("баллистических", "ракет"),
+            ("подписных", "листов"),
+            ("эффективное", "средство"),
+            ("утверждают", "производители"),
+            ("утверждалось", "о"),
+            ("башни", "не"),
+            ("почерковеды", "работали"),
+            ("очередь", "министр"),
+            ("Ответьте", "же"),
+            ("апрель", "2008"),
+            ("Oxu", "az"),
+            ("традицию", "предавать"),
+            ("Семенова", "выразила"),
+            ("Ласточкин", "добавил"),
+            ("ответьте", "мне"),
+            ("контекст", "достаточно"),
+            ("средство", "освоения"),
+        ]
+        for word, next_word in blocked_pairs:
+            with self.subTest(word=word, next_word=next_word):
+                self.assertFalse(
+                    corrector._punctuation_decision(
+                        "",
+                        ",",
+                        " ",
+                        word,
+                        next_word,
+                        is_final=False,
+                        confidence=0.999,
+                        margin=0.90,
+                    )[0]
+                )
+        can_apply, reason = corrector._punctuation_decision(
+            "",
+            ",",
+            " ",
+            "того",
+            "стоит",
+            is_final=False,
+            confidence=0.999,
+            margin=0.90,
+        )
+        self.assertFalse(can_apply)
+        self.assertEqual(reason, "comma_insert_fixed_phrase_guard")
+        for word in ["сообщил", "сообщалось", "заявил"]:
+            with self.subTest(word=word, next_word="что"):
+                self.assertTrue(
+                    corrector._punctuation_decision(
+                        "",
+                        ",",
+                        " ",
+                        word,
+                        "что",
+                        is_final=False,
+                        confidence=0.999,
+                        margin=0.90,
+                    )[0]
+                )
+        self.assertFalse(
+            corrector._punctuation_decision(
+                ";",
+                ":",
+                "; ",
+                "контрабас",
+                "Андрей",
+                is_final=False,
+                confidence=0.999,
+                margin=0.90,
+            )[0]
+        )
+        self.assertFalse(
+            corrector._punctuation_decision(
+                ":",
+                ";",
+                ": ",
+                "народы",
+                "Как",
                 is_final=False,
                 confidence=0.999,
                 margin=0.90,
@@ -1205,6 +1857,149 @@ class ConservativeRuntimeTests(unittest.TestCase):
                 margin=0.90,
             )[0]
         )
+
+    def test_evaluate_no_diagnostics_skips_large_csvs(self):
+        class FakeCorrector:
+            is_trained = True
+
+            def __init__(self, **kwargs):
+                self.runtime_stats = Counter()
+                self.candidate_generator = object()
+                self.context_reranker = type("FakeReranker", (), {"device": "cpu"})()
+                self.entity_guard = type("FakeEntityGuard", (), {"size": 0})()
+
+            def correct(self, text, return_details=False):
+                return CorrectionResult(text, text, 1.0, True, "accepted", [])
+
+        original_corrector = evaluate_hybrid_module.HybridCorrector
+        evaluate_hybrid_module.HybridCorrector = FakeCorrector
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                tmp_path = Path(tmp)
+                dataset_path = tmp_path / "dataset.csv"
+                output_dir = tmp_path / "report"
+                pd.DataFrame(
+                    [
+                        {
+                            "error_text": "Это тест.",
+                            "correct_text": "Это тест.",
+                            "difficulty": "clean",
+                            "error_types": "clean",
+                            "split": "test",
+                        }
+                    ]
+                ).to_csv(dataset_path, index=False, encoding="utf-8")
+
+                summary = evaluate_hybrid_module.evaluate_hybrid(
+                    dataset_path=str(dataset_path),
+                    sample_size=None,
+                    output_dir=str(output_dir),
+                    write_diagnostics=False,
+                    context_reranker_enabled=False,
+                )
+
+                self.assertEqual(summary["runtime_version"], "11.0")
+                self.assertEqual(summary["low_action_dictionary_recovery_count"], 0)
+                self.assertEqual(summary["safe_comma_delete_recovery_count"], 0)
+                self.assertEqual(summary["safe_service_comma_delete_recovery_count"], 0)
+                self.assertEqual(summary["safe_date_comma_delete_recovery_count"], 0)
+                self.assertEqual(summary["safe_final_period_recovery_count"], 0)
+                self.assertEqual(summary["punct_target_change_count"], 0)
+                self.assertEqual(summary["punct_target_predicted_count"], 0)
+                self.assertEqual(summary["punct_target_applied_count"], 0)
+                self.assertEqual(summary["punct_target_predicted_but_blocked_count"], 0)
+                self.assertIsNone(summary["punct_target_predicted_but_blocked_rate"])
+                self.assertFalse(summary["write_diagnostics"])
+                self.assertTrue((output_dir / "summary.json").exists())
+                self.assertTrue((output_dir / "error_analysis.csv").exists())
+                self.assertTrue((output_dir / "error_metrics_by_type.csv").exists())
+                self.assertTrue((output_dir / "worst_cases.csv").exists())
+                self.assertFalse((output_dir / "word_edit_diagnostics.csv").exists())
+                self.assertFalse((output_dir / "word_decision_diagnostics.csv").exists())
+                self.assertFalse((output_dir / "punct_edit_diagnostics.csv").exists())
+        finally:
+            evaluate_hybrid_module.HybridCorrector = original_corrector
+
+    def test_evaluate_counts_punctuation_targets(self):
+        class FakeCorrector:
+            is_trained = True
+
+            def __init__(self, **kwargs):
+                self.runtime_stats = Counter()
+                self.candidate_generator = object()
+                self.context_reranker = type("FakeReranker", (), {"device": "cpu"})()
+                self.entity_guard = type("FakeEntityGuard", (), {"size": 0})()
+
+            def correct(self, text, return_details=False):
+                return CorrectionResult(
+                    text,
+                    text,
+                    1.0,
+                    True,
+                    "accepted",
+                    [],
+                    punctuation_diagnostics=[
+                        PunctuationDecision(
+                            index=1,
+                            word="думаю",
+                            source_punct="",
+                            predicted_punct=",",
+                            confidence=0.90,
+                            margin=0.10,
+                            applied=False,
+                            blocked_reason="low_confidence_or_margin",
+                            is_final=False,
+                        )
+                    ],
+                )
+
+        original_corrector = evaluate_hybrid_module.HybridCorrector
+        evaluate_hybrid_module.HybridCorrector = FakeCorrector
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                tmp_path = Path(tmp)
+                dataset_path = tmp_path / "dataset.csv"
+                output_dir = tmp_path / "report"
+                pd.DataFrame(
+                    [
+                        {
+                            "error_text": "Я думаю что это важно.",
+                            "correct_text": "Я думаю, что это важно.",
+                            "difficulty": "punctuation_only",
+                            "error_types": "punct_remove_comma_before_clause",
+                            "split": "test",
+                        }
+                    ]
+                ).to_csv(dataset_path, index=False, encoding="utf-8")
+
+                summary = evaluate_hybrid_module.evaluate_hybrid(
+                    dataset_path=str(dataset_path),
+                    sample_size=None,
+                    output_dir=str(output_dir),
+                    context_reranker_enabled=False,
+                )
+                punct_df = pd.read_csv(output_dir / "punct_edit_diagnostics.csv")
+
+            self.assertEqual(summary["runtime_version"], "11.0")
+            self.assertEqual(summary["safe_service_comma_delete_recovery_count"], 0)
+            self.assertEqual(summary["safe_date_comma_delete_recovery_count"], 0)
+            self.assertEqual(summary["safe_final_period_recovery_count"], 0)
+            self.assertEqual(summary["punct_target_change_count"], 1)
+            self.assertEqual(summary["punct_target_predicted_count"], 1)
+            self.assertEqual(summary["punct_target_applied_count"], 0)
+            self.assertEqual(summary["punct_target_predicted_but_blocked_count"], 1)
+            self.assertEqual(summary["punct_target_predicted_but_blocked_rate"], 1.0)
+            for column in [
+                "expected_source_punct",
+                "expected_target_punct",
+                "punct_target_changed",
+                "punct_target_predicted",
+                "punct_target_applied",
+                "punct_target_predicted_but_blocked",
+            ]:
+                self.assertIn(column, punct_df.columns)
+        finally:
+            evaluate_hybrid_module.HybridCorrector = original_corrector
 
     def test_protected_punctuation_gaps_block_technical_tokens(self):
         self.assertTrue(is_protected_punctuation_gap(". ", word="ч", next_word="2"))
@@ -1340,6 +2135,73 @@ class ConservativeRuntimeTests(unittest.TestCase):
             decision.reason,
             {"protected_value_changed", "structural_punctuation_changed"},
         )
+
+    def test_guard_rejects_balanced_parenthesis_damage_from_clean_cases(self):
+        guard = QualityGuard()
+        cases = [
+            (
+                'Его итогом стал концертный альбом "Burning Japan Live" (1994).',
+                'Его итогом стал концертный альбом "Burning Japan Live" (1994.',
+            ),
+            (
+                "Об этом сообщается на сайте региональное управление Федеральной службы судебных приставов (ФССП).",
+                "Об этом сообщается на сайте региональное управление Федеральной службы судебных приставов (ФССП.",
+            ),
+            (
+                "По факту возбуждено уголовное дело по статье 213 (хулиганство) УК РФ.",
+                "По факту возбуждено уголовное дело по статье 213 хулиганство) УК РФ.",
+            ),
+            (
+                "Похищенные из храма иконы (более 20) и ценности у них изъяты.",
+                "Похищенные из храма иконы (более 20 и ценности у них изъяты.",
+            ),
+        ]
+
+        for original, corrected in cases:
+            with self.subTest(original=original):
+                decision = guard.check(original, corrected, confidence=0.99, edit_count=1)
+                self.assertFalse(decision.accepted)
+                self.assertEqual(decision.reason, "structural_punctuation_changed")
+
+    def test_guard_allows_unmatched_closing_parenthesis_cleanup(self):
+        guard = QualityGuard()
+
+        decision = guard.check(
+            "Он пришел) домой.",
+            "Он пришел домой.",
+            confidence=0.99,
+            edit_count=1,
+        )
+
+        self.assertTrue(decision.accepted)
+
+    def test_segment_guard_rejects_high_confidence_structural_punct_deletion(self):
+        corrector = HybridCorrector.__new__(HybridCorrector)
+        corrector.guard = QualityGuard()
+        corrector.punctuation_mode = "conservative"
+        original = "По факту возбуждено дело по статье 213 (хулиганство) УК РФ."
+        slots = extract_word_slots(original)
+        source_words = [slot.word for slot in slots]
+        source_puncts = [choose_punctuation_label(slot.punct_after) for slot in slots]
+        corrected_puncts = list(source_puncts)
+        target_index = source_words.index("213")
+        corrected_puncts[target_index] = ""
+
+        result = corrector._finish_segment_correction(
+            original,
+            slots,
+            source_puncts,
+            source_words,
+            corrected_puncts,
+            [CorrectionEdit(target_index, "(", "", "PUNCT", 0.999)],
+            [],
+            [],
+            0.999,
+        )
+
+        self.assertFalse(result.accepted)
+        self.assertEqual(result.corrected, original)
+        self.assertEqual(result.guard_reason, "structural_punctuation_changed")
 
     def test_curriculum_keeps_exact_clean_ratio(self):
         generator = DatasetGenerator()

@@ -64,7 +64,7 @@ def populate_top_k_candidates(
     examples: Sequence[HybridTrainingExample],
     generator: CandidateGenerator,
     *,
-    candidate_top_k: int = 8,
+    candidate_top_k: int = 16,
 ) -> tuple[list[HybridTrainingExample], dict[str, int]]:
     """Populate candidate lists and align replacement labels with candidate ranks.
 

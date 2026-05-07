@@ -18,6 +18,33 @@ TOKEN_RE = re.compile(
 PUNCT_CHARS = set('.,!?;:-"()[]{}—–«»')
 SIMPLE_PUNCT_CHARS = set(",.!?:;")
 STRUCTURAL_PUNCT_CHARS = set('"()[]{}—–«»№/\\')
+SIMPLE_PUNCT_LABELS = {"", ",", ".", "?", "!", ":", ";", "—"}
+STRUCTURAL_PUNCT_LABELS = {
+    "...",
+    "....",
+    ":—",
+    ":«",
+    ':"',
+    "—",
+    "«",
+    '"',
+    "(",
+    ")",
+    ").",
+    ".»",
+    '."',
+    "».",
+    '".',
+    "»,",
+    '",',
+    ",»",
+    ',"',
+    "!»",
+    '!"',
+    "?»",
+    '?"',
+}
+TRAINABLE_PUNCT_LABELS = SIMPLE_PUNCT_LABELS | STRUCTURAL_PUNCT_LABELS
 SENTENCE_END = {".", "!", "?"}
 TECHNICAL_ABBREVIATIONS = {
     "ч",
@@ -50,18 +77,6 @@ COMMON_DOMAIN_ZONES = {
     "gov",
     "io",
 }
-PROTECTED_SPACING_RE = re.compile(
-    r"https?://\S+"
-    r"|www\.\S+"
-    r"|[\w.+-]+@[\w-]+(?:\.[\w.-]+)+"
-    r"|\S*/\S*"
-    r"|\b[A-Za-z][A-Za-z0-9._/-]*\b"
-    r"|\b\d+(?:[.,:/-]\d+)+\b"
-    r"|№\s*\d+",
-    re.UNICODE,
-)
-
-
 @dataclass(frozen=True)
 class TextToken:
     text: str
@@ -132,24 +147,33 @@ def extract_word_slots(text: str) -> List[WordSlot]:
     return slots
 
 
-def choose_punctuation_label(punct: str) -> str:
-    """Collapse punctuation after a token to one conservative trainable label."""
-    punct = str(punct)
-    if any(ch in STRUCTURAL_PUNCT_CHARS for ch in punct):
+def canonical_punctuation_label(punct: str) -> str:
+    """Return the exact trainable gap label, or empty for keep/no label."""
+    compact = "".join(str(punct or "").split()).replace("–", "—").replace("…", "...")
+    if not compact:
         return ""
-    if "?" in punct:
+    if compact in TRAINABLE_PUNCT_LABELS:
+        return compact
+    if any(ch in STRUCTURAL_PUNCT_CHARS for ch in compact):
+        return ""
+    if "?" in compact:
         return "?"
-    if "!" in punct:
+    if "!" in compact:
         return "!"
-    if "." in punct or "…" in punct:
+    if "." in compact:
         return "."
-    if "," in punct:
+    if "," in compact:
         return ","
-    if ":" in punct:
+    if ":" in compact:
         return ":"
-    if ";" in punct:
+    if ";" in compact:
         return ";"
     return ""
+
+
+def choose_punctuation_label(punct: str) -> str:
+    """Collapse punctuation after a token to one conservative trainable label."""
+    return canonical_punctuation_label(punct)
 
 
 def choose_punctuation_label_for_gap(
@@ -161,9 +185,12 @@ def choose_punctuation_label_for_gap(
     is_final: bool = False,
 ) -> str:
     """Return a trainable punctuation label unless the gap is protected."""
+    label = canonical_punctuation_label(gap or punct)
+    if label in STRUCTURAL_PUNCT_LABELS and not _gap_has_untrainable_protected_chars(gap or punct):
+        return label
     if is_protected_punctuation_gap(gap or punct, word=word, next_word=next_word, is_final=is_final):
         return ""
-    return choose_punctuation_label(punct)
+    return choose_punctuation_label(gap or punct)
 
 
 def punctuation_labels_for_slots(text: str, slots: Sequence[WordSlot]) -> List[str]:
@@ -187,8 +214,8 @@ def punctuation_labels_for_slots(text: str, slots: Sequence[WordSlot]) -> List[s
 def is_simple_punctuation_gap(gap: str) -> bool:
     """Return True when a gap can be safely rewritten by the punctuation head."""
     gap = str(gap)
-    if any(ch in STRUCTURAL_PUNCT_CHARS for ch in gap):
-        return False
+    if canonical_punctuation_label(gap) in STRUCTURAL_PUNCT_LABELS and not _gap_has_untrainable_protected_chars(gap):
+        return True
     return all(ch.isspace() or ch in SIMPLE_PUNCT_CHARS for ch in gap)
 
 
@@ -199,11 +226,14 @@ def is_trainable_punctuation_gap(
     next_word: str = "",
     is_final: bool = False,
 ) -> bool:
-    return is_simple_punctuation_gap(gap) and not is_protected_punctuation_gap(
+    return (
+        canonical_punctuation_label(gap) in TRAINABLE_PUNCT_LABELS
+        and not is_protected_punctuation_gap(
         gap,
         word=word,
         next_word=next_word,
         is_final=is_final,
+        )
     )
 
 
@@ -217,6 +247,8 @@ def is_protected_punctuation_gap(
     """Return True for punctuation that should be preserved byte-for-byte."""
     gap = str(gap)
     if not gap:
+        return False
+    if canonical_punctuation_label(gap) in STRUCTURAL_PUNCT_LABELS and not _gap_has_untrainable_protected_chars(gap):
         return False
     if any(ch in STRUCTURAL_PUNCT_CHARS for ch in gap):
         return True
@@ -245,17 +277,37 @@ def is_protected_punctuation_gap(
     return False
 
 
+def _gap_has_untrainable_protected_chars(gap: str) -> bool:
+    return any(ch in set("[]{}№/\\") for ch in str(gap or ""))
+
+
 def _has_latin(text: str) -> bool:
     return any("A" <= ch <= "Z" or "a" <= ch <= "z" for ch in str(text))
 
 
 def render_simple_gap(label: str, is_final: bool) -> str:
-    label = str(label or "")
-    if label and label not in SIMPLE_PUNCT_CHARS:
-        label = ""
-    if is_final:
-        return label
-    return f"{label} " if label else " "
+    label = canonical_punctuation_label(label)
+    if label in {"", ",", ".", "?", "!", ":", ";"}:
+        if is_final:
+            return label
+        return f"{label} " if label else " "
+    if label == "—":
+        return " —" if is_final else " — "
+    if label == ":—":
+        return ": — "
+    if label == ":«":
+        return ": «"
+    if label == ':"':
+        return ': "'
+    if label in {"«", '"', "("}:
+        return f" {label}" if not is_final else label
+    if label == "...":
+        return "..." if is_final else "... "
+    if label == "....":
+        return "...." if is_final else ".... "
+    if label in {")", ").", ".»", '."', "».", '".', "»,", '",', ",»", ',"', "!»", '!"', "?»", '?"'}:
+        return label if is_final else f"{label} "
+    return "" if is_final else " "
 
 
 def normalize_spacing(text: str) -> str:
@@ -265,131 +317,6 @@ def normalize_spacing(text: str) -> str:
     text = re.sub(r"\s*([—–])\s*", r" \1 ", text)
     text = re.sub(r"\s+", " ", text).strip()
     return text
-
-
-def deterministic_spacing_correction(text: str) -> tuple[str, bool]:
-    """Fix only high-precision whitespace issues in plain Cyrillic context."""
-    current = str(text)
-    protected = _protected_spacing_spans(current)
-    current = _collapse_safe_spaces(current, protected)
-    protected = _protected_spacing_spans(current)
-    current = _remove_safe_space_before_punctuation(current, protected)
-    protected = _protected_spacing_spans(current)
-    current = _add_safe_space_after_punctuation(current, protected)
-    protected = _protected_spacing_spans(current)
-    current = _normalize_safe_dash_spacing(current, protected)
-    return current, current != str(text)
-
-
-def _protected_spacing_spans(text: str) -> List[tuple[int, int]]:
-    return [match.span() for match in PROTECTED_SPACING_RE.finditer(str(text))]
-
-
-def _index_in_spans(index: int, spans: Sequence[tuple[int, int]]) -> bool:
-    return any(start <= index < end for start, end in spans)
-
-
-def _span_touches_protected(start: int, end: int, spans: Sequence[tuple[int, int]]) -> bool:
-    return any(start < span_end and end > span_start for span_start, span_end in spans)
-
-
-def _is_cyrillic_letter(ch: str) -> bool:
-    return bool(re.match(r"[А-Яа-яЁё]", str(ch or "")))
-
-
-def _is_latin_letter(ch: str) -> bool:
-    return bool(re.match(r"[A-Za-z]", str(ch or "")))
-
-
-def _safe_spacing_neighbors(text: str, prev_idx: int, next_idx: int, spans: Sequence[tuple[int, int]]) -> bool:
-    if prev_idx < 0 or next_idx >= len(text):
-        return False
-    if _index_in_spans(prev_idx, spans) or _index_in_spans(next_idx, spans):
-        return False
-    prev_ch = text[prev_idx]
-    next_ch = text[next_idx]
-    if prev_ch in STRUCTURAL_PUNCT_CHARS or next_ch in STRUCTURAL_PUNCT_CHARS:
-        return False
-    if _is_latin_letter(prev_ch) or _is_latin_letter(next_ch):
-        return False
-    if prev_ch.isdigit() or next_ch.isdigit():
-        return False
-    return True
-
-
-def _collapse_safe_spaces(text: str, spans: Sequence[tuple[int, int]]) -> str:
-    def replace(match: re.Match) -> str:
-        start, end = match.span()
-        prev_idx = start - 1
-        next_idx = end
-        if not _safe_spacing_neighbors(text, prev_idx, next_idx, spans):
-            return match.group(0)
-        prev_ch = text[prev_idx]
-        next_ch = text[next_idx]
-        if (_is_cyrillic_letter(prev_ch) or prev_ch in SIMPLE_PUNCT_CHARS) and _is_cyrillic_letter(next_ch):
-            return " "
-        return match.group(0)
-
-    return re.sub(r"(?<=\S)[ \t]{2,}(?=\S)", replace, text)
-
-
-def _remove_safe_space_before_punctuation(text: str, spans: Sequence[tuple[int, int]]) -> str:
-    def replace(match: re.Match) -> str:
-        start, end = match.span()
-        punct = match.group(1)
-        punct_idx = end - 1
-        prev_idx = start - 1
-        next_idx = end if end < len(text) else -1
-        if prev_idx < 0 or _span_touches_protected(start, end, spans) or _index_in_spans(prev_idx, spans):
-            return match.group(0)
-        prev_ch = text[prev_idx]
-        next_ch = text[next_idx] if next_idx >= 0 else ""
-        if prev_ch.isdigit() or next_ch.isdigit() or _is_latin_letter(prev_ch) or _is_latin_letter(next_ch):
-            return match.group(0)
-        if prev_ch in STRUCTURAL_PUNCT_CHARS:
-            return match.group(0)
-        if punct == "." and _looks_like_abbreviation_dot(text, punct_idx, next_idx):
-            return match.group(0)
-        return punct
-
-    return re.sub(r"[ \t]+([,.;:!?])", replace, text)
-
-
-def _add_safe_space_after_punctuation(text: str, spans: Sequence[tuple[int, int]]) -> str:
-    def replace(match: re.Match) -> str:
-        punct = match.group(1)
-        punct_idx = match.start(1)
-        next_idx = match.end(1)
-        prev_idx = punct_idx - 1
-        if next_idx >= len(text) or not _safe_spacing_neighbors(text, prev_idx, next_idx, spans):
-            return punct
-        if not _is_cyrillic_letter(text[next_idx]):
-            return punct
-        if punct == "." and _looks_like_abbreviation_dot(text, punct_idx, next_idx):
-            return punct
-        return punct + " "
-
-    return re.sub(r"([,.;:!?])(?=\S)", replace, text)
-
-
-def _normalize_safe_dash_spacing(text: str, spans: Sequence[tuple[int, int]]) -> str:
-    def replace(match: re.Match) -> str:
-        start, end = match.span()
-        if _span_touches_protected(start, end, spans):
-            return match.group(0)
-        return f" {match.group(1)} "
-
-    return re.sub(r"(?<=[А-Яа-яЁё])[ \t]*([—–])[ \t]*(?=[А-Яа-яЁё])", replace, text)
-
-
-def _looks_like_abbreviation_dot(text: str, punct_idx: int, next_idx: int) -> bool:
-    if punct_idx <= 0 or next_idx >= len(text):
-        return False
-    prev_match = re.search(r"[A-Za-zА-Яа-яЁё]+$", text[:punct_idx])
-    next_match = re.match(r"[A-Za-zА-Яа-яЁё]+", text[next_idx:])
-    if not prev_match or not next_match:
-        return False
-    return len(prev_match.group(0)) == 1 and len(next_match.group(0)) == 1
 
 
 def apply_case_like(candidate: str, source: str) -> str:
@@ -423,9 +350,9 @@ def rebuild_preserving_layout(
 ) -> str:
     """Replace token text while preserving protected punctuation and spacing.
 
-    In conservative mode only simple gaps made from whitespace and ``.,!?;:``
-    may be rewritten by punctuation predictions. Quotes, dashes, brackets,
-    slashes, numbers markers and other structural punctuation stay untouched.
+    In conservative mode only whitelisted punctuation gaps may be rewritten.
+    URLs, slashes, number markers and unknown structural punctuation stay
+    untouched.
     """
     original = str(original)
     if not slots:

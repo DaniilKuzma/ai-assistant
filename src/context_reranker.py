@@ -92,6 +92,7 @@ class ContextReranker:
 
             self.torch = torch
             hf_logging.set_verbosity_error()
+            self._prefer_stable_torch_attention(torch)
             try:
                 from huggingface_hub.utils import logging as hub_logging
 
@@ -100,14 +101,27 @@ class ContextReranker:
                 pass
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
             self.model = AutoModelForMaskedLM.from_pretrained(self.model_name)
-            self.device = self._resolve_device(torch)
-            self.model.to(self.device)
+            resolved_device = self._resolve_device(torch)
+            try:
+                self.model.to(resolved_device)
+                self.device = resolved_device
+            except Exception as exc:
+                if resolved_device == "cpu":
+                    raise
+                try:
+                    torch.cuda.empty_cache()
+                except Exception:
+                    pass
+                self.model.to("cpu")
+                self.device = "cpu"
+                self.disabled_reason = self._exception_reason("cuda_fallback_cpu", exc)
             self.model.eval()
             if not getattr(self.tokenizer, "mask_token", None):
                 self.disabled_reason = "missing_mask_token"
                 return False
             self._available = True
-            self.disabled_reason = "ok"
+            if not str(self.disabled_reason).startswith("cuda_fallback_cpu"):
+                self.disabled_reason = "ok"
             return True
         except Exception as exc:
             self.disabled_reason = self._exception_reason("unavailable", exc)
@@ -118,7 +132,9 @@ class ContextReranker:
         requested = str(self.device or "cpu").lower()
         if requested == "auto":
             return "cuda" if torch_module.cuda.is_available() else "cpu"
-        if requested in {"cpu", "cuda"}:
+        if requested == "cuda":
+            return "cuda" if torch_module.cuda.is_available() else "cpu"
+        if requested == "cpu":
             return requested
         return "cpu"
 
@@ -152,7 +168,7 @@ class ContextReranker:
             try:
                 encoded = self.tokenizer(masked_texts, return_tensors="pt", padding=True)
                 encoded = {key: value.to(self.device) for key, value in encoded.items()}
-                with self.torch.no_grad():
+                with self.torch.inference_mode():
                     logits = self.model(**encoded).logits
                     log_probs = self.torch.log_softmax(logits, dim=-1)
 
@@ -180,6 +196,8 @@ class ContextReranker:
                         "ok",
                     )
             except Exception as exc:
+                if self.device != "cpu" and self._fallback_to_cpu():
+                    return self._score_batch(words, index, candidates)
                 reason = self._exception_reason("score_error", exc)
                 for candidate, candidate_ids, _ in chunk:
                     result_by_text[candidate] = ContextScore(candidate, -math.inf, len(candidate_ids), True, reason)
@@ -203,7 +221,7 @@ class ContextReranker:
             if len(mask_positions) != len(candidate_ids):
                 return ContextScore(candidate, -math.inf, len(candidate_ids), True, "mask_count_mismatch")
 
-            with self.torch.no_grad():
+            with self.torch.inference_mode():
                 logits = self.model(**encoded).logits[0]
                 log_probs = self.torch.log_softmax(logits, dim=-1)
 
@@ -213,6 +231,8 @@ class ContextReranker:
             score = total / max(1, len(candidate_ids))
             return ContextScore(candidate, score, len(candidate_ids), True, "ok")
         except Exception as exc:
+            if self.device != "cpu" and self._fallback_to_cpu():
+                return self._score_one(words, index, candidate)
             return ContextScore(candidate, -math.inf, 0, True, self._exception_reason("score_error", exc))
 
     def _masked_text(self, words: Sequence[str], index: int, mask_count: int) -> str:
@@ -238,3 +258,27 @@ class ContextReranker:
         end = min(len(words), int(index) + self.window + 1)
         context = "\u241f".join(str(word) for word in words[start:end])
         return hashlib.sha1(context.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _prefer_stable_torch_attention(torch_module) -> None:
+        try:
+            cuda_backend = torch_module.backends.cuda
+            cuda_backend.enable_flash_sdp(False)
+            cuda_backend.enable_mem_efficient_sdp(False)
+            cuda_backend.enable_math_sdp(True)
+        except Exception:
+            pass
+
+    def _fallback_to_cpu(self) -> bool:
+        if self.model is None or self.torch is None:
+            return False
+        try:
+            try:
+                self.torch.cuda.empty_cache()
+            except Exception:
+                pass
+            self.model.to("cpu")
+            self.device = "cpu"
+            return True
+        except Exception:
+            return False

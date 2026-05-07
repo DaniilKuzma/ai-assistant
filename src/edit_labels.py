@@ -98,13 +98,13 @@ def build_training_example(
         tgt_punct = tgt_punct_all[j1:j2]
 
         if tag == "equal":
-            for src_word, src_p, tgt_p in zip(src_segment, src_punct, tgt_punct):
+            for src_word, tgt_word, src_p, tgt_p in zip(src_segment, tgt_segment, src_punct, tgt_punct):
                 source_out.append(src_word)
-                candidates_out.append([src_word])
-                actions_out.append(ACTION_KEEP)
+                candidates_out.append([tgt_word if src_word != tgt_word else src_word])
+                actions_out.append(ACTION_KEEP if src_word == tgt_word else replace_action(0))
                 source_punct_out.append(src_p)
                 target_punct_out.append(tgt_p)
-                target_out.append(src_word)
+                target_out.append(tgt_word)
             continue
 
         if tag == "replace":
@@ -112,9 +112,7 @@ def build_training_example(
                 for src_word, tgt_word, src_p, tgt_p in zip(src_segment, tgt_segment, src_punct, tgt_punct):
                     source_out.append(src_word)
                     candidates_out.append([tgt_word])
-                    actions_out.append(
-                        ACTION_KEEP if normalize_word(src_word) == normalize_word(tgt_word) else replace_action(0)
-                    )
+                    actions_out.append(ACTION_KEEP if src_word == tgt_word else replace_action(0))
                     source_punct_out.append(src_p)
                     target_punct_out.append(tgt_p)
                     target_out.append(tgt_word)

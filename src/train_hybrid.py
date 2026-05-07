@@ -40,6 +40,7 @@ def load_splits(dataset_path: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataF
 def train_hybrid(
     dataset_path: str = "data/processed/dataset.csv",
     output_dir: str = "models",
+    model_version: int = 11,
     max_length: int = 128,
     max_vocab_size: int = 80_000,
     batch_size: int = 64,
@@ -52,27 +53,31 @@ def train_hybrid(
     learning_rate: float = 1e-4,
     candidate_min_freq: int = 1,
     candidate_max_distance: int = 1,
-    candidate_top_k: int = 8,
+    candidate_top_k: int = 16,
     safe_split_candidates: bool = True,
     long_oov_max_distance: int = 2,
     long_oov_min_length: int = 8,
+    enable_keyboard_candidates: bool = True,
+    enable_orthographic_candidates: bool = True,
+    enable_mined_confusions: bool = True,
+    mined_confusion_min_count: int = 2,
     min_dictionary_score: float = 0.25,
     keep_candidate_augmentation: bool = True,
     keep_candidate_probability: float = 0.35,
     keep_candidate_max_per_example: int = 3,
-    keep_candidate_max_searches: int = 8_000,
+    keep_candidate_max_searches: int = 50_000,
     keep_candidate_clean_only: bool = True,
     clean_audit_max_word_searches: int = 5_000,
     clean_action_keep_weight: float = 2.0,
-    dirty_action_keep_weight: float = 1.0,
-    action_change_weight: float = 3.0,
+    dirty_action_keep_weight: float = 0.8,
+    action_change_weight: float = 4.0,
     punct_change_weight: float = 8.0,
     final_punct_weight: float = 8.0,
-    clean_punct_keep_weight: float = 2.0,
+    clean_punct_keep_weight: float = 4.0,
     dirty_punct_keep_weight: float = 1.0,
     context_reranker_enabled: bool = True,
     context_model_name: str = "DeepPavlov/rubert-base-cased",
-    context_device: str = "cpu",
+    context_device: str = "auto",
     context_margin: float = 0.25,
 ) -> dict:
     os.makedirs(output_dir, exist_ok=True)
@@ -87,6 +92,9 @@ def train_hybrid(
         safe_split_only=True,
         long_oov_max_distance=long_oov_max_distance,
         long_oov_min_length=long_oov_min_length,
+        enable_keyboard_candidates=enable_keyboard_candidates,
+        enable_orthographic_candidates=enable_orthographic_candidates,
+        enable_mined_confusions=False,
     )
     all_rows = pd.concat([train_df, val_df, test_df], ignore_index=True)
     filtered_rows, noise_audit, suspicious_texts = filter_noisy_clean_rows(
@@ -117,7 +125,19 @@ def train_hybrid(
         safe_split_only=True,
         long_oov_max_distance=long_oov_max_distance,
         long_oov_min_length=long_oov_min_length,
+        enable_keyboard_candidates=enable_keyboard_candidates,
+        enable_orthographic_candidates=enable_orthographic_candidates,
+        enable_mined_confusions=enable_mined_confusions,
     )
+    mined_confusion_stats = {"pairs": 0, "replace_segments": 0, "accepted": 0}
+    if enable_mined_confusions:
+        mining_rows = train_df.dropna(subset=["error_text", "correct_text"])
+        mined_confusion_stats = candidate_generator.fit_mined_confusions(
+            mining_rows["error_text"].astype(str).tolist(),
+            mining_rows["correct_text"].astype(str).tolist(),
+            min_count=mined_confusion_min_count,
+        )
+        print(f"Mined train confusions: {mined_confusion_stats}")
     candidate_path = str(Path(output_dir) / "candidate_generator.pkl")
     candidate_generator.save(candidate_path)
 
@@ -247,7 +267,7 @@ def train_hybrid(
 
     model.save(model_path)
     config = {
-        "model_version": 8,
+        "model_version": int(model_version),
         "requires_source_punct_ids": True,
         "requires_top_k_candidates": True,
         "requires_context_reranker": context_reranker_enabled,
@@ -264,6 +284,11 @@ def train_hybrid(
         "safe_split_candidates": safe_split_candidates,
         "long_oov_max_distance": long_oov_max_distance,
         "long_oov_min_length": long_oov_min_length,
+        "enable_keyboard_candidates": enable_keyboard_candidates,
+        "enable_orthographic_candidates": enable_orthographic_candidates,
+        "enable_mined_confusions": enable_mined_confusions,
+        "mined_confusion_min_count": mined_confusion_min_count,
+        "mined_confusion_stats": mined_confusion_stats,
         "min_dictionary_score": min_dictionary_score,
         "keep_candidate_augmentation": keep_candidate_augmentation,
         "keep_candidate_probability": keep_candidate_probability,
@@ -314,6 +339,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Train the hybrid corrector.")
     parser.add_argument("--dataset", default="data/processed/dataset.csv")
     parser.add_argument("--output-dir", default="models")
+    parser.add_argument("--model-version", type=int, default=11)
     parser.add_argument("--max-length", type=int, default=128)
     parser.add_argument("--max-vocab-size", type=int, default=80_000)
     parser.add_argument("--batch-size", type=int, default=64)
@@ -326,27 +352,31 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--learning-rate", type=float, default=1e-4)
     parser.add_argument("--candidate-min-freq", type=int, default=1)
     parser.add_argument("--candidate-max-distance", type=int, default=1)
-    parser.add_argument("--candidate-top-k", type=int, default=8)
+    parser.add_argument("--candidate-top-k", type=int, default=16)
     parser.add_argument("--disable-safe-split-candidates", action="store_true")
     parser.add_argument("--long-oov-max-distance", type=int, default=2)
     parser.add_argument("--long-oov-min-length", type=int, default=8)
+    parser.add_argument("--disable-keyboard-candidates", action="store_true")
+    parser.add_argument("--disable-orthographic-candidates", action="store_true")
+    parser.add_argument("--disable-mined-confusions", action="store_true")
+    parser.add_argument("--mined-confusion-min-count", type=int, default=2)
     parser.add_argument("--min-dictionary-score", type=float, default=0.25)
     parser.add_argument("--disable-keep-candidate-augmentation", action="store_true")
     parser.add_argument("--keep-candidate-probability", type=float, default=0.35)
     parser.add_argument("--keep-candidate-max-per-example", type=int, default=3)
-    parser.add_argument("--keep-candidate-max-searches", type=int, default=8_000)
+    parser.add_argument("--keep-candidate-max-searches", type=int, default=50_000)
     parser.add_argument("--keep-candidate-include-dirty", action="store_true")
     parser.add_argument("--clean-audit-max-word-searches", type=int, default=5_000)
     parser.add_argument("--clean-action-keep-weight", type=float, default=2.0)
-    parser.add_argument("--dirty-action-keep-weight", type=float, default=1.0)
-    parser.add_argument("--action-change-weight", type=float, default=3.0)
+    parser.add_argument("--dirty-action-keep-weight", type=float, default=0.8)
+    parser.add_argument("--action-change-weight", type=float, default=4.0)
     parser.add_argument("--punct-change-weight", type=float, default=8.0)
     parser.add_argument("--final-punct-weight", type=float, default=8.0)
-    parser.add_argument("--clean-punct-keep-weight", type=float, default=2.0)
+    parser.add_argument("--clean-punct-keep-weight", type=float, default=4.0)
     parser.add_argument("--dirty-punct-keep-weight", type=float, default=1.0)
     parser.add_argument("--disable-context-reranker", action="store_true")
     parser.add_argument("--context-model-name", default="DeepPavlov/rubert-base-cased")
-    parser.add_argument("--context-device", default="cpu", choices=["cpu", "cuda", "auto"])
+    parser.add_argument("--context-device", default="auto", choices=["cpu", "cuda", "auto"])
     parser.add_argument("--context-margin", type=float, default=0.25)
     return parser.parse_args()
 
@@ -356,6 +386,7 @@ def main() -> None:
     train_hybrid(
         dataset_path=args.dataset,
         output_dir=args.output_dir,
+        model_version=args.model_version,
         max_length=args.max_length,
         max_vocab_size=args.max_vocab_size,
         batch_size=args.batch_size,
@@ -372,6 +403,10 @@ def main() -> None:
         safe_split_candidates=not args.disable_safe_split_candidates,
         long_oov_max_distance=args.long_oov_max_distance,
         long_oov_min_length=args.long_oov_min_length,
+        enable_keyboard_candidates=not args.disable_keyboard_candidates,
+        enable_orthographic_candidates=not args.disable_orthographic_candidates,
+        enable_mined_confusions=not args.disable_mined_confusions,
+        mined_confusion_min_count=args.mined_confusion_min_count,
         min_dictionary_score=args.min_dictionary_score,
         keep_candidate_augmentation=not args.disable_keep_candidate_augmentation,
         keep_candidate_probability=args.keep_candidate_probability,

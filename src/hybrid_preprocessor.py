@@ -16,7 +16,7 @@ from edit_labels import (
     candidate_list,
     replace_action,
 )
-from text_utils import normalize_word
+from text_utils import TRAINABLE_PUNCT_LABELS, normalize_word
 
 
 class HybridPreprocessor:
@@ -28,7 +28,7 @@ class HybridPreprocessor:
         max_length: int = 128,
         min_freq: int = 1,
         max_vocab_size: int = 80_000,
-        candidate_top_k: int = 8,
+        candidate_top_k: int = 16,
     ):
         self.max_length = max_length
         self.min_freq = min_freq
@@ -46,15 +46,42 @@ class HybridPreprocessor:
         self.id_to_action = {0: ACTION_KEEP, 1: ACTION_DELETE}
         for rank in range(self.candidate_top_k):
             self.id_to_action[2 + rank] = replace_action(rank)
+        punct_labels = [
+            "",
+            ",",
+            ".",
+            "?",
+            "!",
+            ":",
+            ";",
+            "—",
+            "...",
+            "....",
+            ":—",
+            ":«",
+            ':"',
+            "«",
+            '"',
+            "(",
+            ")",
+            ").",
+            ".»",
+            '."',
+            "».",
+            '".',
+            "»,",
+            '",',
+            ",»",
+            ',"',
+            "!»",
+            '!"',
+            "?»",
+            '?"',
+        ]
         self.punct_to_id = {
-            "": 0,
-            ",": 1,
-            ".": 2,
-            "?": 3,
-            "!": 4,
-            ":": 5,
-            ";": 6,
-            "—": 7,
+            label: idx
+            for idx, label in enumerate(punct_labels)
+            if label in TRAINABLE_PUNCT_LABELS
         }
         self.id_to_punct = {v: k for k, v in self.punct_to_id.items()}
 
@@ -182,6 +209,32 @@ class HybridPreprocessor:
             for rank, candidate in enumerate(candidates):
                 candidate_ids[0, j, rank] = self.candidate_id(candidate)
             source_punct_ids[0, j] = self.punct_id(source_puncts[j])
+        return {
+            "token_ids": token_ids,
+            "candidate_ids": candidate_ids,
+            "source_punct_ids": source_punct_ids,
+        }
+
+    def vectorize_inference_batch(
+        self,
+        batch_source_words: Sequence[Sequence[str]],
+        batch_candidate_words: Sequence[Sequence[Sequence[str]] | Sequence[str]],
+        batch_source_puncts: Sequence[Sequence[str]],
+    ) -> dict[str, np.ndarray]:
+        n = len(batch_source_words)
+        token_ids = np.zeros((n, self.max_length), dtype=np.int32)
+        candidate_ids = np.zeros((n, self.max_length, self.candidate_top_k), dtype=np.int32)
+        source_punct_ids = np.zeros((n, self.max_length), dtype=np.int32)
+        for i, source_words in enumerate(batch_source_words):
+            limit = min(len(source_words), self.max_length)
+            candidate_words = batch_candidate_words[i]
+            source_puncts = batch_source_puncts[i]
+            for j in range(limit):
+                token_ids[i, j] = self.word_id(source_words[j])
+                candidates = self._candidate_list_for_vector(candidate_words[j])
+                for rank, candidate in enumerate(candidates):
+                    candidate_ids[i, j, rank] = self.candidate_id(candidate)
+                source_punct_ids[i, j] = self.punct_id(source_puncts[j])
         return {
             "token_ids": token_ids,
             "candidate_ids": candidate_ids,

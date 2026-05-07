@@ -20,8 +20,8 @@ from hybrid_preprocessor import HybridPreprocessor
 from morphology_guard import is_morphological_dictionary_word, is_same_lemma_inflection
 from quality_guard import QualityGuard
 from text_utils import (
+    TRAINABLE_PUNCT_LABELS,
     apply_case_like,
-    deterministic_spacing_correction,
     extract_word_slots,
     is_protected_punctuation_gap,
     is_trainable_punctuation_gap,
@@ -51,6 +51,50 @@ GLUED_SERVICE_TOKENS = {
     "от",
     "их",
 }
+ALLOWED_PHRASE_JOININGS = {
+    ("по", "новому", "по-новому"),
+    ("в", "виду", "ввиду"),
+    ("мини", "футбол", "мини-футбол"),
+}
+OFFICIAL_PRESIDENT_NEXT = {"рф", "российской"}
+SAFE_COMMA_DELETE_SERVICE_WORDS = {
+    "в",
+    "во",
+    "на",
+    "к",
+    "ко",
+    "с",
+    "со",
+    "от",
+    "до",
+    "из",
+    "за",
+    "по",
+    "при",
+    "для",
+    "без",
+    "у",
+    "о",
+    "об",
+    "обо",
+}
+SAFE_COMMA_DELETE_MONTHS = {
+    "января",
+    "февраля",
+    "марта",
+    "апреля",
+    "мая",
+    "июня",
+    "июля",
+    "августа",
+    "сентября",
+    "октября",
+    "ноября",
+    "декабря",
+}
+DICTIONARY_LIKE_CANDIDATE_SOURCES = {"dictionary", "keyboard", "orthographic", "mined"}
+CONTEXT_RERANK_CANDIDATE_SOURCES = DICTIONARY_LIKE_CANDIDATE_SOURCES | {"split", "phrase_safe"}
+CONTEXT_REQUIRED_CANDIDATE_SOURCES = {"split", "phrase_safe"}
 
 
 @dataclass
@@ -156,7 +200,7 @@ class HybridCorrector:
         candidate_generator_path: str = "models/candidate_generator.pkl",
         strictness: str = "normal",
         punctuation_mode: str = "conservative",
-        candidate_top_k: int = 8,
+        candidate_top_k: int = 16,
         min_dictionary_score: float = 0.25,
         use_morphology_guard: bool = True,
         context_reranker_enabled: bool = True,
@@ -165,7 +209,6 @@ class HybridCorrector:
         context_margin: float = 0.25,
         use_entity_guard: bool = True,
         protected_lexicon_paths: Sequence[str] | None = None,
-        deterministic_spacing: bool = True,
     ):
         self.model_path = model_path
         self.preprocessor_path = preprocessor_path
@@ -180,7 +223,6 @@ class HybridCorrector:
         self.context_device = context_device
         self.context_margin = float(context_margin)
         self.use_entity_guard = use_entity_guard
-        self.deterministic_spacing = bool(deterministic_spacing)
         self.thresholds = self._thresholds(strictness)
         self.runtime_stats: Counter[str] = Counter()
         self.entity_guard = self._load_entity_guard(protected_lexicon_paths)
@@ -291,8 +333,8 @@ class HybridCorrector:
         if config_path.exists():
             try:
                 config = json.loads(config_path.read_text(encoding="utf-8"))
-                if config.get("model_version", 0) < 7:
-                    print("Hybrid model is obsolete: missing v7 reranker/top-k changes. Retrain the notebook.")
+                if config.get("model_version", 0) < 10:
+                    print("Hybrid model is obsolete: missing V10 punctuation/orthography labels. Retrain the notebook.")
                     return None
                 if not config.get("requires_source_punct_ids", False):
                     print("Hybrid model is obsolete: missing source_punct_ids input. Retrain the notebook.")
@@ -334,7 +376,7 @@ class HybridCorrector:
                 try:
                     import pandas as pd
 
-                    df = pd.read_csv(path)
+                    df = pd.read_csv(path, low_memory=False)
                     if "correct_text" in df.columns:
                         return df["correct_text"].dropna().astype(str).tolist()
                 except Exception:
@@ -366,6 +408,97 @@ class HybridCorrector:
         if not original.strip():
             return CorrectionResult(original, original, 1.0, True, "empty", [])
 
+        line_results: List[CorrectionResult] = []
+        for line in original.splitlines() or [original]:
+            if not line.strip():
+                line_results.append(CorrectionResult(line, line, 1.0, True, "empty", []))
+                continue
+            line_results.append(self._correct_segment(line))
+
+        return self._combine_line_results(original, line_results)
+
+    def correct_many(self, texts: Sequence[str], batch_size: int = 256) -> List[CorrectionResult]:
+        originals = ["" if text is None else str(text) for text in texts]
+        results: List[CorrectionResult | None] = [None] * len(originals)
+        line_results_by_text: List[List[CorrectionResult]] = [[] for _ in originals]
+        prepared_segments: List[dict[str, object]] = []
+
+        if not self.is_trained:
+            return [self.correct_with_details(original) for original in originals]
+
+        for text_index, original in enumerate(originals):
+            if not original.strip():
+                results[text_index] = CorrectionResult(original, original, 1.0, True, "empty", [])
+                continue
+
+            for line in original.splitlines() or [original]:
+                if not line.strip():
+                    line_results_by_text[text_index].append(CorrectionResult(line, line, 1.0, True, "empty", []))
+                    continue
+
+                slots = extract_word_slots(line)
+                if not slots:
+                    line_results_by_text[text_index].append(CorrectionResult(line, line, 1.0, True, "no_words", []))
+                    continue
+
+                source_words = [slot.word for slot in slots]
+                source_puncts = punctuation_labels_for_slots(line, slots)
+                source_gaps = [
+                    line[slot.end : (slots[i + 1].start if i + 1 < len(slots) else len(line))]
+                    for i, slot in enumerate(slots)
+                ]
+                prepared_segments.append(
+                    {
+                        "text_index": text_index,
+                        "line": line,
+                        "slots": slots,
+                        "source_words": source_words,
+                        "source_puncts": source_puncts,
+                        "source_gaps": source_gaps,
+                        "candidate_options": self._candidate_options(source_words),
+                        "window_predictions": [],
+                    }
+                )
+
+        self._predict_prepared_segments(prepared_segments, batch_size=batch_size)
+
+        for segment in prepared_segments:
+            text_index = int(segment["text_index"])
+            line = str(segment["line"])
+            source_words = segment["source_words"]
+            source_puncts = segment["source_puncts"]
+            source_gaps = segment["source_gaps"]
+            candidate_options = segment["candidate_options"]
+            corrected_words, corrected_puncts, edits, punctuation_diagnostics, word_diagnostics, confidence = (
+                self._decode_model_predictions(
+                    source_words,
+                    candidate_options,
+                    source_puncts,
+                    source_gaps,
+                    segment["window_predictions"],
+                )
+            )
+            line_results_by_text[text_index].append(
+                self._finish_segment_correction(
+                    line,
+                    segment["slots"],
+                    source_puncts,
+                    corrected_words,
+                    corrected_puncts,
+                    edits,
+                    punctuation_diagnostics,
+                    word_diagnostics,
+                    confidence,
+                )
+            )
+
+        for text_index, original in enumerate(originals):
+            if results[text_index] is None:
+                results[text_index] = self._combine_line_results(original, line_results_by_text[text_index])
+
+        return [result for result in results if result is not None]
+
+    def _combine_line_results(self, original: str, line_results: Sequence[CorrectionResult]) -> CorrectionResult:
         corrected_lines: List[str] = []
         all_edits: List[CorrectionEdit] = []
         all_punctuation_diagnostics: List[PunctuationDecision] = []
@@ -374,12 +507,7 @@ class HybridCorrector:
         accepted = True
         reasons: List[str] = []
 
-        for line in original.splitlines() or [original]:
-            if not line.strip():
-                corrected_lines.append(line)
-                continue
-
-            line_result = self._correct_segment(line)
+        for line_result in line_results:
             corrected_lines.append(line_result.corrected)
             all_edits.extend(line_result.edits)
             all_punctuation_diagnostics.extend(line_result.punctuation_diagnostics)
@@ -444,6 +572,30 @@ class HybridCorrector:
             )
             punctuation_diagnostics = []
 
+        return self._finish_segment_correction(
+            text,
+            slots,
+            source_puncts,
+            corrected_words,
+            corrected_puncts,
+            edits,
+            punctuation_diagnostics,
+            word_diagnostics,
+            confidence,
+        )
+
+    def _finish_segment_correction(
+        self,
+        text: str,
+        slots,
+        source_puncts: Sequence[str],
+        corrected_words: Sequence[str],
+        corrected_puncts: Sequence[str],
+        edits: List[CorrectionEdit],
+        punctuation_diagnostics: List[PunctuationDecision],
+        word_diagnostics: List[WordDecision],
+        confidence: float,
+    ) -> CorrectionResult:
         if edits:
             corrected = rebuild_preserving_layout(
                 text,
@@ -457,10 +609,6 @@ class HybridCorrector:
         else:
             corrected = text
 
-        corrected, spacing_edits = self._apply_deterministic_spacing(corrected)
-        if spacing_edits:
-            edits = edits + spacing_edits
-
         if not edits:
             return CorrectionResult(text, text, confidence, True, "unchanged", [], punctuation_diagnostics, word_diagnostics)
 
@@ -470,28 +618,21 @@ class HybridCorrector:
 
         return CorrectionResult(text, corrected, confidence, True, decision.reason, edits, punctuation_diagnostics, word_diagnostics)
 
-    def _apply_deterministic_spacing(self, text: str) -> tuple[str, List[CorrectionEdit]]:
-        if not getattr(self, "deterministic_spacing", True):
-            return text, []
-        corrected, changed = deterministic_spacing_correction(text)
-        if not changed:
-            return text, []
-        self._increment_stat("deterministic_spacing_applied_count")
-        return corrected, [
-            CorrectionEdit(
-                index=-1,
-                source=text,
-                target=corrected,
-                action="SPACE",
-                confidence=1.0,
-                candidate_source="deterministic_spacing",
-            )
-        ]
-
-    def _candidate_options_for_word(self, word: str) -> List[RuntimeCandidate]:
+    def _candidate_options_for_word(self, word: str, prev_word: str = "", next_word: str = "") -> List[RuntimeCandidate]:
+        norm = normalize_word(word)
+        if norm and not self.candidate_generator.is_known(norm) and not self.candidate_generator._has_rule_candidate(norm):
+            entity_meta = self._entity_metadata(word, prev_word, next_word)
+            if (
+                bool(entity_meta["protected_source"])
+                or bool(entity_meta["entity_context"])
+                or is_morphological_dictionary_word(norm)
+            ):
+                return [RuntimeCandidate(text=word, rank=0)]
         raw_candidates = self.candidate_generator.get_candidates(word, max_candidates=self.candidate_top_k)
         if any(candidate.source == "split" for candidate in raw_candidates):
             self._increment_stat("split_candidates_seen")
+        if any(candidate.source == "phrase_safe" for candidate in raw_candidates):
+            self._increment_stat("phrase_safe_candidates_seen")
         candidates = [
             RuntimeCandidate(
                 text=apply_case_like(candidate.text, word),
@@ -507,7 +648,14 @@ class HybridCorrector:
         return self._renumber_candidates(candidates)
 
     def _candidate_options(self, words: Sequence[str]) -> List[List[RuntimeCandidate]]:
-        candidates = [self._candidate_options_for_word(word) for word in words]
+        candidates = [
+            self._candidate_options_for_word(
+                word,
+                prev_word=words[i - 1] if i > 0 else "",
+                next_word=words[i + 1] if i + 1 < len(words) else "",
+            )
+            for i, word in enumerate(words)
+        ]
         normalized = [word.lower().replace("ё", "е") for word in words]
 
         phrase_map = getattr(self.candidate_generator, "phrase_confusions", {})
@@ -701,6 +849,32 @@ class HybridCorrector:
         source_gaps: Sequence[str],
     ) -> tuple[List[str], List[str], List[CorrectionEdit], List[PunctuationDecision], List[WordDecision], float]:
         assert self.preprocessor is not None
+        window_predictions = []
+        for window_id, (start, end) in enumerate(self._window_ranges(len(source_words), self.preprocessor.max_length)):
+            local_words = list(source_words[start:end])
+            local_candidates = [candidate_options[i] for i in range(start, end)]
+            local_candidate_words = [[candidate.text for candidate in candidates] for candidates in local_candidates]
+            local_puncts = list(source_puncts[start:end])
+            inputs = self.preprocessor.vectorize_inference(local_words, local_candidate_words, local_puncts)
+            action_probs, punct_probs = self._predict_window(inputs)
+            window_predictions.append((window_id, start, end, action_probs, punct_probs))
+        return self._decode_model_predictions(
+            source_words,
+            candidate_options,
+            source_puncts,
+            source_gaps,
+            window_predictions,
+        )
+
+    def _decode_model_predictions(
+        self,
+        source_words: Sequence[str],
+        candidate_options: Sequence[Sequence[RuntimeCandidate]],
+        source_puncts: Sequence[str],
+        source_gaps: Sequence[str],
+        window_predictions,
+    ) -> tuple[List[str], List[str], List[CorrectionEdit], List[PunctuationDecision], List[WordDecision], float]:
+        assert self.preprocessor is not None
         length = len(source_words)
         corrected_words = list(source_words)
         corrected_puncts = list(source_puncts)
@@ -711,21 +885,7 @@ class HybridCorrector:
         selected_confidences: List[float] = [0.0] * length
         conflict_flags = [False] * length
 
-        for window_id, (start, end) in enumerate(self._window_ranges(length, self.preprocessor.max_length)):
-            local_words = list(source_words[start:end])
-            local_candidates = [candidate_options[i] for i in range(start, end)]
-            local_candidate_words = [[candidate.text for candidate in candidates] for candidates in local_candidates]
-            local_puncts = list(source_puncts[start:end])
-            inputs = self.preprocessor.vectorize_inference(local_words, local_candidate_words, local_puncts)
-            prediction = self.model.predict(inputs, verbose=0)
-            if isinstance(prediction, dict):
-                action_probs = prediction["action"][0]
-                punct_probs = prediction["punct"][0]
-            else:
-                action_probs, punct_probs = prediction
-                action_probs = action_probs[0]
-                punct_probs = punct_probs[0]
-
+        for window_id, start, end, action_probs, punct_probs in window_predictions:
             window_len = end - start
             for local_i in range(window_len):
                 i = start + local_i
@@ -981,6 +1141,64 @@ class HybridCorrector:
             float(np.mean([c for c in selected_confidences if c > 0]) if selected_confidences else 1.0),
         )
 
+    def _predict_window(self, inputs: dict[str, np.ndarray]) -> tuple[np.ndarray, np.ndarray]:
+        if callable(self.model):
+            prediction = self.model(inputs, training=False)
+        else:
+            prediction = self.model.predict(inputs, verbose=0)
+        if isinstance(prediction, dict):
+            action_probs = prediction["action"]
+            punct_probs = prediction["punct"]
+        else:
+            action_probs, punct_probs = prediction
+        return np.asarray(action_probs)[0], np.asarray(punct_probs)[0]
+
+    def _predict_prepared_segments(self, prepared_segments: Sequence[dict[str, object]], batch_size: int = 256) -> None:
+        if not prepared_segments:
+            return
+        assert self.preprocessor is not None
+
+        batch_words: List[List[str]] = []
+        batch_candidate_words: List[List[List[str]]] = []
+        batch_puncts: List[List[str]] = []
+        window_refs: List[tuple[dict[str, object], int, int, int]] = []
+
+        for segment in prepared_segments:
+            source_words = segment["source_words"]
+            source_puncts = segment["source_puncts"]
+            candidate_options = segment["candidate_options"]
+            for window_id, (start, end) in enumerate(self._window_ranges(len(source_words), self.preprocessor.max_length)):
+                local_candidates = [candidate_options[i] for i in range(start, end)]
+                batch_words.append(list(source_words[start:end]))
+                batch_candidate_words.append([[candidate.text for candidate in candidates] for candidates in local_candidates])
+                batch_puncts.append(list(source_puncts[start:end]))
+                window_refs.append((segment, window_id, start, end))
+
+        chunk_size = max(1, int(batch_size))
+        for batch_start in range(0, len(window_refs), chunk_size):
+            batch_end = min(batch_start + chunk_size, len(window_refs))
+            inputs = self.preprocessor.vectorize_inference_batch(
+                batch_words[batch_start:batch_end],
+                batch_candidate_words[batch_start:batch_end],
+                batch_puncts[batch_start:batch_end],
+            )
+            action_batch, punct_batch = self._predict_windows_batch(inputs, batch_size=chunk_size)
+            for local_i, ref in enumerate(window_refs[batch_start:batch_end]):
+                segment, window_id, start, end = ref
+                segment["window_predictions"].append((window_id, start, end, action_batch[local_i], punct_batch[local_i]))
+
+    def _predict_windows_batch(self, inputs: dict[str, np.ndarray], batch_size: int = 256) -> tuple[np.ndarray, np.ndarray]:
+        if callable(self.model):
+            prediction = self.model(inputs, training=False)
+        else:
+            prediction = self.model.predict(inputs, batch_size=max(1, int(batch_size)), verbose=0)
+        if isinstance(prediction, dict):
+            action_probs = prediction["action"]
+            punct_probs = prediction["punct"]
+        else:
+            action_probs, punct_probs = prediction
+        return np.asarray(action_probs), np.asarray(punct_probs)
+
     @staticmethod
     def _window_ranges(length: int, max_length: int, overlap: int = 24) -> List[tuple[int, int]]:
         if length <= 0:
@@ -1025,7 +1243,7 @@ class HybridCorrector:
         prev_word: str = "",
         next_word: str = "",
     ) -> bool:
-        if selected.source != "dictionary":
+        if selected.source not in DICTIONARY_LIKE_CANDIDATE_SOURCES:
             return False
         if context_margin >= 0.75 or confidence < 0.95:
             return False
@@ -1051,18 +1269,19 @@ class HybridCorrector:
         prev_word: str = "",
         next_word: str = "",
     ) -> RerankOutcome:
-        if selected.source not in {"dictionary", "split"}:
+        context_required = self._requires_context_confirmation(selected)
+        if selected.source not in CONTEXT_RERANK_CANDIDATE_SOURCES:
             return RerankOutcome(selected=selected, reason="not_called")
         if not getattr(self, "context_reranker_enabled", False):
-            if selected.source == "split":
-                self._increment_stat("split_blocked_by_context_count")
-                return RerankOutcome(selected=None, reason="split_context_disabled")
+            if context_required:
+                self._increment_context_required_block(selected)
+                return RerankOutcome(selected=None, reason=f"{selected.source}_context_disabled")
             return RerankOutcome(selected=selected, reason="not_called")
 
         viable = [
             candidate
             for candidate in candidates
-            if candidate.source in {"dictionary", "split"} and normalize_word(candidate.text) != normalize_word(source)
+            if candidate.source in CONTEXT_RERANK_CANDIDATE_SOURCES and normalize_word(candidate.text) != normalize_word(source)
         ]
         if not viable:
             return RerankOutcome(selected=selected, reason="no_viable_candidates")
@@ -1078,11 +1297,11 @@ class HybridCorrector:
         if not scores or not all(score.available for score in scores):
             self._increment_stat("reranker_fail_open_count")
             reason = scores[0].reason if scores else "no_scores"
-            if selected.source == "split":
-                self._increment_stat("split_blocked_by_context_count")
+            if context_required:
+                self._increment_context_required_block(selected)
                 return RerankOutcome(
                     selected=None,
-                    reason=f"split_context_unavailable:{reason}",
+                    reason=f"{selected.source}_context_unavailable:{reason}",
                     context_best=context_best,
                     context_scores=context_payload,
                 )
@@ -1094,9 +1313,9 @@ class HybridCorrector:
             self._increment_stat("reranker_non_finite_count", non_finite_count)
         if len(finite_scores) < 2:
             reason = "context_non_finite"
-            if selected.source == "split":
-                self._increment_stat("split_blocked_by_context_count")
-                reason = "split_context_non_finite"
+            if context_required:
+                self._increment_context_required_block(selected)
+                reason = f"{selected.source}_context_non_finite"
                 return RerankOutcome(
                     selected=None,
                     reason=reason,
@@ -1143,8 +1362,8 @@ class HybridCorrector:
                     context_best=best.text,
                     context_scores=context_payload,
                 )
-            if selected.source == "split":
-                self._increment_stat("split_blocked_by_context_count")
+            if context_required:
+                self._increment_context_required_block(selected)
             return RerankOutcome(
                 selected=None,
                 context_score=float(source_score.score),
@@ -1182,14 +1401,14 @@ class HybridCorrector:
                     context_scores=context_payload,
                 )
 
-        if selected.source == "split":
-            self._increment_stat("split_blocked_by_context_count")
+        if context_required:
+            self._increment_context_required_block(selected)
             return RerankOutcome(
                 selected=None,
                 context_score=context_score,
                 context_margin=context_margin,
                 reranked=False,
-                reason="split_context_low_margin",
+                reason=f"{selected.source}_context_low_margin",
                 context_best=best.text,
                 context_scores=context_payload,
             )
@@ -1203,6 +1422,16 @@ class HybridCorrector:
             context_best=best.text,
             context_scores=context_payload,
         )
+
+    @staticmethod
+    def _requires_context_confirmation(candidate: RuntimeCandidate) -> bool:
+        return candidate.source in CONTEXT_REQUIRED_CANDIDATE_SOURCES or " " in str(candidate.text or "")
+
+    def _increment_context_required_block(self, candidate: RuntimeCandidate) -> None:
+        if candidate.source == "split":
+            self._increment_stat("split_blocked_by_context_count")
+        else:
+            self._increment_stat("unsafe_split_blocked_count")
 
     def _can_apply_candidate(
         self,
@@ -1241,8 +1470,6 @@ class HybridCorrector:
     ) -> str:
         if candidate.source == "original" or candidate.text == source:
             return "same_as_source"
-        if confidence < self.thresholds["action"] or margin < self.thresholds["action_margin"]:
-            return "low_action_confidence_or_margin"
 
         norm = normalize_word(source)
         known = self.candidate_generator.is_known(source)
@@ -1251,15 +1478,33 @@ class HybridCorrector:
         has_latin = any("A" <= ch <= "Z" or "a" <= ch <= "z" for ch in source)
         is_upper = source.isupper()
         entity_meta = self._entity_metadata(source, prev_word, next_word)
+        low_action_recovery = self._is_safe_low_action_dictionary_recovery(
+            source,
+            candidate,
+            confidence,
+            margin,
+            known=known,
+            morph_known=morph_known,
+            has_latin=has_latin,
+            is_upper=is_upper,
+            entity_meta=entity_meta,
+            prev_word=prev_word,
+            next_word=next_word,
+        )
+        if confidence < self.thresholds["action"] or margin < self.thresholds["action_margin"]:
+            if not low_action_recovery:
+                return "low_action_confidence_or_margin"
+            if not skip_context:
+                self._increment_stat("low_action_dictionary_recovery_count")
 
-        if candidate.source in {"dictionary", "split"}:
+        if candidate.source in DICTIONARY_LIKE_CANDIDATE_SOURCES or candidate.source == "split":
             if bool(entity_meta["entity_context"]):
                 self._increment_stat("entity_guard_blocked_count")
                 return "entity_context_guard"
             if bool(entity_meta["protected_source"]):
                 self._increment_stat("entity_guard_blocked_count")
                 return "protected_lexicon_word"
-            if candidate.source == "dictionary" and self._dictionary_drops_glued_service_token(source, candidate.text):
+            if candidate.source in DICTIONARY_LIKE_CANDIDATE_SOURCES and self._dictionary_drops_glued_service_token(source, candidate.text):
                 return "dictionary_drops_glued_service_token"
             dirty_recovery = self._is_dirty_dictionary_recovery(
                 source,
@@ -1302,16 +1547,14 @@ class HybridCorrector:
                 skip_context=skip_context,
                 context_margin=context_margin,
             )
-            if confidence < self.thresholds["dictionary_action"] and not (dirty_recovery or short_recovery):
-                return "low_dictionary_confidence"
-            if (
-                candidate.source == "dictionary"
-                and candidate.score < self.min_dictionary_score
-                and not low_score_recovery
+            if confidence < self.thresholds["dictionary_action"] and not (
+                dirty_recovery or short_recovery or low_action_recovery
             ):
+                return "low_dictionary_confidence"
+            if candidate.source in DICTIONARY_LIKE_CANDIDATE_SOURCES and candidate.score < self.min_dictionary_score and not low_score_recovery:
                 return "low_dictionary_score"
             if (
-                candidate.source == "dictionary"
+                candidate.source in DICTIONARY_LIKE_CANDIDATE_SOURCES
                 and candidate.score < 1.0
                 and not skip_context
                 and (context_margin is None or context_margin < 0.50)
@@ -1320,8 +1563,8 @@ class HybridCorrector:
                 return "low_score_needs_context_margin"
             if known or morph_known:
                 return "known_or_dictionary_word"
-            if candidate.source == "dictionary" and (not is_lower_word or has_latin or is_upper):
-                if not (short_recovery or self._can_apply_titlecase_dictionary_candidate(
+            if candidate.source in DICTIONARY_LIKE_CANDIDATE_SOURCES and (not is_lower_word or has_latin or is_upper):
+                if not (short_recovery or low_action_recovery or self._can_apply_titlecase_dictionary_candidate(
                     source,
                     candidate,
                     confidence,
@@ -1347,7 +1590,7 @@ class HybridCorrector:
                 return "protected_word_shape"
             if len(norm) < 5 and not short_recovery:
                 return "too_short"
-            if candidate.source == "dictionary" and not (
+            if candidate.source in DICTIONARY_LIKE_CANDIDATE_SOURCES and not (
                 candidate.distance == 1 or (candidate.distance == 2 and len(norm) >= 8)
             ):
                 return "bad_dictionary_distance"
@@ -1355,13 +1598,19 @@ class HybridCorrector:
                 return "same_lemma_inflection"
             return ""
 
-        if candidate.source in {"rule", "phrase"}:
+        if candidate.source in {"rule", "phrase", "phrase_safe"}:
             if confidence < self.thresholds["rule_action"] or has_latin or is_upper:
                 return "low_rule_confidence_or_shape"
+            if candidate.source == "rule" and self._is_case_rule_candidate(source, candidate.text):
+                return self._case_rule_guard_reason(source, candidate.text, next_word)
             if bool(entity_meta["entity_context"]) or bool(entity_meta["protected_source"]):
                 self._increment_stat("entity_guard_blocked_count")
                 return "entity_context_guard" if bool(entity_meta["entity_context"]) else "protected_lexicon_word"
-            if candidate.source == "phrase" and self._collapses_next_word(source, candidate.text, next_word):
+            if (
+                candidate.source in {"phrase", "phrase_safe"}
+                and self._collapses_next_word(source, candidate.text, next_word)
+                and not self._is_allowed_phrase_joining(source, candidate.text, next_word)
+            ):
                 return "phrase_context_guard"
             if normalize_word(source) == "так" and normalize_word(candidate.text) == "также" and normalize_word(next_word) == "же":
                 return "phrase_context_guard"
@@ -1372,6 +1621,24 @@ class HybridCorrector:
             return ""
 
         return "unsupported_candidate_source"
+
+    @staticmethod
+    def _is_case_rule_candidate(source: str, candidate: str) -> bool:
+        return str(source or "") != str(candidate or "") and normalize_word(source) == normalize_word(candidate)
+
+    @staticmethod
+    def _case_rule_guard_reason(source: str, candidate: str, next_word: str = "") -> str:
+        src = normalize_word(source)
+        tgt = str(candidate or "")
+        next_norm = normalize_word(next_word)
+        if src == "президент" and tgt == "Президент" and next_norm not in OFFICIAL_PRESIDENT_NEXT:
+            return "president_case_context_guard"
+        return ""
+
+    @staticmethod
+    def _is_allowed_phrase_joining(source: str, candidate: str, next_word: str = "") -> bool:
+        key = (normalize_word(source), normalize_word(next_word), normalize_word(candidate))
+        return key in ALLOWED_PHRASE_JOININGS
 
     def _is_dirty_dictionary_recovery(
         self,
@@ -1387,7 +1654,7 @@ class HybridCorrector:
         prev_word: str = "",
         next_word: str = "",
     ) -> bool:
-        if candidate.source != "dictionary":
+        if candidate.source not in DICTIONARY_LIKE_CANDIDATE_SOURCES:
             return False
         if self._candidate_rank(candidate) > 1:
             return False
@@ -1426,7 +1693,7 @@ class HybridCorrector:
         skip_context: bool = False,
         context_margin: float | None = None,
     ) -> bool:
-        if candidate.source != "dictionary":
+        if candidate.source not in DICTIONARY_LIKE_CANDIDATE_SOURCES:
             return False
         if self._candidate_rank(candidate) > 1:
             return False
@@ -1450,6 +1717,111 @@ class HybridCorrector:
             allow_titlecase=False,
         )
 
+    def _is_safe_low_action_dictionary_recovery(
+        self,
+        source: str,
+        candidate: RuntimeCandidate,
+        confidence: float,
+        margin: float,
+        *,
+        known: bool,
+        morph_known: bool,
+        has_latin: bool,
+        is_upper: bool,
+        entity_meta: dict[str, object],
+        prev_word: str = "",
+        next_word: str = "",
+    ) -> bool:
+        if candidate.source not in DICTIONARY_LIKE_CANDIDATE_SOURCES:
+            return False
+        if self._candidate_rank(candidate) != 0:
+            return False
+        norm = normalize_word(source)
+        candidate_norm = normalize_word(candidate.text)
+        if not norm or not candidate_norm or norm == candidate_norm:
+            return False
+        if len(norm) < 5 or " " in str(candidate.text or ""):
+            return False
+        if candidate.score < 1.2:
+            return False
+        if not (candidate.distance == 1 or (candidate.distance == 2 and len(norm) >= 8)):
+            return False
+        if not self._is_safe_low_action_edit_shape(norm, candidate_norm):
+            return False
+
+        standard_signal = confidence >= 0.55 and margin >= 0.10
+        extra_letter_signal = (
+            self._has_single_extra_letter(norm, candidate_norm)
+            and confidence >= 0.45
+            and margin >= 0.05
+        )
+        if not (standard_signal or extra_letter_signal):
+            return False
+
+        if self.use_morphology_guard and is_same_lemma_inflection(source, candidate.text):
+            return False
+
+        return self._is_dirty_oov_source_shape(
+            source,
+            candidate,
+            known=known,
+            morph_known=morph_known,
+            has_latin=has_latin,
+            is_upper=is_upper,
+            entity_meta=entity_meta,
+            prev_word=prev_word,
+            next_word=next_word,
+            allow_short=False,
+            allow_titlecase=True,
+        )
+
+    @staticmethod
+    def _is_safe_low_action_edit_shape(source_norm: str, candidate_norm: str) -> bool:
+        if not source_norm or not candidate_norm:
+            return False
+        if source_norm[0] != candidate_norm[0] or source_norm[-1] != candidate_norm[-1]:
+            return False
+        if HybridCorrector._has_single_extra_letter(source_norm, candidate_norm):
+            return True
+        if HybridCorrector._has_single_extra_letter(candidate_norm, source_norm):
+            return True
+        if len(source_norm) != len(candidate_norm):
+            return False
+
+        diff_indices = [
+            index
+            for index, (source_char, candidate_char) in enumerate(zip(source_norm, candidate_norm))
+            if source_char != candidate_char
+        ]
+        if len(diff_indices) == 1:
+            return True
+        if len(diff_indices) == 2:
+            first, second = diff_indices
+            return (
+                second == first + 1
+                and source_norm[first] == candidate_norm[second]
+                and source_norm[second] == candidate_norm[first]
+            )
+        return False
+
+    @staticmethod
+    def _has_single_extra_letter(longer: str, shorter: str) -> bool:
+        if len(longer) != len(shorter) + 1:
+            return False
+        longer_index = 0
+        shorter_index = 0
+        skipped = False
+        while longer_index < len(longer) and shorter_index < len(shorter):
+            if longer[longer_index] == shorter[shorter_index]:
+                longer_index += 1
+                shorter_index += 1
+                continue
+            if skipped:
+                return False
+            skipped = True
+            longer_index += 1
+        return True
+
     def _is_safe_short_dictionary_recovery(
         self,
         source: str,
@@ -1467,7 +1839,7 @@ class HybridCorrector:
         context_margin: float | None = None,
     ) -> bool:
         norm = normalize_word(source)
-        if candidate.source != "dictionary":
+        if candidate.source not in DICTIONARY_LIKE_CANDIDATE_SOURCES:
             return False
         if not (3 <= len(norm) <= 4):
             return False
@@ -1597,7 +1969,7 @@ class HybridCorrector:
         skip_context: bool = False,
         context_margin: float | None = None,
     ) -> bool:
-        if candidate.source != "dictionary":
+        if candidate.source not in DICTIONARY_LIKE_CANDIDATE_SOURCES:
             return False
         if confidence < 0.995:
             return False
@@ -1693,24 +2065,34 @@ class HybridCorrector:
             return False, "mode_disabled"
         if predicted_punct == source_punct:
             return False, "same_as_source"
-        if predicted_punct not in {"", ",", ".", "?", "!", ":", ";"}:
+        if predicted_punct not in TRAINABLE_PUNCT_LABELS:
             return False, "unsupported_punctuation"
         if protected_gap:
             return False, "protected_gap"
         if not is_trainable_punctuation_gap(gap, word=word, next_word=next_word, is_final=is_final):
             return False, "structural_gap"
-        if is_final and predicted_punct in {",", ":", ";"}:
+        if is_final and predicted_punct in {",", ":", ";", "—", ":—", ":«", ':"', "«", '"', "("}:
             return False, "final_non_terminal_punctuation"
         if not is_final:
             if predicted_punct in {".", "?", "!"} and not (source_punct == "." and predicted_punct == ","):
                 return False, "internal_sentence_end"
+        if {source_punct, predicted_punct} == {":", ";"}:
+            return False, "structural_punctuation_swap_guard"
 
         comma_delete = source_punct == "," and predicted_punct == ""
+        safe_comma_delete_recovery_reason = ""
         if comma_delete:
             comma_guard_reason = self._comma_delete_guard_reason(word, next_word)
             if comma_guard_reason:
                 self._increment_stat("comma_delete_blocked_count")
                 return False, comma_guard_reason
+            safe_comma_delete_recovery_reason = self._safe_comma_delete_recovery_reason(
+                word,
+                next_word,
+                is_final=is_final,
+                confidence=confidence,
+                margin=margin,
+            )
 
         comma_insert = source_punct == "" and predicted_punct == ","
         if comma_insert:
@@ -1718,6 +2100,14 @@ class HybridCorrector:
             if comma_insert_guard:
                 self._increment_stat("comma_insert_blocked_count")
                 return False, comma_insert_guard
+
+        safe_final_period_recovery = self._is_safe_final_period_recovery(
+            source_punct,
+            predicted_punct,
+            is_final=is_final,
+            confidence=confidence,
+            margin=margin,
+        )
 
         if comma_delete:
             threshold = self.thresholds["comma_delete"]
@@ -1727,17 +2117,85 @@ class HybridCorrector:
             margin_threshold = self.thresholds["punct_delete_margin"] if predicted_punct == "" else self.thresholds["punct_margin"]
         if confidence < threshold or margin < margin_threshold:
             if comma_delete:
+                if safe_comma_delete_recovery_reason:
+                    self._increment_stat("safe_comma_delete_recovery_count")
+                    if safe_comma_delete_recovery_reason != "safe_comma_delete_recovery":
+                        self._increment_stat(f"{safe_comma_delete_recovery_reason}_count")
+                    return True, safe_comma_delete_recovery_reason
                 self._increment_stat("comma_delete_blocked_count")
                 return False, "low_comma_delete_confidence_or_margin"
+            if safe_final_period_recovery:
+                self._increment_stat("safe_final_period_recovery_count")
+                return True, "safe_final_period_recovery"
             return False, "low_confidence_or_margin"
 
         if is_final and source_punct in {".", "!", "?"} and predicted_punct == "":
             return False, "final_punctuation_delete"
-        if is_final and predicted_punct and predicted_punct not in {".", "?", "!"}:
+        if is_final and predicted_punct and not self._is_final_punctuation_label(predicted_punct):
             return False, "final_non_terminal_punctuation"
         if source_punct and predicted_punct == "" and self._is_protected_next_token(next_word):
             return False, "delete_before_protected"
         return True, "applied"
+
+    def _safe_comma_delete_recovery_reason(
+        self,
+        word: str,
+        next_word: str,
+        *,
+        is_final: bool,
+        confidence: float,
+        margin: float,
+    ) -> str:
+        if is_final:
+            return ""
+        source = str(word or "").strip()
+        if source == "О":
+            return ""
+        word_norm = normalize_word(word)
+        next_norm = normalize_word(next_word)
+        if self._is_protected_next_token(next_word):
+            return ""
+        if self._is_safe_date_comma_delete_recovery(word_norm, next_norm, confidence=confidence, margin=margin):
+            return "safe_date_comma_delete_recovery"
+        if word_norm not in SAFE_COMMA_DELETE_SERVICE_WORDS or not next_norm:
+            return ""
+        if confidence >= 0.985 and margin >= 0.95:
+            return "safe_comma_delete_recovery"
+        if source == source.lower() and confidence >= 0.95 and margin >= 0.90:
+            return "safe_service_comma_delete_recovery"
+        return ""
+
+    @staticmethod
+    def _is_safe_date_comma_delete_recovery(
+        word_norm: str,
+        next_norm: str,
+        *,
+        confidence: float,
+        margin: float,
+    ) -> bool:
+        if not word_norm.isdigit() or next_norm not in SAFE_COMMA_DELETE_MONTHS:
+            return False
+        day = int(word_norm)
+        return 1 <= day <= 31 and confidence >= 0.86 and margin >= 0.70
+
+    @staticmethod
+    def _is_safe_final_period_recovery(
+        source_punct: str,
+        predicted_punct: str,
+        *,
+        is_final: bool,
+        confidence: float,
+        margin: float,
+    ) -> bool:
+        if not is_final or predicted_punct != ".":
+            return False
+        if source_punct in {"", ","}:
+            return confidence >= 0.82 and margin >= 0.70
+        return False
+
+    @staticmethod
+    def _is_final_punctuation_label(label: str) -> bool:
+        return any(ch in str(label or "") for ch in ".?!")
 
     @staticmethod
     def _comma_delete_guard_reason(word: str, next_word: str) -> str:
@@ -1760,8 +2218,16 @@ class HybridCorrector:
         next_norm = normalize_word(next_word)
         if not next_norm:
             return ""
+        if word_norm == "того" and next_norm == "чтобы":
+            return "comma_insert_fixed_phrase_guard"
+        if any("A" <= ch <= "Z" or "a" <= ch <= "z" for ch in str(word or "")):
+            return "comma_insert_protected_token_guard"
+        if any(ch.isdigit() for ch in str(next_word or "")):
+            return "comma_insert_protected_token_guard"
         if next_norm.startswith("котор") or next_norm in {"что", "чтобы"}:
             return ""
+        if str(word or "")[:1].isupper() and HybridCorrector._looks_like_finite_verb(next_norm):
+            return "comma_insert_subject_predicate_guard"
         if word_norm in {
             "сообщалось",
             "сообщается",
@@ -1772,15 +2238,135 @@ class HybridCorrector:
             "сообщает",
         } and next_norm in {"о", "об", "обо", "ранее"}:
             return "comma_insert_after_reporting_verb_guard"
+        if word_norm in {"словам", "данным", "информации", "источника"}:
+            return "comma_insert_source_phrase_guard"
+        if word_norm in {"того", "тому"} and next_norm in {"или", "чтобы", "самого", "самой", "самое", "самые", "стоит", "времени"}:
+            return "comma_insert_fixed_phrase_guard"
+        if next_norm == "же":
+            return "comma_insert_fixed_phrase_guard"
+        if (word_norm, next_norm) in {
+            ("башни", "не"),
+            ("подвал", "не"),
+            ("словом", "не"),
+            ("прессы", "не"),
+            ("тем", "не"),
+            ("античности", "геммы"),
+            ("очередь", "министр"),
+            ("образом", "биржа"),
+            ("мотивация", "была"),
+            ("почерковеды", "работали"),
+            ("значит", "возраст"),
+            ("работаешь", "сейчас"),
+            ("ответьте", "мне"),
+            ("выяснялись", "отношения"),
+            ("контекст", "достаточно"),
+            ("средство", "освоения"),
+            ("руставели", "их"),
+        }:
+            return "comma_insert_fixed_phrase_guard"
+        if word_norm in {
+            "утверждают",
+            "утверждалось",
+            "заявил",
+            "заявила",
+            "заявили",
+            "заявляет",
+            "заявляют",
+            "добавил",
+            "добавила",
+            "добавили",
+            "подтвердил",
+            "подтвердила",
+            "подтвердили",
+            "ответил",
+            "ответила",
+            "ответили",
+            "выразил",
+            "выразила",
+            "выразили",
+            "подчеркнул",
+            "подчеркнула",
+            "подчеркнули",
+            "спрашивает",
+            "сказал",
+            "сказала",
+            "сказали",
+            "понимают",
+            "слушают",
+            "сожалею",
+        }:
+            return "comma_insert_verb_argument_guard"
+        if word_norm in {"заявил", "заявила", "заявили", "заявляет", "заявляют"} and next_norm in {
+            "сегодня",
+            "вчера",
+            "ранее",
+            "тогда",
+        }:
+            return "comma_insert_reporting_tail_guard"
+        if word_norm in {"добавил", "добавила", "добавили"} and next_norm in {"он", "она", "они"}:
+            return "comma_insert_reporting_tail_guard"
+        if word_norm in {"напомнил", "напомнила", "напомнили"} and next_norm in {"ей", "ему", "им", "о", "об", "обо"}:
+            return "comma_insert_verb_argument_guard"
+        if word_norm in {"рассказал", "рассказала", "рассказали"} and next_norm in {"женам", "жене", "мужу", "детям", "ему", "ей", "им"}:
+            return "comma_insert_verb_argument_guard"
+        if word_norm in {"спросил", "спросила", "спросили"} and next_norm in {"у"}:
+            return "comma_insert_verb_argument_guard"
+        if word_norm in {"договорился", "договорилась", "договорились"} and next_norm in {"о", "об", "обо"}:
+            return "comma_insert_verb_argument_guard"
         if next_norm == "также":
             return "comma_insert_before_takzhe_guard"
-        if next_norm in {"на", "с", "со", "в", "во", "по", "при"}:
+        if next_norm in {"на", "с", "со", "в", "во", "по", "при", "для", "о", "об", "обо", "у", "к", "ко", "от", "до", "из", "за"}:
             return "comma_insert_preposition_phrase_guard"
+        if HybridCorrector._looks_like_adjective_like(next_norm):
+            return "comma_insert_adjective_phrase_guard"
+        if len(next_norm) >= 5 and next_norm.endswith(("ть", "ти")):
+            return "comma_insert_infinitive_argument_guard"
         if next_norm.startswith("друг"):
             return "comma_insert_descriptor_guard"
+        if HybridCorrector._looks_like_adjective_like(word_norm) and len(next_norm) >= 4:
+            return "comma_insert_adjective_phrase_guard"
         if word_norm.endswith(("ен", "на", "но", "ны", "ый", "ий", "ая", "ое", "ые")) and len(next_norm) >= 4:
             return "comma_insert_descriptor_guard"
         return ""
+
+    @staticmethod
+    def _looks_like_adjective_like(norm: str) -> bool:
+        endings = (
+            "ых",
+            "их",
+            "ого",
+            "его",
+            "ому",
+            "ему",
+            "ым",
+            "им",
+            "ыми",
+            "ими",
+            "ой",
+            "ую",
+            "юю",
+        )
+        return len(norm) >= 5 and norm.endswith(endings)
+
+    @staticmethod
+    def _looks_like_finite_verb(norm: str) -> bool:
+        endings = (
+            "л",
+            "ла",
+            "ло",
+            "ли",
+            "ет",
+            "ют",
+            "ит",
+            "ят",
+            "ется",
+            "ются",
+            "ем",
+            "им",
+            "ете",
+            "ите",
+        )
+        return len(norm) >= 5 and norm.endswith(endings)
 
     @staticmethod
     def _looks_like_participle_or_descriptor(norm: str) -> bool:

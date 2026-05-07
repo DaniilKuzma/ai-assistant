@@ -15,7 +15,7 @@ class TokenCandidateEmbedding(layers.Layer):
         max_length: int,
         d_model: int,
         punct_classes: int = 8,
-        candidate_top_k: int = 8,
+        candidate_top_k: int = 16,
         dropout_rate: float = 0.1,
         **kwargs,
     ):
@@ -137,7 +137,7 @@ def build_hybrid_model(
     num_layers: int = 2,
     dropout_rate: float = 0.30,
     learning_rate: float = 1e-4,
-    candidate_top_k: int = 8,
+    candidate_top_k: int = 16,
 ) -> keras.Model:
     token_ids = layers.Input(shape=(max_length,), dtype="int32", name="token_ids")
     candidate_ids = layers.Input(shape=(max_length, candidate_top_k), dtype="int32", name="candidate_ids")

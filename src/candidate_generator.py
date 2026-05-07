@@ -1,12 +1,10 @@
-"""Dictionary and rule based candidate generation for Russian correction.
-
-This module intentionally does not implement keyboard-neighbor typos.
-"""
+"""Dictionary and rule based candidate generation for Russian correction."""
 
 from __future__ import annotations
 
 from collections import Counter, defaultdict
 from dataclasses import dataclass
+from difflib import SequenceMatcher
 import math
 import pickle
 from typing import Dict, Iterable, List, Sequence
@@ -15,6 +13,32 @@ from text_utils import apply_case_like, is_word, normalize_word, word_tokens
 
 
 RUSSIAN_ALPHABET = "абвгдеёжзийклмнопрстуфхцчшщъыьэюя"
+RUSSIAN_CONSONANTS = "бвгджзйклмнпрстфхцчшщ"
+RUSSIAN_KEYBOARD_ROWS = (
+    "йцукенгшщзхъ",
+    "фывапролджэ",
+    "ячсмитьбю",
+)
+ORTHOGRAPHIC_CHAR_CONFUSIONS = {
+    "а": ("о", "я"),
+    "о": ("а",),
+    "я": ("а",),
+    "е": ("и",),
+    "и": ("е",),
+    "э": ("е",),
+    "ю": ("у",),
+    "у": ("ю",),
+    "ы": ("и",),
+}
+SOURCE_SCORE_BOOSTS = {
+    "rule": 6.0,
+    "phrase_safe": 6.0,
+    "mined": 5.0,
+    "orthographic": 3.5,
+    "keyboard": 3.0,
+    "split": 0.5,
+    "dictionary": 0.0,
+}
 SPLIT_PREFIX_BLOCKLIST = {
     "само",
     "сверх",
@@ -49,6 +73,27 @@ SPLIT_SHORT_LEFT_WHITELIST = {"в", "во", "к", "ко", "с", "со", "о", "�
 SPLIT_SHORT_RIGHT_WHITELIST = {"об", "от", "из", "их", "им", "ей", "её", "ее", "его", "ее", "же", "ли", "бы"}
 SPLIT_SERVICE_LEFT_WHITELIST = {"не", "ни", "их"}
 SPLIT_SERVICE_RIGHT_WHITELIST = {"в", "во", "на", "не", "ни", "о", "об", "обо", "по", "за", "до", "к", "ко", "с", "со", "из", "от"}
+SHORT_SERVICE_SPLIT_LEFT = {"в", "во", "к", "ко", "с", "со", "о", "об", "у"}
+VOWELS = set("аеёиоуыэюя")
+
+
+def _keyboard_neighbors() -> Dict[str, tuple[str, ...]]:
+    positions: dict[str, tuple[int, int]] = {}
+    for row_index, row in enumerate(RUSSIAN_KEYBOARD_ROWS):
+        for col_index, char in enumerate(row):
+            positions[char] = (row_index, col_index)
+
+    neighbors: dict[str, set[str]] = {char: set() for char in positions}
+    for char, (row_index, col_index) in positions.items():
+        for other, (other_row, other_col) in positions.items():
+            if other == char:
+                continue
+            if abs(row_index - other_row) <= 1 and abs(col_index - other_col) <= 1:
+                neighbors[char].add(other)
+    return {char: tuple(sorted(values)) for char, values in neighbors.items()}
+
+
+RUSSIAN_KEYBOARD_NEIGHBORS = _keyboard_neighbors()
 
 
 @dataclass(frozen=True)
@@ -73,6 +118,9 @@ class CandidateGenerator:
         long_oov_max_distance: int = 2,
         long_oov_min_length: int = 8,
         long_oov_max_bucket_size: int = 2000,
+        enable_keyboard_candidates: bool = True,
+        enable_orthographic_candidates: bool = True,
+        enable_mined_confusions: bool = True,
     ):
         self.min_freq = min_freq
         self.max_distance = max_distance
@@ -83,8 +131,15 @@ class CandidateGenerator:
         self.long_oov_max_distance = max(1, int(long_oov_max_distance))
         self.long_oov_min_length = max(1, int(long_oov_min_length))
         self.long_oov_max_bucket_size = max(1, int(long_oov_max_bucket_size))
+        self.enable_keyboard_candidates = bool(enable_keyboard_candidates)
+        self.enable_orthographic_candidates = bool(enable_orthographic_candidates)
+        self.enable_mined_confusions = bool(enable_mined_confusions)
+        self.unsafe_split_blocked_count = 0
         self.frequencies: Counter[str] = Counter()
         self.length_buckets: Dict[int, List[str]] = defaultdict(list)
+        self._candidate_cache: Dict[tuple[object, ...], tuple[Candidate, ...]] = {}
+        self.mined_confusions: Dict[str, Sequence[str]] = {}
+        self.mined_confusion_counts: Counter[tuple[str, str]] = Counter()
 
         self.exact_confusions: Dict[str, Sequence[str]] = {
             "фсе": ("все",),
@@ -97,6 +152,14 @@ class CandidateGenerator:
             "дэло": ("дело",),
             "ллет": ("лет",),
             "ууже": ("уже",),
+            "паралон": ("поролон",),
+            "координально": ("кардинально",),
+            "расказать": ("рассказать",),
+            "расчитать": ("рассчитать",),
+            "железно-дорожный": ("железнодорожный",),
+            "москва": ("Москва",),
+            "президент": ("Президент",),
+            "вуз": ("ВУЗ",),
         }
 
         self.single_token_confusions: Dict[str, Sequence[str]] = {
@@ -128,6 +191,17 @@ class CandidateGenerator:
             "вследствие": ("в следствие",),
             "в течение": ("в течении",),
             "в течении": ("в течение",),
+            "по новому": ("по-новому",),
+            "в виду": ("ввиду",),
+            "мини футбол": ("мини-футбол",),
+            "вобщем": ("в общем",),
+            "вообщем": ("в общем",),
+            "какбудто": ("как будто",),
+            "почемуто": ("почему-то",),
+            "потомучто": ("потому что",),
+            "таккак": ("так как",),
+            "несмотряна": ("несмотря на",),
+            "изза": ("из-за",),
         }
 
     @classmethod
@@ -140,6 +214,9 @@ class CandidateGenerator:
         safe_split_only: bool = True,
         long_oov_max_distance: int = 2,
         long_oov_min_length: int = 8,
+        enable_keyboard_candidates: bool = True,
+        enable_orthographic_candidates: bool = True,
+        enable_mined_confusions: bool = True,
     ) -> "CandidateGenerator":
         generator = cls(
             min_freq=min_freq,
@@ -148,17 +225,97 @@ class CandidateGenerator:
             safe_split_only=safe_split_only,
             long_oov_max_distance=long_oov_max_distance,
             long_oov_min_length=long_oov_min_length,
+            enable_keyboard_candidates=enable_keyboard_candidates,
+            enable_orthographic_candidates=enable_orthographic_candidates,
+            enable_mined_confusions=enable_mined_confusions,
         )
         generator.fit(texts)
         return generator
 
     def fit(self, texts: Iterable[str]) -> None:
+        self._candidate_cache = {}
         for text in texts:
             for word in word_tokens(str(text)):
                 norm = normalize_word(word)
                 if len(norm) > 1:
                     self.frequencies[norm] += 1
         self._build_buckets()
+
+    def fit_mined_confusions(
+        self,
+        error_texts: Iterable[str],
+        correct_texts: Iterable[str],
+        *,
+        min_count: int = 2,
+    ) -> dict[str, int]:
+        """Mine conservative source->target pairs from the training split only."""
+        self._candidate_cache = {}
+        pair_counts: Counter[tuple[str, str]] = Counter()
+        stats = {"pairs": 0, "replace_segments": 0, "accepted": 0}
+
+        for error_text, correct_text in zip(error_texts, correct_texts):
+            stats["pairs"] += 1
+            src_words = word_tokens(str(error_text))
+            tgt_words = word_tokens(str(correct_text))
+            if not src_words or not tgt_words:
+                continue
+            src_norm = [normalize_word(word) for word in src_words]
+            tgt_norm = [normalize_word(word) for word in tgt_words]
+            matcher = SequenceMatcher(None, src_norm, tgt_norm)
+            for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+                if tag != "replace" or i2 - i1 != 1 or not (1 <= j2 - j1 <= 3):
+                    continue
+                stats["replace_segments"] += 1
+                source_norm = src_norm[i1]
+                target_text = " ".join(tgt_norm[j1:j2])
+                if not self._is_mineable_confusion(source_norm, target_text):
+                    continue
+                pair_counts[(source_norm, target_text)] += 1
+
+        min_count = max(1, int(min_count))
+        mined: dict[str, list[str]] = defaultdict(list)
+        for (source_norm, target_text), count in pair_counts.items():
+            if count < min_count:
+                continue
+            mined[source_norm].append(target_text)
+            stats["accepted"] += 1
+
+        for source_norm, targets in mined.items():
+            targets.sort(
+                key=lambda item: (
+                    -pair_counts[(source_norm, item)],
+                    -sum(math.log1p(self.frequencies.get(part, 0)) for part in item.split()),
+                    item,
+                )
+            )
+
+        self.mined_confusions = {key: tuple(values[:8]) for key, values in mined.items()}
+        self.mined_confusion_counts = pair_counts
+        return stats
+
+    def _is_mineable_confusion(self, source_norm: str, target_text: str) -> bool:
+        if not source_norm or not target_text:
+            return False
+        if source_norm == normalize_word(target_text):
+            return False
+        if len(source_norm) < 3 or any(ch.isdigit() for ch in source_norm):
+            return False
+        if self.is_known(source_norm):
+            return False
+        parts = [normalize_word(part) for part in target_text.split()]
+        if not parts:
+            return False
+        if len(parts) > 1:
+            allowed = {normalize_word(item) for item in self.phrase_confusions.get(source_norm, ())}
+            return normalize_word(target_text) in allowed
+        target_norm = parts[0]
+        if self.frequencies.get(target_norm, 0) < self.min_freq:
+            return False
+        if abs(len(source_norm) - len(target_norm)) > 2:
+            return False
+        if bounded_damerau_levenshtein(source_norm, target_norm, 2) <= 2:
+            return True
+        return source_norm[:2] == target_norm[:2] and source_norm[-2:] == target_norm[-2:]
 
     def _build_buckets(self) -> None:
         self.length_buckets.clear()
@@ -190,8 +347,22 @@ class CandidateGenerator:
             generator.long_oov_min_length = 8
         if not hasattr(generator, "long_oov_max_bucket_size"):
             generator.long_oov_max_bucket_size = 2000
+        if not hasattr(generator, "enable_keyboard_candidates"):
+            generator.enable_keyboard_candidates = True
+        if not hasattr(generator, "enable_orthographic_candidates"):
+            generator.enable_orthographic_candidates = True
+        if not hasattr(generator, "enable_mined_confusions"):
+            generator.enable_mined_confusions = True
+        if not hasattr(generator, "unsafe_split_blocked_count"):
+            generator.unsafe_split_blocked_count = 0
+        if not hasattr(generator, "mined_confusions"):
+            generator.mined_confusions = {}
+        if not hasattr(generator, "mined_confusion_counts"):
+            generator.mined_confusion_counts = Counter()
         if not hasattr(generator, "exact_confusions"):
             generator.exact_confusions = {}
+        if not hasattr(generator, "_candidate_cache"):
+            generator._candidate_cache = {}
         generator.exact_confusions.update(
             {
                 "фсе": ("все",),
@@ -204,6 +375,31 @@ class CandidateGenerator:
                 "дэло": ("дело",),
                 "ллет": ("лет",),
                 "ууже": ("уже",),
+                "паралон": ("поролон",),
+                "координально": ("кардинально",),
+                "расказать": ("рассказать",),
+                "расчитать": ("рассчитать",),
+                "железно-дорожный": ("железнодорожный",),
+                "москва": ("Москва",),
+                "президент": ("Президент",),
+                "вуз": ("ВУЗ",),
+            }
+        )
+        if not hasattr(generator, "phrase_confusions"):
+            generator.phrase_confusions = {}
+        generator.phrase_confusions.update(
+            {
+                "по новому": ("по-новому",),
+                "в виду": ("ввиду",),
+                "мини футбол": ("мини-футбол",),
+                "вобщем": ("в общем",),
+                "вообщем": ("в общем",),
+                "какбудто": ("как будто",),
+                "почемуто": ("почему-то",),
+                "потомучто": ("потому что",),
+                "таккак": ("так как",),
+                "несмотряна": ("несмотря на",),
+                "изза": ("из-за",),
             }
         )
         if getattr(generator, "max_distance", 2) > 1:
@@ -243,12 +439,39 @@ class CandidateGenerator:
         norm = normalize_word(word)
         if len(norm) < 3 or any(ch.isdigit() for ch in norm):
             return []
+        cache_key = (
+            str(word),
+            int(max_candidates),
+            bool(include_known_dictionary),
+            bool(allow_long_oov),
+            bool(getattr(self, "enable_keyboard_candidates", True)),
+            bool(getattr(self, "enable_orthographic_candidates", True)),
+            bool(getattr(self, "enable_mined_confusions", True)),
+            len(getattr(self, "mined_confusions", {})),
+        )
+        cache = getattr(self, "_candidate_cache", None)
+        if cache is None:
+            self._candidate_cache = {}
+            cache = self._candidate_cache
+        if cache_key in cache:
+            return list(cache[cache_key])
 
         candidates: Dict[str, Candidate] = {}
 
         if self._has_rule_candidate(norm):
-            for cand in self._rule_candidates(norm):
-                self._add_candidate(candidates, cand, word, "rule", distance=1)
+            for cand, source in self._rule_candidate_items(norm):
+                self._add_candidate(candidates, cand, word, source, distance=1)
+
+        if not self.is_known(norm):
+            if getattr(self, "enable_mined_confusions", True):
+                for cand in self.mined_confusions.get(norm, ()):
+                    self._add_candidate(candidates, cand, word, "mined", distance=1)
+            if getattr(self, "enable_orthographic_candidates", True):
+                for cand in self._orthographic_candidates(norm):
+                    self._add_candidate(candidates, cand, word, "orthographic", distance=1)
+            if getattr(self, "enable_keyboard_candidates", True):
+                for cand in self._keyboard_candidates(norm):
+                    self._add_candidate(candidates, cand, word, "keyboard", distance=1)
 
         if (include_known_dictionary or not self.is_known(norm)) and len(norm) >= self.min_dictionary_word_length:
             if self.max_distance <= 1:
@@ -270,9 +493,15 @@ class CandidateGenerator:
             for cand in split_candidates:
                 self._add_candidate(candidates, cand, word, "split", distance=1)
 
-        result = [c for key, c in candidates.items() if normalize_word(key) != norm]
+        result = [
+            c
+            for key, c in candidates.items()
+            if normalize_word(key) != norm or str(c.text) != str(word)
+        ]
         result.sort(key=lambda c: c.score, reverse=True)
-        return result[:max_candidates]
+        result = result[:max_candidates]
+        cache[cache_key] = tuple(result)
+        return result
 
     def best(
         self,
@@ -309,18 +538,17 @@ class CandidateGenerator:
             return
         is_allowed_split = source == "split" and self._is_allowed_service_split_pair(parts)
         if (
-            source != "rule"
+            source not in {"rule", "phrase_safe"}
             and not is_allowed_split
             and not all(self.frequencies.get(part, 0) >= self.min_freq for part in parts)
         ):
             return
 
         freq_score = sum(math.log1p(self.frequencies.get(part, 0)) for part in parts)
-        score = freq_score - (distance * 2.0)
-        if source == "rule":
-            score += 0.75
+        score = freq_score - (distance * 2.0) + SOURCE_SCORE_BOOSTS.get(source, 0.0)
+        if source == "mined":
+            score += 0.5 * math.log1p(self.mined_confusion_counts.get((normalize_word(source_word), normalize_word(candidate)), 0))
         if source == "split":
-            score += 0.5
             if is_allowed_split:
                 score += 3.0
 
@@ -330,16 +558,18 @@ class CandidateGenerator:
         if old is None or new.score > old.score:
             target[text] = new
 
-    def _rule_candidates(self, norm: str) -> Iterable[str]:
+    def _rule_candidate_items(self, norm: str) -> Iterable[tuple[str, str]]:
         if norm in self.exact_confusions:
-            yield from self.exact_confusions[norm]
+            for candidate in self.exact_confusions[norm]:
+                yield candidate, "rule"
 
         if norm in self.phrase_confusions:
-            yield from self.phrase_confusions[norm]
+            for candidate in self.phrase_confusions[norm]:
+                yield candidate, "phrase_safe"
 
         repeated_first = self._short_repeated_first_candidate(norm)
         if repeated_first is not None:
-            yield repeated_first
+            yield repeated_first, "rule"
 
         for key, replacements in self.single_token_confusions.items():
             start = 0
@@ -348,8 +578,12 @@ class CandidateGenerator:
                 if pos == -1:
                     break
                 for repl in replacements:
-                    yield norm[:pos] + repl + norm[pos + len(key) :]
+                    yield norm[:pos] + repl + norm[pos + len(key) :], "orthographic"
                 start = pos + 1
+
+    def _rule_candidates(self, norm: str) -> Iterable[str]:
+        for candidate, _ in self._rule_candidate_items(norm):
+            yield candidate
 
     def _short_repeated_first_candidate(self, norm: str) -> str | None:
         if len(norm) < 4 or len(norm) > 5:
@@ -362,6 +596,49 @@ class CandidateGenerator:
         if self.frequencies.get(candidate, 0) < self.min_freq:
             return None
         return candidate
+
+    def _orthographic_candidates(self, norm: str) -> Iterable[str]:
+        seen: set[str] = set()
+
+        def emit(candidate: str) -> str | None:
+            if candidate == norm or candidate in seen:
+                return None
+            if self.frequencies.get(candidate, 0) < self.min_freq:
+                return None
+            seen.add(candidate)
+            return candidate
+
+        for i, char in enumerate(norm):
+            for replacement in ORTHOGRAPHIC_CHAR_CONFUSIONS.get(char, ()):
+                candidate = emit(norm[:i] + replacement + norm[i + 1 :])
+                if candidate is not None:
+                    yield candidate
+
+        for i, char in enumerate(norm):
+            if char not in RUSSIAN_CONSONANTS:
+                continue
+            candidate = emit(norm[:i] + char + norm[i:])
+            if candidate is not None:
+                yield candidate
+
+        for i in range(len(norm) - 1):
+            if norm[i] != norm[i + 1] or norm[i] not in RUSSIAN_CONSONANTS:
+                continue
+            candidate = emit(norm[:i] + norm[i + 1 :])
+            if candidate is not None:
+                yield candidate
+
+    def _keyboard_candidates(self, norm: str) -> Iterable[str]:
+        seen: set[str] = set()
+        for i, char in enumerate(norm):
+            for replacement in RUSSIAN_KEYBOARD_NEIGHBORS.get(char, ()):
+                candidate = norm[:i] + replacement + norm[i + 1 :]
+                if candidate == norm or candidate in seen:
+                    continue
+                if self.frequencies.get(candidate, 0) < self.min_freq:
+                    continue
+                seen.add(candidate)
+                yield candidate
 
     def _edit_distance_candidates(self, norm: str) -> Iterable[tuple[str, int]]:
         min_len = max(1, len(norm) - self.max_distance)
@@ -448,8 +725,8 @@ class CandidateGenerator:
         """Yield conservative two-word split candidates.
 
         This is intentionally narrower than the legacy split path. It targets
-        glued whitespace errors while avoiding grammatical suffix artifacts such
-        as ``говориться -> говорить ся``.
+        curated lexical two-word splits while avoiding grammatical suffix
+        artifacts such as ``говориться -> говорить ся``.
         """
         source = str(source_word or "")
         if len(norm) < 4:
@@ -465,6 +742,9 @@ class CandidateGenerator:
             return
         if norm.endswith(("ться", "тся", "ся")):
             return
+        if len(norm) >= 4 and norm[0] == norm[1] and self.frequencies.get(norm[1:], 0) >= self.min_freq:
+            self.unsafe_split_blocked_count += 1
+            return
 
         for split_at in range(1, len(norm) - 1):
             left = norm[:split_at]
@@ -472,6 +752,9 @@ class CandidateGenerator:
             pair = (left, right)
             if pair in SPLIT_SERVICE_WHITELIST:
                 yield f"{left} {right}"
+                continue
+            if self._is_unsafe_short_service_split(left, right):
+                self.unsafe_split_blocked_count += 1
                 continue
             if self._is_allowed_service_split_pair([left, right]):
                 yield f"{left} {right}"
@@ -482,6 +765,14 @@ class CandidateGenerator:
                 continue
             if self.is_known(left) and self.is_known(right):
                 yield f"{left} {right}"
+
+    @staticmethod
+    def _is_unsafe_short_service_split(left: str, right: str) -> bool:
+        if left in SHORT_SERVICE_SPLIT_LEFT and (len(right) < 5 or right[:1] in VOWELS):
+            return True
+        if right in {"в", "к", "с", "о", "у"} and len(left) < 5:
+            return True
+        return False
 
     def _is_allowed_service_split_pair(self, parts: Sequence[str]) -> bool:
         if len(parts) != 2:

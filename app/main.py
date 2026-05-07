@@ -13,9 +13,23 @@ os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 # Добавляем путь к модулям src
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-import tkinter as tk
-from tkinter import ttk, scrolledtext, messagebox, filedialog
-from tkinter import font as tkfont
+try:
+    import tkinter as tk
+    from tkinter import ttk, scrolledtext, messagebox, filedialog
+    from tkinter import font as tkfont
+except ModuleNotFoundError as exc:
+    if exc.name != "tkinter":
+        raise
+    print(
+        "Tkinter is not installed in this WSL Python environment.\n"
+        "Install the Ubuntu system package and run the app again:\n\n"
+        "  sudo apt update\n"
+        "  sudo apt install python3.10-tk\n\n"
+        "Then launch:\n"
+        "  PYTHONPATH=src .venv/bin/python app/main.py",
+        file=sys.stderr,
+    )
+    sys.exit(1)
 
 try:
     from docx import Document  # python-docx
@@ -280,8 +294,6 @@ class SpellingAssistantGUI:
         # Настраиваем теги для подсветки
         self.setup_highlight_tags()
     
-    from pathlib import Path
-
     def load_model(self):
         self.status_label.config(text="Загрузка модели...", fg='orange')
         self.check_button.config(state=tk.DISABLED)
@@ -295,7 +307,9 @@ class SpellingAssistantGUI:
                 model_path=str(models_dir / "hybrid_corrector.keras"),
                 preprocessor_path=str(models_dir / "hybrid_preprocessor.pkl"),
                 candidate_generator_path=str(models_dir / "candidate_generator.pkl"),
-                strictness="normal",
+                strictness="strict",
+                context_device="auto",
+                candidate_top_k=16,
             )
 
             if self.corrector.is_trained:
@@ -339,20 +353,30 @@ class SpellingAssistantGUI:
         self.root.update()
         
         try:
-            # Исправление текста
-            # Исправляем ПОСТРОЧНО, чтобы сохранить переносы как слева
-            lines = input_text.split("\n")  # сохраняет пустые строки и хвостовой перенос
-            corrected_lines = []
-            for line in lines:
-                line = line.rstrip("\r")  # на случай Windows CRLF
-                if line.strip():
-                    corrected_lines.append(self.corrector.correct(line))
-                else:
-                    corrected_lines.append("")  # пустая строка остаётся пустой
-            
-            corrected_text = "\n".join(corrected_lines)
+            lines = [line.rstrip("\r") for line in input_text.split("\n")]
+            corrected_lines = [""] * len(lines)
+            non_empty_indices = [index for index, line in enumerate(lines) if line.strip()]
+            non_empty_lines = [lines[index] for index in non_empty_indices]
+            confidence = 1.0
 
-            confidence = self.corrector.get_confidence(input_text)
+            if non_empty_lines:
+                if hasattr(self.corrector, "correct_many"):
+                    results = self.corrector.correct_many(non_empty_lines, batch_size=512)
+                    confidences = []
+                    for index, result in zip(non_empty_indices, results):
+                        corrected_lines[index] = result.corrected
+                        confidences.append(float(result.confidence))
+                    if confidences:
+                        confidence = sum(confidences) / len(confidences)
+                else:
+                    confidences = []
+                    for index in non_empty_indices:
+                        corrected_lines[index] = self.corrector.correct(lines[index])
+                        confidences.append(float(self.corrector.get_confidence(lines[index])))
+                    if confidences:
+                        confidence = sum(confidences) / len(confidences)
+
+            corrected_text = "\n".join(corrected_lines)
             
             # Сохраняем тексты для подсветки
             self.current_original_text = input_text
