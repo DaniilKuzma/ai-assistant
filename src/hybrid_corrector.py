@@ -8,13 +8,14 @@ import json
 import math
 import os
 from pathlib import Path
+import re
 from typing import Dict, List, Sequence
 
 import numpy as np
 
 from candidate_generator import CandidateGenerator
 from context_reranker import ContextReranker
-from edit_labels import ACTION_DELETE, ACTION_KEEP, action_replace_rank
+from edit_labels import ACTION_DELETE, ACTION_KEEP, action_replace_rank, iter_span_phrase_rewrites
 from entity_guard import ProtectedLexicon
 from hybrid_preprocessor import HybridPreprocessor
 from morphology_guard import is_morphological_dictionary_word, is_same_lemma_inflection
@@ -52,7 +53,10 @@ GLUED_SERVICE_TOKENS = {
     "их",
 }
 ALLOWED_PHRASE_JOININGS = {
+    ("так", "же", "также"),
+    ("что", "бы", "чтобы"),
     ("по", "новому", "по-новому"),
+    ("не", "смотря", "несмотря"),
     ("в", "виду", "ввиду"),
     ("мини", "футбол", "мини-футбол"),
 }
@@ -92,9 +96,9 @@ SAFE_COMMA_DELETE_MONTHS = {
     "ноября",
     "декабря",
 }
-DICTIONARY_LIKE_CANDIDATE_SOURCES = {"dictionary", "keyboard", "orthographic", "mined"}
-CONTEXT_RERANK_CANDIDATE_SOURCES = DICTIONARY_LIKE_CANDIDATE_SOURCES | {"split", "phrase_safe"}
-CONTEXT_REQUIRED_CANDIDATE_SOURCES = {"split", "phrase_safe"}
+DICTIONARY_LIKE_CANDIDATE_SOURCES = {"dictionary", "orthographic", "mined"}
+CONTEXT_RERANK_CANDIDATE_SOURCES = DICTIONARY_LIKE_CANDIDATE_SOURCES | {"split", "phrase_safe", "phrase", "rule"}
+CONTEXT_REQUIRED_CANDIDATE_SOURCES = {"split", "phrase_safe", "phrase"}
 
 
 @dataclass
@@ -112,6 +116,7 @@ class CorrectionEdit:
     context_margin: float = 0.0
     reranked: bool = False
     reranker_reason: str = ""
+    span_len: int = 1
 
 
 @dataclass(frozen=True)
@@ -121,6 +126,7 @@ class RuntimeCandidate:
     distance: int = 0
     score: float = 0.0
     rank: int = -1
+    span_len: int = 1
 
 
 @dataclass(frozen=True)
@@ -160,6 +166,7 @@ class WordDecision:
     context_scores: List[str] = field(default_factory=list)
     context_margin: float = 0.0
     reranker_reason: str = ""
+    context_needed: bool = False
     window_id: int = 0
     window_conflict_resolved: bool = False
     protected_source: bool = False
@@ -606,6 +613,8 @@ class HybridCorrector:
                 source_puncts=source_puncts,
                 rewrite_punct_indices=[edit.index for edit in edits if edit.action == "PUNCT"],
             )
+            if any(edit.action == ACTION_DELETE or int(getattr(edit, "span_len", 1)) > 1 for edit in edits):
+                corrected = self._normalize_span_deleted_spacing(corrected)
         else:
             corrected = text
 
@@ -617,6 +626,13 @@ class HybridCorrector:
             return CorrectionResult(text, text, confidence, False, decision.reason, [], punctuation_diagnostics, word_diagnostics)
 
         return CorrectionResult(text, corrected, confidence, True, decision.reason, edits, punctuation_diagnostics, word_diagnostics)
+
+    @staticmethod
+    def _normalize_span_deleted_spacing(text: str) -> str:
+        text = re.sub(r"[ \t]{2,}", " ", str(text))
+        text = re.sub(r"\s+([,.;:!?»)\]])", r"\1", text)
+        text = re.sub(r"([«(\[])\s+", r"\1", text)
+        return text.strip()
 
     def _candidate_options_for_word(self, word: str, prev_word: str = "", next_word: str = "") -> List[RuntimeCandidate]:
         norm = normalize_word(word)
@@ -656,7 +672,7 @@ class HybridCorrector:
             )
             for i, word in enumerate(words)
         ]
-        normalized = [word.lower().replace("ё", "е") for word in words]
+        normalized = [normalize_word(word) for word in words]
 
         phrase_map = getattr(self.candidate_generator, "phrase_confusions", {})
         for source_phrase, target_phrases in phrase_map.items():
@@ -666,35 +682,109 @@ class HybridCorrector:
             for i in range(0, len(words) - len(source_parts) + 1):
                 if normalized[i : i + len(source_parts)] != source_parts:
                     continue
-                target_parts = str(target_phrases[0]).split()
-                if len(target_parts) == len(source_parts):
-                    for offset, target_word in enumerate(target_parts):
-                        phrase_candidate = RuntimeCandidate(
-                            text=apply_case_like(target_word, words[i + offset]),
-                            source="phrase",
-                            distance=0,
-                            score=100.0,
-                            rank=0,
-                        )
-                        candidates[i + offset] = self._renumber_candidates([phrase_candidate] + [
-                            candidate
-                            for candidate in candidates[i + offset]
-                            if normalize_word(candidate.text) != normalize_word(phrase_candidate.text)
-                        ][: self.candidate_top_k - 1])
-                elif len(target_parts) == 1:
-                    phrase_candidate = RuntimeCandidate(
-                        text=apply_case_like(target_parts[0], words[i]),
-                        source="phrase",
-                        distance=0,
-                        score=100.0,
-                        rank=0,
-                    )
-                    candidates[i] = self._renumber_candidates([phrase_candidate] + [
-                        candidate
-                        for candidate in candidates[i]
-                        if normalize_word(candidate.text) != normalize_word(phrase_candidate.text)
-                    ][: self.candidate_top_k - 1])
+                candidates = self._inject_span_phrase_candidates(
+                    candidates,
+                    words,
+                    i,
+                    len(source_parts),
+                    str(target_phrases[0]).split(),
+                    score=100.0,
+                )
+
+        for start, source_len, target_parts in iter_span_phrase_rewrites(words):
+            candidates = self._inject_span_phrase_candidates(
+                candidates,
+                words,
+                start,
+                source_len,
+                list(target_parts),
+                score=120.0,
+            )
         return candidates
+
+    def _inject_span_phrase_candidates(
+        self,
+        candidates: List[List[RuntimeCandidate]],
+        words: Sequence[str],
+        start: int,
+        source_len: int,
+        target_parts: Sequence[str],
+        *,
+        score: float,
+    ) -> List[List[RuntimeCandidate]]:
+        source_parts = [normalize_word(word) for word in words[start : start + source_len]]
+        for offset, span_len, candidate_text in self._span_phrase_candidate_specs(source_parts, target_parts):
+            index = start + offset
+            if index >= len(candidates):
+                continue
+            phrase_candidate = RuntimeCandidate(
+                text=apply_case_like(candidate_text, words[index]),
+                source="phrase",
+                distance=0,
+                score=score,
+                rank=0,
+                span_len=span_len,
+            )
+            if normalize_word(phrase_candidate.text) == normalize_word(words[index]):
+                continue
+            candidates[index] = self._prepend_candidate(candidates[index], phrase_candidate)
+        return candidates
+
+    @staticmethod
+    def _span_phrase_candidate_specs(
+        source_parts: Sequence[str],
+        target_parts: Sequence[str],
+    ) -> List[tuple[int, int, str]]:
+        source_parts = [normalize_word(part) for part in source_parts]
+        target_parts = [normalize_word(part) for part in target_parts]
+        if not source_parts or not target_parts or source_parts == target_parts:
+            return []
+
+        prefix_len = 0
+        while (
+            prefix_len < len(source_parts)
+            and prefix_len < len(target_parts)
+            and source_parts[prefix_len] == target_parts[prefix_len]
+        ):
+            prefix_len += 1
+
+        suffix_len = 0
+        while (
+            suffix_len < len(source_parts) - prefix_len
+            and suffix_len < len(target_parts) - prefix_len
+            and source_parts[len(source_parts) - 1 - suffix_len] == target_parts[len(target_parts) - 1 - suffix_len]
+        ):
+            suffix_len += 1
+
+        source_mid_len = len(source_parts) - prefix_len - suffix_len
+        target_mid_end = len(target_parts) - suffix_len if suffix_len else len(target_parts)
+        target_mid_parts = target_parts[prefix_len:target_mid_end]
+        if source_mid_len <= 0 or not target_mid_parts:
+            return []
+
+        if source_mid_len == len(target_mid_parts):
+            return [
+                (prefix_len + offset, 1, target_word)
+                for offset, target_word in enumerate(target_mid_parts)
+                if source_parts[prefix_len + offset] != target_word
+            ]
+
+        return [(prefix_len, source_mid_len, " ".join(target_mid_parts))]
+
+    def _prepend_candidate(
+        self,
+        candidates: Sequence[RuntimeCandidate],
+        candidate: RuntimeCandidate,
+    ) -> List[RuntimeCandidate]:
+        normalized_candidate = normalize_word(candidate.text)
+        return self._renumber_candidates(
+            [candidate]
+            + [
+                existing
+                for existing in candidates
+                if normalize_word(existing.text) != normalized_candidate
+            ][: self.candidate_top_k - 1]
+        )
 
     @staticmethod
     def _renumber_candidates(candidates: Sequence[RuntimeCandidate]) -> List[RuntimeCandidate]:
@@ -705,6 +795,7 @@ class HybridCorrector:
                 distance=candidate.distance,
                 score=candidate.score,
                 rank=rank,
+                span_len=max(1, int(getattr(candidate, "span_len", 1))),
             )
             for rank, candidate in enumerate(candidates)
         ]
@@ -803,6 +894,7 @@ class HybridCorrector:
                         context_margin,
                         reranked,
                         reranker_reason,
+                        span_len=selected.span_len,
                     )
                 )
                 confidences.append(0.55)
@@ -832,6 +924,7 @@ class HybridCorrector:
                         context_scores=context_scores,
                         context_margin=context_margin,
                         reranker_reason=reranker_reason,
+                        context_needed=self._decision_context_needed(candidates, selected),
                         protected_source=bool(entity_meta["protected_source"]),
                         entity_context=bool(entity_meta["entity_context"]),
                         clean_lexicon_frequency=int(entity_meta["clean_lexicon_frequency"]),
@@ -839,7 +932,68 @@ class HybridCorrector:
                 )
             corrected_puncts.append(punct)
 
+        if edits:
+            edits_by_index: List[List[CorrectionEdit]] = [[] for _ in source_words]
+            for edit in edits:
+                if 0 <= edit.index < len(edits_by_index):
+                    edits_by_index[edit.index].append(edit)
+            self._apply_span_deletions(
+                source_words,
+                source_puncts,
+                corrected_words,
+                corrected_puncts,
+                edits_by_index,
+            )
+            edits = [edit for group in edits_by_index for edit in group]
+
         return corrected_words, corrected_puncts, edits, word_diagnostics, float(np.mean(confidences) if confidences else 1.0)
+
+    @staticmethod
+    def _apply_span_deletions(
+        source_words: Sequence[str],
+        source_puncts: Sequence[str],
+        corrected_words: List[str],
+        corrected_puncts: List[str],
+        edits_by_index: List[List[CorrectionEdit]],
+    ) -> None:
+        length = len(source_words)
+        for index, token_edits in enumerate(list(edits_by_index)):
+            span_edits = [
+                edit
+                for edit in token_edits
+                if edit.action.startswith("REPLACE_") and int(getattr(edit, "span_len", 1)) > 1
+            ]
+            if not span_edits:
+                continue
+            edit = span_edits[0]
+            span_len = min(int(getattr(edit, "span_len", 1)), length - index)
+            if span_len <= 1:
+                continue
+
+            last_index = index + span_len - 1
+            if last_index < len(corrected_puncts) and corrected_puncts[last_index]:
+                corrected_puncts[index] = corrected_puncts[last_index]
+
+            for delete_index in range(index + 1, index + span_len):
+                corrected_words[delete_index] = ""
+                corrected_puncts[delete_index] = ""
+                edits_by_index[delete_index] = [
+                    CorrectionEdit(
+                        delete_index,
+                        source_words[delete_index],
+                        "",
+                        ACTION_DELETE,
+                        edit.confidence,
+                        edit.candidate_source,
+                        edit.candidate_distance,
+                        edit.candidate_score,
+                        edit.candidate_rank,
+                        edit.context_score,
+                        edit.context_margin,
+                        edit.reranked,
+                        edit.reranker_reason,
+                    )
+                ]
 
     def _model_correct(
         self,
@@ -974,6 +1128,7 @@ class HybridCorrector:
                                     context_margin,
                                     reranked,
                                     reranker_reason,
+                                    span_len=candidate.span_len,
                                 )
                             )
                 elif replace_rank is not None:
@@ -1008,6 +1163,7 @@ class HybridCorrector:
                         context_scores=context_scores,
                         context_margin=context_margin,
                         reranker_reason=reranker_reason,
+                        context_needed=self._decision_context_needed(candidates, word_selected),
                         window_id=window_id,
                         window_conflict_resolved=False,
                         protected_source=bool(entity_meta["protected_source"]),
@@ -1079,6 +1235,14 @@ class HybridCorrector:
                     selected_scores[i] = score
                     selected_confidences[i] = token_conf
 
+        self._apply_span_deletions(
+            source_words,
+            source_puncts,
+            corrected_words,
+            corrected_puncts,
+            selected_edits,
+        )
+
         edits: List[CorrectionEdit] = []
         punctuation_diagnostics: List[PunctuationDecision] = []
         word_diagnostics: List[WordDecision] = []
@@ -1106,6 +1270,7 @@ class HybridCorrector:
                         context_scores=word_diag.context_scores,
                         context_margin=word_diag.context_margin,
                         reranker_reason=word_diag.reranker_reason,
+                        context_needed=word_diag.context_needed,
                         window_id=word_diag.window_id,
                         window_conflict_resolved=conflict_flags[i],
                         protected_source=word_diag.protected_source,
@@ -1270,6 +1435,8 @@ class HybridCorrector:
         next_word: str = "",
     ) -> RerankOutcome:
         context_required = self._requires_context_confirmation(selected)
+        if context_required:
+            self._increment_stat("context_needed_count")
         if selected.source not in CONTEXT_RERANK_CANDIDATE_SOURCES:
             return RerankOutcome(selected=selected, reason="not_called")
         if not getattr(self, "context_reranker_enabled", False):
@@ -1287,8 +1454,29 @@ class HybridCorrector:
             return RerankOutcome(selected=selected, reason="no_viable_candidates")
 
         self._increment_stat("reranker_called_count")
-        texts = [source] + [candidate.text for candidate in viable]
-        scores = self.context_reranker.score_candidates(source_words, index, source, texts)
+        source_context_text = self._source_span_text(source_words, index, getattr(selected, "span_len", 1))
+        texts = [source_context_text] + [candidate.text for candidate in viable]
+        span_lengths = [max(1, int(getattr(selected, "span_len", 1)))] + [
+            max(1, int(getattr(candidate, "span_len", 1)))
+            for candidate in viable
+        ]
+        try:
+            scores = self.context_reranker.score_candidates(
+                source_words,
+                index,
+                source_context_text,
+                texts,
+                candidate_span_lengths=span_lengths,
+            )
+        except TypeError as exc:
+            if "candidate_span_lengths" not in str(exc):
+                raise
+            scores = self.context_reranker.score_candidates(
+                source_words,
+                index,
+                source_context_text,
+                texts,
+            )
         context_payload = self._context_score_payload(scores)
         context_best = self._best_context_text(scores)
         for score in scores or []:
@@ -1334,13 +1522,13 @@ class HybridCorrector:
         best = ranked[0]
         second_score = ranked[1].score if len(ranked) > 1 else best.score
         context_margin = float(best.score - second_score)
-        source_score = score_by_norm.get(normalize_word(source))
+        source_score = score_by_norm.get(normalize_word(source_context_text))
         selected_score = score_by_norm.get(normalize_word(selected.text))
         context_score = float(selected_score.score) if selected_score is not None else -math.inf
 
         if (
             source_score is not None
-            and normalize_word(best.text) == normalize_word(source)
+            and normalize_word(best.text) == normalize_word(source_context_text)
             and context_margin >= self.context_margin
         ):
             self._increment_stat("reranker_source_preferred_count")
@@ -1374,7 +1562,7 @@ class HybridCorrector:
                 context_scores=context_payload,
             )
 
-        if normalize_word(best.text) != normalize_word(source) and context_margin >= self.context_margin:
+        if normalize_word(best.text) != normalize_word(source_context_text) and context_margin >= self.context_margin:
             best_candidate = next(
                 (candidate for candidate in viable if normalize_word(candidate.text) == normalize_word(best.text)),
                 None,
@@ -1425,11 +1613,39 @@ class HybridCorrector:
 
     @staticmethod
     def _requires_context_confirmation(candidate: RuntimeCandidate) -> bool:
-        return candidate.source in CONTEXT_REQUIRED_CANDIDATE_SOURCES or " " in str(candidate.text or "")
+        return HybridCorrector._candidate_needs_context(candidate)
+
+    @staticmethod
+    def _candidate_needs_context(candidate: RuntimeCandidate | None) -> bool:
+        if candidate is None:
+            return False
+        return (
+            candidate.source in CONTEXT_REQUIRED_CANDIDATE_SOURCES
+            or " " in str(candidate.text or "")
+            or int(getattr(candidate, "span_len", 1)) > 1
+        )
+
+    @staticmethod
+    def _decision_context_needed(
+        candidates: Sequence[RuntimeCandidate],
+        selected: RuntimeCandidate | None = None,
+    ) -> bool:
+        if HybridCorrector._candidate_needs_context(selected):
+            return True
+        return any(HybridCorrector._candidate_needs_context(candidate) for candidate in candidates)
+
+    @staticmethod
+    def _source_span_text(words: Sequence[str], index: int, span_len: int = 1) -> str:
+        span_len = max(1, int(span_len))
+        return " ".join(str(word) for word in words[index : min(len(words), index + span_len)]) or (
+            str(words[index]) if 0 <= index < len(words) else ""
+        )
 
     def _increment_context_required_block(self, candidate: RuntimeCandidate) -> None:
         if candidate.source == "split":
             self._increment_stat("split_blocked_by_context_count")
+        elif candidate.source in {"phrase", "phrase_safe"}:
+            self._increment_stat("phrase_blocked_by_context_count")
         else:
             self._increment_stat("unsafe_split_blocked_count")
 
@@ -1609,10 +1825,11 @@ class HybridCorrector:
             if (
                 candidate.source in {"phrase", "phrase_safe"}
                 and self._collapses_next_word(source, candidate.text, next_word)
-                and not self._is_allowed_phrase_joining(source, candidate.text, next_word)
+                and (
+                    int(getattr(candidate, "span_len", 1)) <= 1
+                    or not self._is_allowed_phrase_joining(source, candidate.text, next_word)
+                )
             ):
-                return "phrase_context_guard"
-            if normalize_word(source) == "так" and normalize_word(candidate.text) == "также" and normalize_word(next_word) == "же":
                 return "phrase_context_guard"
             if self._looks_like_name_context(source, prev_word, next_word):
                 return "name_context_guard"

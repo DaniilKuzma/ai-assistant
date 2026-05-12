@@ -107,7 +107,7 @@ class HybridPreprocessor:
                 counts[normalize_word(word)] += 1
             for candidates in example.candidate_words:
                 for candidate in candidate_list(candidates):
-                    for part in str(candidate).split():
+                    for part in self.candidate_parts(candidate):
                         counts[normalize_word(part)] += 1
 
         most_common = [
@@ -123,8 +123,12 @@ class HybridPreprocessor:
     def word_id(self, word: str) -> int:
         return self.word_to_id.get(normalize_word(word), self.word_to_id[self.UNK])
 
+    @staticmethod
+    def candidate_parts(candidate: str) -> List[str]:
+        return [part for part in str(candidate or "").split() if part]
+
     def candidate_id(self, candidate: str) -> int:
-        parts = str(candidate).split()
+        parts = self.candidate_parts(candidate)
         if not parts:
             return self.word_to_id[self.UNK]
         if len(parts) == 1:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from difflib import SequenceMatcher
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional, Sequence
 
 import pandas as pd
 
@@ -15,6 +15,19 @@ ACTION_KEEP = "KEEP"
 ACTION_REPLACE = "REPLACE"
 ACTION_DELETE = "DELETE"
 ACTION_REPLACE_PREFIX = "REPLACE_"
+
+SPAN_LEVEL_PHRASE_REWRITES: Dict[tuple[str, ...], tuple[str, ...]] = {
+    ("так", "же"): ("также",),
+    ("также",): ("так", "же"),
+    ("что", "бы"): ("чтобы",),
+    ("чтобы",): ("что", "бы"),
+    ("в", "течении"): ("в", "течение"),
+    ("в", "течение"): ("в", "течении"),
+    ("по", "новому"): ("по-новому",),
+    ("по-новому",): ("по", "новому"),
+    ("не", "смотря", "на"): ("несмотря", "на"),
+    ("несмотря", "на"): ("не", "смотря", "на"),
+}
 
 
 def replace_action(rank: int) -> str:
@@ -42,6 +55,29 @@ def candidate_list(value: object) -> List[str]:
     return [text] if text else [""]
 
 
+def normalized_phrase_key(words: Iterable[str]) -> tuple[str, ...]:
+    """Return the normalized tuple key used by span-level phrase rewrites."""
+    return tuple(normalize_word(word) for word in words)
+
+
+def iter_span_phrase_rewrites(words: Sequence[str]) -> Iterable[tuple[int, int, tuple[str, ...]]]:
+    """Yield normative phrase rewrites as source start, source length and target words."""
+    normalized_words = [normalize_word(word) for word in words]
+    rewrite_items = sorted(
+        SPAN_LEVEL_PHRASE_REWRITES.items(),
+        key=lambda item: len(item[0]),
+        reverse=True,
+    )
+    for start in range(len(normalized_words)):
+        for source_parts, target_parts in rewrite_items:
+            source_len = len(source_parts)
+            if source_len <= 0 or start + source_len > len(normalized_words):
+                continue
+            if tuple(normalized_words[start : start + source_len]) == source_parts:
+                yield start, source_len, target_parts
+                break
+
+
 @dataclass
 class HybridTrainingExample:
     source_words: List[str]
@@ -58,6 +94,37 @@ class HybridTrainingExample:
     def punct_labels(self) -> List[str]:
         """Backward-compatible alias for target punctuation labels."""
         return self.target_punct_labels
+
+
+def example_has_word_edits(example: HybridTrainingExample) -> bool:
+    """Return True when a pair needs a token-level word action."""
+    return any(action != ACTION_KEEP for action in example.action_labels)
+
+
+def example_has_punctuation_edits(example: HybridTrainingExample) -> bool:
+    """Return True when a pair changes a trainable punctuation label."""
+    return any(
+        source != target
+        for source, target in zip(example.source_punct_labels, example.target_punct_labels)
+    )
+
+
+def example_has_trainable_change(example: HybridTrainingExample) -> bool:
+    """Return True when the edit model has at least one supervised target."""
+    return example_has_word_edits(example) or example_has_punctuation_edits(example)
+
+
+def example_word_edit_pairs(example: HybridTrainingExample) -> List[tuple[str, str]]:
+    """Return source/target word pairs for token-level replacements/deletions."""
+    pairs: List[tuple[str, str]] = []
+    for source_word, target_word, action in zip(
+        example.source_words,
+        example.target_words,
+        example.action_labels,
+    ):
+        if action != ACTION_KEEP:
+            pairs.append((source_word, target_word))
+    return pairs
 
 
 def build_training_example(

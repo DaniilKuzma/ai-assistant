@@ -14,11 +14,6 @@ from text_utils import apply_case_like, is_word, normalize_word, word_tokens
 
 RUSSIAN_ALPHABET = "абвгдеёжзийклмнопрстуфхцчшщъыьэюя"
 RUSSIAN_CONSONANTS = "бвгджзйклмнпрстфхцчшщ"
-RUSSIAN_KEYBOARD_ROWS = (
-    "йцукенгшщзхъ",
-    "фывапролджэ",
-    "ячсмитьбю",
-)
 ORTHOGRAPHIC_CHAR_CONFUSIONS = {
     "а": ("о", "я"),
     "о": ("а",),
@@ -35,7 +30,6 @@ SOURCE_SCORE_BOOSTS = {
     "phrase_safe": 6.0,
     "mined": 5.0,
     "orthographic": 3.5,
-    "keyboard": 3.0,
     "split": 0.5,
     "dictionary": 0.0,
 }
@@ -75,25 +69,7 @@ SPLIT_SERVICE_LEFT_WHITELIST = {"не", "ни", "их"}
 SPLIT_SERVICE_RIGHT_WHITELIST = {"в", "во", "на", "не", "ни", "о", "об", "обо", "по", "за", "до", "к", "ко", "с", "со", "из", "от"}
 SHORT_SERVICE_SPLIT_LEFT = {"в", "во", "к", "ко", "с", "со", "о", "об", "у"}
 VOWELS = set("аеёиоуыэюя")
-
-
-def _keyboard_neighbors() -> Dict[str, tuple[str, ...]]:
-    positions: dict[str, tuple[int, int]] = {}
-    for row_index, row in enumerate(RUSSIAN_KEYBOARD_ROWS):
-        for col_index, char in enumerate(row):
-            positions[char] = (row_index, col_index)
-
-    neighbors: dict[str, set[str]] = {char: set() for char in positions}
-    for char, (row_index, col_index) in positions.items():
-        for other, (other_row, other_col) in positions.items():
-            if other == char:
-                continue
-            if abs(row_index - other_row) <= 1 and abs(col_index - other_col) <= 1:
-                neighbors[char].add(other)
-    return {char: tuple(sorted(values)) for char, values in neighbors.items()}
-
-
-RUSSIAN_KEYBOARD_NEIGHBORS = _keyboard_neighbors()
+TYPO_LIKE_EXACT_CONFUSIONS = {"ыть", "чтто", "ччто", "ллет", "ууже"}
 
 
 @dataclass(frozen=True)
@@ -118,7 +94,6 @@ class CandidateGenerator:
         long_oov_max_distance: int = 2,
         long_oov_min_length: int = 8,
         long_oov_max_bucket_size: int = 2000,
-        enable_keyboard_candidates: bool = True,
         enable_orthographic_candidates: bool = True,
         enable_mined_confusions: bool = True,
     ):
@@ -131,7 +106,6 @@ class CandidateGenerator:
         self.long_oov_max_distance = max(1, int(long_oov_max_distance))
         self.long_oov_min_length = max(1, int(long_oov_min_length))
         self.long_oov_max_bucket_size = max(1, int(long_oov_max_bucket_size))
-        self.enable_keyboard_candidates = bool(enable_keyboard_candidates)
         self.enable_orthographic_candidates = bool(enable_orthographic_candidates)
         self.enable_mined_confusions = bool(enable_mined_confusions)
         self.unsafe_split_blocked_count = 0
@@ -145,17 +119,43 @@ class CandidateGenerator:
             "фсе": ("все",),
             "щто": ("что",),
             "што": ("что",),
-            "ыть": ("быть",),
             "эсть": ("есть",),
-            "чтто": ("что",),
-            "ччто": ("что",),
             "дэло": ("дело",),
-            "ллет": ("лет",),
-            "ууже": ("уже",),
+            "новово": ("нового",),
+            "синево": ("синего",),
+            "безконечный": ("бесконечный",),
+            "разписание": ("расписание",),
+            "изправить": ("исправить",),
+            "прикрасный": ("прекрасный",),
+            "преехать": ("приехать",),
+            "длиный": ("длинный",),
+            "ценый": ("ценный",),
+            "искуственный": ("искусственный",),
+            "подезд": ("подъезд",),
+            "обект": ("объект",),
+            "шерох": ("шорох",),
+            "жолтый": ("жёлтый",),
+            "чорный": ("чёрный",),
+            "шопот": ("шёпот",),
+            "цыфра": ("цифра",),
+            "цырк": ("цирк",),
+            "циган": ("цыган",),
             "паралон": ("поролон",),
             "координально": ("кардинально",),
             "расказать": ("рассказать",),
             "расчитать": ("рассчитать",),
+            "акуратный": ("аккуратный",),
+            "ктото": ("кто-то",),
+            "коечто": ("кое-что",),
+            "ктонибудь": ("кто-нибудь",),
+            "чтонибудь": ("что-нибудь",),
+            "порусски": ("по-русски",),
+            "небыл": ("не был",),
+            "нибыл": ("не был",),
+            "неразу": ("ни разу",),
+            "агенство": ("агентство",),
+            "учавствовать": ("участвовать",),
+            "будующий": ("будущий",),
             "железно-дорожный": ("железнодорожный",),
             "москва": ("Москва",),
             "президент": ("Президент",),
@@ -214,7 +214,6 @@ class CandidateGenerator:
         safe_split_only: bool = True,
         long_oov_max_distance: int = 2,
         long_oov_min_length: int = 8,
-        enable_keyboard_candidates: bool = True,
         enable_orthographic_candidates: bool = True,
         enable_mined_confusions: bool = True,
     ) -> "CandidateGenerator":
@@ -225,7 +224,6 @@ class CandidateGenerator:
             safe_split_only=safe_split_only,
             long_oov_max_distance=long_oov_max_distance,
             long_oov_min_length=long_oov_min_length,
-            enable_keyboard_candidates=enable_keyboard_candidates,
             enable_orthographic_candidates=enable_orthographic_candidates,
             enable_mined_confusions=enable_mined_confusions,
         )
@@ -306,16 +304,20 @@ class CandidateGenerator:
         if not parts:
             return False
         if len(parts) > 1:
-            allowed = {normalize_word(item) for item in self.phrase_confusions.get(source_norm, ())}
+            allowed = {
+                normalize_word(item)
+                for item in (
+                    tuple(self.exact_confusions.get(source_norm, ()))
+                    + tuple(self.phrase_confusions.get(source_norm, ()))
+                )
+            }
             return normalize_word(target_text) in allowed
         target_norm = parts[0]
         if self.frequencies.get(target_norm, 0) < self.min_freq:
             return False
-        if abs(len(source_norm) - len(target_norm)) > 2:
+        if not self._is_strict_candidate_pair(source_norm, target_text):
             return False
-        if bounded_damerau_levenshtein(source_norm, target_norm, 2) <= 2:
-            return True
-        return source_norm[:2] == target_norm[:2] and source_norm[-2:] == target_norm[-2:]
+        return True
 
     def _build_buckets(self) -> None:
         self.length_buckets.clear()
@@ -347,8 +349,6 @@ class CandidateGenerator:
             generator.long_oov_min_length = 8
         if not hasattr(generator, "long_oov_max_bucket_size"):
             generator.long_oov_max_bucket_size = 2000
-        if not hasattr(generator, "enable_keyboard_candidates"):
-            generator.enable_keyboard_candidates = True
         if not hasattr(generator, "enable_orthographic_candidates"):
             generator.enable_orthographic_candidates = True
         if not hasattr(generator, "enable_mined_confusions"):
@@ -368,23 +368,51 @@ class CandidateGenerator:
                 "фсе": ("все",),
                 "щто": ("что",),
                 "што": ("что",),
-                "ыть": ("быть",),
                 "эсть": ("есть",),
-                "чтто": ("что",),
-                "ччто": ("что",),
                 "дэло": ("дело",),
-                "ллет": ("лет",),
-                "ууже": ("уже",),
+                "новово": ("нового",),
+                "синево": ("синего",),
+                "безконечный": ("бесконечный",),
+                "разписание": ("расписание",),
+                "изправить": ("исправить",),
+                "прикрасный": ("прекрасный",),
+                "преехать": ("приехать",),
+                "длиный": ("длинный",),
+                "ценый": ("ценный",),
+                "искуственный": ("искусственный",),
+                "подезд": ("подъезд",),
+                "обект": ("объект",),
+                "шерох": ("шорох",),
+                "жолтый": ("жёлтый",),
+                "чорный": ("чёрный",),
+                "шопот": ("шёпот",),
+                "цыфра": ("цифра",),
+                "цырк": ("цирк",),
+                "циган": ("цыган",),
                 "паралон": ("поролон",),
                 "координально": ("кардинально",),
                 "расказать": ("рассказать",),
                 "расчитать": ("рассчитать",),
+                "акуратный": ("аккуратный",),
+                "ктото": ("кто-то",),
+                "коечто": ("кое-что",),
+                "ктонибудь": ("кто-нибудь",),
+                "чтонибудь": ("что-нибудь",),
+                "порусски": ("по-русски",),
+                "небыл": ("не был",),
+                "нибыл": ("не был",),
+                "неразу": ("ни разу",),
+                "агенство": ("агентство",),
+                "учавствовать": ("участвовать",),
+                "будующий": ("будущий",),
                 "железно-дорожный": ("железнодорожный",),
                 "москва": ("Москва",),
                 "президент": ("Президент",),
                 "вуз": ("ВУЗ",),
             }
         )
+        for key in TYPO_LIKE_EXACT_CONFUSIONS:
+            generator.exact_confusions.pop(key, None)
         if not hasattr(generator, "phrase_confusions"):
             generator.phrase_confusions = {}
         generator.phrase_confusions.update(
@@ -425,8 +453,6 @@ class CandidateGenerator:
             return True
         if norm in self.phrase_confusions:
             return True
-        if self._short_repeated_first_candidate(norm) is not None:
-            return True
         return any(key in norm for key in self.single_token_confusions)
 
     def get_candidates(
@@ -444,7 +470,6 @@ class CandidateGenerator:
             int(max_candidates),
             bool(include_known_dictionary),
             bool(allow_long_oov),
-            bool(getattr(self, "enable_keyboard_candidates", True)),
             bool(getattr(self, "enable_orthographic_candidates", True)),
             bool(getattr(self, "enable_mined_confusions", True)),
             len(getattr(self, "mined_confusions", {})),
@@ -469,9 +494,6 @@ class CandidateGenerator:
             if getattr(self, "enable_orthographic_candidates", True):
                 for cand in self._orthographic_candidates(norm):
                     self._add_candidate(candidates, cand, word, "orthographic", distance=1)
-            if getattr(self, "enable_keyboard_candidates", True):
-                for cand in self._keyboard_candidates(norm):
-                    self._add_candidate(candidates, cand, word, "keyboard", distance=1)
 
         if (include_known_dictionary or not self.is_known(norm)) and len(norm) >= self.min_dictionary_word_length:
             if self.max_distance <= 1:
@@ -479,9 +501,13 @@ class CandidateGenerator:
             else:
                 dictionary_candidates = self._edit_distance_candidates(norm)
             for cand, distance in dictionary_candidates:
+                if not self._is_strict_candidate_pair(norm, cand):
+                    continue
                 self._add_candidate(candidates, cand, word, "dictionary", distance=distance)
             if allow_long_oov and self.long_oov_max_distance > 1 and len(norm) >= self.long_oov_min_length:
                 for cand, distance in self._long_oov_edit_candidates(norm):
+                    if not self._is_strict_candidate_pair(norm, cand):
+                        continue
                     self._add_candidate(candidates, cand, word, "dictionary", distance=distance)
 
         if self.allow_split_candidates and not self.is_known(norm):
@@ -491,7 +517,7 @@ class CandidateGenerator:
                 else self._split_candidates(norm)
             )
             for cand in split_candidates:
-                self._add_candidate(candidates, cand, word, "split", distance=1)
+                self._add_candidate(candidates, cand, word, "phrase_safe", distance=1)
 
         result = [
             c
@@ -567,10 +593,6 @@ class CandidateGenerator:
             for candidate in self.phrase_confusions[norm]:
                 yield candidate, "phrase_safe"
 
-        repeated_first = self._short_repeated_first_candidate(norm)
-        if repeated_first is not None:
-            yield repeated_first, "rule"
-
         for key, replacements in self.single_token_confusions.items():
             start = 0
             while True:
@@ -584,6 +606,95 @@ class CandidateGenerator:
     def _rule_candidates(self, norm: str) -> Iterable[str]:
         for candidate, _ in self._rule_candidate_items(norm):
             yield candidate
+
+    def _is_strict_candidate_pair(self, source_norm: str, candidate: str) -> bool:
+        source_norm = normalize_word(source_norm)
+        candidate_norm = normalize_word(candidate)
+        if not source_norm or not candidate_norm or source_norm == candidate_norm:
+            return False
+
+        exact_targets = {
+            normalize_word(item)
+            for item in (
+                tuple(self.exact_confusions.get(source_norm, ()))
+                + tuple(self.phrase_confusions.get(source_norm, ()))
+            )
+        }
+        if candidate_norm in exact_targets:
+            return True
+        if self._matches_single_token_confusion(source_norm, candidate_norm):
+            return True
+        if self._matches_single_char_confusion(source_norm, candidate_norm):
+            return True
+        if self._matches_n_nn_confusion(source_norm, candidate_norm):
+            return True
+        if self._matches_soft_hard_sign_confusion(source_norm, candidate_norm):
+            return True
+        return False
+
+    def _matches_single_token_confusion(self, source_norm: str, candidate_norm: str) -> bool:
+        for key, replacements in self.single_token_confusions.items():
+            start = 0
+            while True:
+                pos = source_norm.find(key, start)
+                if pos == -1:
+                    break
+                for repl in replacements:
+                    if source_norm[:pos] + repl + source_norm[pos + len(key) :] == candidate_norm:
+                        return True
+                start = pos + 1
+        return False
+
+    @staticmethod
+    def _matches_single_char_confusion(source_norm: str, candidate_norm: str) -> bool:
+        if len(source_norm) != len(candidate_norm):
+            return False
+        diffs = [
+            (source_char, candidate_char)
+            for source_char, candidate_char in zip(source_norm, candidate_norm)
+            if source_char != candidate_char
+        ]
+        return (
+            len(diffs) == 1
+            and diffs[0][1] in ORTHOGRAPHIC_CHAR_CONFUSIONS.get(diffs[0][0], ())
+        )
+
+    @staticmethod
+    def _matches_n_nn_confusion(source_norm: str, candidate_norm: str) -> bool:
+        if abs(len(source_norm) - len(candidate_norm)) != 1:
+            return False
+        longer, shorter = (
+            (source_norm, candidate_norm)
+            if len(source_norm) > len(candidate_norm)
+            else (candidate_norm, source_norm)
+        )
+        return any(
+            longer[i : i + 2] == "нн" and longer[:i] + "н" + longer[i + 2 :] == shorter
+            for i in range(len(longer) - 1)
+        )
+
+    @staticmethod
+    def _matches_soft_hard_sign_confusion(source_norm: str, candidate_norm: str) -> bool:
+        signs = {"ь", "ъ"}
+        if len(source_norm) == len(candidate_norm):
+            diffs = [
+                (source_char, candidate_char)
+                for source_char, candidate_char in zip(source_norm, candidate_norm)
+                if source_char != candidate_char
+            ]
+            return len(diffs) == 1 and set(diffs[0]) == signs
+
+        longer, shorter = (
+            (source_norm, candidate_norm)
+            if len(source_norm) > len(candidate_norm)
+            else (candidate_norm, source_norm)
+        )
+        if len(longer) - len(shorter) != 1:
+            return False
+        return any(
+            char in signs and longer[:i] + longer[i + 1 :] == shorter
+            for i, char in enumerate(longer)
+        )
 
     def _short_repeated_first_candidate(self, norm: str) -> str | None:
         if len(norm) < 4 or len(norm) > 5:
@@ -603,6 +714,8 @@ class CandidateGenerator:
         def emit(candidate: str) -> str | None:
             if candidate == norm or candidate in seen:
                 return None
+            if not self._is_strict_candidate_pair(norm, candidate):
+                return None
             if self.frequencies.get(candidate, 0) < self.min_freq:
                 return None
             seen.add(candidate)
@@ -615,29 +728,34 @@ class CandidateGenerator:
                     yield candidate
 
         for i, char in enumerate(norm):
-            if char not in RUSSIAN_CONSONANTS:
+            if char != "н":
                 continue
             candidate = emit(norm[:i] + char + norm[i:])
             if candidate is not None:
                 yield candidate
 
         for i in range(len(norm) - 1):
-            if norm[i] != norm[i + 1] or norm[i] not in RUSSIAN_CONSONANTS:
+            if norm[i] != "н" or norm[i + 1] != "н":
                 continue
             candidate = emit(norm[:i] + norm[i + 1 :])
             if candidate is not None:
                 yield candidate
 
-    def _keyboard_candidates(self, norm: str) -> Iterable[str]:
-        seen: set[str] = set()
+        for i in range(1, len(norm)):
+            for sign in ("ъ", "ь"):
+                candidate = emit(norm[:i] + sign + norm[i:])
+                if candidate is not None:
+                    yield candidate
+
         for i, char in enumerate(norm):
-            for replacement in RUSSIAN_KEYBOARD_NEIGHBORS.get(char, ()):
-                candidate = norm[:i] + replacement + norm[i + 1 :]
-                if candidate == norm or candidate in seen:
-                    continue
-                if self.frequencies.get(candidate, 0) < self.min_freq:
-                    continue
-                seen.add(candidate)
+            if char not in {"ъ", "ь"}:
+                continue
+            candidate = emit(norm[:i] + norm[i + 1 :])
+            if candidate is not None:
+                yield candidate
+            replacement = "ъ" if char == "ь" else "ь"
+            candidate = emit(norm[:i] + replacement + norm[i + 1 :])
+            if candidate is not None:
                 yield candidate
 
     def _edit_distance_candidates(self, norm: str) -> Iterable[tuple[str, int]]:
@@ -763,8 +881,6 @@ class CandidateGenerator:
                 continue
             if left in SPLIT_PREFIX_BLOCKLIST or right in {"ся", "сь"}:
                 continue
-            if self.is_known(left) and self.is_known(right):
-                yield f"{left} {right}"
 
     @staticmethod
     def _is_unsafe_short_service_split(left: str, right: str) -> bool:

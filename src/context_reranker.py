@@ -30,7 +30,7 @@ class ContextReranker:
         model_name: str = "DeepPavlov/rubert-base-cased",
         *,
         enabled: bool = True,
-        window: int = 12,
+        window: int = 64,
         device: str | None = "cpu",
         batch_size: int = 16,
     ):
@@ -57,9 +57,15 @@ class ContextReranker:
         index: int,
         source: str,
         candidates: Sequence[str],
+        candidate_span_lengths: Sequence[int] | None = None,
     ) -> list[ContextScore]:
         unique_candidates = list(dict.fromkeys(str(candidate) for candidate in candidates if str(candidate)))
-        cache_key = (self._context_hash(words, index), str(source), tuple(unique_candidates))
+        span_lengths = self._candidate_span_lengths(unique_candidates, candidate_span_lengths)
+        cache_key = (
+            self._context_hash(words, index),
+            str(source),
+            tuple(zip(unique_candidates, span_lengths)),
+        )
         if cache_key in self.cache:
             return self.cache[cache_key]
 
@@ -71,7 +77,7 @@ class ContextReranker:
             self.cache[cache_key] = result
             return result
 
-        result = self._score_batch(words, index, unique_candidates)
+        result = self._score_batch(words, index, unique_candidates, span_lengths)
         self.cache[cache_key] = result
         return result
 
@@ -138,20 +144,27 @@ class ContextReranker:
             return requested
         return "cpu"
 
-    def _score_batch(self, words: Sequence[str], index: int, candidates: Sequence[str]) -> list[ContextScore]:
+    def _score_batch(
+        self,
+        words: Sequence[str],
+        index: int,
+        candidates: Sequence[str],
+        candidate_span_lengths: Sequence[int] | None = None,
+    ) -> list[ContextScore]:
         assert self.tokenizer is not None
         assert self.model is not None
         assert self.torch is not None
 
         prepared = []
         immediate: dict[str, ContextScore] = {}
-        for candidate in candidates:
+        span_lengths = self._candidate_span_lengths(candidates, candidate_span_lengths)
+        for candidate, span_len in zip(candidates, span_lengths):
             try:
                 candidate_ids = self.tokenizer(candidate, add_special_tokens=False)["input_ids"]
                 if not candidate_ids:
                     immediate[candidate] = ContextScore(candidate, -math.inf, 0, True, "empty_candidate_tokens")
                     continue
-                prepared.append((candidate, candidate_ids, self._masked_text(words, index, len(candidate_ids))))
+                prepared.append((candidate, candidate_ids, self._masked_text(words, index, len(candidate_ids), span_len=span_len)))
             except Exception as exc:
                 immediate[candidate] = ContextScore(
                     candidate,
@@ -197,7 +210,7 @@ class ContextReranker:
                     )
             except Exception as exc:
                 if self.device != "cpu" and self._fallback_to_cpu():
-                    return self._score_batch(words, index, candidates)
+                    return self._score_batch(words, index, candidates, span_lengths)
                 reason = self._exception_reason("score_error", exc)
                 for candidate, candidate_ids, _ in chunk:
                     result_by_text[candidate] = ContextScore(candidate, -math.inf, len(candidate_ids), True, reason)
@@ -235,14 +248,27 @@ class ContextReranker:
                 return self._score_one(words, index, candidate)
             return ContextScore(candidate, -math.inf, 0, True, self._exception_reason("score_error", exc))
 
-    def _masked_text(self, words: Sequence[str], index: int, mask_count: int) -> str:
+    def _masked_text(self, words: Sequence[str], index: int, mask_count: int, *, span_len: int = 1) -> str:
         assert self.tokenizer is not None
         start = max(0, index - self.window)
-        end = min(len(words), index + self.window + 1)
+        span_len = max(1, int(span_len))
+        end = min(len(words), index + span_len + self.window)
         left = [str(word) for word in words[start:index]]
-        right = [str(word) for word in words[index + 1 : end]]
+        right = [str(word) for word in words[index + span_len : end]]
         mask_tokens = [self.tokenizer.mask_token] * max(1, int(mask_count))
         return " ".join(left + mask_tokens + right)
+
+    @staticmethod
+    def _candidate_span_lengths(
+        candidates: Sequence[str],
+        candidate_span_lengths: Sequence[int] | None = None,
+    ) -> list[int]:
+        if candidate_span_lengths is None:
+            return [1] * len(candidates)
+        lengths = [max(1, int(value)) for value in candidate_span_lengths[: len(candidates)]]
+        if len(lengths) < len(candidates):
+            lengths.extend([1] * (len(candidates) - len(lengths)))
+        return lengths
 
     @staticmethod
     def _exception_reason(prefix: str, exc: Exception, max_len: int = 180) -> str:

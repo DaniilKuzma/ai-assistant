@@ -381,6 +381,7 @@ def evaluate_hybrid(
                     "context_scores": json.dumps(decision.context_scores, ensure_ascii=False),
                     "context_margin": decision.context_margin,
                     "reranker_reason": decision.reranker_reason,
+                    "context_needed": decision.context_needed,
                     "protected_source": decision.protected_source,
                     "entity_context": decision.entity_context,
                     "clean_lexicon_frequency": decision.clean_lexicon_frequency,
@@ -460,7 +461,7 @@ def evaluate_hybrid(
         "selected_rank", "selected_text", "selected_source", "selected_score",
         "applied", "blocked_reason", "candidate_texts", "candidate_sources",
         "candidate_scores", "context_best", "context_scores", "context_margin",
-        "reranker_reason", "protected_source", "entity_context",
+        "reranker_reason", "context_needed", "protected_source", "entity_context",
         "clean_lexicon_frequency", "window_id", "window_conflict_resolved",
         "text", "predicted", "target_text",
     ]
@@ -518,6 +519,18 @@ def evaluate_hybrid(
     summary["target_present_but_not_applied_count"] = target_present_but_not_applied_count
     summary["target_present_but_not_applied_rate"] = (
         float(target_present_but_not_applied_count / target_present_count) if target_present_count else None
+    )
+    context_needed_count = int(word_decision_df["context_needed"].sum()) if not word_decision_df.empty and "context_needed" in word_decision_df else 0
+    summary["context_needed_count"] = context_needed_count
+    summary["context_needed_applied_count"] = (
+        int(word_decision_df.loc[word_decision_df["context_needed"], "applied"].sum())
+        if context_needed_count and "context_needed" in word_decision_df
+        else 0
+    )
+    summary["context_needed_blocked_count"] = (
+        int((word_decision_df["context_needed"] & ~word_decision_df["applied"]).sum())
+        if context_needed_count and "context_needed" in word_decision_df
+        else 0
     )
     punct_change_mask = (
         punct_decision_df["predicted_punct"] != punct_decision_df["source_punct"]
@@ -590,7 +603,9 @@ def evaluate_hybrid(
         for key, value in runtime_stats.items()
         if str(key).startswith("reranker_error_reason:")
     }
+    summary["runtime_context_needed_count"] = int(runtime_stats.get("context_needed_count", 0))
     summary["split_blocked_by_context_count"] = int(runtime_stats.get("split_blocked_by_context_count", 0))
+    summary["phrase_blocked_by_context_count"] = int(runtime_stats.get("phrase_blocked_by_context_count", 0))
     summary["unsafe_split_blocked_count"] = int(runtime_stats.get("unsafe_split_blocked_count", 0)) + int(
         getattr(getattr(corrector, "candidate_generator", None), "unsafe_split_blocked_count", 0)
     )

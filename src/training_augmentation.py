@@ -15,7 +15,9 @@ from edit_labels import (
     ACTION_DELETE,
     HybridTrainingExample,
     action_replace_rank,
+    build_training_example,
     candidate_list,
+    iter_span_phrase_rewrites,
     replace_action,
 )
 from morphology_guard import is_morphological_dictionary_word, is_same_lemma_inflection
@@ -23,6 +25,28 @@ from text_utils import apply_case_like, is_word, normalize_word
 
 
 FOREIGN_NAME_PARTS = {"делла", "де", "ди", "фон", "ван", "дер", "ле", "ла", "аль", "ибн"}
+CONTEXTUAL_PHRASE_EXAMPLE_PAIRS: tuple[tuple[str, str], ...] = (
+    ("В течении дня шел дождь.", "В течение дня шел дождь."),
+    ("В течение дня шел дождь.", "В течение дня шел дождь."),
+    ("В течении реки видны водовороты.", "В течении реки видны водовороты."),
+    ("В течение реки видны водовороты.", "В течении реки видны водовороты."),
+    ("Он так же выступил на встрече.", "Он также выступил на встрече."),
+    ("Он также выступил на встрече.", "Он также выступил на встрече."),
+    ("Он сделал также аккуратно, как брат.", "Он сделал так же аккуратно, как брат."),
+    ("Он сделал так же аккуратно, как брат.", "Он сделал так же аккуратно, как брат."),
+    ("Нужно что бы проект работал.", "Нужно чтобы проект работал."),
+    ("Нужно чтобы проект работал.", "Нужно чтобы проект работал."),
+    ("Что бы ни случилось, он продолжит работу.", "Что бы ни случилось, он продолжит работу."),
+    ("Чтобы ни случилось, он продолжит работу.", "Что бы ни случилось, он продолжит работу."),
+    ("Мы решили по новому оформить стенд.", "Мы решили по-новому оформить стенд."),
+    ("Мы решили по-новому оформить стенд.", "Мы решили по-новому оформить стенд."),
+    ("Он шел по-новому мосту.", "Он шел по новому мосту."),
+    ("Он шел по новому мосту.", "Он шел по новому мосту."),
+    ("Не смотря на дождь, матч прошел.", "Несмотря на дождь, матч прошел."),
+    ("Несмотря на дождь, матч прошел.", "Несмотря на дождь, матч прошел."),
+    ("Не смотря на экран, он отвечал.", "Не смотря на экран, он отвечал."),
+    ("Несмотря на экран, он отвечал.", "Не смотря на экран, он отвечал."),
+)
 
 
 def is_candidate_eligible_word(word: str) -> bool:
@@ -85,6 +109,7 @@ def populate_top_k_candidates(
         "cache_hits": 0,
         "candidate_searches": 0,
         "target_rank_distribution": {},
+        "context_phrase_candidate_tokens": 0,
     }
     cache: dict[str, list[Candidate]] = {}
     populated: list[HybridTrainingExample] = []
@@ -94,6 +119,7 @@ def populate_top_k_candidates(
         next_actions = list(example.action_labels)
         target_ranks: list[int] = []
         oracle_injected_flags: list[bool] = []
+        context_candidates = contextual_phrase_candidates_by_index(example.source_words)
         for idx, source in enumerate(example.source_words):
             stats["tokens"] += 1
             action = example.action_labels[idx]
@@ -120,6 +146,19 @@ def populate_top_k_candidates(
                     continue
                 if candidate.text and candidate.text not in items:
                     items.append(candidate.text)
+
+            for phrase_candidate in reversed(context_candidates.get(idx, [])):
+                if normalize_word(phrase_candidate) == normalize_word(source):
+                    continue
+                items = [
+                    phrase_candidate,
+                    *[
+                        item
+                        for item in items
+                        if normalize_word(item) != normalize_word(phrase_candidate)
+                    ],
+                ]
+                stats["context_phrase_candidate_tokens"] += 1
 
             target_rank = -1
             oracle_injected = False
@@ -197,6 +236,94 @@ def populate_top_k_candidates(
         )
 
     return populated, stats
+
+
+def augment_contextual_phrase_examples(
+    examples: Sequence[HybridTrainingExample],
+    *,
+    repeats: int = 4,
+    max_tokens: int = 128,
+) -> tuple[list[HybridTrainingExample], dict[str, int]]:
+    """Add full-sentence context examples for ambiguous phrase spellings."""
+    repeats = max(0, int(repeats))
+    stats = {
+        "base_examples": len(examples),
+        "added_examples": 0,
+        "clean_examples": 0,
+        "dirty_examples": 0,
+        "skipped_examples": 0,
+    }
+    augmented = list(examples)
+    if repeats <= 0:
+        return augmented, stats
+
+    for _ in range(repeats):
+        for error_text, correct_text in CONTEXTUAL_PHRASE_EXAMPLE_PAIRS:
+            example = build_training_example(error_text, correct_text, max_tokens=max_tokens)
+            if example is None:
+                stats["skipped_examples"] += 1
+                continue
+            augmented.append(example)
+            stats["added_examples"] += 1
+            if example.is_clean:
+                stats["clean_examples"] += 1
+            else:
+                stats["dirty_examples"] += 1
+    return augmented, stats
+
+
+def contextual_phrase_candidates_by_index(words: Sequence[str]) -> dict[int, list[str]]:
+    """Return span-level phrase candidates that should be visible during training."""
+    by_index: dict[int, list[str]] = {}
+    for start, source_len, target_parts in iter_span_phrase_rewrites(words):
+        source_parts = [normalize_word(word) for word in words[start : start + source_len]]
+        for offset, _, candidate_text in _context_phrase_candidate_specs(source_parts, target_parts):
+            index = start + offset
+            by_index.setdefault(index, [])
+            if candidate_text not in by_index[index]:
+                by_index[index].append(candidate_text)
+    return by_index
+
+
+def _context_phrase_candidate_specs(
+    source_parts: Sequence[str],
+    target_parts: Sequence[str],
+) -> list[tuple[int, int, str]]:
+    source_parts = [normalize_word(part) for part in source_parts]
+    target_parts = [normalize_word(part) for part in target_parts]
+    if not source_parts or not target_parts or source_parts == target_parts:
+        return []
+
+    prefix_len = 0
+    while (
+        prefix_len < len(source_parts)
+        and prefix_len < len(target_parts)
+        and source_parts[prefix_len] == target_parts[prefix_len]
+    ):
+        prefix_len += 1
+
+    suffix_len = 0
+    while (
+        suffix_len < len(source_parts) - prefix_len
+        and suffix_len < len(target_parts) - prefix_len
+        and source_parts[len(source_parts) - 1 - suffix_len] == target_parts[len(target_parts) - 1 - suffix_len]
+    ):
+        suffix_len += 1
+
+    source_mid_len = len(source_parts) - prefix_len - suffix_len
+    target_mid_end = len(target_parts) - suffix_len if suffix_len else len(target_parts)
+    target_mid_parts = target_parts[prefix_len:target_mid_end]
+    if source_mid_len <= 0 or not target_mid_parts:
+        return []
+
+    if source_mid_len == len(target_mid_parts):
+        return [
+            (prefix_len + offset, 1, target_word)
+            for offset, target_word in enumerate(target_mid_parts)
+            if source_parts[prefix_len + offset] != target_word
+        ]
+
+    return [(prefix_len, source_mid_len, " ".join(target_mid_parts))]
 
 
 def _should_try_long_oov_target(generator: CandidateGenerator, source_norm: str, target_norm: str) -> bool:

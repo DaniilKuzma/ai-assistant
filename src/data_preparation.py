@@ -16,6 +16,8 @@ from typing import Any, Dict, List, Tuple
 import pandas as pd
 from tqdm import tqdm
 
+from strict_error_taxonomy import ERROR_SCOPE_CLEAN, error_types_are_strict
+
 
 def split_texts(texts: List[str], train_ratio: float = 0.8, val_ratio: float = 0.1, test_ratio: float = 0.1, seed: int = 42) -> Tuple[List[str], List[str], List[str]]:
     """Сплитит *чистые* тексты на train/val/test до аугментации, чтобы не было утечки."""
@@ -105,16 +107,17 @@ class DatasetGenerator:
 
         # Единый конфиг типов ошибок - включаем все типы
         default_config = {
-            'replace': True,
-            'delete': True,
-            'swap': True,
-            'double': True,
-            'extra': True,
+            'replace': False,
+            'delete': False,
+            'swap': False,
+            'double': False,
+            'extra': False,
         
             'punct_remove': True,   # можно, но редко (см. ниже)
             'punct_wrong': True,
             'ensure_error': True,
             'max_errors_per_sentence': 5,  # 5 = издевательство над языком
+            'strict_scope': True,
         }
 
 
@@ -122,6 +125,8 @@ class DatasetGenerator:
             self.error_config = default_config
         else:
             self.error_config = {**default_config, **error_config}
+        for removed_typo_option in ("delete", "swap", "extra", "double"):
+            self.error_config[removed_typo_option] = False
 
         self.error_profiles = {
             "spelling_light": {
@@ -186,13 +191,11 @@ class DatasetGenerator:
         }
 
         self.profile_weights = {
-            "spelling_light": 0.18,
-            "spelling_medium": 0.16,
-            "orthography_rules": 0.16,
-            "punctuation_only": 0.18,
-            "punctuation_structural": 0.18,
-            "mixed": 0.10,
-            "hard": 0.04,
+            "orthography_rules": 0.32,
+            "punctuation_only": 0.34,
+            "punctuation_structural": 0.24,
+            "mixed": 0.08,
+            "hard": 0.02,
         }
         
     def load_texts_from_file(self, filepath: str) -> List[str]:
@@ -303,41 +306,10 @@ class DatasetGenerator:
                     if new_word != word:
                         return (new_word, 'spelling_replace') if return_label else new_word
 
-            # 3) Если заменить нечего (или не получилось), делаем гарантированную ошибку другим способом
-            # (чтобы replace не превращался в no-op)
-            fallback = random.choice(['delete', 'swap', 'extra', 'double'])
-            return self.introduce_spelling_error(word, error_type=fallback, return_label=return_label)
+            return (word, None) if return_label else word
 
-        elif error_type == 'delete':
-            pos = random.randint(0, editable_end - 1)
-            new_word = word[:pos] + word[pos+1:]
-            return (new_word, 'spelling_delete') if return_label else new_word
-
-        elif error_type == 'swap':
-            # swap имеет смысл, только если есть что менять местами
-            if len(word) > 4:
-                pos_max = max(0, min(len(word) - 4, editable_end - 2))
-                pos = random.randint(0, pos_max)
-                new_word = word[:pos] + word[pos+1] + word[pos] + word[pos+2:]
-                return (new_word, 'spelling_swap') if return_label else new_word
-            # короткие слова проще "удалить"
-            return self.introduce_spelling_error(word, error_type='delete', return_label=return_label)
-
-        elif error_type == 'extra':
-            # вставка случайной буквы (лучше из русского алфавита; если у тебя есть свой набор — подставь его)
-            letters = getattr(self, "letters", None)
-            if not letters:
-                letters = list("абвгдеёжзийклмнопрстуфхцчшщъыьэюя")
-            pos = random.randint(0, editable_end)
-            ch = random.choice(letters)
-            new_word = word[:pos] + ch + word[pos:]
-            return (new_word, 'spelling_extra') if return_label else new_word
-
-        elif error_type == 'double':
-            # удвоение случайного символа
-            pos = random.randint(0, editable_end - 1)
-            new_word = word[:pos] + word[pos] + word[pos:]
-            return (new_word, 'spelling_double') if return_label else new_word
+        elif error_type in {'delete', 'swap', 'extra', 'double'}:
+            return (word, None) if return_label else word
 
         return (word, label) if return_label else word
 
@@ -400,7 +372,7 @@ class DatasetGenerator:
         max_errors_cfg = int(self.error_config.get('max_errors_per_sentence', 5))
         max_errors = int(max_errors_override) if max_errors_override is not None else max_errors_cfg
 
-        base_weights = {'replace': 0.35, 'delete': 0.15, 'swap': 0.10, 'double': 0.20, 'extra': 0.20}
+        base_weights = {'replace': 1.0}
         word_error_types = [t for t in base_weights if self.error_config.get(t, False)]
         if not word_error_types:
             return text, []
@@ -544,7 +516,8 @@ class DatasetGenerator:
     def _remove_comma_before_clause_marker(self, text: str) -> Tuple[str, str | None]:
         markers = (
             'что', 'чтобы', 'если', 'когда', 'который', 'которая', 'которое',
-            'которые', 'потому что', 'так как', 'хотя', 'поскольку'
+            'которые', 'которого', 'которому', 'которым', 'которой', 'которую',
+            'которых', 'которыми'
         )
         pattern = r',\s+(' + '|'.join(re.escape(m) for m in markers) + r')\b'
         new, changed = self._replace_one_regex(text, pattern, lambda m: ' ' + m.group(1), flags=re.IGNORECASE)
@@ -560,6 +533,27 @@ class DatasetGenerator:
         new, changed = self._replace_one_regex(text, pattern, lambda m: m.group(1) + ' ', flags=re.IGNORECASE)
         return (new, 'punct_remove_intro_comma') if changed else (text, None)
 
+    def _remove_homogeneous_comma(self, text: str) -> Tuple[str, str | None]:
+        pattern = r'\b([А-Яа-яЁё]{3,}),\s+([а-яё]{3,})\s+и\s+([а-яё]{3,})\b'
+        new, changed = self._replace_one_regex(
+            text,
+            pattern,
+            lambda m: f"{m.group(1)} {m.group(2)} и {m.group(3)}",
+        )
+        return (new, 'punct_remove_homogeneous_comma') if changed else (text, None)
+
+    def _insert_comma_before_single_i(self, text: str) -> Tuple[str, str | None]:
+        pattern = r'\b([А-Яа-яЁё]{3,})\s+и\s+([а-яё]{3,})\b'
+
+        def repl(m):
+            before = text[max(0, m.start() - 2):m.start()]
+            if "," in before:
+                return m.group(0)
+            return f"{m.group(1)}, и {m.group(2)}"
+
+        new, changed = self._replace_one_regex(text, pattern, repl)
+        return (new, 'punct_extra_comma_before_single_i') if changed and new != text else (text, None)
+
     def _insert_extra_comma(self, text: str) -> Tuple[str, str | None]:
         markers = ('и', 'а', 'но', 'что', 'как', 'если', 'когда', 'или')
         pattern = r'(?<![,;:])\s+(' + '|'.join(markers) + r')\b'
@@ -572,6 +566,16 @@ class DatasetGenerator:
             m = random.choice(words[1:-1])
             return text[:m.start()] + ', ' + text[m.end():], 'punct_extra_comma'
         return text, None
+
+    def _bsp_colon_missing_error(self, text: str) -> Tuple[str, str | None]:
+        predicates = (
+            'понял', 'поняла', 'поняли', 'знал', 'знала', 'знали',
+            'увидел', 'увидела', 'увидели', 'заметил', 'заметила',
+            'заметили', 'решил', 'решила', 'решили', 'ясно', 'важно'
+        )
+        pattern = r'\b(' + '|'.join(predicates) + r'):\s+([а-яё])'
+        new, changed = self._replace_one_regex(text, pattern, lambda m: f"{m.group(1)} {m.group(2)}")
+        return (new, 'punct_bsp_colon_missing') if changed else (text, None)
 
     def _dash_error(self, text: str) -> Tuple[str, str | None]:
         if '—' in text:
@@ -596,33 +600,20 @@ class DatasetGenerator:
             return text, []
 
         operations = [
-            self._wrong_period_to_comma,
-            self._wrong_period_to_comma,
-            self._wrong_period_to_comma,
             self._remove_comma_before_clause_marker,
             self._remove_comma_before_clause_marker,
             self._remove_comma_before_clause_marker,
-            self._remove_internal_comma,
-            self._remove_internal_comma,
-            self._insert_extra_comma,
-            self._insert_extra_comma,
-            self._remove_final_punctuation,
-            self._remove_final_punctuation,
-            self._remove_final_punctuation,
-            self._remove_comma_before_clause_marker,
-            self._remove_comma_before_clause_marker,
-            self._remove_comma_before_clause_marker,
-            self._insert_extra_comma,
-            self._insert_extra_comma,
-            self._insert_extra_comma,
-            self._remove_final_punctuation,
-            self._wrong_punctuation,
-            self._wrong_punctuation,
-            self._remove_some_commas,
-            self._remove_some_commas,
             self._remove_comma_after_intro,
-            self._insert_extra_comma,
-            self._remove_one_punctuation,
+            self._remove_comma_after_intro,
+            self._remove_homogeneous_comma,
+            self._remove_homogeneous_comma,
+            self._insert_comma_before_single_i,
+            self._insert_comma_before_single_i,
+            self._remove_final_punctuation,
+            self._remove_final_punctuation,
+            self._remove_final_punctuation,
+            self._bsp_colon_missing_error,
+            self._bsp_colon_missing_error,
         ]
 
         error_types = []
@@ -651,6 +642,128 @@ class DatasetGenerator:
             new, changed = self._replace_one_regex(text, pattern, repl, flags=re.IGNORECASE)
             if changed:
                 return new, "spelling_compound_joining"
+        return text, None
+
+    def _orthography_tsya_error(self, text: str) -> Tuple[str, str | None]:
+        operations = [
+            (r'\b([А-Яа-яЁё]+?)тся\b', lambda m: self._match_case(m.group(0), m.group(1) + "ться")),
+            (r'\b([А-Яа-яЁё]+?)ться\b', lambda m: self._match_case(m.group(0), m.group(1) + "тся")),
+        ]
+        for pattern, repl in random.sample(operations, len(operations)):
+            new, changed = self._replace_one_regex(text, pattern, repl, flags=re.IGNORECASE)
+            if changed:
+                return new, "spelling_tsya"
+        return text, None
+
+    def _orthography_suffix_pronunciation_error(self, text: str) -> Tuple[str, str | None]:
+        operations = [
+            (r'\b([А-Яа-яЁё]{3,})ого\b', lambda m: self._match_case(m.group(0), m.group(1) + "ово")),
+            (r'\b([А-Яа-яЁё]{3,})его\b', lambda m: self._match_case(m.group(0), m.group(1) + "ево")),
+        ]
+        for pattern, repl in random.sample(operations, len(operations)):
+            new, changed = self._replace_one_regex(text, pattern, repl, flags=re.IGNORECASE)
+            if changed:
+                return new, "spelling_suffix_pronunciation"
+        return text, None
+
+    def _orthography_prefix_error(self, text: str) -> Tuple[str, str | None]:
+        operations = [
+            (r'\bбес(?=[кпстфхцчшщ])', lambda m: self._match_case(m.group(0), "без")),
+            (r'\bрас(?=[кпстфхцчшщ])', lambda m: self._match_case(m.group(0), "раз")),
+            (r'\bис(?=[кпстфхцчшщ])', lambda m: self._match_case(m.group(0), "из")),
+            (r'\bпре(?=красн)', lambda m: self._match_case(m.group(0), "при")),
+            (r'\bпри(?=ех)', lambda m: self._match_case(m.group(0), "пре")),
+        ]
+        for pattern, repl in random.sample(operations, len(operations)):
+            new, changed = self._replace_one_regex(text, pattern, repl, flags=re.IGNORECASE)
+            if changed:
+                return new, "spelling_prefix"
+        return text, None
+
+    def _orthography_n_nn_error(self, text: str) -> Tuple[str, str | None]:
+        operations = [
+            (r'\bдлинный\b', lambda m: self._match_case(m.group(0), "длиный")),
+            (r'\bценный\b', lambda m: self._match_case(m.group(0), "ценый")),
+            (r'\bискусственный\b', lambda m: self._match_case(m.group(0), "искуственный")),
+        ]
+        for pattern, repl in random.sample(operations, len(operations)):
+            new, changed = self._replace_one_regex(text, pattern, repl, flags=re.IGNORECASE)
+            if changed:
+                return new, "spelling_n_nn"
+        return text, None
+
+    def _orthography_soft_hard_sign_error(self, text: str) -> Tuple[str, str | None]:
+        operations = [
+            (r'\bподъезд\b', lambda m: self._match_case(m.group(0), "подезд")),
+            (r'\bобъект\b', lambda m: self._match_case(m.group(0), "обект")),
+            (r'\bсемья\b', lambda m: self._match_case(m.group(0), "семя")),
+        ]
+        for pattern, repl in random.sample(operations, len(operations)):
+            new, changed = self._replace_one_regex(text, pattern, repl, flags=re.IGNORECASE)
+            if changed:
+                return new, "spelling_soft_hard_sign"
+        return text, None
+
+    def _orthography_ne_ni_error(self, text: str) -> Tuple[str, str | None]:
+        operations = [
+            (r'\bне\s+(?=был|была|было|были|готов|знал|видел)', lambda m: self._match_case(m.group(0), "ни ")),
+            (r'\bникогда\b', lambda m: self._match_case(m.group(0), "некогда")),
+            (r'\bникто\b', lambda m: self._match_case(m.group(0), "некто")),
+        ]
+        for pattern, repl in random.sample(operations, len(operations)):
+            new, changed = self._replace_one_regex(text, pattern, repl, flags=re.IGNORECASE)
+            if changed:
+                return new, "spelling_ne_ni"
+        return text, None
+
+    def _orthography_sibilant_vowel_error(self, text: str) -> Tuple[str, str | None]:
+        operations = [
+            (r'\bшорох\b', lambda m: self._match_case(m.group(0), "шерох")),
+            (r'\bжёлтый\b', lambda m: self._match_case(m.group(0), "жолтый")),
+            (r'\bчёрный\b', lambda m: self._match_case(m.group(0), "чорный")),
+            (r'\bшёпот\b', lambda m: self._match_case(m.group(0), "шопот")),
+        ]
+        for pattern, repl in random.sample(operations, len(operations)):
+            new, changed = self._replace_one_regex(text, pattern, repl, flags=re.IGNORECASE)
+            if changed:
+                return new, "spelling_vowel_after_sibilant"
+        return text, None
+
+    def _orthography_ts_i_y_error(self, text: str) -> Tuple[str, str | None]:
+        operations = [
+            (r'\bцифра\b', lambda m: self._match_case(m.group(0), "цыфра")),
+            (r'\bцирк\b', lambda m: self._match_case(m.group(0), "цырк")),
+            (r'\bцыган\b', lambda m: self._match_case(m.group(0), "циган")),
+        ]
+        for pattern, repl in random.sample(operations, len(operations)):
+            new, changed = self._replace_one_regex(text, pattern, repl, flags=re.IGNORECASE)
+            if changed:
+                return new, "spelling_i_y_after_ts"
+        return text, None
+
+    def _orthography_hyphen_error(self, text: str) -> Tuple[str, str | None]:
+        operations = [
+            (r'\bиз[-‑]за\b', lambda m: self._match_case(m.group(0), "из за")),
+            (r'\bкое[-‑]что\b', lambda m: self._match_case(m.group(0), "кое что")),
+            (r'\bкто[-‑]то\b', lambda m: self._match_case(m.group(0), "кто то")),
+            (r'\bпо[-‑]русски\b', lambda m: self._match_case(m.group(0), "по русски")),
+        ]
+        for pattern, repl in random.sample(operations, len(operations)):
+            new, changed = self._replace_one_regex(text, pattern, repl, flags=re.IGNORECASE)
+            if changed:
+                return new, "spelling_hyphen"
+        return text, None
+
+    def _orthography_dictionary_word_error(self, text: str) -> Tuple[str, str | None]:
+        operations = [
+            (r'\bрассказать\b', lambda m: self._match_case(m.group(0), "расказать")),
+            (r'\bрассчитать\b', lambda m: self._match_case(m.group(0), "расчитать")),
+            (r'\bаккуратный\b', lambda m: self._match_case(m.group(0), "акуратный")),
+        ]
+        for pattern, repl in random.sample(operations, len(operations)):
+            new, changed = self._replace_one_regex(text, pattern, repl, flags=re.IGNORECASE)
+            if changed:
+                return new, "spelling_dictionary_word"
         return text, None
 
     def _orthography_capitalization_error(self, text: str) -> Tuple[str, str | None]:
@@ -684,6 +797,16 @@ class DatasetGenerator:
             return text, []
 
         operations = [
+            self._orthography_tsya_error,
+            self._orthography_suffix_pronunciation_error,
+            self._orthography_prefix_error,
+            self._orthography_n_nn_error,
+            self._orthography_soft_hard_sign_error,
+            self._orthography_ne_ni_error,
+            self._orthography_sibilant_vowel_error,
+            self._orthography_ts_i_y_error,
+            self._orthography_hyphen_error,
+            self._orthography_dictionary_word_error,
             self._orthography_compound_joining_error,
             self._orthography_capitalization_error,
             self._orthography_abbreviation_case_error,
@@ -710,13 +833,23 @@ class DatasetGenerator:
         return (new, "punct_direct_speech_inner_punct") if changed else (text, None)
 
     def _dash_missing_error(self, text: str) -> Tuple[str, str | None]:
-        new, changed = self._replace_one_regex(text, r'\s+—\s+', ' ')
+        subjects = (
+            'Москва', 'Россия', 'Пушкин', 'Толстой', 'Достоевский', 'Знание',
+            'Учеба', 'Работа', 'Цель', 'Главное', 'Итог', 'Проект', 'Это'
+        )
+        pattern = r'\b(' + '|'.join(re.escape(s) for s in subjects) + r')\s+—\s+([А-Яа-яЁё][А-Яа-яЁё-]*(?:\s+[а-яё-]+){0,3})'
+        new, changed = self._replace_one_regex(text, pattern, lambda m: f"{m.group(1)} {m.group(2)}")
         return (new, "punct_dash_missing") if changed else (text, None)
 
     def _dash_extra_error(self, text: str) -> Tuple[str, str | None]:
         pattern = r'\b(Он|Она|Это)\s+([а-яё]{4,})\b'
         new, changed = self._replace_one_regex(text, pattern, lambda m: f'{m.group(1)} — {m.group(2)}')
         return (new, "punct_dash_extra") if changed else (text, None)
+
+    def _bsp_dash_missing_error(self, text: str) -> Tuple[str, str | None]:
+        pattern = r'\b([а-яё]{3,})\s+—\s+([а-яё]{3,})\b'
+        new, changed = self._replace_one_regex(text, pattern, lambda m: f"{m.group(1)} {m.group(2)}")
+        return (new, "punct_bsp_dash_missing") if changed else (text, None)
 
     def _bracket_missing_close_error(self, text: str) -> Tuple[str, str | None]:
         new, changed = self._replace_one_regex(text, r'\(([^()]{2,40})\)', lambda m: f'({m.group(1)}')
@@ -726,6 +859,14 @@ class DatasetGenerator:
         pattern = r'\b([А-Яа-яЁё]{4,})\b'
         new, changed = self._replace_one_regex(text, pattern, lambda m: f'({m.group(1)})')
         return (new, "punct_bracket_extra") if changed else (text, None)
+
+    def _bracket_pair_missing_error(self, text: str) -> Tuple[str, str | None]:
+        new, changed = self._replace_one_regex(
+            text,
+            r'\s+\(([^()]{2,60})\)',
+            lambda m: f" {m.group(1)}",
+        )
+        return (new, "punct_bracket_pair_missing") if changed else (text, None)
 
     def _ellipsis_extra_error(self, text: str) -> Tuple[str, str | None]:
         new, changed = self._replace_one_regex(text, r'\.\.\.', '....')
@@ -752,18 +893,13 @@ class DatasetGenerator:
             return text, []
 
         operations = [
-            self._quote_style_error,
             self._remove_quotes_error,
             self._direct_speech_dash_missing_error,
             self._direct_speech_inner_punct_error,
             self._dash_missing_error,
             self._dash_extra_error,
-            self._bracket_missing_close_error,
-            self._bracket_extra_error,
-            self._ellipsis_extra_error,
-            self._ellipsis_missing_error,
-            self._list_missing_colon_error,
-            self._list_item_punctuation_error,
+            self._bsp_dash_missing_error,
+            self._bracket_pair_missing_error,
             self._quote_punct_order_error,
         ]
         return self._apply_labeled_operations(text, op_count, operations)
@@ -783,6 +919,16 @@ class DatasetGenerator:
             if not changed:
                 break
         return current, error_types
+
+    def _apply_strict_labeled_operations(self, text: str, op_count: int, applier) -> Tuple[str, List[str]]:
+        """Apply an operation group, accepting only strict-scope labels."""
+        if op_count <= 0:
+            return text, []
+        for _ in range(12):
+            new, labels = applier(text, op_count)
+            if labels and new != text and error_types_are_strict(labels):
+                return new, labels
+        return text, []
 
     def remove_punctuation(self, text: str) -> str:
         """Удалить ОДИН случайный знак препинания."""
@@ -839,11 +985,16 @@ class DatasetGenerator:
             return (text, []) if return_error_types else text
 
         cfg = self.error_profiles.get(profile, {}) if profile else {}
+        strict_scope = bool(self.error_config.get('strict_scope', False))
 
         word_k_range = cfg.get("word_k_range", k_range)
         word_k_weights = cfg.get("word_k_weights", k_weights)
         word_error_rate = cfg.get("word_error_rate", error_rate)
         max_word_errors = cfg.get("max_word_errors", max_errors_override)
+        if strict_scope:
+            word_k_range = (0, 0)
+            word_error_rate = 0.0
+            max_word_errors = 0
 
         text_with_errors, error_types = self._apply_word_errors(
             text,
@@ -857,36 +1008,95 @@ class DatasetGenerator:
         if not profile and self.error_config.get('punct_remove', False) and random.random() < 0.20:
             punct_count = max(punct_count, 1)
         if self.error_config.get('punct_wrong', False) and punct_count > 0:
-            text_with_errors, punct_types = self._apply_punctuation_errors(text_with_errors, punct_count)
-            error_types.extend(punct_types)
+            if strict_scope:
+                candidate_text, punct_types = self._apply_strict_labeled_operations(
+                    text_with_errors,
+                    punct_count,
+                    self._apply_punctuation_errors,
+                )
+            else:
+                candidate_text, punct_types = self._apply_punctuation_errors(text_with_errors, punct_count)
+            if punct_types:
+                text_with_errors = candidate_text
+                error_types.extend(punct_types)
 
         orthography_count = self._sample_op_count(cfg.get("orthography_ops", (0, 0)))
         if orthography_count > 0:
-            text_with_errors, orthography_types = self._apply_orthography_rule_errors(text_with_errors, orthography_count)
-            error_types.extend(orthography_types)
+            if strict_scope:
+                candidate_text, orthography_types = self._apply_strict_labeled_operations(
+                    text_with_errors,
+                    orthography_count,
+                    self._apply_orthography_rule_errors,
+                )
+            else:
+                candidate_text, orthography_types = self._apply_orthography_rule_errors(text_with_errors, orthography_count)
+            if orthography_types:
+                text_with_errors = candidate_text
+                error_types.extend(orthography_types)
 
         structural_punct_count = self._sample_op_count(cfg.get("structural_punct_ops", (0, 0)))
         if structural_punct_count > 0:
-            text_with_errors, structural_types = self._apply_structural_punctuation_errors(
-                text_with_errors,
-                structural_punct_count,
-            )
-            error_types.extend(structural_types)
+            if strict_scope:
+                candidate_text, structural_types = self._apply_strict_labeled_operations(
+                    text_with_errors,
+                    structural_punct_count,
+                    self._apply_structural_punctuation_errors,
+                )
+            else:
+                candidate_text, structural_types = self._apply_structural_punctuation_errors(
+                    text_with_errors,
+                    structural_punct_count,
+                )
+            if structural_types:
+                text_with_errors = candidate_text
+                error_types.extend(structural_types)
+
+        if strict_scope and error_types and not error_types_are_strict(error_types):
+            text_with_errors = original_text
+            error_types = []
 
         ensure_error = bool(self.error_config.get('ensure_error', True))
         if ensure_error and text_with_errors == original_text:
             # Для punctuation_only сначала пробуем сделать именно пунктуационную ошибку.
             if profile == "punctuation_only":
-                text_with_errors, punct_types = self._apply_punctuation_errors(text_with_errors, 1)
+                if strict_scope:
+                    text_with_errors, punct_types = self._apply_strict_labeled_operations(
+                        text_with_errors,
+                        1,
+                        self._apply_punctuation_errors,
+                    )
+                else:
+                    text_with_errors, punct_types = self._apply_punctuation_errors(text_with_errors, 1)
                 error_types.extend(punct_types)
             elif profile == "orthography_rules":
-                text_with_errors, orthography_types = self._apply_orthography_rule_errors(text_with_errors, 1)
+                if strict_scope:
+                    text_with_errors, orthography_types = self._apply_strict_labeled_operations(
+                        text_with_errors,
+                        1,
+                        self._apply_orthography_rule_errors,
+                    )
+                else:
+                    text_with_errors, orthography_types = self._apply_orthography_rule_errors(text_with_errors, 1)
                 error_types.extend(orthography_types)
             elif profile == "punctuation_structural":
-                text_with_errors, structural_types = self._apply_structural_punctuation_errors(text_with_errors, 1)
+                if strict_scope:
+                    text_with_errors, structural_types = self._apply_strict_labeled_operations(
+                        text_with_errors,
+                        1,
+                        self._apply_structural_punctuation_errors,
+                    )
+                else:
+                    text_with_errors, structural_types = self._apply_structural_punctuation_errors(text_with_errors, 1)
                 error_types.extend(structural_types)
+            elif strict_scope:
+                text_with_errors, orthography_types = self._apply_strict_labeled_operations(
+                    text_with_errors,
+                    1,
+                    self._apply_orthography_rule_errors,
+                )
+                error_types.extend(orthography_types)
 
-            if text_with_errors == original_text:
+            if text_with_errors == original_text and not strict_scope:
                 text_with_errors, word_types = self._apply_word_errors(
                     text_with_errors,
                     error_rate=0.25,
@@ -894,6 +1104,13 @@ class DatasetGenerator:
                     max_errors_override=1,
                 )
                 error_types.extend(word_types)
+
+        if strict_scope and error_types and not error_types_are_strict(error_types):
+            text_with_errors = original_text
+            error_types = []
+
+        if strict_scope and text_with_errors == original_text and not error_types:
+            error_types = [ERROR_SCOPE_CLEAN]
 
         if not error_types and text_with_errors != original_text:
             error_types.append("unknown")
@@ -915,12 +1132,10 @@ class DatasetGenerator:
         """
         if curriculum is None:
             curriculum = [
-                {"name": "spelling_light", "profile": "spelling_light", "p": 0.24},
-                {"name": "spelling_medium", "profile": "spelling_medium", "p": 0.13},
-                {"name": "orthography_rules", "profile": "orthography_rules", "p": 0.14},
-                {"name": "punctuation_only", "profile": "punctuation_only", "p": 0.25},
-                {"name": "punctuation_structural", "profile": "punctuation_structural", "p": 0.16},
-                {"name": "mixed", "profile": "mixed", "p": 0.06},
+                {"name": "orthography_rules", "profile": "orthography_rules", "p": 0.32},
+                {"name": "punctuation_only", "profile": "punctuation_only", "p": 0.34},
+                {"name": "punctuation_structural", "profile": "punctuation_structural", "p": 0.24},
+                {"name": "mixed", "profile": "mixed", "p": 0.08},
                 {"name": "hard", "profile": "hard", "p": 0.02},
             ]
 
@@ -994,18 +1209,18 @@ class DatasetGenerator:
             ("Этот вуз открыл лабораторию.", "Этот ВУЗ открыл лабораторию.", "spelling_abbreviation_case"),
             ("Мягкий паралон лежал на полу.", "Мягкий поролон лежал на полу.", "spelling_borrowed_word"),
             ("Нужно координально изменить подход.", "Нужно кардинально изменить подход.", "spelling_borrowed_word"),
-            ('Он сказал: "Привет".', "Он сказал: «Привет».", "punct_quote_style"),
+            ("Я знаю что он придет.", "Я знаю, что он придет.", "punct_remove_comma_before_clause"),
+            ("Конечно мы придем.", "Конечно, мы придем.", "punct_remove_intro_comma"),
+            ("На столе лежали книги тетради и ручки.", "На столе лежали книги, тетради и ручки.", "punct_remove_homogeneous_comma"),
+            ("Он пришел, и сел.", "Он пришел и сел.", "punct_extra_comma_before_single_i"),
+            ("Я понял поезд ушел.", "Я понял: поезд ушел.", "punct_bsp_colon_missing"),
+            ("Солнце взошло город проснулся.", "Солнце взошло — город проснулся.", "punct_bsp_dash_missing"),
             ("Он сказал: Привет.", "Он сказал: «Привет».", "punct_remove_quotes"),
             ("Он сказал: Привет!", "Он сказал: — Привет!", "punct_direct_speech_dash_missing"),
             ("Он сказал: «Привет.»", "Он сказал: «Привет!»", "punct_direct_speech_inner_punct"),
             ("Москва столица России.", "Москва — столица России.", "punct_dash_missing"),
             ("Он — студент университета.", "Он студент университета.", "punct_dash_extra"),
-            ("Он пришел (вчера.", "Он пришел (вчера).", "punct_bracket_missing_close"),
-            ("Он пришел (вчера).", "Он пришел вчера.", "punct_bracket_extra"),
-            ("Он задумался....", "Он задумался...", "punct_ellipsis_extra"),
-            ("Он задумался", "Он задумался...", "punct_ellipsis_missing"),
-            ("Нужно купить хлеб, молоко и сыр.", "Нужно купить: хлеб, молоко и сыр.", "punct_list_missing_colon"),
-            ("Список: хлеб, молоко, сыр.", "Список: хлеб; молоко; сыр.", "punct_list_item_punctuation"),
+            ("Он пришел вчера.", "Он пришел (вчера).", "punct_bracket_pair_missing"),
             ("Он прочитал «Войну и мир,» затем ушел.", "Он прочитал «Войну и мир», затем ушел.", "punct_quote_punct_order"),
         ]
         return pd.DataFrame(
@@ -1112,12 +1327,10 @@ def main():
     # Генерируем датасеты по сплитам
     SAMPLES_PER_TEXT = 3
     CURRICULUM = [
-        {"name": "spelling_light", "profile": "spelling_light", "p": 0.24},
-        {"name": "spelling_medium", "profile": "spelling_medium", "p": 0.13},
-        {"name": "orthography_rules", "profile": "orthography_rules", "p": 0.14},
-        {"name": "punctuation_only", "profile": "punctuation_only", "p": 0.25},
-        {"name": "punctuation_structural", "profile": "punctuation_structural", "p": 0.16},
-        {"name": "mixed", "profile": "mixed", "p": 0.06},
+        {"name": "orthography_rules", "profile": "orthography_rules", "p": 0.32},
+        {"name": "punctuation_only", "profile": "punctuation_only", "p": 0.34},
+        {"name": "punctuation_structural", "profile": "punctuation_structural", "p": 0.24},
+        {"name": "mixed", "profile": "mixed", "p": 0.08},
         {"name": "hard", "profile": "hard", "p": 0.02},
     ]
 

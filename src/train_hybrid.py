@@ -13,6 +13,7 @@ from candidate_generator import CandidateGenerator
 from edit_labels import build_examples_from_dataframe
 from hybrid_preprocessor import HybridPreprocessor
 from training_augmentation import (
+    augment_contextual_phrase_examples,
     augment_keep_candidates,
     build_clean_candidate_audit,
     filter_noisy_clean_rows,
@@ -57,7 +58,6 @@ def train_hybrid(
     safe_split_candidates: bool = True,
     long_oov_max_distance: int = 2,
     long_oov_min_length: int = 8,
-    enable_keyboard_candidates: bool = True,
     enable_orthographic_candidates: bool = True,
     enable_mined_confusions: bool = True,
     mined_confusion_min_count: int = 2,
@@ -92,7 +92,6 @@ def train_hybrid(
         safe_split_only=True,
         long_oov_max_distance=long_oov_max_distance,
         long_oov_min_length=long_oov_min_length,
-        enable_keyboard_candidates=enable_keyboard_candidates,
         enable_orthographic_candidates=enable_orthographic_candidates,
         enable_mined_confusions=False,
     )
@@ -125,7 +124,6 @@ def train_hybrid(
         safe_split_only=True,
         long_oov_max_distance=long_oov_max_distance,
         long_oov_min_length=long_oov_min_length,
-        enable_keyboard_candidates=enable_keyboard_candidates,
         enable_orthographic_candidates=enable_orthographic_candidates,
         enable_mined_confusions=enable_mined_confusions,
     )
@@ -158,6 +156,19 @@ def train_hybrid(
 
     if not train_examples or not val_examples:
         raise RuntimeError("Not enough aligned examples for hybrid training.")
+
+    train_examples, train_context_phrase_stats = augment_contextual_phrase_examples(
+        train_examples,
+        repeats=8,
+        max_tokens=max_length,
+    )
+    val_examples, val_context_phrase_stats = augment_contextual_phrase_examples(
+        val_examples,
+        repeats=1,
+        max_tokens=max_length,
+    )
+    print(f"Context phrase train examples: {train_context_phrase_stats}")
+    print(f"Context phrase val examples:   {val_context_phrase_stats}")
 
     train_examples, train_topk_stats = populate_top_k_candidates(
         train_examples,
@@ -284,7 +295,6 @@ def train_hybrid(
         "safe_split_candidates": safe_split_candidates,
         "long_oov_max_distance": long_oov_max_distance,
         "long_oov_min_length": long_oov_min_length,
-        "enable_keyboard_candidates": enable_keyboard_candidates,
         "enable_orthographic_candidates": enable_orthographic_candidates,
         "enable_mined_confusions": enable_mined_confusions,
         "mined_confusion_min_count": mined_confusion_min_count,
@@ -319,6 +329,8 @@ def train_hybrid(
         "epochs": epochs,
         "train_stats": train_stats,
         "val_stats": val_stats,
+        "train_context_phrase_stats": train_context_phrase_stats,
+        "val_context_phrase_stats": val_context_phrase_stats,
         "train_topk_candidate_stats": train_topk_stats,
         "val_topk_candidate_stats": val_topk_stats,
         "train_keep_candidate_stats": train_keep_stats,
@@ -356,7 +368,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--disable-safe-split-candidates", action="store_true")
     parser.add_argument("--long-oov-max-distance", type=int, default=2)
     parser.add_argument("--long-oov-min-length", type=int, default=8)
-    parser.add_argument("--disable-keyboard-candidates", action="store_true")
     parser.add_argument("--disable-orthographic-candidates", action="store_true")
     parser.add_argument("--disable-mined-confusions", action="store_true")
     parser.add_argument("--mined-confusion-min-count", type=int, default=2)
@@ -403,7 +414,6 @@ def main() -> None:
         safe_split_candidates=not args.disable_safe_split_candidates,
         long_oov_max_distance=args.long_oov_max_distance,
         long_oov_min_length=args.long_oov_min_length,
-        enable_keyboard_candidates=not args.disable_keyboard_candidates,
         enable_orthographic_candidates=not args.disable_orthographic_candidates,
         enable_mined_confusions=not args.disable_mined_confusions,
         mined_confusion_min_count=args.mined_confusion_min_count,

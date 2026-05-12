@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import json
 import random
+import re
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -12,9 +13,18 @@ from typing import Iterable, Iterator, Mapping, Sequence
 
 import pandas as pd
 
-from edit_labels import ACTION_KEEP, build_training_example
+from edit_labels import (
+    ACTION_KEEP,
+    build_training_example,
+    example_has_punctuation_edits,
+    example_has_trainable_change,
+    example_has_word_edits,
+    example_word_edit_pairs,
+)
+from morphology_guard import is_morphological_dictionary_word, is_same_lemma_inflection
 from quality_guard import levenshtein_distance
-from text_utils import normalize_word, word_tokens
+from strict_error_taxonomy import error_types_are_strict
+from text_utils import normalize_word, punctuation_labels_for_slots, word_tokens, extract_word_slots
 
 
 AI_FOREVER_REPO = "ai-forever/spellcheck_punctuation_benchmark"
@@ -142,6 +152,7 @@ def filter_real_pairs(
     max_chars: int = 240,
     max_tokens: int = 96,
     require_edit_compatible: bool = True,
+    strict_scope: bool = False,
 ) -> tuple[pd.DataFrame, dict[str, int]]:
     rows: list[dict[str, object]] = []
     stats: dict[str, int] = {"input": 0, "kept": 0}
@@ -160,6 +171,9 @@ def filter_real_pairs(
             continue
 
         labels = classify_real_error_types(pair.error_text, pair.correct_text, max_tokens=max_tokens)
+        if strict_scope and not error_types_are_strict(labels):
+            stats["non_strict_error_type"] = stats.get("non_strict_error_type", 0) + 1
+            continue
         rows.append(
             {
                 "error_text": pair.error_text,
@@ -192,6 +206,8 @@ def real_pair_filter_reason(
         return "identical"
     if _has_spacing_difference(error, correct):
         return "spacing_only"
+    if _is_style_rewrite(error, correct):
+        return "style_rewrite"
     if len(error) > max_chars or len(correct) > max_chars:
         return "too_long"
 
@@ -214,7 +230,14 @@ def real_pair_filter_reason(
     if changed_ratio > 0.55:
         return "heavy_word_rewrite"
 
-    if require_edit_compatible and build_training_example(error, correct, max_tokens=max_tokens) is None:
+    example = build_training_example(error, correct, max_tokens=max_tokens)
+    if _is_capitalization_only(error, correct, source_words, target_words, example):
+        return "capitalization_only"
+    if example is not None and not example_has_trainable_change(example):
+        return "untrainable_real_pair"
+    if example is not None and _is_morphology_or_grammar_without_orthography(example):
+        return "morphology_or_grammar"
+    if require_edit_compatible and example is None:
         return "not_edit_compatible"
 
     return ""
@@ -224,9 +247,9 @@ def classify_real_error_types(error_text: str, correct_text: str, *, max_tokens:
     labels: list[str] = []
     example = build_training_example(error_text, correct_text, max_tokens=max_tokens)
     if example is not None:
-        if any(action != ACTION_KEEP for action in example.action_labels):
+        if example_has_word_edits(example):
             labels.append("real_spelling")
-        if any(src != tgt for src, tgt in zip(example.source_punct_labels, example.target_punct_labels)):
+        if example_has_punctuation_edits(example):
             labels.append("real_punctuation")
     else:
         source_norm = [normalize_word(word) for word in word_tokens(error_text, include_numbers=True)]
@@ -247,7 +270,12 @@ def build_ai_forever_train_val(
     max_tokens: int = 96,
 ) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, int]]:
     pairs = load_external_pairs(AI_FOREVER_REPO, AI_FOREVER_TRAIN_FILES, cache_dir=cache_dir)
-    df, stats = filter_real_pairs(pairs, max_chars=max_chars, max_tokens=max_tokens)
+    df, stats = filter_real_pairs(
+        pairs,
+        max_chars=max_chars,
+        max_tokens=max_tokens,
+        strict_scope=True,
+    )
     if df.empty:
         df["split"] = []
         return df.copy(), df.copy(), stats
@@ -321,3 +349,74 @@ def _changed_word_ratio(source_words: Sequence[str], target_words: Sequence[str]
 
 def _has_spacing_difference(error_text: str, correct_text: str) -> bool:
     return "".join(str(error_text).split()) == "".join(str(correct_text).split())
+
+
+def _style_normalized_text(text: str) -> str:
+    text = normalize_yo(str(text))
+    text = text.translate(
+        str.maketrans(
+            {
+                "«": '"',
+                "»": '"',
+                "“": '"',
+                "”": '"',
+                "„": '"',
+                "–": "—",
+            }
+        )
+    )
+    text = re.sub(r"([!?])\1+", r"\1", text)
+    text = re.sub(r"\.{4,}", "...", text)
+    return text
+
+
+def _is_style_rewrite(error_text: str, correct_text: str) -> bool:
+    return _style_normalized_text(error_text) == _style_normalized_text(correct_text)
+
+
+def _punctuation_labels_equal(error_text: str, correct_text: str) -> bool:
+    source_slots = extract_word_slots(error_text)
+    target_slots = extract_word_slots(correct_text)
+    if len(source_slots) != len(target_slots):
+        return False
+    return punctuation_labels_for_slots(error_text, source_slots) == punctuation_labels_for_slots(
+        correct_text,
+        target_slots,
+    )
+
+
+def _is_capitalization_only(
+    error_text: str,
+    correct_text: str,
+    source_words: Sequence[str],
+    target_words: Sequence[str],
+    example,
+) -> bool:
+    if len(source_words) != len(target_words):
+        return False
+    if [normalize_word(word) for word in source_words] != [normalize_word(word) for word in target_words]:
+        return False
+    if source_words == target_words:
+        return False
+    if example is not None:
+        return not example_has_punctuation_edits(example)
+    return _punctuation_labels_equal(error_text, correct_text)
+
+
+def _is_morphology_or_grammar_without_orthography(example) -> bool:
+    pairs = [
+        (source, target)
+        for source, target in example_word_edit_pairs(example)
+        if source and target and normalize_word(source) != normalize_word(target)
+    ]
+    if not pairs:
+        return False
+    return all(_is_dictionary_inflection_pair(source, target) for source, target in pairs)
+
+
+def _is_dictionary_inflection_pair(source: str, target: str) -> bool:
+    return (
+        is_same_lemma_inflection(source, target)
+        and is_morphological_dictionary_word(source)
+        and is_morphological_dictionary_word(target)
+    )

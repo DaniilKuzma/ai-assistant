@@ -17,3 +17,4 @@ jupyter
 notebook
 jupyterlab
 ipykernel
+trackio[mcp]

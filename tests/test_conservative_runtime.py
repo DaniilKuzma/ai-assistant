@@ -1,9 +1,11 @@
 from collections import Counter
 import math
+import random
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
@@ -21,6 +23,7 @@ from external_datasets import (
     AI_FOREVER_TEST_FILES,
     AI_FOREVER_TRAIN_FILES,
     ExternalPair,
+    build_ai_forever_train_val,
     classify_real_error_types,
     extract_pair,
     filter_real_pairs,
@@ -31,13 +34,23 @@ from hybrid_corrector import CorrectionEdit, CorrectionResult, HybridCorrector, 
 from hybrid_preprocessor import HybridPreprocessor
 from morphology_guard import is_morphological_dictionary_word, is_same_lemma_inflection
 from quality_guard import QualityGuard
+from strict_error_taxonomy import (
+    ERROR_SCOPE_FORBIDDEN,
+    ERROR_SCOPE_ORTHOGRAPHY,
+    ERROR_SCOPE_PUNCTUATION,
+    ERROR_SCOPE_QUARANTINE,
+    classify_error_type,
+    error_types_are_strict,
+    forbidden_error_types,
+)
 from text_utils import (
     choose_punctuation_label,
     extract_word_slots,
     is_protected_punctuation_gap,
+    normalize_word,
     rebuild_preserving_layout,
 )
-from training_augmentation import augment_keep_candidates, populate_top_k_candidates
+from training_augmentation import augment_contextual_phrase_examples, augment_keep_candidates, populate_top_k_candidates
 import evaluate_hybrid as evaluate_hybrid_module
 
 
@@ -76,6 +89,21 @@ class ConservativeRuntimeTests(unittest.TestCase):
         self.assertIn("real_punctuation", set("|".join(df["error_types"]).split("|")))
         self.assertNotIn("real_spacing", set("|".join(df["error_types"]).split("|")))
 
+    def test_strict_real_pair_filter_rejects_non_strict_labels(self):
+        pairs = [
+            ExternalPair("Hello", "Hello.", "unit"),
+            ExternalPair("Это давольно важно.", "Это довольно важно.", "unit"),
+            ExternalPair("Я думаю что это важно.", "Я думаю, что это важно.", "unit"),
+        ]
+
+        df, stats = filter_real_pairs(pairs, strict_scope=True)
+
+        self.assertEqual(stats["input"], 3)
+        self.assertEqual(stats["kept"], 2)
+        self.assertEqual(stats["untrainable_real_pair"], 1)
+        self.assertNotIn("real_other", set("|".join(df["error_types"]).split("|")))
+        self.assertTrue(error_types_are_strict("|".join(df["error_types"])))
+
     def test_real_pair_filter_rejects_bad_pairs(self):
         self.assertEqual(real_pair_filter_reason("", "Текст."), "empty")
         self.assertEqual(real_pair_filter_reason("Текст.", "Текст."), "identical")
@@ -87,6 +115,188 @@ class ConservativeRuntimeTests(unittest.TestCase):
             ),
             "heavy_rewrite",
         )
+
+    def test_package5_real_pair_filter_rejects_style_case_and_grammar_pairs(self):
+        cases = [
+            (
+                "ПАСЕ это всего лишь ассамблея парламентов.",
+                "ПАСЕ - это всего лишь ассамблея парламентов.",
+                "untrainable_real_pair",
+            ),
+            (
+                'Он сказал: "Привет".',
+                "Он сказал: «Привет».",
+                "style_rewrite",
+            ),
+            (
+                "А вы помните свою первую любовь???",
+                "А вы помните свою первую любовь?",
+                "style_rewrite",
+            ),
+            (
+                "москва стала центром конференции.",
+                "Москва стала центром конференции.",
+                "capitalization_only",
+            ),
+            (
+                "Я читаю книгу.",
+                "Я читал книгу.",
+                "morphology_or_grammar",
+            ),
+        ]
+
+        for error_text, correct_text, expected_reason in cases:
+            with self.subTest(expected_reason=expected_reason):
+                self.assertEqual(
+                    real_pair_filter_reason(error_text, correct_text),
+                    expected_reason,
+                )
+
+        kept_df, stats = filter_real_pairs(
+            [
+                ExternalPair("Это давольно важно.", "Это довольно важно.", "unit"),
+                ExternalPair("Я думаю что это важно.", "Я думаю, что это важно.", "unit"),
+                ExternalPair("ПАСЕ это всего лишь ассамблея парламентов.", "ПАСЕ - это всего лишь ассамблея парламентов.", "unit"),
+                ExternalPair("москва стала центром конференции.", "Москва стала центром конференции.", "unit"),
+                ExternalPair("Я читаю книгу.", "Я читал книгу.", "unit"),
+            ],
+            strict_scope=True,
+        )
+
+        self.assertEqual(stats["kept"], 2)
+        self.assertEqual(stats["untrainable_real_pair"], 1)
+        self.assertEqual(stats["capitalization_only"], 1)
+        self.assertEqual(stats["morphology_or_grammar"], 1)
+        self.assertEqual(
+            set("|".join(kept_df["error_types"]).split("|")),
+            {"real_spelling", "real_punctuation"},
+        )
+
+    def test_package5_ai_forever_train_val_keeps_only_real_spelling_and_punctuation(self):
+        pairs = [
+            ExternalPair("Это давольно важно.", "Это довольно важно.", "unit"),
+            ExternalPair("Я думаю что это важно.", "Я думаю, что это важно.", "unit"),
+            ExternalPair("ПАСЕ это всего лишь ассамблея парламентов.", "ПАСЕ - это всего лишь ассамблея парламентов.", "unit"),
+            ExternalPair("москва стала центром конференции.", "Москва стала центром конференции.", "unit"),
+            ExternalPair("Я читаю книгу.", "Я читал книгу.", "unit"),
+        ]
+
+        with patch("external_datasets.load_external_pairs", return_value=pairs):
+            train_df, val_df, stats = build_ai_forever_train_val(
+                val_ratio=0.5,
+                repeat_train=1,
+                seed=3,
+            )
+
+        labels = set("|".join(pd.concat([train_df, val_df])["error_types"]).split("|"))
+
+        self.assertEqual(stats["kept"], 2)
+        self.assertEqual(labels, {"real_spelling", "real_punctuation"})
+        self.assertNotIn("real_other", labels)
+        self.assertTrue(set(train_df["error_types"]).issubset({"real_spelling", "real_punctuation"}))
+
+    def test_package6_candidate_generator_covers_strict_orthography_sources(self):
+        generator = CandidateGenerator.from_texts(
+            [
+                "Это длинный список.",
+                "Он не был готов.",
+                "Новый подъезд открыт.",
+                "Важный объект найден.",
+                "Кто-то пришел.",
+                "Кое-что изменилось.",
+                "Он говорил по-русски.",
+                "Агентство опубликовало аккуратный отчет.",
+                "Нужно участвовать в проекте.",
+            ],
+            min_freq=1,
+            max_distance=1,
+            allow_split_candidates=True,
+        )
+
+        cases = {
+            "длиный": ("длинный", {"orthographic", "rule"}),
+            "нибыл": ("не был", {"phrase_safe", "rule"}),
+            "подезд": ("подъезд", {"rule", "orthographic"}),
+            "обьект": ("объект", {"rule", "orthographic"}),
+            "ктото": ("кто-то", {"rule", "phrase_safe"}),
+            "коечто": ("кое-что", {"rule", "phrase_safe"}),
+            "порусски": ("по-русски", {"rule", "phrase_safe"}),
+            "агенство": ("агентство", {"rule"}),
+            "учавствовать": ("участвовать", {"rule"}),
+        }
+
+        for source, (expected, allowed_sources) in cases.items():
+            with self.subTest(source=source):
+                candidates = generator.get_candidates(source, max_candidates=16)
+                by_text = {candidate.text: candidate for candidate in candidates}
+                self.assertIn(expected, by_text)
+                self.assertIn(by_text[expected].source, allowed_sources)
+
+    def test_package6_candidate_generator_blocks_typo_like_dictionary_topk(self):
+        generator = CandidateGenerator.from_texts(
+            [
+                "Интел выпустила процессор.",
+                "Это большое дело.",
+                "Стол стоял у окна.",
+                "Для как уже быть лет.",
+            ],
+            min_freq=1,
+            max_distance=1,
+            allow_split_candidates=True,
+        )
+
+        blocked = {
+            "Инел": "Интел",
+            "днло": "дело",
+            "столл": "стол",
+            "ДДля": "Для",
+            "ууже": "уже",
+        }
+        for source, forbidden in blocked.items():
+            with self.subTest(source=source):
+                candidates = generator.get_candidates(source, max_candidates=16)
+                self.assertNotIn(forbidden, [candidate.text for candidate in candidates])
+                self.assertTrue(
+                    all(candidate.source in {"rule", "phrase_safe", "orthographic", "mined"} for candidate in candidates)
+                )
+
+    def test_package6_mined_confusions_require_strict_orthography_pair(self):
+        generator = CandidateGenerator.from_texts(
+            ["довольно интел дело стол длинный"],
+            min_freq=1,
+            max_distance=1,
+        )
+
+        stats = generator.fit_mined_confusions(
+            [
+                "давольно интересно",
+                "давольно полезно",
+                "инел работает",
+                "инел быстрый",
+                "днло простое",
+                "днло важное",
+                "столл стоит",
+                "столл новый",
+            ],
+            [
+                "довольно интересно",
+                "довольно полезно",
+                "интел работает",
+                "интел быстрый",
+                "дело простое",
+                "дело важное",
+                "стол стоит",
+                "стол новый",
+            ],
+            min_count=2,
+        )
+
+        self.assertEqual(stats["accepted"], 1)
+        self.assertIn("довольно", [candidate.text for candidate in generator.get_candidates("давольно", max_candidates=16)])
+        for source, forbidden in {"инел": "интел", "днло": "дело", "столл": "стол"}.items():
+            with self.subTest(source=source):
+                candidates = generator.get_candidates(source, max_candidates=16)
+                self.assertNotIn(forbidden, [candidate.text.lower() for candidate in candidates])
 
     def test_external_pair_normalizes_yo(self):
         pair = extract_pair(
@@ -108,6 +318,336 @@ class ConservativeRuntimeTests(unittest.TestCase):
         self.assertTrue(all("train.json" in path for path in train_paths))
         self.assertTrue(all("test.json" in path for path in test_paths))
         self.assertTrue(train_paths.isdisjoint(test_paths))
+
+    def test_strict_error_taxonomy_marks_allowed_and_forbidden_labels(self):
+        self.assertEqual(classify_error_type("spelling_tsya"), ERROR_SCOPE_ORTHOGRAPHY)
+        self.assertEqual(classify_error_type("real_punctuation"), ERROR_SCOPE_PUNCTUATION)
+        self.assertEqual(classify_error_type("punct_bsp_colon_missing"), ERROR_SCOPE_PUNCTUATION)
+        self.assertEqual(classify_error_type("punct_extra_comma_before_single_i"), ERROR_SCOPE_PUNCTUATION)
+        self.assertEqual(classify_error_type("spelling_replace"), ERROR_SCOPE_QUARANTINE)
+        self.assertEqual(classify_error_type("punct_wrong_colon_to_semicolon"), ERROR_SCOPE_QUARANTINE)
+        self.assertEqual(classify_error_type("punct_quote_style"), ERROR_SCOPE_QUARANTINE)
+        self.assertEqual(classify_error_type("spelling_delete"), ERROR_SCOPE_FORBIDDEN)
+
+        labels = ["spelling_tsya", "punct_remove_final", "punct_bracket_pair_missing", "real_spelling"]
+        self.assertTrue(error_types_are_strict(labels))
+        self.assertFalse(error_types_are_strict(["spelling_tsya", "spelling_extra"]))
+        self.assertEqual(forbidden_error_types("spelling_tsya|spelling_extra|unknown"), ["spelling_extra", "unknown"])
+
+    def test_strict_scope_dataset_generation_does_not_emit_forbidden_labels(self):
+        random.seed(7)
+        generator = DatasetGenerator(error_config={"strict_scope": True})
+        df = generator.generate_dataset_curriculum(
+            [
+                "Президент Российской Федерации выступил в Москве.",
+                "Это важно, потому что результат влияет на проект.",
+                "Кардинально новый мини-футбол обсудили в ВУЗ.",
+            ],
+            samples_per_text=10,
+            clean_ratio=0.0,
+            curriculum=[
+                {"name": "spelling_medium", "profile": "spelling_medium", "p": 0.30},
+                {"name": "orthography_rules", "profile": "orthography_rules", "p": 0.35},
+                {"name": "punctuation_only", "profile": "punctuation_only", "p": 0.35},
+            ],
+        )
+
+        labels = sorted({label for value in df["error_types"] for label in str(value).split("|") if label})
+
+        self.assertTrue(labels)
+        self.assertEqual(forbidden_error_types(labels), [])
+        self.assertTrue(error_types_are_strict(labels))
+
+    def test_default_dataset_generation_uses_strict_scope(self):
+        random.seed(11)
+        generator = DatasetGenerator()
+        df = generator.generate_dataset_curriculum(
+            [
+                "Президент Российской Федерации выступил в Москве.",
+                "Это важно, потому что результат влияет на проект.",
+                "Мы решили действовать по-новому, если условия изменятся.",
+                "Он сказал: «Привет!»",
+            ],
+            samples_per_text=12,
+            clean_ratio=0.0,
+        )
+
+        labels = sorted({label for value in df["error_types"] for label in str(value).split("|") if label})
+
+        self.assertTrue(labels)
+        self.assertEqual(forbidden_error_types(labels), [])
+        self.assertTrue(error_types_are_strict(labels))
+        self.assertTrue(generator.error_config["strict_scope"])
+        for option in ["delete", "swap", "extra", "double"]:
+            self.assertFalse(generator.error_config[option])
+
+    def test_package3_orthography_generators_cover_core_rule_types(self):
+        generator = DatasetGenerator()
+        cases = [
+            (
+                generator._orthography_tsya_error,
+                "Он учится каждый день.",
+                "учиться",
+                "spelling_tsya",
+            ),
+            (
+                generator._orthography_suffix_pronunciation_error,
+                "Мы ждали нового решения.",
+                "новово",
+                "spelling_suffix_pronunciation",
+            ),
+            (
+                generator._orthography_prefix_error,
+                "Это бесконечный процесс.",
+                "безконечный",
+                "spelling_prefix",
+            ),
+            (
+                generator._orthography_n_nn_error,
+                "Это длинный список.",
+                "длиный",
+                "spelling_n_nn",
+            ),
+            (
+                generator._orthography_soft_hard_sign_error,
+                "Новый подъезд открыт.",
+                "подезд",
+                "spelling_soft_hard_sign",
+            ),
+            (
+                generator._orthography_ne_ni_error,
+                "Он не был готов.",
+                "ни был",
+                "spelling_ne_ni",
+            ),
+            (
+                generator._orthography_sibilant_vowel_error,
+                "В комнате был шорох.",
+                "шерох",
+                "spelling_vowel_after_sibilant",
+            ),
+            (
+                generator._orthography_ts_i_y_error,
+                "Цифра была важной.",
+                "Цыфра",
+                "spelling_i_y_after_ts",
+            ),
+            (
+                generator._orthography_hyphen_error,
+                "Он вышел из-за дома.",
+                "из за",
+                "spelling_hyphen",
+            ),
+            (
+                generator._orthography_dictionary_word_error,
+                "Нужно рассказать правду.",
+                "расказать",
+                "spelling_dictionary_word",
+            ),
+        ]
+
+        labels = []
+        for operation, text, expected_fragment, expected_label in cases:
+            with self.subTest(label=expected_label):
+                new_text, label = operation(text)
+                labels.append(label)
+                self.assertEqual(label, expected_label)
+                self.assertIn(expected_fragment, new_text)
+                self.assertTrue(error_types_are_strict([label]))
+
+        self.assertEqual(forbidden_error_types(labels), [])
+
+    def test_package3_candidate_generator_covers_new_orthography_rules(self):
+        generator = CandidateGenerator.from_texts(
+            [
+                "Он учится каждый день.",
+                "Новый подъезд открыт.",
+                "Это длинный список.",
+                "Цифра была важной.",
+                "Нужно рассказать правду.",
+                "Это бесконечный процесс.",
+                "Он вышел из-за дома.",
+            ],
+            min_freq=1,
+            max_distance=1,
+            allow_split_candidates=True,
+        )
+
+        cases = {
+            "учиться": "учится",
+            "подезд": "подъезд",
+            "длиный": "длинный",
+            "Цыфра": "Цифра",
+            "расказать": "рассказать",
+            "безконечный": "бесконечный",
+            "изза": "из-за",
+        }
+        for source, expected in cases.items():
+            with self.subTest(source=source):
+                candidates = [candidate.text for candidate in generator.get_candidates(source, max_candidates=12)]
+                self.assertIn(expected, candidates)
+
+    def test_package4_punctuation_generators_cover_normative_rule_types(self):
+        generator = DatasetGenerator()
+        cases = [
+            (
+                generator._remove_comma_before_clause_marker,
+                "Я знаю, что он придет.",
+                "Я знаю что он придет.",
+                "punct_remove_comma_before_clause",
+            ),
+            (
+                generator._remove_comma_after_intro,
+                "Конечно, мы придем.",
+                "Конечно мы придем.",
+                "punct_remove_intro_comma",
+            ),
+            (
+                generator._remove_homogeneous_comma,
+                "На столе лежали книги, тетради и ручки.",
+                "На столе лежали книги тетради и ручки.",
+                "punct_remove_homogeneous_comma",
+            ),
+            (
+                generator._insert_comma_before_single_i,
+                "Он пришел и сел.",
+                "Он пришел, и сел.",
+                "punct_extra_comma_before_single_i",
+            ),
+            (
+                generator._dash_missing_error,
+                "Москва — столица России.",
+                "Москва столица России.",
+                "punct_dash_missing",
+            ),
+            (
+                generator._bsp_colon_missing_error,
+                "Я понял: поезд ушел.",
+                "Я понял поезд ушел.",
+                "punct_bsp_colon_missing",
+            ),
+            (
+                generator._bsp_dash_missing_error,
+                "Солнце взошло — город проснулся.",
+                "Солнце взошло город проснулся.",
+                "punct_bsp_dash_missing",
+            ),
+            (
+                generator._remove_final_punctuation,
+                "Он пришел?",
+                "Он пришел",
+                "punct_remove_final",
+            ),
+            (
+                generator._remove_quotes_error,
+                "Он сказал: «Привет».",
+                "Он сказал: Привет.",
+                "punct_remove_quotes",
+            ),
+            (
+                generator._direct_speech_dash_missing_error,
+                "Он сказал: — Привет!",
+                "Он сказал: Привет!",
+                "punct_direct_speech_dash_missing",
+            ),
+            (
+                generator._bracket_pair_missing_error,
+                "Он пришел (вчера).",
+                "Он пришел вчера.",
+                "punct_bracket_pair_missing",
+            ),
+        ]
+
+        labels = []
+        for operation, text, expected_text, expected_label in cases:
+            with self.subTest(label=expected_label):
+                new_text, label = operation(text)
+                labels.append(label)
+                self.assertEqual(new_text, expected_text)
+                self.assertEqual(label, expected_label)
+                self.assertTrue(error_types_are_strict([label]))
+
+        self.assertEqual(forbidden_error_types(labels), [])
+
+    def test_package4_punctuation_generation_does_not_emit_random_or_style_labels(self):
+        random.seed(41)
+        generator = DatasetGenerator()
+        df = generator.generate_dataset_curriculum(
+            [
+                "Конечно, я знаю, что он пришел. На столе лежали книги, тетради и ручки.",
+                "Он пришел и сел. Москва — столица России. Я понял: поезд ушел.",
+                "Солнце взошло — город проснулся. Он сказал: «Привет!» Он пришел (вчера).",
+            ],
+            samples_per_text=10,
+            clean_ratio=0.0,
+            curriculum=[
+                {"name": "punctuation_only", "profile": "punctuation_only", "p": 0.55},
+                {"name": "punctuation_structural", "profile": "punctuation_structural", "p": 0.45},
+            ],
+        )
+
+        labels = sorted({label for value in df["error_types"] for label in str(value).split("|") if label})
+        blocked = {
+            "punct_extra_comma",
+            "punct_bracket_extra",
+            "punct_quote_style",
+            "punct_remove_internal_comma",
+            "punct_remove_period",
+            "punct_remove_question",
+            "punct_remove_exclamation",
+            "punct_wrong_comma_to_period",
+            "punct_wrong_colon_to_semicolon",
+            "punct_wrong_semicolon_to_colon",
+            "punct_wrong_question_to_period",
+            "punct_wrong_exclamation_to_period",
+        }
+
+        self.assertTrue(labels)
+        self.assertTrue(
+            {
+                "punct_remove_comma_before_clause",
+                "punct_remove_intro_comma",
+                "punct_remove_homogeneous_comma",
+                "punct_extra_comma_before_single_i",
+                "punct_remove_final",
+                "punct_dash_missing",
+                "punct_bsp_colon_missing",
+                "punct_bsp_dash_missing",
+                "punct_remove_quotes",
+                "punct_direct_speech_dash_missing",
+                "punct_bracket_pair_missing",
+            }.intersection(labels)
+        )
+        self.assertEqual(blocked.intersection(labels), set())
+        self.assertFalse(any(label.startswith("punct_wrong_") for label in labels))
+        self.assertEqual(forbidden_error_types(labels), [])
+        self.assertTrue(error_types_are_strict(labels))
+
+    def test_legacy_typo_flags_do_not_reenable_typo_augmentation(self):
+        random.seed(13)
+        generator = DatasetGenerator(
+            error_config={
+                "strict_scope": False,
+                "replace": True,
+                "delete": True,
+                "swap": True,
+                "extra": True,
+                "double": True,
+            }
+        )
+
+        df = generator.generate_dataset_curriculum(
+            ["Это простой проверочный текст для генерации ошибок."],
+            samples_per_text=30,
+            clean_ratio=0.0,
+            curriculum=[{"name": "legacy_spelling", "profile": "spelling_light", "p": 1.0}],
+        )
+        labels = sorted({label for value in df["error_types"] for label in str(value).split("|") if label})
+
+        self.assertNotIn("spelling_delete", labels)
+        self.assertNotIn("spelling_swap", labels)
+        self.assertNotIn("spelling_extra", labels)
+        self.assertNotIn("spelling_double", labels)
 
     def test_real_source_columns_do_not_break_label_building(self):
         df = pd.DataFrame(
@@ -167,9 +707,20 @@ class ConservativeRuntimeTests(unittest.TestCase):
         split_candidates = [c.text.lower() for c in generator.get_candidates("говориться")]
         short_candidates = [c.text.lower() for c in generator.get_candidates("гель")]
 
-        self.assertIn("интел", intel_candidates)
+        self.assertNotIn("интел", intel_candidates)
         self.assertNotIn("говорить ся", split_candidates)
         self.assertNotIn("дело", short_candidates)
+
+    def test_keyboard_candidates_are_not_generated(self):
+        generator = CandidateGenerator.from_texts(
+            ["\u0434\u0435\u043b\u043e \u0431\u044b\u043b\u043e"],
+            min_freq=1,
+            max_distance=1,
+        )
+
+        candidates = generator.get_candidates("\u0434\u043d\u043b\u043e", max_candidates=8)
+
+        self.assertNotIn("keyboard", {candidate.source for candidate in candidates})
 
     def test_candidate_generator_caches_runtime_candidates(self):
         generator = CandidateGenerator.from_texts(
@@ -216,7 +767,7 @@ class ConservativeRuntimeTests(unittest.TestCase):
                 candidates = generator.get_candidates(source)
                 self.assertGreater(len(candidates), 0)
                 self.assertEqual(candidates[0].text, expected)
-                self.assertEqual(candidates[0].source, "split")
+                self.assertEqual(candidates[0].source, "phrase_safe")
 
     def test_v10_curated_examples_cover_new_error_types_without_spacing(self):
         generator = DatasetGenerator()
@@ -227,18 +778,18 @@ class ConservativeRuntimeTests(unittest.TestCase):
             "spelling_capitalization",
             "spelling_abbreviation_case",
             "spelling_borrowed_word",
-            "punct_quote_style",
+            "punct_remove_comma_before_clause",
+            "punct_remove_intro_comma",
+            "punct_remove_homogeneous_comma",
+            "punct_extra_comma_before_single_i",
+            "punct_bsp_colon_missing",
+            "punct_bsp_dash_missing",
             "punct_remove_quotes",
             "punct_direct_speech_dash_missing",
             "punct_direct_speech_inner_punct",
             "punct_dash_missing",
             "punct_dash_extra",
-            "punct_bracket_missing_close",
-            "punct_bracket_extra",
-            "punct_ellipsis_extra",
-            "punct_ellipsis_missing",
-            "punct_list_missing_colon",
-            "punct_list_item_punctuation",
+            "punct_bracket_pair_missing",
             "punct_quote_punct_order",
         }
 
@@ -356,7 +907,7 @@ class ConservativeRuntimeTests(unittest.TestCase):
             allow_split_candidates=True,
         )
 
-        self.assertIn("сейчас", [candidate.text.lower() for candidate in generator.get_candidates("ссейчас")])
+        self.assertNotIn("сейчас", [candidate.text.lower() for candidate in generator.get_candidates("ссейчас")])
         self.assertNotIn("с сейчас", [candidate.text.lower() for candidate in generator.get_candidates("ссейчас")])
         self.assertNotIn("в иные", [candidate.text.lower() for candidate in generator.get_candidates("виные")])
 
@@ -409,6 +960,239 @@ class ConservativeRuntimeTests(unittest.TestCase):
             ],
         )
         self.assertEqual(rebuilt, "Он сказал: «Привет».")
+
+    def test_package7_training_examples_encode_span_level_phrase_edits(self):
+        cases = [
+            ("так же важно.", "также важно.", ["REPLACE_0", "DELETE", "KEEP"], ["также", "", "важно"]),
+            ("что бы сделать.", "чтобы сделать.", ["REPLACE_0", "DELETE", "KEEP"], ["чтобы", "", "сделать"]),
+            ("по новому пути.", "по-новому пути.", ["REPLACE_0", "DELETE", "KEEP"], ["по-новому", "", "пути"]),
+            ("не смотря на дождь.", "несмотря на дождь.", ["REPLACE_0", "DELETE", "KEEP", "KEEP"], ["несмотря", "", "на", "дождь"]),
+            ("в течении дня.", "в течение дня.", ["KEEP", "REPLACE_0", "KEEP"], ["в", "течение", "дня"]),
+            ("также важно.", "так же важно.", ["REPLACE_0", "KEEP"], ["так же", "важно"]),
+            ("чтобы сделать.", "что бы сделать.", ["REPLACE_0", "KEEP"], ["что бы", "сделать"]),
+            ("по-новому пути.", "по новому пути.", ["REPLACE_0", "KEEP"], ["по новому", "пути"]),
+            ("несмотря на дождь.", "не смотря на дождь.", ["REPLACE_0", "KEEP", "KEEP"], ["не смотря", "на", "дождь"]),
+            ("в течение реки.", "в течении реки.", ["KEEP", "REPLACE_0", "KEEP"], ["в", "течении", "реки"]),
+        ]
+
+        for error_text, correct_text, expected_actions, expected_targets in cases:
+            with self.subTest(error_text=error_text):
+                example = build_training_example(error_text, correct_text)
+                self.assertIsNotNone(example)
+                self.assertEqual(example.action_labels, expected_actions)
+                self.assertEqual(example.target_words, expected_targets)
+
+    def test_package7_runtime_applies_span_phrase_candidates_without_seq2seq(self):
+        class FakeModel:
+            def __init__(self, replace_index: int):
+                self.replace_index = replace_index
+
+            def predict(self, inputs, verbose=0):
+                action = np.zeros((1, 8, 10), dtype=np.float32)
+                punct = np.zeros((1, 8, 8), dtype=np.float32)
+                action[:, :, 0] = 0.99
+                punct[:, :, 0] = 0.99
+                action[0, self.replace_index, 0] = 0.01
+                action[0, self.replace_index, 2] = 0.99
+                return {"action": action, "punct": punct}
+
+        class ConfirmingReranker:
+            def __init__(self, target_text: str):
+                self.target_norm = normalize_word(target_text)
+
+            def score_candidates(self, words, index, source, candidates, candidate_span_lengths=None):
+                scores = []
+                source_norm = normalize_word(source)
+                for candidate in candidates:
+                    candidate_norm = normalize_word(candidate)
+                    if candidate_norm == self.target_norm:
+                        score = 2.0
+                    elif candidate_norm == source_norm:
+                        score = 0.0
+                    else:
+                        score = -1.0
+                    scores.append(ContextScore(text=candidate, score=score, available=True))
+                return scores
+
+        cases = [
+            ("так же важно.", "также важно.", 0, 2),
+            ("что бы сделать.", "чтобы сделать.", 0, 2),
+            ("по новому пути.", "по-новому пути.", 0, 2),
+            ("не смотря на дождь.", "несмотря на дождь.", 0, 2),
+            ("также важно.", "так же важно.", 0, 1),
+            ("чтобы сделать.", "что бы сделать.", 0, 1),
+            ("по-новому пути.", "по новому пути.", 0, 1),
+            ("несмотря на дождь.", "не смотря на дождь.", 0, 1),
+            ("в течение реки.", "в течении реки.", 1, 1),
+        ]
+
+        for source, expected, replace_index, expected_span_len in cases:
+            with self.subTest(source=source):
+                example = build_training_example(source, expected)
+                self.assertIsNotNone(example)
+                expected_candidate = example.target_words[replace_index]
+                corrector = HybridCorrector.__new__(HybridCorrector)
+                corrector.preprocessor = HybridPreprocessor(max_length=8, candidate_top_k=8)
+                corrector.model = FakeModel(replace_index)
+                corrector.guard = QualityGuard()
+                corrector.thresholds = HybridCorrector._thresholds("strict")
+                corrector.candidate_top_k = 8
+                corrector.candidate_generator = CandidateGenerator.from_texts(
+                    [expected],
+                    min_freq=1,
+                    max_distance=1,
+                    allow_split_candidates=True,
+                )
+                corrector.min_dictionary_score = 0.25
+                corrector.use_morphology_guard = False
+                corrector.use_entity_guard = False
+                corrector.context_reranker_enabled = True
+                corrector.context_margin = 0.25
+                corrector.context_reranker = ConfirmingReranker(expected_candidate)
+                corrector.runtime_stats = Counter()
+                corrector.punctuation_mode = "conservative"
+
+                result = corrector._correct_segment(source)
+
+                self.assertTrue(result.accepted)
+                self.assertEqual(result.corrected, expected)
+                self.assertTrue(
+                    any(
+                        edit.action.startswith("REPLACE_") and getattr(edit, "span_len", 1) == expected_span_len
+                        for edit in result.edits
+                    )
+                )
+
+    def test_package7_preprocessor_keeps_multiword_candidate_parts_in_vocab(self):
+        example = build_training_example("также важно.", "так же важно.")
+        self.assertIsNotNone(example)
+
+        preprocessor = HybridPreprocessor(max_length=8, candidate_top_k=8)
+        self.assertEqual(preprocessor.candidate_parts("так же"), ["так", "же"])
+        preprocessor.fit([example])
+        inputs, outputs, _ = preprocessor.vectorize_examples([example])
+
+        self.assertEqual(outputs["action"][0, 0], preprocessor.action_to_id["REPLACE_0"])
+        self.assertEqual(inputs["candidate_ids"][0, 0, 0], preprocessor.word_id("так"))
+        self.assertNotEqual(preprocessor.word_id("же"), preprocessor.word_to_id[preprocessor.UNK])
+
+    def test_package8_training_injects_context_phrase_candidates_for_clean_and_dirty(self):
+        clean_example = build_training_example("В течении реки видны водовороты.", "В течении реки видны водовороты.")
+        dirty_example = build_training_example("В течении дня шел дождь.", "В течение дня шел дождь.")
+        self.assertIsNotNone(clean_example)
+        self.assertIsNotNone(dirty_example)
+        generator = CandidateGenerator.from_texts(
+            [
+                "В течении реки видны водовороты.",
+                "В течение дня шел дождь.",
+            ],
+            min_freq=1,
+            max_distance=1,
+            allow_split_candidates=True,
+        )
+
+        populated, stats = populate_top_k_candidates(
+            [clean_example, dirty_example],
+            generator,
+            candidate_top_k=8,
+        )
+
+        clean_idx = populated[0].source_words.index("течении")
+        dirty_idx = populated[1].source_words.index("течении")
+        self.assertIn("течение", populated[0].candidate_words[clean_idx])
+        self.assertEqual(populated[0].action_labels[clean_idx], "KEEP")
+        self.assertIn("течение", populated[1].candidate_words[dirty_idx])
+        self.assertEqual(populated[1].action_labels[dirty_idx], "REPLACE_0")
+        self.assertGreaterEqual(stats["context_phrase_candidate_tokens"], 2)
+
+    def test_package8_contextual_phrase_examples_are_full_sentence_examples(self):
+        examples, stats = augment_contextual_phrase_examples([], repeats=1)
+
+        self.assertGreater(stats["added_examples"], 0)
+        self.assertGreater(stats["clean_examples"], 0)
+        self.assertGreater(stats["dirty_examples"], 0)
+        self.assertTrue(all(len(example.source_words) >= 4 for example in examples))
+        self.assertTrue(
+            any(
+                "течении" in example.source_words and example.is_clean
+                for example in examples
+            )
+        )
+
+    def test_package8_context_reranker_masks_whole_source_span(self):
+        class FakeTokenizer:
+            mask_token = "[MASK]"
+
+        reranker = ContextReranker(enabled=False, window=64)
+        reranker.tokenizer = FakeTokenizer()
+
+        masked = reranker._masked_text(["так", "же", "важно"], 0, 1, span_len=2)
+
+        self.assertEqual(masked, "[MASK] важно")
+
+    def test_package8_context_reranker_uses_span_context_for_v_techenii_pairs(self):
+        class FakeModel:
+            def predict(self, inputs, verbose=0):
+                action = np.zeros((1, 8, 10), dtype=np.float32)
+                punct = np.zeros((1, 8, 8), dtype=np.float32)
+                action[:, :, 0] = 0.99
+                punct[:, :, 0] = 0.99
+                action[0, 1, 0] = 0.01
+                action[0, 1, 2] = 0.99
+                return {"action": action, "punct": punct}
+
+        class FakeReranker:
+            def score_candidates(self, words, index, source, candidates, candidate_span_lengths=None):
+                right = normalize_word(words[index + 1]) if index + 1 < len(words) else ""
+                scores = []
+                for candidate in candidates:
+                    norm = normalize_word(candidate)
+                    score = -4.0
+                    if right == "дня" and norm == "течение":
+                        score = -1.0
+                    elif right == "дня" and norm == "течении":
+                        score = -5.0
+                    elif right == "реки" and norm == "течении":
+                        score = -1.0
+                    elif right == "реки" and norm == "течение":
+                        score = -5.0
+                    scores.append(ContextScore(text=candidate, score=score, available=True))
+                return scores
+
+        corrector = HybridCorrector.__new__(HybridCorrector)
+        corrector.preprocessor = HybridPreprocessor(max_length=8, candidate_top_k=8)
+        corrector.model = FakeModel()
+        corrector.guard = QualityGuard()
+        corrector.thresholds = HybridCorrector._thresholds("strict")
+        corrector.candidate_top_k = 8
+        corrector.candidate_generator = CandidateGenerator.from_texts(
+            [
+                "В течение дня шел дождь.",
+                "В течении реки видны водовороты.",
+            ],
+            min_freq=1,
+            max_distance=1,
+            allow_split_candidates=True,
+        )
+        corrector.min_dictionary_score = 0.25
+        corrector.use_morphology_guard = False
+        corrector.use_entity_guard = False
+        corrector.context_reranker_enabled = True
+        corrector.context_margin = 0.25
+        corrector.context_reranker = FakeReranker()
+        corrector.runtime_stats = Counter()
+        corrector.punctuation_mode = "conservative"
+
+        fixed = corrector._correct_segment("В течении дня шел дождь.")
+        kept = corrector._correct_segment("В течении реки видны водовороты.")
+        reverse_fixed = corrector._correct_segment("В течение реки видны водовороты.")
+
+        self.assertEqual(fixed.corrected, "В течение дня шел дождь.")
+        self.assertEqual(kept.corrected, "В течении реки видны водовороты.")
+        self.assertEqual(reverse_fixed.corrected, "В течении реки видны водовороты.")
+        self.assertGreaterEqual(corrector.runtime_stats["context_needed_count"], 3)
+        self.assertTrue(any(decision.context_needed for decision in fixed.word_diagnostics))
+        self.assertTrue(any(decision.context_needed for decision in kept.word_diagnostics))
 
     def test_president_case_candidate_requires_official_context(self):
         corrector = HybridCorrector.__new__(HybridCorrector)
@@ -859,10 +1643,10 @@ class ConservativeRuntimeTests(unittest.TestCase):
         self.assertEqual(augmented[0].action_labels[idx], "KEEP")
 
     def test_top_k_candidate_population_uses_generated_target_rank(self):
-        example = build_training_example("отеты были красными.", "одеты были красными.")
+        example = build_training_example("длиный список был готов.", "длинный список был готов.")
         self.assertIsNotNone(example)
         generator = CandidateGenerator.from_texts(
-            ["одеты были красными."] * 2 + ["ответы были неправильными."] * 8,
+            ["длинный список был готов."] * 2,
             min_freq=1,
             max_distance=1,
         )
@@ -872,9 +1656,9 @@ class ConservativeRuntimeTests(unittest.TestCase):
         self.assertEqual(stats["oracle_replace_tokens"], 1)
         self.assertEqual(stats["target_candidate_hits"], 1)
         self.assertEqual(stats["oracle_injected_tokens"], 0)
-        self.assertEqual(populated[0].candidate_words[0][1], "одеты")
-        self.assertEqual(populated[0].action_labels[0], "REPLACE_1")
-        self.assertEqual(populated[0].target_candidate_ranks[0], 1)
+        self.assertEqual(populated[0].candidate_words[0][0], "длинный")
+        self.assertEqual(populated[0].action_labels[0], "REPLACE_0")
+        self.assertEqual(populated[0].target_candidate_ranks[0], 0)
         self.assertLessEqual(len(populated[0].candidate_words[0]), 8)
 
     def test_safe_split_candidates_are_narrow(self):
@@ -894,7 +1678,7 @@ class ConservativeRuntimeTests(unittest.TestCase):
         self.assertIn("в них", [c.text for c in generator.get_candidates("вних")])
         self.assertIn("к ним", [c.text for c in generator.get_candidates("кним")])
         self.assertIn("с ним", [c.text for c in generator.get_candidates("сним")])
-        self.assertIn("крупные европейские", [c.text for c in generator.get_candidates("крупныеевропейские")])
+        self.assertNotIn("крупные европейские", [c.text for c in generator.get_candidates("крупныеевропейские")])
         self.assertIn("из бюджета", [c.text for c in generator.get_candidates("избюджета")])
         self.assertIn("сказать об", [c.text for c in generator.get_candidates("сказатьоб")])
         self.assertIn("зданий от", [c.text for c in generator.get_candidates("зданийот")])
@@ -911,20 +1695,20 @@ class ConservativeRuntimeTests(unittest.TestCase):
         self.assertIn("все", [c.text for c in generator.get_candidates("фсе")])
         self.assertIn("что", [c.text for c in generator.get_candidates("щто")])
         self.assertIn("что", [c.text for c in generator.get_candidates("што")])
-        self.assertIn("быть", [c.text for c in generator.get_candidates("ыть")])
         self.assertIn("есть", [c.text for c in generator.get_candidates("эсть")])
-        self.assertIn("что", [c.text for c in generator.get_candidates("чтто")])
-        self.assertIn("что", [c.text for c in generator.get_candidates("ччто")])
         self.assertIn("дело", [c.text for c in generator.get_candidates("дэло")])
-        self.assertIn("лет", [c.text for c in generator.get_candidates("ллет")])
-        self.assertIn("уже", [c.text for c in generator.get_candidates("ууже")])
+        self.assertNotIn("быть", [c.text for c in generator.get_candidates("ыть")])
+        self.assertNotIn("что", [c.text for c in generator.get_candidates("чтто")])
+        self.assertNotIn("что", [c.text for c in generator.get_candidates("ччто")])
+        self.assertNotIn("лет", [c.text for c in generator.get_candidates("ллет")])
+        self.assertNotIn("уже", [c.text for c in generator.get_candidates("ууже")])
 
-    def test_short_repeated_first_letter_rules_are_dynamic(self):
+    def test_short_repeated_first_letter_rules_are_blocked_as_typos(self):
         generator = CandidateGenerator.from_texts(["Для как уже"], min_freq=1, max_distance=1)
 
-        self.assertIn("Для", [c.text for c in generator.get_candidates("ДДля")])
-        self.assertIn("Как", [c.text for c in generator.get_candidates("ККак")])
-        self.assertIn("уже", [c.text for c in generator.get_candidates("ууже")])
+        self.assertNotIn("Для", [c.text for c in generator.get_candidates("ДДля")])
+        self.assertNotIn("Как", [c.text for c in generator.get_candidates("ККак")])
+        self.assertNotIn("уже", [c.text for c in generator.get_candidates("ууже")])
 
     def test_context_device_is_cpu_by_default_and_propagated(self):
         reranker = ContextReranker(enabled=False)
@@ -1151,7 +1935,7 @@ class ConservativeRuntimeTests(unittest.TestCase):
 
         self.assertTrue(result.accepted)
         self.assertEqual(result.corrected, "Об этом сообщается на странице.")
-        self.assertEqual(result.edits[0].candidate_source, "split")
+        self.assertEqual(result.edits[0].candidate_source, "phrase_safe")
 
     def test_runtime_can_apply_titlecase_service_token_split_candidate(self):
         class FakeModel:
@@ -1205,7 +1989,7 @@ class ConservativeRuntimeTests(unittest.TestCase):
                 result = corrector._correct_segment(source)
                 self.assertTrue(result.accepted)
                 self.assertEqual(result.corrected, expected)
-                self.assertEqual(result.edits[0].candidate_source, "split")
+                self.assertEqual(result.edits[0].candidate_source, "phrase_safe")
 
     def test_context_reranker_can_change_top_candidate(self):
         class FakeReranker:
