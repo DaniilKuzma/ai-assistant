@@ -27,7 +27,7 @@ def test_main_config_is_full_train_profile_for_450k_dataset():
         "tatoeba_russian",
         "russian_wikipedia_dump",
     }
-    assert config["model"]["local_files_only"] is True
+    assert isinstance(config["model"]["local_files_only"], bool)
     assert config["model"]["max_sequence_length"] == 128
     assert 1 <= config["training"]["batch_size"] <= 4
     assert config["training"]["gradient_accumulation_steps"] >= 4

@@ -11,7 +11,7 @@ from src.config.load_config import load_config
 from src.data.dataset_builder import build_synthetic_dataset
 from src.data.dataset_stats import dataset_stats
 from src.evaluation.reports import write_loss_curve, write_threshold_precision_recall_plot, write_training_report
-from src.evaluation.evaluate import evaluate_rows
+from src.evaluation.evaluate import evaluate_rows_detailed
 from src.evaluation.reports import write_dataset_report
 from src.evaluation.threshold_sweep import threshold_sweep
 from src.inference.corrector import Corrector
@@ -57,13 +57,14 @@ def train(config_path: str | Path = "configs/config.yaml") -> dict[str, Any]:
     evaluation_rows = _load_evaluation_rows(config, rows)
     corrector = _build_evaluation_corrector(config, bool(result["model_training_ran"]))
     print(f"Evaluating {len(evaluation_rows)} examples with {corrector.__class__.__name__}...")
-    evaluation_metrics = evaluate_rows(
+    evaluation_result = evaluate_rows_detailed(
         evaluation_rows,
         corrector=corrector,
         output_dir=reports_dir,
         metric_weights=config.get("metrics", {}).get("combined_score_weights"),
         show_progress=bool(config.get("training", {}).get("show_progress", False)),
     )
+    evaluation_metrics = evaluation_result.metrics
     checkpoint_metric = str(config.get("training", {}).get("checkpoint_metric", "combined_score"))
     tracker = BestMetricTracker(checkpoint_metric)
     is_best_checkpoint = tracker.update(evaluation_metrics)
@@ -71,7 +72,7 @@ def train(config_path: str | Path = "configs/config.yaml") -> dict[str, Any]:
     losses = [float(result.get("train_loss", 0.0))]
     write_loss_curve(losses, reports_dir / "loss_curves.png")
     write_threshold_precision_recall_plot(
-        threshold_sweep(_collect_edit_scores(evaluation_rows, corrector), [0.5, 0.7, 0.8, 0.9, 0.95]),
+        threshold_sweep(evaluation_result.edit_scores, [0.5, 0.7, 0.8, 0.9, 0.95]),
         reports_dir / "threshold_precision_recall.png",
     )
     write_training_report(
@@ -137,10 +138,8 @@ def _load_evaluation_rows(config: dict[str, Any], fallback_rows: list[dict[str, 
             max_examples = int(training_config.get("max_val_examples", len(frame)))
             return frame.head(max_examples).to_dict("records")
         val = frame[frame["split"] == "val"].head(int(training_config.get("max_val_examples", 0)))
-        test = frame[frame["split"] == "test"].head(int(training_config.get("max_test_examples", 0)))
-        combined = pd.concat([val, test], ignore_index=True)
-        if not combined.empty:
-            return combined.to_dict("records")
+        if not val.empty:
+            return val.to_dict("records")
     return fallback_rows
 
 
@@ -263,16 +262,6 @@ def _run_model_training(config: dict[str, Any], features) -> dict[str, Any]:  # 
     if hasattr(module.encoder, "save_pretrained"):
         module.encoder.save_pretrained(config.get("paths", {}).get("adapter_output_dir", "models/adapters/latest"))
     return {"status": "trained", "model_training_ran": True, "train_loss": losses[-1] if losses else 0.0}
-
-
-def _collect_edit_scores(rows: list[dict[str, Any]], corrector: Corrector) -> list[dict[str, Any]]:
-    scores: list[dict[str, Any]] = []
-    for row in rows:
-        result = corrector.correct(row["source"])
-        row_is_correct = result.corrected_text == row["target"]
-        for edit in result.edits:
-            scores.append({"confidence": edit.confidence, "is_correct": row_is_correct and edit.status == "accepted"})
-    return scores or [{"confidence": 0.0, "is_correct": False}]
 
 
 def _run_model_training_enabled(config: dict[str, Any]) -> bool:

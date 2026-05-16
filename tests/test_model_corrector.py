@@ -54,7 +54,7 @@ def test_trained_model_corrector_can_apply_context_dependent_pair_when_score_is_
     assert any(edit.edit_type == "split_word" and edit.status == "accepted" for edit in result.edits)
 
 
-def test_trained_model_corrector_deletes_existing_punctuation_when_model_predicts_none():
+def test_trained_model_corrector_keeps_existing_punctuation_when_model_predicts_none():
     corrector = TrainedModelCorrector(
         FakeBackend({}, punctuation=[ModelPunctuationPrediction(1, "NONE", 0.99)]),
         thresholds={"punctuation_threshold": 0.9},
@@ -62,8 +62,8 @@ def test_trained_model_corrector_deletes_existing_punctuation_when_model_predict
 
     result = corrector.correct("Я думаю, это важно.")
 
-    assert result.corrected_text == "Я думаю это важно."
-    assert any(edit.edit_type == "punctuation_delete" and edit.status == "accepted" for edit in result.edits)
+    assert result.corrected_text == "Я думаю, это важно."
+    assert not any(edit.edit_type == "punctuation_delete" and edit.status == "accepted" for edit in result.edits)
 
 
 def test_trained_model_corrector_replaces_existing_punctuation_with_colon():

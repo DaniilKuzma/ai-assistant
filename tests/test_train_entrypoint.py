@@ -1,8 +1,9 @@
 from pathlib import Path
 
+import pandas as pd
 import yaml
 
-from src.training.train import train
+from src.training.train import _load_evaluation_rows, train
 
 
 def test_train_entrypoint_prepares_features_and_all_reports(tmp_path: Path):
@@ -109,3 +110,71 @@ def test_train_uses_trained_corrector_for_reports_when_model_training_runs(monke
     train(config_path)
 
     assert used["trained"] is True
+
+
+def test_training_evaluation_uses_validation_split_only(tmp_path: Path):
+    processed_path = tmp_path / "dataset.csv.gz"
+    rows = [
+        {"source": "val 1", "target": "val 1", "split": "val", "is_clean": True, "is_synthetic": False, "error_types": "[]"},
+        {"source": "val 2", "target": "val 2", "split": "val", "is_clean": True, "is_synthetic": False, "error_types": "[]"},
+        {"source": "test 1", "target": "test 1", "split": "test", "is_clean": True, "is_synthetic": False, "error_types": "[]"},
+        {"source": "test 2", "target": "test 2", "split": "test", "is_clean": True, "is_synthetic": False, "error_types": "[]"},
+    ]
+    pd.DataFrame(rows).to_csv(processed_path, index=False)
+
+    evaluation_rows = _load_evaluation_rows(
+        {
+            "data": {"processed_train_path": str(processed_path)},
+            "training": {"max_val_examples": 2, "max_test_examples": 2},
+        },
+        fallback_rows=[],
+    )
+
+    assert [row["split"] for row in evaluation_rows] == ["val", "val"]
+
+
+def test_training_reports_do_not_run_hidden_second_evaluation(monkeypatch, tmp_path: Path):
+    calls = {"correct": 0}
+
+    class CountingCorrector:
+        def correct(self, text):
+            from src.inference.corrector import CorrectionResult
+            from src.validation.diff_analyzer import Edit
+
+            calls["correct"] += 1
+            return CorrectionResult(
+                text,
+                text,
+                [Edit("", ".", "final_punctuation", status="accepted", confidence=0.9)],
+            )
+
+    monkeypatch.setattr("src.training.train._build_features", lambda config, rows: [])
+    monkeypatch.setattr("src.training.train._build_evaluation_corrector", lambda config, model_training_ran: CountingCorrector())
+
+    config = {
+        "model": {"max_sequence_length": 32, "max_candidates": 8},
+        "training": {
+            "run_model_training": False,
+            "max_train_examples": 2,
+            "max_val_examples": 4,
+            "max_test_examples": 4,
+            "show_progress": False,
+        },
+        "data": {"debug_clean_texts": ["Я не знаю, что делать.", "Чистый текст."]},
+        "labels": {
+            "punctuation": {"NONE": 0, "COMMA": 1, "DOT": 2},
+            "error_types": {"keep": 0, "split_join": 1, "punctuation": 2, "final_punctuation": 3},
+        },
+        "thresholds": {"mode": "balanced", "balanced": {"spelling_threshold": 0.85}},
+        "paths": {
+            "adapter_output_dir": str(tmp_path / "models" / "adapters"),
+            "heads_output_dir": str(tmp_path / "models" / "heads"),
+            "reports_dir": str(tmp_path / "reports"),
+        },
+    }
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(yaml.safe_dump(config, allow_unicode=True), encoding="utf-8")
+
+    result = train(config_path)
+
+    assert calls["correct"] == result["evaluation_count"]

@@ -20,9 +20,9 @@ training:
   mode: full-train
   run_model_training: true
   checkpoint_metric: combined_score
-  max_train_examples: 10000
-  max_val_examples: 1000
-  max_test_examples: 1000
+  max_train_examples: 100
+  max_val_examples: 10
+  max_test_examples: 10
   batch_size: 4
   gradient_accumulation_steps: 16
   epochs: 3
