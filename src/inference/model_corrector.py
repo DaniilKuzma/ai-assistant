@@ -275,17 +275,14 @@ def _apply_punctuation_predictions(
             continue
         if prediction.label in {"QUOTE_OPEN", "BRACKET_OPEN"}:
             proposed = _insert_punctuation_before_word(proposed, prediction.word_index, _punctuation_mark(prediction.label))
-        elif prediction.label in {"DOT", "QUESTION", "EXCLAMATION", "ELLIPSIS"} and _is_last_word_index(proposed, prediction.word_index):
-            proposed = _replace_final_punctuation(proposed, _punctuation_mark(prediction.label))
+        elif prediction.label in {"DOT", "QUESTION", "EXCLAMATION", "ELLIPSIS"}:
+            if _is_last_word_index(proposed, prediction.word_index):
+                proposed = _replace_final_punctuation(proposed, _punctuation_mark(prediction.label))
         elif prediction.label in {
             "COMMA",
-            "DOT",
-            "QUESTION",
-            "EXCLAMATION",
             "COLON",
             "DASH",
             "SEMICOLON",
-            "ELLIPSIS",
             "QUOTE_CLOSE",
             "BRACKET_CLOSE",
         }:

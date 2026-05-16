@@ -80,6 +80,17 @@ def test_trained_model_corrector_replaces_existing_punctuation_with_colon():
     assert any(edit.edit_type == "punctuation_replace" and edit.status == "accepted" for edit in result.edits)
 
 
+def test_trained_model_corrector_does_not_insert_sentence_final_mark_inside_sentence():
+    corrector = TrainedModelCorrector(
+        FakeBackend({}, punctuation=[ModelPunctuationPrediction(2, "DOT", 0.99)]),
+        thresholds={"punctuation_threshold": 0.9},
+    )
+
+    result = corrector.correct("Он предназначен для роботов поисковых систем.")
+
+    assert result.corrected_text == "Он предназначен для роботов поисковых систем."
+
+
 def test_trained_model_corrector_inserts_dash_with_spacing():
     corrector = TrainedModelCorrector(
         FakeBackend({}, punctuation=[ModelPunctuationPrediction(0, "DASH", 0.99)]),
