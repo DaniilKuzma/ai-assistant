@@ -4,7 +4,7 @@ from dataclasses import dataclass, replace
 import difflib
 import re
 
-from src.candidates.frequent_errors import HYPHEN_WHITELIST, SPLIT_JOIN_WHITELIST, WRONG_TO_CORRECT
+from src.candidates.frequent_errors import CONTEXT_DEPENDENT_WHITELIST, HYPHEN_WHITELIST, SPLIT_JOIN_WHITELIST, WRONG_TO_CORRECT
 from src.preprocessing.tokenizer import PUNCTUATION
 
 
@@ -65,6 +65,21 @@ class DiffAnalyzer:
             if correct in source_lower and wrong in target_lower:
                 start = source_lower.find(correct)
                 edits.append(Edit(source[start : start + len(correct)], wrong, "join_words", start, start + len(correct), confidence=0.95))
+
+        for source_phrase, replacement in CONTEXT_DEPENDENT_WHITELIST.items():
+            if source_phrase in source_lower and replacement in target_lower:
+                start = source_lower.find(source_phrase)
+                edit_type = _split_join_edit_type(source_phrase, replacement)
+                edits.append(
+                    Edit(
+                        source[start : start + len(source_phrase)],
+                        replacement,
+                        edit_type,
+                        start,
+                        start + len(source_phrase),
+                        confidence=0.95,
+                    )
+                )
 
         for wrong, correct in HYPHEN_WHITELIST.items():
             if wrong == correct:
@@ -158,6 +173,12 @@ def _strip_final_punctuation(text: str) -> str:
 
 def _remove_punctuation(text: str) -> str:
     return PUNCT_RE.sub("", text)
+
+
+def _split_join_edit_type(source: str, replacement: str) -> str:
+    if len(source.split()) > len(replacement.split()):
+        return "join_words"
+    return "split_word"
 
 
 def _punctuation_inserts(position: int, inserted: str) -> list[Edit]:

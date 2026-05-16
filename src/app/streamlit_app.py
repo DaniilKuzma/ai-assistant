@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import difflib
+import html
 from pathlib import Path
+import re
 import tempfile
 from typing import Any
 
@@ -60,6 +63,8 @@ def main() -> None:
         if st.button("Исправить текст", type="primary") and source.strip():
             result = corrector.correct(source)
             st.text_area("Исправленный текст", value=result.corrected_text, height=180)
+            st.markdown("Подсветка исправлений")
+            st.markdown(render_highlighted_diff(source, result.corrected_text), unsafe_allow_html=True)
             st.dataframe(
                 [
                     {
@@ -114,6 +119,59 @@ def _resolve_project_path(path: str | Path) -> Path:
     if path.is_absolute():
         return path
     return PROJECT_ROOT / path
+
+
+def render_highlighted_diff(source: str, corrected: str) -> str:
+    source_tokens = _diff_tokens(source)
+    corrected_tokens = _diff_tokens(corrected)
+    matcher = difflib.SequenceMatcher(a=source_tokens, b=corrected_tokens)
+    chunks: list[str] = []
+    for tag, source_start, source_end, corrected_start, corrected_end in matcher.get_opcodes():
+        source_fragment = html.escape("".join(source_tokens[source_start:source_end]))
+        corrected_fragment = html.escape("".join(corrected_tokens[corrected_start:corrected_end]))
+        if tag == "equal":
+            chunks.append(corrected_fragment)
+        elif tag == "delete":
+            chunks.append(f'<span class="diff-delete">{source_fragment}</span>')
+        elif tag == "insert":
+            chunks.append(f'<span class="diff-insert">{corrected_fragment}</span>')
+        elif tag == "replace":
+            chunks.append(f'<span class="diff-delete">{source_fragment}</span>')
+            chunks.append(f'<span class="diff-insert">{corrected_fragment}</span>')
+    return f'{_DIFF_STYLE}<div class="diff-view">{"".join(chunks)}</div>'
+
+
+def _diff_tokens(text: str) -> list[str]:
+    return re.findall(r"\s+|[А-Яа-яЁёA-Za-z0-9]+|[^\w\s]", text, flags=re.UNICODE)
+
+
+_DIFF_STYLE = """
+<style>
+.diff-view {
+    border: 1px solid #d8dee4;
+    border-radius: 8px;
+    padding: 0.85rem 1rem;
+    background: #ffffff;
+    color: #1f2328;
+    line-height: 1.75;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+.diff-insert {
+    background: #dafbe1;
+    color: #116329;
+    border-radius: 4px;
+    padding: 0.08rem 0.18rem;
+}
+.diff-delete {
+    background: #ffebe9;
+    color: #82071e;
+    border-radius: 4px;
+    padding: 0.08rem 0.18rem;
+    text-decoration: line-through;
+}
+</style>
+"""
 
 
 if __name__ == "__main__":

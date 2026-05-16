@@ -20,6 +20,7 @@ from src.model.edit_model import CandidateAwareEditModel, EditModelConfig
 from src.model.encoder import EncoderLoadConfig, load_tokenizer
 from src.training.save_load import save_training_artifacts
 from src.training.tensorization import DebugTokenizer, EditBatchCollator, build_features_from_rows
+from src.training.callbacks import BestMetricTracker
 from src.training.trainer import EditModelTrainer, TrainLoopConfig
 
 
@@ -60,8 +61,13 @@ def train(config_path: str | Path = "configs/config.yaml") -> dict[str, Any]:
         evaluation_rows,
         corrector=corrector,
         output_dir=reports_dir,
+        metric_weights=config.get("metrics", {}).get("combined_score_weights"),
         show_progress=bool(config.get("training", {}).get("show_progress", False)),
     )
+    checkpoint_metric = str(config.get("training", {}).get("checkpoint_metric", "combined_score"))
+    tracker = BestMetricTracker(checkpoint_metric)
+    is_best_checkpoint = tracker.update(evaluation_metrics)
+    checkpoint_metric_value = float(evaluation_metrics.get(checkpoint_metric, 0.0))
     losses = [float(result.get("train_loss", 0.0))]
     write_loss_curve(losses, reports_dir / "loss_curves.png")
     write_threshold_precision_recall_plot(
@@ -73,6 +79,9 @@ def train(config_path: str | Path = "configs/config.yaml") -> dict[str, Any]:
             "feature_count": float(len(features)),
             "evaluation_count": float(len(evaluation_rows)),
             "model_training_ran": float(result["model_training_ran"]),
+            "checkpoint_metric": checkpoint_metric,
+            "checkpoint_metric_value": checkpoint_metric_value,
+            "is_best_checkpoint": float(is_best_checkpoint),
             **evaluation_metrics,
         },
         reports_dir / "training_report.md",
@@ -81,6 +90,9 @@ def train(config_path: str | Path = "configs/config.yaml") -> dict[str, Any]:
         {
             "evaluation_count": len(evaluation_rows),
             "evaluation_metrics": evaluation_metrics,
+            "checkpoint_metric": checkpoint_metric,
+            "checkpoint_metric_value": checkpoint_metric_value,
+            "is_best_checkpoint": is_best_checkpoint,
             "reports_dir": str(reports_dir),
             "report_paths": _report_paths(reports_dir),
         }

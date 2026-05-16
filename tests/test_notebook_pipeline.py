@@ -18,6 +18,7 @@ def test_main_pipeline_notebook_executes_top_to_bottom(tmp_path: Path, monkeypat
                 config = namespace["config"]
                 config["data"]["processed_train_path"] = str(tmp_path / "data" / "processed" / "correction_dataset.csv.gz")
                 config["data"]["manifest_path"] = str(tmp_path / "reports" / "dataset_manifest.json")
+                config["data"]["use_external_sources"] = False
                 config["data"].setdefault("clean_corpus", {})["enabled"] = False
                 config["paths"]["adapter_output_dir"] = str(tmp_path / "models" / "adapters" / "latest")
                 config["paths"]["heads_output_dir"] = str(tmp_path / "models" / "heads" / "latest")

@@ -27,7 +27,12 @@ DEFAULT_HF_JSONL_SOURCES = [
 ]
 
 
-def load_hf_jsonl_pairs(source_specs: list[dict[str, Any]] | None = None, limit: int | None = None) -> list[dict[str, Any]]:
+def load_hf_jsonl_pairs(
+    source_specs: list[dict[str, Any]] | None = None,
+    limit: int | None = None,
+    *,
+    local_files_only: bool = False,
+) -> list[dict[str, Any]]:
     from huggingface_hub import hf_hub_download
 
     rows: list[dict[str, Any]] = []
@@ -35,7 +40,7 @@ def load_hf_jsonl_pairs(source_specs: list[dict[str, Any]] | None = None, limit:
     for spec in specs:
         repo = spec["repo"]
         for filename in spec.get("files", []):
-            path = hf_hub_download(repo, filename, repo_type="dataset")
+            path = hf_hub_download(repo, filename, repo_type="dataset", local_files_only=local_files_only)
             rows.extend(load_local_jsonl_pairs(path, source_dataset=f"{repo}:{filename}", limit=None if limit is None else limit - len(rows)))
             if limit is not None and len(rows) >= limit:
                 return rows[:limit]

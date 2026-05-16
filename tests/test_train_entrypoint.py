@@ -58,6 +58,10 @@ def test_train_entrypoint_prepares_features_and_all_reports(tmp_path: Path):
 
     dataset_report = (tmp_path / "reports" / "dataset_report.md").read_text(encoding="utf-8")
     assert "- total: 4" in dataset_report
+    training_report = (tmp_path / "reports" / "training_report.md").read_text(encoding="utf-8")
+    assert "- checkpoint_metric: combined_score" in training_report
+    assert "- checkpoint_metric_value:" in training_report
+    assert "- combined_score:" in training_report
 
 
 def test_train_uses_trained_corrector_for_reports_when_model_training_runs(monkeypatch, tmp_path: Path):
@@ -75,6 +79,7 @@ def test_train_uses_trained_corrector_for_reports_when_model_training_runs(monke
             return CorrectionResult(text, text, [])
 
     monkeypatch.setattr("src.training.train._run_model_training", lambda config, features: {"status": "trained", "model_training_ran": True, "train_loss": 0.1})
+    monkeypatch.setattr("src.training.train._build_features", lambda config, rows: [])
     monkeypatch.setattr("src.training.train.TrainedModelCorrector", FakeTrainedCorrector)
 
     config = {

@@ -19,6 +19,7 @@ model:
 training:
   mode: full-train
   run_model_training: true
+  checkpoint_metric: combined_score
   max_train_examples: 10000
   max_val_examples: 1000
   max_test_examples: 1000

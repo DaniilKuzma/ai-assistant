@@ -268,11 +268,27 @@ def _apply_punctuation_predictions(
     punctuation_threshold = float(thresholds.get("punctuation_threshold", 0.82))
     proposed = text
     for prediction in predictions:
-        if prediction.confidence < punctuation_threshold or prediction.label == "NONE":
+        if prediction.confidence < punctuation_threshold:
             continue
-        if prediction.label in {"DOT", "QUESTION", "EXCLAMATION", "ELLIPSIS"} and _is_last_word_index(proposed, prediction.word_index):
+        if prediction.label == "NONE":
+            proposed = _delete_punctuation_after_word(proposed, prediction.word_index)
+            continue
+        if prediction.label in {"QUOTE_OPEN", "BRACKET_OPEN"}:
+            proposed = _insert_punctuation_before_word(proposed, prediction.word_index, _punctuation_mark(prediction.label))
+        elif prediction.label in {"DOT", "QUESTION", "EXCLAMATION", "ELLIPSIS"} and _is_last_word_index(proposed, prediction.word_index):
             proposed = _replace_final_punctuation(proposed, _punctuation_mark(prediction.label))
-        elif prediction.label in {"COMMA", "COLON", "DASH", "SEMICOLON"}:
+        elif prediction.label in {
+            "COMMA",
+            "DOT",
+            "QUESTION",
+            "EXCLAMATION",
+            "COLON",
+            "DASH",
+            "SEMICOLON",
+            "ELLIPSIS",
+            "QUOTE_CLOSE",
+            "BRACKET_CLOSE",
+        }:
             proposed = _insert_punctuation_after_word(proposed, prediction.word_index, _punctuation_mark(prediction.label))
     return proposed
 
@@ -341,6 +357,10 @@ def _punctuation_mark(label: str) -> str:
         "DASH": "—",
         "SEMICOLON": ";",
         "ELLIPSIS": "…",
+        "QUOTE_OPEN": "«",
+        "QUOTE_CLOSE": "»",
+        "BRACKET_OPEN": "(",
+        "BRACKET_CLOSE": ")",
     }.get(label, "")
 
 
@@ -365,8 +385,56 @@ def _insert_punctuation_after_word(text: str, word_index: int, mark: str) -> str
     if word_index < 0 or word_index >= len(words):
         return text
     position = words[word_index].end
-    if position < len(text) and text[position] in ",.!?:;—…":
-        if text[position] == mark:
+    punct_position = _punctuation_position_after(text, position)
+    if mark == "—":
+        if punct_position is not None and text[punct_position] == mark:
             return text
-        return text[:position] + mark + text[position + 1 :]
+        if punct_position is not None and text[punct_position] in ",.!?:;—…":
+            return text[:position].rstrip() + " — " + text[punct_position + 1 :].lstrip()
+        return text[:position].rstrip() + " — " + text[position:].lstrip()
+    if punct_position is not None and text[punct_position] in ",.!?:;—…":
+        if text[punct_position] == mark:
+            return text
+        return text[:punct_position] + mark + text[punct_position + 1 :]
+    if punct_position is not None and text[punct_position] == mark:
+        return text
     return text[:position] + mark + text[position:]
+
+
+def _insert_punctuation_before_word(text: str, word_index: int, mark: str) -> str:
+    if not mark:
+        return text
+    words = tokenize_words(text)
+    if word_index < 0 or word_index >= len(words):
+        return text
+    position = words[word_index].start
+    if position < len(text) and text[position] == mark:
+        return text
+    if position > 0 and text[position - 1] == mark:
+        return text
+    return text[:position] + mark + text[position:]
+
+
+def _delete_punctuation_after_word(text: str, word_index: int) -> str:
+    words = tokenize_words(text)
+    if word_index < 0 or word_index >= len(words):
+        return text
+    position = words[word_index].end
+    punct_position = _punctuation_position_after(text, position)
+    if punct_position is None:
+        return text
+    mark = text[punct_position]
+    if word_index == len(words) - 1 and mark in ".!?…":
+        return text
+    if mark == "—":
+        return text[:position].rstrip() + " " + text[punct_position + 1 :].lstrip()
+    return text[:punct_position] + text[punct_position + 1 :]
+
+
+def _punctuation_position_after(text: str, position: int) -> int | None:
+    index = position
+    while index < len(text) and text[index].isspace():
+        index += 1
+    if index < len(text) and text[index] in ",.!?:;—…«»()[]":
+        return index
+    return None

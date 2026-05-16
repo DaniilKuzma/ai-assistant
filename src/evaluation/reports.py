@@ -24,7 +24,7 @@ def write_edit_logs(accepted: list[dict], rejected: list[dict], output_dir: str 
     pd.DataFrame(rejected, columns=columns).to_csv(output / "rejected_edits.csv", index=False)
 
 
-def write_training_report(metrics: dict[str, float], path: str | Path) -> None:
+def write_training_report(metrics: dict[str, Any], path: str | Path) -> None:
     lines = ["# Training Report", "", *[f"- {key}: {value}" for key, value in metrics.items()]]
     Path(path).write_text("\n".join(lines) + "\n", encoding="utf-8")
 

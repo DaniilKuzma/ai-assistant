@@ -13,6 +13,7 @@ def evaluate_rows(
     corrector: Corrector | None = None,
     output_dir: str | Path | None = None,
     *,
+    metric_weights: dict[str, float] | None = None,
     show_progress: bool = False,
 ) -> dict[str, float]:
     corrector = corrector or Corrector()
@@ -38,7 +39,7 @@ def evaluate_rows(
                 accepted.append(serialized)
             else:
                 rejected.append(serialized)
-    metrics = compute_metrics(evaluated)
+    metrics = compute_metrics(evaluated, weights=metric_weights)
     if output_dir is not None:
         write_required_evaluation_reports(evaluated, metrics, output_dir)
         write_edit_logs(accepted, rejected, output_dir)

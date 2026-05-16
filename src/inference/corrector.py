@@ -41,7 +41,7 @@ class Corrector:
         proposed = text
         offset = 0
         for candidate in self.candidates.generate(text):
-            if candidate.edit_type == "keep":
+            if candidate.edit_type == "keep" or candidate.requires_model:
                 continue
             shifted = candidate.__class__(
                 source=candidate.source,
@@ -59,7 +59,43 @@ class Corrector:
         return normalize_spacing(proposed)
 
     def _punctuation_pass(self, text: str) -> str:
+        text = _remove_obvious_extra_punctuation(text)
+        text = _normalize_simple_direct_speech_quotes(text)
+        text = _add_simple_direct_speech_colon(text)
+        text = _add_obvious_subject_predicate_dash(text)
+        text = _add_simple_enumeration_colon(text)
         text = re.sub(r"\b(не знаю|думаю|считаю) что\b", r"\1, что", text, flags=re.IGNORECASE)
         text = re.sub(r"\b(во-первых|во-вторых|в-третьих)\s+(?!,)", r"\1, ", text, flags=re.IGNORECASE)
         text = ensure_final_punctuation(text, ".")
         return text
+
+
+def _remove_obvious_extra_punctuation(text: str) -> str:
+    text = re.sub(r"([,;:])\s*\1+", r"\1", text)
+    text = re.sub(r",\s*([.!?…])", r"\1", text)
+    text = re.sub(r"([«(])\s*([,;:])\s*", r"\1", text)
+    text = re.sub(r"\s*([,;:])\s*([»)])", r"\2", text)
+    return text
+
+
+def _normalize_simple_direct_speech_quotes(text: str) -> str:
+    speech_verbs = r"сказал[аи]?|спросил[аи]?|ответил[аи]?|написал[аи]?"
+    return re.sub(
+        rf"\b({speech_verbs})\s*:?\s*\"([^\"\n]+)\"",
+        r"\1: «\2»",
+        text,
+        flags=re.IGNORECASE,
+    )
+
+
+def _add_simple_direct_speech_colon(text: str) -> str:
+    speech_verbs = r"сказал[аи]?|спросил[аи]?|ответил[аи]?|написал[аи]?"
+    return re.sub(rf"\b({speech_verbs})\s+(«[^»]+»)", r"\1: \2", text, flags=re.IGNORECASE)
+
+
+def _add_obvious_subject_predicate_dash(text: str) -> str:
+    return re.sub(r"^([А-ЯЁ][а-яё]+)\s+это\s+", r"\1 — это ", text)
+
+
+def _add_simple_enumeration_colon(text: str) -> str:
+    return re.sub(r"\b(следующее)\s+(?=[а-яёА-ЯЁ])", r"\1: ", text, count=1)

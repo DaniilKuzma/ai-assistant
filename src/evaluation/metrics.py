@@ -1,46 +1,76 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from typing import Any
 
 from src.validation.diff_analyzer import DiffAnalyzer
 from src.validation.edit_classifier import coarse_error_type
 
 
-def compute_metrics(rows: Iterable[dict]) -> dict[str, float]:
+DEFAULT_COMBINED_SCORE_WEIGHTS = {
+    "exact_match": 1.0,
+    "edit_f1": 1.0,
+    "spelling_f1": 1.0,
+    "punctuation_f1": 1.0,
+    "dirty_improved_rate": 1.0,
+    "dirty_worse_rate": -2.0,
+    "clean_overcorrection_rate": -3.0,
+}
+
+
+def compute_metrics(rows: Iterable[dict], weights: dict[str, float] | None = None) -> dict[str, float]:
     rows = list(rows)
+    if not rows:
+        metrics = _zero_metrics()
+        metrics["combined_score"] = combined_score(metrics, weights)
+        metrics.update(_scoped_metrics(rows, weights))
+        return metrics
+
+    metrics = _base_metrics(rows)
+    metrics["combined_score"] = combined_score(metrics, weights)
+    metrics.update(_scoped_metrics(rows, weights))
+    return metrics
+
+
+def _base_metrics(rows: list[dict]) -> dict[str, float]:
     if not rows:
         return _zero_metrics()
 
-    exact = sum(row["prediction"] == row["target"] for row in rows) / len(rows)
+    exact = sum(_is_exact(row) for row in rows) / len(rows)
     dirty = [row for row in rows if not row.get("is_clean", False)]
     clean = [row for row in rows if row.get("is_clean", False)]
 
-    dirty_improved = _safe_rate(sum(row["prediction"] == row["target"] and row["source"] != row["target"] for row in dirty), len(dirty))
+    dirty_improved = _safe_rate(sum(_is_exact(row) and row["source"] != row["target"] for row in dirty), len(dirty))
     dirty_worse = _safe_rate(sum(row["prediction"] not in {row["source"], row["target"]} for row in dirty), len(dirty))
-    clean_over = _safe_rate(sum(row["prediction"] != row["target"] for row in clean), len(clean))
+    clean_over = _safe_rate(sum(not _is_exact(row) for row in clean), len(clean))
 
     edit_scores = _edit_scores(rows)
-    metrics = {
+    return {
         "exact_match": exact,
         "dirty_improved_rate": dirty_improved,
         "dirty_worse_rate": dirty_worse,
         "clean_overcorrection_rate": clean_over,
         **edit_scores,
     }
-    return metrics
 
 
 def combined_score(metrics: dict[str, float], weights: dict[str, float] | None = None) -> float:
-    weights = weights or {
-        "exact_match": 1.0,
-        "edit_f1": 1.0,
-        "spelling_f1": 1.0,
-        "punctuation_f1": 1.0,
-        "dirty_improved_rate": 1.0,
-        "dirty_worse_rate": -2.0,
-        "clean_overcorrection_rate": -3.0,
-    }
+    weights = weights or DEFAULT_COMBINED_SCORE_WEIGHTS
     return sum(metrics.get(name, 0.0) * weight for name, weight in weights.items())
+
+
+def _scoped_metrics(rows: list[dict], weights: dict[str, float] | None) -> dict[str, float]:
+    scopes = {
+        "real": [row for row in rows if _is_real(row)],
+        "synthetic": [row for row in rows if _is_synthetic(row)],
+        "clean": [row for row in rows if row.get("is_clean", False)],
+    }
+    scoped: dict[str, float] = {}
+    for scope_name, scope_rows in scopes.items():
+        scope_metrics = _base_metrics(scope_rows)
+        scope_metrics["combined_score"] = combined_score(scope_metrics, weights)
+        scoped.update({f"{scope_name}_{name}": value for name, value in scope_metrics.items()})
+    return scoped
 
 
 def _edit_scores(rows: list[dict]) -> dict[str, float]:
@@ -96,6 +126,24 @@ def _precision_recall_f1(predicted: list[str], gold: list[str]) -> tuple[float, 
 
 def _safe_rate(numerator: int, denominator: int) -> float:
     return 0.0 if denominator == 0 else numerator / denominator
+
+
+def _is_exact(row: dict[str, Any]) -> bool:
+    return row["prediction"] == row["target"]
+
+
+def _is_real(row: dict[str, Any]) -> bool:
+    return not row.get("is_clean", False) and not _as_bool(row.get("is_synthetic", False))
+
+
+def _is_synthetic(row: dict[str, Any]) -> bool:
+    return not row.get("is_clean", False) and _as_bool(row.get("is_synthetic", False))
+
+
+def _as_bool(value: Any) -> bool:
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes"}
+    return bool(value)
 
 
 def _zero_metrics() -> dict[str, float]:

@@ -48,3 +48,20 @@ def test_streamlit_corrector_uses_rule_fallback_when_artifacts_are_missing(tmp_p
     assert isinstance(result.corrector, FakeRuleCorrector)
     assert result.kind == "rule_fallback"
     assert result.error is None
+
+
+def test_render_highlighted_diff_marks_insertions_and_deletions():
+    html = streamlit_app.render_highlighted_diff("Я незнаю что делать", "Я не знаю, что делать.")
+
+    assert "diff-insert" in html
+    assert "diff-delete" in html
+    assert "не знаю" in html
+    assert "," in html
+
+
+def test_render_highlighted_diff_escapes_user_text():
+    html = streamlit_app.render_highlighted_diff("<script>незнаю</script>", "<script>не знаю</script>.")
+
+    assert "<script>" not in html
+    assert "&lt;script&gt;" in html
+    assert "diff-insert" in html

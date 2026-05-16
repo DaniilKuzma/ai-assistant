@@ -4,6 +4,7 @@ import re
 
 import pandas as pd
 
+import src.data.full_dataset_builder as full_dataset_builder
 from src.data.full_dataset_builder import DatasetBuildConfig, build_dataset_rows, dataset_composition, write_dataset
 from src.validation.edit_classifier import is_allowed_edit_type
 
@@ -133,6 +134,32 @@ def test_full_dataset_builder_uses_clean_corpus_texts_for_synthetic_targets():
 
     assert any("аналитики публикуют отчет" in row["target"] for row in rows)
     assert not any("документа 151223" in row["target"] for row in rows)
+
+
+def test_external_rows_respect_disable_env(monkeypatch):
+    monkeypatch.setenv("RUSSIAN_CORRECTOR_DISABLE_EXTERNAL_SOURCES", "1")
+
+    def fail_on_network_call(*_args, **_kwargs):
+        raise AssertionError("HF loader should not be called in disabled external-source mode")
+
+    monkeypatch.setattr(full_dataset_builder, "load_hf_jsonl_pairs", fail_on_network_call)
+
+    assert full_dataset_builder._load_external_rows({"use_external_sources": True}) == []
+
+
+def test_external_rows_pass_local_files_only_in_hf_offline_mode(monkeypatch):
+    captured = {}
+
+    def fake_loader(*, limit, local_files_only):
+        captured["limit"] = limit
+        captured["local_files_only"] = local_files_only
+        return []
+
+    monkeypatch.setenv("HF_HUB_OFFLINE", "1")
+    monkeypatch.setattr(full_dataset_builder, "load_hf_jsonl_pairs", fake_loader)
+
+    assert full_dataset_builder._load_external_rows({"use_external_sources": True, "max_external_examples": 17}) == []
+    assert captured == {"limit": 17, "local_files_only": True}
 
 
 def _normalize_for_leakage_check(value: str) -> str:

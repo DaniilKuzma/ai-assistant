@@ -29,3 +29,42 @@ def test_combined_score_penalizes_clean_overcorrection():
     )
 
     assert score == 3.5
+
+
+def test_compute_metrics_includes_combined_score_and_dataset_slices():
+    rows = [
+        {
+            "source": "Я незнаю что делать",
+            "target": "Я не знаю, что делать.",
+            "prediction": "Я не знаю, что делать.",
+            "is_clean": False,
+            "is_synthetic": False,
+        },
+        {
+            "source": "Во первых это важно",
+            "target": "Во-первых, это важно.",
+            "prediction": "Во-первых, это важно.",
+            "is_clean": False,
+            "is_synthetic": True,
+        },
+        {
+            "source": "Чистый текст.",
+            "target": "Чистый текст.",
+            "prediction": "Чистый текст.",
+            "is_clean": True,
+            "is_synthetic": False,
+        },
+    ]
+
+    metrics = compute_metrics(rows)
+
+    assert "combined_score" in metrics
+    assert "real_exact_match" in metrics
+    assert "synthetic_exact_match" in metrics
+    assert "clean_exact_match" in metrics
+    assert "real_combined_score" in metrics
+    assert "synthetic_combined_score" in metrics
+    assert "clean_combined_score" in metrics
+    assert metrics["real_exact_match"] == 1.0
+    assert metrics["synthetic_exact_match"] == 1.0
+    assert metrics["clean_clean_overcorrection_rate"] == 0.0

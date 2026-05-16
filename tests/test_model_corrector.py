@@ -1,7 +1,12 @@
 from src.candidates.candidate_generator import Candidate
 import torch
 
-from src.inference.model_corrector import ModelCandidatePrediction, TorchCandidateModelBackend, TrainedModelCorrector
+from src.inference.model_corrector import (
+    ModelCandidatePrediction,
+    ModelPunctuationPrediction,
+    TorchCandidateModelBackend,
+    TrainedModelCorrector,
+)
 
 
 class FakeBackend:
@@ -38,6 +43,69 @@ def test_trained_model_corrector_applies_candidate_when_model_score_passes_thres
 
     assert result.corrected_text == "Я не знаю что делать."
     assert any(edit.edit_type == "split_word" and edit.status == "accepted" for edit in result.edits)
+
+
+def test_trained_model_corrector_can_apply_context_dependent_pair_when_score_is_high():
+    corrector = TrainedModelCorrector(FakeBackend({"так же": 0.99}), thresholds={"split_join_threshold": 0.9})
+
+    result = corrector.correct("Он также пришел.")
+
+    assert result.corrected_text == "Он так же пришел."
+    assert any(edit.edit_type == "split_word" and edit.status == "accepted" for edit in result.edits)
+
+
+def test_trained_model_corrector_deletes_existing_punctuation_when_model_predicts_none():
+    corrector = TrainedModelCorrector(
+        FakeBackend({}, punctuation=[ModelPunctuationPrediction(1, "NONE", 0.99)]),
+        thresholds={"punctuation_threshold": 0.9},
+    )
+
+    result = corrector.correct("Я думаю, это важно.")
+
+    assert result.corrected_text == "Я думаю это важно."
+    assert any(edit.edit_type == "punctuation_delete" and edit.status == "accepted" for edit in result.edits)
+
+
+def test_trained_model_corrector_replaces_existing_punctuation_with_colon():
+    corrector = TrainedModelCorrector(
+        FakeBackend({}, punctuation=[ModelPunctuationPrediction(1, "COLON", 0.99)]),
+        thresholds={"punctuation_threshold": 0.9},
+    )
+
+    result = corrector.correct("Он сказал, привет.")
+
+    assert result.corrected_text == "Он сказал: привет."
+    assert any(edit.edit_type == "punctuation_replace" and edit.status == "accepted" for edit in result.edits)
+
+
+def test_trained_model_corrector_inserts_dash_with_spacing():
+    corrector = TrainedModelCorrector(
+        FakeBackend({}, punctuation=[ModelPunctuationPrediction(0, "DASH", 0.99)]),
+        thresholds={"punctuation_threshold": 0.9},
+    )
+
+    result = corrector.correct("Москва это столица.")
+
+    assert result.corrected_text == "Москва — это столица."
+
+
+def test_trained_model_corrector_supports_simple_quotes_and_brackets():
+    corrector = TrainedModelCorrector(
+        FakeBackend(
+            {},
+            punctuation=[
+                ModelPunctuationPrediction(2, "QUOTE_OPEN", 0.99),
+                ModelPunctuationPrediction(2, "QUOTE_CLOSE", 0.99),
+                ModelPunctuationPrediction(4, "BRACKET_OPEN", 0.99),
+                ModelPunctuationPrediction(4, "BRACKET_CLOSE", 0.99),
+            ],
+        ),
+        thresholds={"punctuation_threshold": 0.9},
+    )
+
+    result = corrector.correct("Он сказал привет это важно.")
+
+    assert result.corrected_text == "Он сказал «привет» это (важно)."
 
 
 def test_torch_backend_passes_candidate_replacement_tokens_to_model():

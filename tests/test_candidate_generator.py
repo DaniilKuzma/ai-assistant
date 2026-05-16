@@ -68,3 +68,18 @@ def test_candidate_generator_emits_spelling_candidates_for_expanded_orthograms()
 def test_spelling_rules_do_not_restore_yo_or_random_typos():
     assert spelling_candidates("елка") == []
     assert spelling_candidates("молко") == []
+
+
+def test_candidate_generator_emits_context_dependent_split_join_candidates_as_model_only():
+    generator = CandidateGenerator()
+    candidates = generator.generate("Также он сказал что бы мы остались, зато не смотря на дождь пришел.")
+
+    values = {
+        (candidate.source.lower(), candidate.replacement.lower(), candidate.edit_type, candidate.requires_model)
+        for candidate in candidates
+    }
+
+    assert ("также", "так же", "split_join", True) in values
+    assert ("что бы", "чтобы", "split_join", True) in values
+    assert ("зато", "за то", "split_join", True) in values
+    assert ("не смотря на", "несмотря на", "split_join", True) in values

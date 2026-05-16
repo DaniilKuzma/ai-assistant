@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 import json
+import os
 import random
 import re
 from pathlib import Path
@@ -171,11 +172,29 @@ def dataset_composition(rows: list[dict[str, Any]]) -> dict[str, int]:
 def _load_external_rows(data_config: dict[str, Any]) -> list[dict[str, Any]]:
     if not bool(data_config.get("use_external_sources", False)):
         return []
+    if _external_sources_disabled():
+        return []
     max_external = int(data_config.get("max_external_examples", 10_000))
+    local_files_only = bool(data_config.get("external_local_files_only", False)) or _hf_offline_mode()
     try:
-        return load_hf_jsonl_pairs(limit=max_external)
+        return load_hf_jsonl_pairs(limit=max_external, local_files_only=local_files_only)
     except Exception:
         return []
+
+
+def _external_sources_disabled() -> bool:
+    return _env_flag("RUSSIAN_CORRECTOR_DISABLE_EXTERNAL_SOURCES") or _env_flag("RUSSIAN_CORRECTOR_OFFLINE")
+
+
+def _hf_offline_mode() -> bool:
+    return _env_flag("HF_HUB_OFFLINE") or _env_flag("TRANSFORMERS_OFFLINE")
+
+
+def _env_flag(name: str) -> bool:
+    value = os.environ.get(name)
+    if value is None:
+        return False
+    return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
 class CleanSentenceFactory:
