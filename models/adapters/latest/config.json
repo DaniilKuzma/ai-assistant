@@ -9,7 +9,7 @@
   "model": {
     "primary_encoder": "ai-forever/ruRoberta-large",
     "fallback_encoder": "ai-forever/ruBert-base",
-    "local_files_only": true,
+    "local_files_only": false,
     "max_sequence_length": 128,
     "max_candidates": 16,
     "lora": {
@@ -22,11 +22,12 @@
   "training": {
     "mode": "full-train",
     "run_model_training": true,
-    "max_train_examples": 10000,
-    "max_val_examples": 1000,
-    "max_test_examples": 1000,
-    "batch_size": 2,
-    "gradient_accumulation_steps": 8,
+    "checkpoint_metric": "combined_score",
+    "max_train_examples": 100,
+    "max_val_examples": 10,
+    "max_test_examples": 10,
+    "batch_size": 4,
+    "gradient_accumulation_steps": 16,
     "epochs": 3,
     "learning_rate": 0.0001,
     "mixed_precision": true,
@@ -43,11 +44,103 @@
     "manifest_path": "reports/dataset_manifest.json",
     "target_total_examples": 450000,
     "clean_identity_ratio": 0.1,
+    "synthetic_balance": {
+      "spelling_min_examples": 60000,
+      "split_join_min_examples": 20000,
+      "hyphen_min_examples": 20000
+    },
     "val_ratio": 0.05,
     "test_ratio": 0.05,
     "domain": "synthetic_general",
     "use_external_sources": true,
     "max_external_examples": 10000,
+    "clean_corpus": {
+      "enabled": true,
+      "cache_path": "data/raw/clean_corpus_sentences.txt.gz",
+      "rebuild_cache": false,
+      "min_cached_sentences": 10000,
+      "max_source_sentences": 1200000,
+      "sources": [
+        {
+          "name": "leipzig_news",
+          "type": "leipzig",
+          "corpus_ids": [
+            "rus_news_2022_1M",
+            "rus_news_2021_1M",
+            "rus_news_2020_1M"
+          ],
+          "max_sentences": 180000
+        },
+        {
+          "name": "leipzig_wikipedia",
+          "type": "leipzig",
+          "corpus_ids": [
+            "rus_wikipedia_2021_1M",
+            "rus_wikipedia_2016_1M"
+          ],
+          "max_sentences": 90000
+        },
+        {
+          "name": "taiga_rest",
+          "type": "hf_dataset",
+          "repo": "cointegrated/taiga_stripped_rest",
+          "splits": [
+            "Interfax",
+            "Lenta",
+            "NPlus1",
+            "Fontanka",
+            "Arzamas",
+            "KP"
+          ],
+          "text_fields": [
+            "text"
+          ],
+          "max_sentences": 90000
+        },
+        {
+          "name": "taiga_proza_filtered",
+          "type": "hf_dataset",
+          "repo": "cointegrated/taiga_stripped_proza",
+          "splits": [
+            "train"
+          ],
+          "text_fields": [
+            "text"
+          ],
+          "max_sentences": 15000,
+          "strict_formal_filter": true
+        },
+        {
+          "name": "ud_russian_taiga",
+          "type": "ud_conllu",
+          "urls": [
+            "https://raw.githubusercontent.com/UniversalDependencies/UD_Russian-Taiga/master/ru_taiga-ud-train.conllu",
+            "https://raw.githubusercontent.com/UniversalDependencies/UD_Russian-Taiga/master/ru_taiga-ud-dev.conllu",
+            "https://raw.githubusercontent.com/UniversalDependencies/UD_Russian-Taiga/master/ru_taiga-ud-test.conllu"
+          ],
+          "max_sentences": 25000
+        },
+        {
+          "name": "opencorpora",
+          "type": "opencorpora_xml_zip",
+          "url": "https://opencorpora.org/files/export/annot/annot.opcorpora.xml.zip",
+          "max_sentences": 40000
+        },
+        {
+          "name": "tatoeba_russian",
+          "type": "tatoeba_tsv",
+          "url": "https://downloads.tatoeba.org/exports/sentences.tar.bz2",
+          "max_sentences": 30000
+        },
+        {
+          "name": "russian_wikipedia_dump",
+          "type": "mediawiki_xml_bz2",
+          "url": "https://dumps.wikimedia.org/ruwiki/latest/ruwiki-latest-pages-articles-multistream.xml.bz2",
+          "max_sentences": 50000,
+          "enabled": false
+        }
+      ]
+    },
     "debug_clean_texts": [
       "Я не знаю, что делать.",
       "Во-первых, это важно.",

@@ -271,7 +271,6 @@ def _apply_punctuation_predictions(
         if prediction.confidence < punctuation_threshold:
             continue
         if prediction.label == "NONE":
-            proposed = _delete_punctuation_after_word(proposed, prediction.word_index)
             continue
         if prediction.label in {"QUOTE_OPEN", "BRACKET_OPEN"}:
             proposed = _insert_punctuation_before_word(proposed, prediction.word_index, _punctuation_mark(prediction.label))
@@ -413,22 +412,6 @@ def _insert_punctuation_before_word(text: str, word_index: int, mark: str) -> st
     if position > 0 and text[position - 1] == mark:
         return text
     return text[:position] + mark + text[position:]
-
-
-def _delete_punctuation_after_word(text: str, word_index: int) -> str:
-    words = tokenize_words(text)
-    if word_index < 0 or word_index >= len(words):
-        return text
-    position = words[word_index].end
-    punct_position = _punctuation_position_after(text, position)
-    if punct_position is None:
-        return text
-    mark = text[punct_position]
-    if word_index == len(words) - 1 and mark in ".!?…":
-        return text
-    if mark == "—":
-        return text[:position].rstrip() + " " + text[punct_position + 1 :].lstrip()
-    return text[:punct_position] + text[punct_position + 1 :]
 
 
 def _punctuation_position_after(text: str, position: int) -> int | None:
