@@ -1,0 +1,25 @@
+{
+  "total": 450000,
+  "composition": {
+    "clean": 45000,
+    "synthetic": 403403,
+    "real": 1597
+  },
+  "splits": {
+    "test": 22502,
+    "val": 22500,
+    "train": 404998
+  },
+  "split_strategy": "normalized_target_v2",
+  "columns": [
+    "source",
+    "target",
+    "error_types",
+    "source_dataset",
+    "is_clean",
+    "is_synthetic",
+    "split",
+    "domain",
+    "edit_operations"
+  ]
+}

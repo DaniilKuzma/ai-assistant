@@ -1,0 +1,142 @@
+import json
+from pathlib import Path
+import re
+
+import pandas as pd
+
+from src.data.full_dataset_builder import DatasetBuildConfig, build_dataset_rows, dataset_composition, write_dataset
+from src.validation.edit_classifier import is_allowed_edit_type
+
+
+def test_full_dataset_builder_creates_required_schema_and_supported_rows():
+    rows = build_dataset_rows(
+        DatasetBuildConfig(
+            target_total_examples=120,
+            clean_identity_ratio=0.1,
+            val_ratio=0.1,
+            test_ratio=0.1,
+            seed=3,
+        )
+    )
+
+    assert len(rows) == 120
+    required = {"source", "target", "error_types", "source_dataset", "is_clean", "is_synthetic", "split", "domain", "edit_operations"}
+    assert required.issubset(rows[0])
+    assert any(row["is_clean"] for row in rows)
+    assert any(row["is_synthetic"] and not row["is_clean"] for row in rows)
+    assert {row["split"] for row in rows} == {"train", "val", "test"}
+
+    for row in rows[:40]:
+        for edit in json.loads(row["edit_operations"]):
+            assert is_allowed_edit_type(edit["edit_type"])
+
+
+def test_dataset_composition_and_write_dataset(tmp_path: Path):
+    rows = build_dataset_rows(DatasetBuildConfig(target_total_examples=50, clean_identity_ratio=0.2, seed=5))
+    output_path = tmp_path / "dataset.csv.gz"
+    manifest_path = tmp_path / "manifest.json"
+
+    write_dataset(rows, output_path, manifest_path)
+    frame = pd.read_csv(output_path)
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+    assert len(frame) == 50
+    assert manifest["total"] == 50
+    assert manifest["composition"]["clean"] == 10
+    assert dataset_composition(rows)["synthetic"] == 40
+
+
+def test_full_dataset_builder_keeps_target_total_with_external_rows():
+    external_rows = [
+        {
+            "source": "Я незнаю что делать",
+            "target": "Я не знаю, что делать.",
+            "error_types": '["split_join"]',
+            "source_dataset": "unit_external",
+            "is_clean": False,
+            "is_synthetic": False,
+            "split": "train",
+            "domain": "unit",
+            "edit_operations": "[]",
+        }
+        for _ in range(7)
+    ]
+
+    rows = build_dataset_rows(
+        DatasetBuildConfig(target_total_examples=100, clean_identity_ratio=0.1, external_rows=tuple(external_rows))
+    )
+
+    assert len(rows) == 100
+    assert dataset_composition(rows) == {"clean": 10, "synthetic": 83, "real": 7}
+
+
+def test_full_dataset_builder_keeps_normalized_pairs_in_one_split():
+    rows = build_dataset_rows(DatasetBuildConfig(target_total_examples=600, clean_identity_ratio=0.1, seed=11))
+    split_by_key: dict[str, set[str]] = {}
+
+    for row in rows:
+        key = _normalize_for_leakage_check(row["target"])
+        split_by_key.setdefault(key, set()).add(row["split"])
+
+    leaked = {key: splits for key, splits in split_by_key.items() if len(splits) > 1}
+    assert leaked == {}
+
+
+def test_full_dataset_builder_keeps_punctuation_variants_in_one_split():
+    external_rows = [
+        {
+            "source": "«Денвер» выиграл матч.",
+            "target": "«Денвер» выиграл матч.",
+            "error_types": "[]",
+            "source_dataset": "unit_a",
+            "is_clean": False,
+            "is_synthetic": False,
+            "split": "train",
+            "domain": "unit",
+            "edit_operations": "[]",
+        },
+        {
+            "source": '"Денвер" выиграл матч.',
+            "target": '"Денвер" выиграл матч.',
+            "error_types": "[]",
+            "source_dataset": "unit_b",
+            "is_clean": False,
+            "is_synthetic": False,
+            "split": "train",
+            "domain": "unit",
+            "edit_operations": "[]",
+        },
+    ]
+
+    rows = build_dataset_rows(
+        DatasetBuildConfig(
+            target_total_examples=80,
+            clean_identity_ratio=0.1,
+            external_rows=tuple(external_rows),
+            seed=19,
+        )
+    )
+    denver_splits = {row["split"] for row in rows if "Денвер" in row["target"]}
+
+    assert len(denver_splits) == 1
+
+
+def test_full_dataset_builder_uses_clean_corpus_texts_for_synthetic_targets():
+    clean_texts = tuple(
+        f"Периодически аналитики публикуют отчет о состоянии рынка и результатах исследования {index}."
+        for index in range(40)
+    )
+
+    rows = build_dataset_rows(
+        DatasetBuildConfig(target_total_examples=30, clean_identity_ratio=0.1, seed=7, clean_texts=clean_texts)
+    )
+
+    assert any("аналитики публикуют отчет" in row["target"] for row in rows)
+    assert not any("документа 151223" in row["target"] for row in rows)
+
+
+def _normalize_for_leakage_check(value: str) -> str:
+    value = value.lower().strip()
+    value = re.sub(r"\d+", "<NUM>", value)
+    value = re.sub(r"[^\w\s<>]+", " ", value, flags=re.U)
+    return re.sub(r"\s+", " ", value)

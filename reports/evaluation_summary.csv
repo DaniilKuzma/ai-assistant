@@ -1,0 +1,2 @@
+exact_match,dirty_improved_rate,dirty_worse_rate,clean_overcorrection_rate,edit_precision,edit_recall,edit_f1,spelling_precision,spelling_recall,spelling_f1,punctuation_precision,punctuation_recall,punctuation_f1
+0.527,0.4738598442714127,0.5255839822024472,0.0,1.0,0.7857142857142857,0.88,1.0,0.75,0.8571428571428571,1.0,1.0,1.0

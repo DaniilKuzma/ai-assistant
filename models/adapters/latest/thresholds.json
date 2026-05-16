@@ -1,0 +1,24 @@
+{
+  "mode": "balanced",
+  "conservative": {
+    "spelling_threshold": 0.92,
+    "punctuation_threshold": 0.9,
+    "split_join_threshold": 0.95,
+    "hyphen_threshold": 0.95,
+    "case_threshold": 0.9
+  },
+  "balanced": {
+    "spelling_threshold": 0.85,
+    "punctuation_threshold": 0.82,
+    "split_join_threshold": 0.88,
+    "hyphen_threshold": 0.88,
+    "case_threshold": 0.85
+  },
+  "aggressive": {
+    "spelling_threshold": 0.75,
+    "punctuation_threshold": 0.72,
+    "split_join_threshold": 0.8,
+    "hyphen_threshold": 0.8,
+    "case_threshold": 0.78
+  }
+}

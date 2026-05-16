@@ -1,0 +1,102 @@
+{
+  "project": {
+    "name": "russian-edit-corrector",
+    "strict_scope": [
+      "spelling",
+      "punctuation"
+    ]
+  },
+  "model": {
+    "primary_encoder": "ai-forever/ruRoberta-large",
+    "fallback_encoder": "ai-forever/ruBert-base",
+    "local_files_only": false,
+    "max_sequence_length": 128,
+    "max_candidates": 16,
+    "lora": {
+      "enabled": true,
+      "r": 8,
+      "alpha": 16,
+      "dropout": 0.05
+    }
+  },
+  "training": {
+    "mode": "quick-debug",
+    "run_model_training": true,
+    "max_train_examples": 100,
+    "max_val_examples": 50,
+    "max_test_examples": 50,
+    "batch_size": 1,
+    "gradient_accumulation_steps": 8,
+    "epochs": 1,
+    "learning_rate": 0.0002,
+    "mixed_precision": true,
+    "word_loss_weight": 1.0,
+    "punctuation_loss_weight": 1.0,
+    "confidence_loss_weight": 0.3,
+    "error_type_loss_weight": 0.5
+  },
+  "data": {
+    "synthetic_seed": 13,
+    "processed_train_path": null,
+    "debug_clean_texts": [
+      "Я не знаю, что делать.",
+      "Во-первых, это важно.",
+      "Чистый текст."
+    ]
+  },
+  "thresholds": {
+    "mode": "balanced",
+    "balanced": {
+      "spelling_threshold": 0.85,
+      "punctuation_threshold": 0.82,
+      "split_join_threshold": 0.88,
+      "hyphen_threshold": 0.88,
+      "case_threshold": 0.85
+    }
+  },
+  "decoder": {
+    "max_passes": 3
+  },
+  "labels": {
+    "punctuation": {
+      "NONE": 0,
+      "COMMA": 1,
+      "DOT": 2,
+      "QUESTION": 3,
+      "EXCLAMATION": 4,
+      "COLON": 5,
+      "DASH": 6,
+      "SEMICOLON": 7,
+      "ELLIPSIS": 8,
+      "QUOTE_OPEN": 9,
+      "QUOTE_CLOSE": 10,
+      "BRACKET_OPEN": 11,
+      "BRACKET_CLOSE": 12
+    },
+    "error_types": {
+      "keep": 0,
+      "spelling": 1,
+      "punctuation": 2,
+      "split_join": 3,
+      "hyphen": 4,
+      "case": 5,
+      "final_punctuation": 6
+    }
+  },
+  "metrics": {
+    "combined_score_weights": {
+      "exact_match": 1.0,
+      "edit_f1": 1.0,
+      "spelling_f1": 1.0,
+      "punctuation_f1": 1.0,
+      "dirty_improved_rate": 1.0,
+      "dirty_worse_rate": -2.0,
+      "clean_overcorrection_rate": -3.0
+    }
+  },
+  "paths": {
+    "adapter_output_dir": "models/adapters/quick",
+    "heads_output_dir": "models/heads/quick",
+    "reports_dir": "reports"
+  }
+}
