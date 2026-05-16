@@ -5,7 +5,13 @@ import re
 import pandas as pd
 
 import src.data.full_dataset_builder as full_dataset_builder
-from src.data.full_dataset_builder import DatasetBuildConfig, build_dataset_rows, dataset_composition, write_dataset
+from src.data.full_dataset_builder import (
+    DatasetBuildConfig,
+    _lexical_balance_target,
+    build_dataset_rows,
+    dataset_composition,
+    write_dataset,
+)
 from src.validation.edit_classifier import is_allowed_edit_type
 
 
@@ -44,6 +50,9 @@ def test_dataset_composition_and_write_dataset(tmp_path: Path):
     assert len(frame) == 50
     assert manifest["total"] == 50
     assert manifest["composition"]["clean"] == 10
+    assert manifest["error_type_counts"]["spelling"] > 0
+    assert manifest["error_type_counts"]["split_join"] > 0
+    assert manifest["error_type_counts"]["hyphen"] > 0
     assert dataset_composition(rows)["synthetic"] == 40
 
 
@@ -136,6 +145,30 @@ def test_full_dataset_builder_uses_clean_corpus_texts_for_synthetic_targets():
     assert not any("документа 151223" in row["target"] for row in rows)
 
 
+def test_full_dataset_builder_balances_required_lexical_error_types():
+    rows = build_dataset_rows(
+        DatasetBuildConfig(
+            target_total_examples=180,
+            clean_identity_ratio=0.1,
+            seed=23,
+            min_spelling_examples=45,
+            min_split_join_examples=20,
+            min_hyphen_examples=20,
+        )
+    )
+
+    assert _count_rows_with_error_type(rows, "spelling") >= 45
+    assert _count_rows_with_error_type(rows, "split_join") >= 20
+    assert _count_rows_with_error_type(rows, "hyphen") >= 20
+    assert dataset_composition(rows)["clean"] == 18
+
+
+def test_lexical_balance_targets_are_unique_beyond_base_template_capacity():
+    targets = {_lexical_balance_target("не знаю", index) for index in range(20_500)}
+
+    assert len(targets) == 20_500
+
+
 def test_external_rows_respect_disable_env(monkeypatch):
     monkeypatch.setenv("RUSSIAN_CORRECTOR_DISABLE_EXTERNAL_SOURCES", "1")
 
@@ -167,3 +200,7 @@ def _normalize_for_leakage_check(value: str) -> str:
     value = re.sub(r"\d+", "<NUM>", value)
     value = re.sub(r"[^\w\s<>]+", " ", value, flags=re.U)
     return re.sub(r"\s+", " ", value)
+
+
+def _count_rows_with_error_type(rows: list[dict], error_type: str) -> int:
+    return sum(error_type in json.loads(row["error_types"]) for row in rows)

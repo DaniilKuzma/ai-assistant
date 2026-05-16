@@ -7,7 +7,7 @@ project:
 model:
   primary_encoder: ai-forever/ruRoberta-large
   fallback_encoder: ai-forever/ruBert-base
-  local_files_only: true
+  local_files_only: false
   max_sequence_length: 128
   max_candidates: 16
   lora:
@@ -23,8 +23,8 @@ training:
   max_train_examples: 10000
   max_val_examples: 1000
   max_test_examples: 1000
-  batch_size: 64
-  gradient_accumulation_steps: 1
+  batch_size: 4
+  gradient_accumulation_steps: 16
   epochs: 3
   learning_rate: 0.0001
   mixed_precision: true
@@ -41,6 +41,10 @@ data:
   manifest_path: reports/dataset_manifest.json
   target_total_examples: 450000
   clean_identity_ratio: 0.10
+  synthetic_balance:
+    spelling_min_examples: 60000
+    split_join_min_examples: 20000
+    hyphen_min_examples: 20000
   val_ratio: 0.05
   test_ratio: 0.05
   domain: synthetic_general
@@ -99,6 +103,15 @@ data:
         type: opencorpora_xml_zip
         url: https://opencorpora.org/files/export/annot/annot.opcorpora.xml.zip
         max_sentences: 40000
+      - name: tatoeba_russian
+        type: tatoeba_tsv
+        url: https://downloads.tatoeba.org/exports/sentences.tar.bz2
+        max_sentences: 30000
+      - name: russian_wikipedia_dump
+        type: mediawiki_xml_bz2
+        url: https://dumps.wikimedia.org/ruwiki/latest/ruwiki-latest-pages-articles-multistream.xml.bz2
+        max_sentences: 50000
+        enabled: false
   debug_clean_texts:
     - Я не знаю, что делать.
     - Во-первых, это важно.

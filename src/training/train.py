@@ -123,7 +123,7 @@ def _load_training_rows(config: dict[str, Any]) -> list[dict[str, Any]]:
 def _full_dataset_stats(config: dict[str, Any], fallback_rows: list[dict[str, Any]]) -> dict[str, int]:
     processed_path = config.get("data", {}).get("processed_train_path")
     if processed_path and Path(processed_path).exists():
-        return dataset_stats(pd.read_csv(processed_path, usecols=["is_clean", "is_synthetic", "split"]))
+        return dataset_stats(pd.read_csv(processed_path, usecols=["is_clean", "is_synthetic", "split", "error_types"]))
     return dataset_stats(pd.DataFrame(fallback_rows))
 
 

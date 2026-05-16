@@ -13,6 +13,7 @@ import pandas as pd
 from src.data.clean_corpus_sources import load_clean_corpus_sentences
 from src.data.synthetic_generator import SyntheticGenerator
 from src.data.external_sources import load_hf_jsonl_pairs
+from src.candidates.frequent_errors import HYPHEN_WHITELIST, WRONG_TO_CORRECT
 from src.validation.diff_analyzer import DiffAnalyzer, Edit
 from src.validation.edit_classifier import coarse_error_type, is_allowed_edit_type
 
@@ -29,6 +30,9 @@ class DatasetBuildConfig:
     domain: str = "synthetic_general"
     external_rows: tuple[dict[str, Any], ...] = ()
     clean_texts: tuple[str, ...] = ()
+    min_spelling_examples: int = 60_000
+    min_split_join_examples: int = 20_000
+    min_hyphen_examples: int = 20_000
 
 
 def build_dataset_rows(config: DatasetBuildConfig) -> list[dict[str, Any]]:
@@ -49,35 +53,56 @@ def build_dataset_rows(config: DatasetBuildConfig) -> list[dict[str, Any]]:
     clean_texts = list(config.clean_texts)
 
     synthetic_rows: list[dict[str, Any]] = []
+    seen_pairs: set[tuple[str, str]] = set()
+    balance_targets = _scaled_balance_targets(config, dirty_count)
+    for error_type, minimum_count in balance_targets.items():
+        missing_count = max(0, minimum_count - _count_rows_with_error_type([*rows, *synthetic_rows], error_type))
+        if missing_count <= 0:
+            continue
+        synthetic_rows.extend(
+            _build_targeted_lexical_rows(
+                error_type,
+                required_count=min(missing_count, dirty_count - len(synthetic_rows)),
+                diff_analyzer=diff_analyzer,
+                domain=config.domain,
+                seen_pairs=seen_pairs,
+            )
+        )
+
+    remaining_dirty_count = dirty_count - len(synthetic_rows)
     if clean_texts:
         synthetic_rows.extend(
             _build_synthetic_rows_from_clean_corpus(
                 clean_texts,
-                dirty_count=dirty_count,
+                dirty_count=remaining_dirty_count,
                 generator=generator,
                 diff_analyzer=diff_analyzer,
                 domain=config.domain,
+                seen_pairs=seen_pairs,
             )
         )
-    else:
-        index = 0
-        while len(synthetic_rows) < dirty_count:
-            target = sentence_factory.make(index)
-            example = generator.generate_from_clean(target)
-            edits = _supported_edits(diff_analyzer.analyze(example.source, example.target))
-            if example.source != example.target and edits:
-                synthetic_rows.append(
-                    _row(
-                        source=example.source,
-                        target=example.target,
-                        edits=edits,
-                        source_dataset="synthetic_rules",
-                        is_clean=False,
-                        is_synthetic=True,
-                        domain=config.domain,
-                    )
+        if len(synthetic_rows) < dirty_count:
+            synthetic_rows.extend(
+                _build_template_synthetic_rows(
+                    dirty_count=dirty_count - len(synthetic_rows),
+                    generator=generator,
+                    diff_analyzer=diff_analyzer,
+                    domain=config.domain,
+                    sentence_factory=sentence_factory,
+                    seen_pairs=seen_pairs,
                 )
-            index += 1
+            )
+    else:
+        synthetic_rows.extend(
+            _build_template_synthetic_rows(
+                dirty_count=remaining_dirty_count,
+                generator=generator,
+                diff_analyzer=diff_analyzer,
+                domain=config.domain,
+                sentence_factory=sentence_factory,
+                seen_pairs=seen_pairs,
+            )
+        )
     rows.extend(synthetic_rows)
 
     for clean_index in range(clean_count):
@@ -107,6 +132,7 @@ def write_dataset(rows: list[dict[str, Any]], output_path: str | Path, manifest_
         manifest = {
             "total": len(rows),
             "composition": dataset_composition(rows),
+            "error_type_counts": error_type_counts(rows),
             "splits": _split_counts(rows),
             "split_strategy": SPLIT_STRATEGY,
             "columns": list(rows[0].keys()) if rows else [],
@@ -143,6 +169,9 @@ def build_dataset_from_config(config: dict[str, Any], force: bool = False) -> di
         domain=str(data_config.get("domain", "synthetic_general")),
         external_rows=tuple(_load_external_rows(data_config)),
         clean_texts=tuple(clean_corpus.sentences),
+        min_spelling_examples=int(data_config.get("synthetic_balance", {}).get("spelling_min_examples", 60_000)),
+        min_split_join_examples=int(data_config.get("synthetic_balance", {}).get("split_join_min_examples", 20_000)),
+        min_hyphen_examples=int(data_config.get("synthetic_balance", {}).get("hyphen_min_examples", 20_000)),
     )
     rows = build_dataset_rows(build_config)
     write_dataset(rows, output_path, manifest_path)
@@ -167,6 +196,14 @@ def dataset_composition(rows: list[dict[str, Any]]) -> dict[str, int]:
         "synthetic": sum(bool(row.get("is_synthetic")) and not bool(row.get("is_clean")) for row in rows),
         "real": sum(not bool(row.get("is_synthetic")) and not bool(row.get("is_clean")) for row in rows),
     }
+
+
+def error_type_counts(rows: list[dict[str, Any]]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for row in rows:
+        for error_type in _row_error_types(row):
+            counts[error_type] = counts.get(error_type, 0) + 1
+    return dict(sorted(counts.items()))
 
 
 def _load_external_rows(data_config: dict[str, Any]) -> list[dict[str, Any]]:
@@ -273,9 +310,10 @@ def _build_synthetic_rows_from_clean_corpus(
     generator: SyntheticGenerator,
     diff_analyzer: DiffAnalyzer,
     domain: str,
+    seen_pairs: set[tuple[str, str]] | None = None,
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
-    seen_pairs: set[tuple[str, str]] = set()
+    seen_pairs = seen_pairs if seen_pairs is not None else set()
 
     for target in clean_texts:
         for example in generator.generate_variants_from_clean(target):
@@ -299,12 +337,204 @@ def _build_synthetic_rows_from_clean_corpus(
                     )
                 )
 
-    if len(rows) < dirty_count:
-        raise ValueError(
-            "Not enough clean-corpus sentences/variants to build synthetic dataset without template fallback: "
-            f"needed {dirty_count}, built {len(rows)}"
-        )
     return rows
+
+
+def _build_template_synthetic_rows(
+    *,
+    dirty_count: int,
+    generator: SyntheticGenerator,
+    diff_analyzer: DiffAnalyzer,
+    domain: str,
+    sentence_factory: CleanSentenceFactory,
+    seen_pairs: set[tuple[str, str]] | None = None,
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    seen_pairs = seen_pairs if seen_pairs is not None else set()
+    index = 0
+    while len(rows) < dirty_count:
+        target = sentence_factory.make(index)
+        example = generator.generate_from_clean(target)
+        key = (example.source, example.target)
+        edits = _supported_edits(diff_analyzer.analyze(example.source, example.target))
+        if example.source != example.target and edits and key not in seen_pairs:
+            seen_pairs.add(key)
+            rows.append(
+                _row(
+                    source=example.source,
+                    target=example.target,
+                    edits=edits,
+                    source_dataset="synthetic_rules",
+                    is_clean=False,
+                    is_synthetic=True,
+                    domain=domain,
+                )
+            )
+        index += 1
+    return rows
+
+
+def _build_targeted_lexical_rows(
+    error_type: str,
+    *,
+    required_count: int,
+    diff_analyzer: DiffAnalyzer,
+    domain: str,
+    seen_pairs: set[tuple[str, str]] | None = None,
+) -> list[dict[str, Any]]:
+    if required_count <= 0:
+        return []
+    entries = _lexical_balance_entries(error_type)
+    if not entries:
+        return []
+
+    rows: list[dict[str, Any]] = []
+    seen_pairs = seen_pairs if seen_pairs is not None else set()
+    index = 0
+    while len(rows) < required_count:
+        wrong, correct = entries[index % len(entries)]
+        target = _lexical_balance_target(correct, index)
+        source = target.replace(correct, wrong, 1)
+        key = (source, target)
+        edits = _supported_edits(diff_analyzer.analyze(source, target))
+        if source != target and key not in seen_pairs and _edits_include_error_type(edits, error_type):
+            seen_pairs.add(key)
+            rows.append(
+                _row(
+                    source=source,
+                    target=target,
+                    edits=edits,
+                    source_dataset="synthetic_balanced_rules",
+                    is_clean=False,
+                    is_synthetic=True,
+                    domain=domain,
+                )
+            )
+        index += 1
+    return rows
+
+
+def _scaled_balance_targets(config: DatasetBuildConfig, dirty_count: int) -> dict[str, int]:
+    requested = {
+        "spelling": max(0, config.min_spelling_examples),
+        "split_join": max(0, config.min_split_join_examples),
+        "hyphen": max(0, config.min_hyphen_examples),
+    }
+    requested_total = sum(requested.values())
+    if dirty_count <= 0 or requested_total <= dirty_count:
+        return requested
+
+    scaled: dict[str, int] = {}
+    assigned = 0
+    for error_type, count in requested.items():
+        value = int(dirty_count * count / requested_total)
+        if count > 0 and value == 0:
+            value = 1
+        scaled[error_type] = value
+        assigned += value
+
+    while assigned > dirty_count:
+        largest = max(scaled, key=lambda key: scaled[key])
+        scaled[largest] -= 1
+        assigned -= 1
+    while assigned < dirty_count:
+        largest = max(requested, key=lambda key: requested[key])
+        scaled[largest] += 1
+        assigned += 1
+    return scaled
+
+
+def _lexical_balance_entries(error_type: str) -> list[tuple[str, str]]:
+    if error_type == "spelling":
+        return [
+            (wrong, correct)
+            for wrong, correct in WRONG_TO_CORRECT.items()
+            if " " not in correct and "-" not in correct
+        ]
+    if error_type == "split_join":
+        return [
+            (wrong, correct)
+            for wrong, correct in WRONG_TO_CORRECT.items()
+            if " " in wrong or " " in correct
+        ]
+    if error_type == "hyphen":
+        return [(wrong, correct) for wrong, correct in HYPHEN_WHITELIST.items() if wrong != correct]
+    return []
+
+
+def _lexical_balance_target(term: str, index: int) -> str:
+    nouns = [
+        "тексте",
+        "отчете",
+        "разделе",
+        "документе",
+        "примере",
+        "модуле",
+        "словаре",
+        "корпусе",
+        "абзаце",
+        "файле",
+        "выводе",
+        "плане",
+    ]
+    adjectives = [
+        "важный",
+        "точный",
+        "рабочий",
+        "учебный",
+        "итоговый",
+        "понятный",
+        "полезный",
+        "краткий",
+    ]
+    actions = [
+        "проверяет",
+        "сравнивает",
+        "записывает",
+        "обновляет",
+        "читает",
+        "сохраняет",
+        "разбирает",
+        "отмечает",
+    ]
+    templates = [
+        "В рабочем {noun} встречается форма «{term}», потому что это {adjective} пример.",
+        "Редактор {action} выражение «{term}», когда готовит {adjective} {noun}.",
+        "Для проверки правила используется форма «{term}», и этот {noun} остается {adjective}.",
+        "В учебном {noun} есть вариант «{term}», который помогает проверить {adjective} случай.",
+        "Автор {action} строку с формой «{term}», чтобы сохранить {adjective} контекст.",
+    ]
+    noun = nouns[index % len(nouns)]
+    adjective = adjectives[(index // len(nouns)) % len(adjectives)]
+    action = actions[(index // (len(nouns) * len(adjectives))) % len(actions)]
+    template = templates[(index // (len(nouns) * len(adjectives) * len(actions))) % len(templates)]
+    sentence = template.format(noun=noun, adjective=adjective, action=action, term=term)
+    if sentence.endswith("."):
+        return f"{sentence[:-1]} в серии {index}."
+    return f"{sentence} в серии {index}."
+
+
+def _count_rows_with_error_type(rows: list[dict[str, Any]], error_type: str) -> int:
+    return sum(error_type in _row_error_types(row) for row in rows)
+
+
+def _edits_include_error_type(edits: list[Edit], error_type: str) -> bool:
+    return any(coarse_error_type(edit.edit_type) == error_type for edit in edits)
+
+
+def _row_error_types(row: dict[str, Any]) -> set[str]:
+    value = row.get("error_types", [])
+    if isinstance(value, list):
+        return {str(item) for item in value}
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            return {item.strip() for item in value.split(",") if item.strip()}
+        if isinstance(parsed, list):
+            return {str(item) for item in parsed}
+        return {str(parsed)} if str(parsed) else set()
+    return set()
 
 
 def _supported_edits(edits: list[Edit]) -> list[Edit]:

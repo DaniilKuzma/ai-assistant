@@ -2,13 +2,21 @@
   "total": 450000,
   "composition": {
     "clean": 45000,
-    "synthetic": 403403,
-    "real": 1597
+    "synthetic": 403243,
+    "real": 1757
+  },
+  "error_type_counts": {
+    "case": 916,
+    "final_punctuation": 144092,
+    "hyphen": 20028,
+    "punctuation": 175335,
+    "spelling": 61829,
+    "split_join": 20086
   },
   "splits": {
-    "test": 22502,
+    "test": 22500,
     "val": 22500,
-    "train": 404998
+    "train": 405000
   },
   "split_strategy": "normalized_target_v2",
   "columns": [

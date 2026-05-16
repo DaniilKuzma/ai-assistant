@@ -14,6 +14,9 @@ def test_main_config_is_full_train_profile_for_450k_dataset():
     assert config["data"]["target_total_examples"] == 450000
     assert config["data"]["processed_train_path"] == "data/processed/correction_dataset.csv.gz"
     assert config["data"]["clean_corpus"]["enabled"] is True
+    assert config["data"]["synthetic_balance"]["spelling_min_examples"] >= 30_000
+    assert 10_000 <= config["data"]["synthetic_balance"]["split_join_min_examples"] <= 30_000
+    assert 10_000 <= config["data"]["synthetic_balance"]["hyphen_min_examples"] <= 30_000
     assert {source["name"] for source in config["data"]["clean_corpus"]["sources"]} >= {
         "leipzig_news",
         "leipzig_wikipedia",
@@ -21,6 +24,8 @@ def test_main_config_is_full_train_profile_for_450k_dataset():
         "taiga_proza_filtered",
         "ud_russian_taiga",
         "opencorpora",
+        "tatoeba_russian",
+        "russian_wikipedia_dump",
     }
     assert config["model"]["local_files_only"] is True
     assert config["model"]["max_sequence_length"] == 128

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import bz2
 from dataclasses import dataclass
 import gzip
 import io
@@ -58,6 +59,19 @@ DEFAULT_CLEAN_CORPUS_SOURCES: list[dict[str, Any]] = [
         "type": "opencorpora_xml_zip",
         "url": "https://opencorpora.org/files/export/annot/annot.opcorpora.xml.zip",
         "max_sentences": 40_000,
+    },
+    {
+        "name": "tatoeba_russian",
+        "type": "tatoeba_tsv",
+        "url": "https://downloads.tatoeba.org/exports/sentences.tar.bz2",
+        "max_sentences": 30_000,
+    },
+    {
+        "name": "russian_wikipedia_dump",
+        "type": "mediawiki_xml_bz2",
+        "url": "https://dumps.wikimedia.org/ruwiki/latest/ruwiki-latest-pages-articles-multistream.xml.bz2",
+        "max_sentences": 50_000,
+        "enabled": False,
     },
 ]
 
@@ -208,7 +222,19 @@ def parse_ud_conllu_texts(content: str) -> list[str]:
     return result
 
 
+def parse_tatoeba_sentence_lines(content: str) -> list[str]:
+    sentences: list[str] = []
+    for line in content.splitlines():
+        parts = line.split("\t", 2)
+        if len(parts) != 3 or parts[1] != "rus":
+            continue
+        sentences.append(normalize_sentence(parts[2]))
+    return sentences
+
+
 def _iter_source_sentences(source: dict[str, Any], *, max_scan_sources: int) -> Iterable[str]:
+    if source.get("enabled") is False:
+        return
     source_type = source.get("type")
     try:
         if source_type == "leipzig":
@@ -219,6 +245,10 @@ def _iter_source_sentences(source: dict[str, Any], *, max_scan_sources: int) -> 
             yield from _iter_ud_source(source, max_scan_sources=max_scan_sources)
         elif source_type == "opencorpora_xml_zip":
             yield from _iter_opencorpora_source(source, max_scan_sources=max_scan_sources)
+        elif source_type == "tatoeba_tsv":
+            yield from _iter_tatoeba_source(source, max_scan_sources=max_scan_sources)
+        elif source_type == "mediawiki_xml_bz2":
+            yield from _iter_mediawiki_dump_source(source, max_scan_sources=max_scan_sources)
     except Exception:
         return
 
@@ -309,6 +339,50 @@ def _iter_opencorpora_source(source: dict[str, Any], *, max_scan_sources: int) -
                         return
 
 
+def _iter_tatoeba_source(source: dict[str, Any], *, max_scan_sources: int) -> Iterable[str]:
+    url = source.get("url")
+    if not url:
+        return
+    print(f"  downloading Tatoeba sentences: {url}")
+    try:
+        with urlopen(url, timeout=45) as response:
+            archive_bytes = response.read()
+    except (OSError, URLError):
+        return
+    scanned = 0
+    with tarfile.open(fileobj=io.BytesIO(archive_bytes), mode="r:bz2") as archive:
+        for member in archive.getmembers():
+            if not member.name.endswith("sentences.csv"):
+                continue
+            extracted = archive.extractfile(member)
+            if extracted is None:
+                continue
+            content = extracted.read().decode("utf-8", errors="ignore")
+            for sentence in parse_tatoeba_sentence_lines(content):
+                yield sentence
+                scanned += 1
+                if scanned >= max_scan_sources:
+                    return
+
+
+def _iter_mediawiki_dump_source(source: dict[str, Any], *, max_scan_sources: int) -> Iterable[str]:
+    url = source.get("url")
+    if not url:
+        return
+    print(f"  streaming MediaWiki dump: {url}")
+    scanned = 0
+    try:
+        with urlopen(url, timeout=60) as response:
+            with bz2.BZ2File(response) as xml_file:
+                for sentence in _iter_mediawiki_xml_sentences(xml_file):
+                    yield sentence
+                    scanned += 1
+                    if scanned >= max_scan_sources:
+                        return
+    except (OSError, URLError, EOFError, ElementTree.ParseError):
+        return
+
+
 def _iter_opencorpora_xml_sentences(xml_file: Any) -> Iterable[str]:
     for _event, element in ElementTree.iterparse(xml_file, events=("end",)):
         if not element.tag.endswith("sentence"):
@@ -318,6 +392,27 @@ def _iter_opencorpora_xml_sentences(xml_file: Any) -> Iterable[str]:
         if sentence:
             yield sentence
         element.clear()
+
+
+def _iter_mediawiki_xml_sentences(xml_file: Any) -> Iterable[str]:
+    for _event, element in ElementTree.iterparse(xml_file, events=("end",)):
+        if element.tag.endswith("text") and element.text:
+            text = _strip_wiki_markup(element.text)
+            for sentence in split_text_to_sentences(text):
+                yield sentence
+        element.clear()
+
+
+def _strip_wiki_markup(text: str) -> str:
+    text = re.sub(r"<!--.*?-->", " ", text, flags=re.S)
+    text = re.sub(r"<ref\b[^>]*>.*?</ref>", " ", text, flags=re.S | re.I)
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = re.sub(r"\{\{[^{}]*\}\}", " ", text)
+    text = re.sub(r"\[\[(?:[^|\]]+\|)?([^\]]+)\]\]", r"\1", text)
+    text = re.sub(r"\[https?://[^\s\]]+(?:\s+([^\]]+))?\]", r"\1", text)
+    text = re.sub(r"'{2,}", "", text)
+    text = re.sub(r"={2,}[^=]+={2,}", " ", text)
+    return normalize_sentence(text)
 
 
 def _join_tokens(tokens: list[str]) -> str:

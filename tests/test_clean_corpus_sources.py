@@ -1,6 +1,7 @@
 from src.data.clean_corpus_sources import (
     is_suitable_clean_sentence,
     parse_leipzig_sentences,
+    parse_tatoeba_sentence_lines,
     parse_ud_conllu_texts,
     split_text_to_sentences,
 )
@@ -25,6 +26,19 @@ def test_parse_ud_conllu_text_comments():
     content = "# sent_id = 1\n# text = Сегодня опубликован новый отчет о работе системы.\n1\tСегодня\t_\n"
 
     assert parse_ud_conllu_texts(content) == ["Сегодня опубликован новый отчет о работе системы."]
+
+
+def test_parse_tatoeba_sentence_lines_keeps_only_russian_sentences():
+    content = (
+        "1\trus\tСегодня опубликован новый отчет о работе системы.\n"
+        "2\teng\tThis sentence must be ignored.\n"
+        "3\trus\tВторое русское предложение содержит полезные данные.\n"
+    )
+
+    assert parse_tatoeba_sentence_lines(content) == [
+        "Сегодня опубликован новый отчет о работе системы.",
+        "Второе русское предложение содержит полезные данные.",
+    ]
 
 
 def test_split_text_to_sentences_normalizes_document_text():
