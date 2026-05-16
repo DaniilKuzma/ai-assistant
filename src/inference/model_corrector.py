@@ -137,7 +137,8 @@ class TorchCandidateModelBackend:
         )
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         module = edit_model.module.to(device)
-        module.heads.load_state_dict(torch.load(heads_path, map_location=device))
+        heads_state = torch.load(heads_path, map_location=device)
+        module.heads.load_state_dict(_prepare_heads_state_dict_for_module(heads_state, module.heads))
         module.eval()
         return cls(
             tokenizer=tokenizer,
@@ -344,6 +345,34 @@ def _to_list(value: Any) -> list[Any]:
     if hasattr(value, "tolist"):
         return value.tolist()
     return list(value)
+
+
+def _prepare_heads_state_dict_for_module(state_dict: dict[str, Any], heads: Any) -> dict[str, Any]:
+    prepared = dict(state_dict)
+    key = "candidate_projection.weight"
+    if key not in prepared:
+        return prepared
+
+    target = heads.state_dict().get(key)
+    source = prepared[key]
+    if target is None or not hasattr(source, "shape") or tuple(source.shape) == tuple(target.shape):
+        return prepared
+
+    if _is_legacy_candidate_projection_shape(source, target):
+        expanded = target.new_zeros(target.shape)
+        expanded[:, : source.shape[1]] = source.to(device=target.device, dtype=target.dtype)
+        prepared[key] = expanded
+    return prepared
+
+
+def _is_legacy_candidate_projection_shape(source: Any, target: Any) -> bool:
+    return (
+        len(source.shape) == 2
+        and len(target.shape) == 2
+        and source.shape[0] == target.shape[0]
+        and source.shape[1] > 0
+        and target.shape[1] == source.shape[1] * 3
+    )
 
 
 def _punctuation_mark(label: str) -> str:

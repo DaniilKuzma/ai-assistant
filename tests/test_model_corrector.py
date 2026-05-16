@@ -6,7 +6,9 @@ from src.inference.model_corrector import (
     ModelPunctuationPrediction,
     TorchCandidateModelBackend,
     TrainedModelCorrector,
+    _prepare_heads_state_dict_for_module,
 )
+from src.model.heads import build_linear_heads
 
 
 class FakeBackend:
@@ -131,6 +133,20 @@ def test_torch_backend_passes_candidate_replacement_tokens_to_model():
     assert replacement_ids.shape[0:2] == torch.Size([1, 3])
     assert replacement_mask[0, 1].any()
     assert replacement_ids[0, 1].sum().item() > 0
+
+
+def test_legacy_candidate_projection_heads_are_expanded_for_current_model_shape():
+    heads = torch.nn.ModuleDict(build_linear_heads(hidden_size=4, punctuation_labels=3, error_types=2))
+    legacy_state = heads.state_dict()
+    legacy_weight = torch.arange(16, dtype=torch.float32).reshape(4, 4)
+    legacy_state["candidate_projection.weight"] = legacy_weight
+
+    prepared = _prepare_heads_state_dict_for_module(legacy_state, heads)
+
+    assert prepared["candidate_projection.weight"].shape == torch.Size([4, 12])
+    assert torch.equal(prepared["candidate_projection.weight"][:, :4], legacy_weight)
+    assert torch.equal(prepared["candidate_projection.weight"][:, 4:], torch.zeros(4, 8))
+    heads.load_state_dict(prepared)
 
 
 class FakeTokenizer:
