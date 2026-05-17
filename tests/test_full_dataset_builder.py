@@ -7,7 +7,9 @@ import pandas as pd
 import src.data.full_dataset_builder as full_dataset_builder
 from src.data.full_dataset_builder import (
     DatasetBuildConfig,
+    ORTHOGRAPHY_BALANCE_GROUPS,
     _lexical_balance_target,
+    _build_targeted_orthography_rows,
     build_dataset_rows,
     dataset_composition,
     write_dataset,
@@ -192,6 +194,37 @@ def test_full_dataset_builder_balances_required_lexical_error_types():
     assert dataset_composition(rows)["clean"] == 18
 
 
+def test_full_dataset_builder_generates_rule_backed_orthography_groups():
+    analyzer = DiffAnalyzer()
+
+    for group in ORTHOGRAPHY_BALANCE_GROUPS:
+        rows = _build_targeted_orthography_rows(
+            group,
+            required_count=200,
+            diff_analyzer=analyzer,
+            domain="unit",
+        )
+
+        assert len(rows) == 200
+        assert {row["source_dataset"] for row in rows} == {f"synthetic_balanced_orthography_{group}"}
+        assert all(not row["is_clean"] and row["is_synthetic"] for row in rows)
+        assert all(json.loads(row["edit_operations"]) for row in rows)
+
+
+def test_diff_analyzer_classifies_generated_orthography_edits():
+    analyzer = DiffAnalyzer()
+    examples = [
+        ("Я недумаю об этом.", "Я не думаю об этом.", "split_word"),
+        ("Это чюдотворное средство.", "Это чудотворное средство.", "spelling_replace"),
+        ("Он вошел в подезд.", "Он вошел в подъезд.", "spelling_replace"),
+        ("Это безполезный спор.", "Это бесполезный спор.", "spelling_replace"),
+    ]
+
+    for source, target, expected_type in examples:
+        edits = analyzer.analyze(source, target)
+        assert any(edit.edit_type == expected_type for edit in edits)
+
+
 def test_supported_edits_excludes_context_dependent_pairs_from_training_labels():
     analyzer = DiffAnalyzer()
     edits = analyzer.analyze("Он пришел чтобы помочь.", "Он пришел что бы помочь.")
@@ -231,6 +264,46 @@ def test_external_rows_pass_local_files_only_in_hf_offline_mode(monkeypatch):
 
     assert full_dataset_builder._load_external_rows({"use_external_sources": True, "max_external_examples": 17}) == []
     assert captured == {"limit": 17, "local_files_only": True}
+
+
+def test_external_rows_use_configured_sources_before_legacy_hf_loader(monkeypatch):
+    captured = {}
+
+    def fake_pair_loader(source_specs, *, limit, local_files_only):
+        captured["source_specs"] = source_specs
+        captured["limit"] = limit
+        captured["local_files_only"] = local_files_only
+        return [
+            {
+                "source": "предпологаю",
+                "target": "предполагаю",
+                "error_types": '["spelling"]',
+                "source_dataset": "unit_pairs",
+                "is_clean": False,
+                "is_synthetic": False,
+                "split": "train",
+                "domain": "unit",
+                "edit_operations": "[]",
+            }
+        ]
+
+    def fail_legacy_loader(*_args, **_kwargs):
+        raise AssertionError("legacy HF loader should not be used when external_sources are configured")
+
+    monkeypatch.setattr(full_dataset_builder, "load_external_pair_sources", fake_pair_loader)
+    monkeypatch.setattr(full_dataset_builder, "load_hf_jsonl_pairs", fail_legacy_loader)
+
+    rows = full_dataset_builder._load_external_rows(
+        {
+            "use_external_sources": True,
+            "max_external_examples": 10,
+            "external_sources": [{"name": "unit", "type": "csv", "path": "missing.csv"}],
+        }
+    )
+
+    assert len(rows) == 1
+    assert captured["limit"] == 10
+    assert captured["source_specs"][0]["name"] == "unit"
 
 
 def _normalize_for_leakage_check(value: str) -> str:

@@ -238,6 +238,7 @@ def _build_features(config: dict[str, Any], rows: list[dict[str, Any]]):
         rows,
         tokenizer=tokenizer,
         punctuation_label_map=label_config.get("punctuation", {}),
+        punctuation_action_label_map=label_config.get("punctuation_actions", {}),
         error_type_label_map=label_config.get("error_types", {}),
         max_length=int(model_config.get("max_sequence_length", 192)),
         max_candidates=int(model_config.get("max_candidates", 32)),
@@ -257,6 +258,7 @@ def _run_model_training(config: dict[str, Any], features) -> dict[str, Any]:  # 
             model_name=model_config.get("primary_encoder", "ai-forever/ruRoberta-large"),
             fallback_model_name=model_config.get("fallback_encoder", "ai-forever/ruBert-base"),
             punctuation_label_count=len(config.get("labels", {}).get("punctuation", {})),
+            punctuation_action_count=len(config.get("labels", {}).get("punctuation_actions", {})) or 5,
             error_type_count=len(config.get("labels", {}).get("error_types", {})),
             local_files_only=bool(model_config.get("local_files_only", False)),
             lora_enabled=bool(lora_config.get("enabled", True)),
@@ -282,6 +284,7 @@ def _run_model_training(config: dict[str, Any], features) -> dict[str, Any]:  # 
             "candidate_replacement_ids": collated["candidate_replacement_ids"].to(device),
             "candidate_replacement_mask": collated["candidate_replacement_mask"].to(device),
             "punctuation_gap_indices": collated["punctuation_gap_indices"].to(device),
+            "punctuation_right_gap_indices": collated["punctuation_right_gap_indices"].to(device),
             "punctuation_gap_mask": collated["punctuation_gap_mask"].to(device),
             "labels": labels,
         }

@@ -12,6 +12,7 @@ class EditModelConfig:
     model_name: str = "ai-forever/ruRoberta-large"
     fallback_model_name: str = "ai-forever/ruBert-base"
     punctuation_label_count: int = 13
+    punctuation_action_count: int = 5
     error_type_count: int = 7
     local_files_only: bool = False
     lora_enabled: bool = True
@@ -62,6 +63,7 @@ class CandidateAwareEditModel:
                 candidate_replacement_ids=None,
                 candidate_replacement_mask=None,
                 punctuation_gap_indices=None,
+                punctuation_right_gap_indices=None,
                 punctuation_gap_mask=None,
                 **kwargs,
             ):
@@ -95,20 +97,43 @@ class CandidateAwareEditModel:
                     confidence_logits = confidence_logits.masked_fill(~candidate_mask, -1e4)
                 punctuation_representations = hidden
                 if punctuation_gap_indices is not None:
-                    punctuation_representations = _gather_gap_representations(hidden, punctuation_gap_indices)
-                punctuation_confidence_logits = self.heads["confidence"](punctuation_representations).squeeze(-1)
+                    left_representations = _gather_gap_representations(hidden, punctuation_gap_indices)
+                    if punctuation_right_gap_indices is None:
+                        punctuation_right_gap_indices = punctuation_gap_indices
+                    right_representations = _gather_gap_representations(hidden, punctuation_right_gap_indices)
+                    cls_representations = hidden[:, :1, :].expand_as(left_representations)
+                    punctuation_representations = torch.cat(
+                        [
+                            left_representations,
+                            right_representations,
+                            right_representations - left_representations,
+                            cls_representations,
+                        ],
+                        dim=-1,
+                    )
+                    punctuation_representations = self.heads["punctuation_projection"](punctuation_representations)
+                punctuation_confidence_logits = self.heads["punctuation_confidence"](punctuation_representations).squeeze(-1)
                 return {
                     "hidden_states": hidden,
                     "candidate_scores": candidate_scores,
                     "punctuation_logits": self.heads["punctuation_gap"](punctuation_representations),
+                    "punctuation_action_logits": self.heads["punctuation_action"](punctuation_representations),
                     "punctuation_confidence_logits": punctuation_confidence_logits,
-                    "punctuation_error_type_logits": self.heads["error_type"](punctuation_representations),
+                    "punctuation_error_type_logits": self.heads["punctuation_error_type"](punctuation_representations),
                     "confidence_logits": confidence_logits,
                     "error_type_logits": error_type_logits,
                 }
 
         hidden_size = _encoder_hidden_size(encoder)
-        return _Module(encoder, build_linear_heads(hidden_size, config.punctuation_label_count, config.error_type_count))
+        return _Module(
+            encoder,
+            build_linear_heads(
+                hidden_size,
+                config.punctuation_label_count,
+                config.error_type_count,
+                config.punctuation_action_count,
+            ),
+        )
 
     def _attach_lora(self, encoder: Any, config: EditModelConfig) -> Any:
         from src.model.encoder import _disable_unused_transformers_backends

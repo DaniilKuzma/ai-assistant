@@ -5,7 +5,9 @@ import difflib
 import re
 
 from src.candidates.frequent_errors import CONTEXT_DEPENDENT_WHITELIST, HYPHEN_WHITELIST, SPLIT_JOIN_WHITELIST, WRONG_TO_CORRECT
+from src.candidates.spelling_rules import spelling_candidate_specs
 from src.preprocessing.tokenizer import PUNCTUATION
+from src.preprocessing.tokenizer import tokenize_words
 
 
 FINAL_PUNCT = ".!?"
@@ -88,6 +90,27 @@ class DiffAnalyzer:
             if wrong in source_lower and correct in target_lower:
                 start = source_lower.find(wrong)
                 edits.append(Edit(source[start : start + len(wrong)], correct, "hyphen_change", start, start + len(wrong), confidence=0.95))
+
+        for token in tokenize_words(source):
+            for spec in spelling_candidate_specs(token.text):
+                replacement = spec.replacement.lower()
+                if replacement not in target_lower:
+                    continue
+                if not _candidate_matches_word_alignment(source, target, token.start, token.end, spec.replacement):
+                    continue
+                edit_type = "spelling_replace"
+                if spec.edit_type == "split_join":
+                    edit_type = _split_join_edit_type(token.text, spec.replacement)
+                edits.append(
+                    Edit(
+                        token.text,
+                        spec.replacement,
+                        edit_type,
+                        token.start,
+                        token.end,
+                        confidence=spec.confidence,
+                    )
+                )
 
         return edits
 
@@ -188,6 +211,27 @@ def _is_sentence_start_case_position(text: str, position: int) -> bool:
 
 def _is_russian_letter(char: str) -> bool:
     return bool(re.fullmatch(r"[А-Яа-яЁё]", char))
+
+
+def _candidate_matches_word_alignment(source: str, target: str, start: int, end: int, replacement: str) -> bool:
+    source_words = tokenize_words(source)
+    target_words = tokenize_words(target)
+    source_index = next(
+        (index for index, word in enumerate(source_words) if word.start == start and word.end == end),
+        None,
+    )
+    if source_index is None:
+        return False
+    replacement_words = replacement.lower().split()
+    matcher = difflib.SequenceMatcher(
+        a=[word.text.lower() for word in source_words],
+        b=[word.text.lower() for word in target_words],
+    )
+    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+        if tag == "equal" or not (i1 <= source_index < i2):
+            continue
+        return [word.text.lower() for word in target_words[j1:j2]] == replacement_words
+    return False
 
 
 def _punctuation_inserts(position: int, inserted: str) -> list[Edit]:

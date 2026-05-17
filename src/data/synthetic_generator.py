@@ -6,6 +6,7 @@ import random
 import re
 
 from src.candidates.frequent_errors import REVERSE_SYNTHETIC_ERRORS, REVERSE_SYNTHETIC_ERROR_TYPES
+from src.preprocessing.protected_spans import find_protected_spans
 
 
 @dataclass(frozen=True)
@@ -110,20 +111,23 @@ def _synthetic_variant_sources(text: str) -> list[tuple[str, list[str]]]:
 
 
 def _synthetic_transformations(text: str) -> list[SyntheticTransformation]:
+    protected = [(span.start, span.end) for span in find_protected_spans(text)]
     return [
         *_final_punctuation_transformations(text),
-        *_punctuation_transformations(text),
-        *_paired_punctuation_transformations(text),
-        *_lexical_transformations(text),
+        *_punctuation_transformations(text, protected),
+        *_paired_punctuation_transformations(text, protected),
+        *_lexical_transformations(text, protected),
     ]
 
 
-def _lexical_transformations(text: str) -> list[SyntheticTransformation]:
+def _lexical_transformations(text: str, protected: list[tuple[int, int]]) -> list[SyntheticTransformation]:
     transformations: list[SyntheticTransformation] = []
     lower = text.lower()
     for clean, dirty in REVERSE_SYNTHETIC_ERRORS.items():
         start = lower.find(clean)
         if start < 0:
+            continue
+        if _span_overlaps_protected(start, start + len(clean), protected):
             continue
         source = text[start : start + len(clean)]
         error_type = REVERSE_SYNTHETIC_ERROR_TYPES.get(clean, "spelling")
@@ -131,9 +135,11 @@ def _lexical_transformations(text: str) -> list[SyntheticTransformation]:
     return transformations
 
 
-def _punctuation_transformations(text: str) -> list[SyntheticTransformation]:
+def _punctuation_transformations(text: str, protected: list[tuple[int, int]]) -> list[SyntheticTransformation]:
     transformations: list[SyntheticTransformation] = []
     for index, char in enumerate(text):
+        if _span_overlaps_protected(index, index + 1, protected):
+            continue
         if _is_final_punctuation_position(text, index) or _is_decimal_comma(text, index):
             continue
         if char in ",:;—":
@@ -145,13 +151,17 @@ def _punctuation_transformations(text: str) -> list[SyntheticTransformation]:
     return transformations
 
 
-def _paired_punctuation_transformations(text: str) -> list[SyntheticTransformation]:
+def _paired_punctuation_transformations(text: str, protected: list[tuple[int, int]]) -> list[SyntheticTransformation]:
     transformations: list[SyntheticTransformation] = []
     for match in re.finditer(r"«([^»\n]+)»", text):
+        if _span_overlaps_protected(match.start(), match.end(), protected):
+            continue
         inner = match.group(1)
         transformations.append(SyntheticTransformation(match.start(), match.end(), inner, "punctuation"))
         transformations.append(SyntheticTransformation(match.start(), match.end(), f'"{inner}"', "punctuation"))
     for match in re.finditer(r"\(([^)\n]+)\)", text):
+        if _span_overlaps_protected(match.start(), match.end(), protected):
+            continue
         transformations.append(SyntheticTransformation(match.start(), match.end(), match.group(1), "punctuation"))
     return transformations
 
@@ -193,6 +203,10 @@ def _overlaps(left: SyntheticTransformation, right: SyntheticTransformation) -> 
     if left.start == left.end or right.start == right.end:
         return left.start == right.start
     return max(left.start, right.start) < min(left.end, right.end)
+
+
+def _span_overlaps_protected(start: int, end: int, protected: list[tuple[int, int]]) -> bool:
+    return any(start < protected_end and protected_start < end for protected_start, protected_end in protected)
 
 
 def _is_decimal_comma(text: str, index: int) -> bool:

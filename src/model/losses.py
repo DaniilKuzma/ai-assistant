@@ -13,11 +13,25 @@ def multitask_loss(outputs: dict, labels: dict, weights: dict[str, float]):
         )
         loss = loss + weights.get("word_loss_weight", 1.0) * _masked_mean(word_loss, candidate_mask)
     if "punctuation_labels" in labels:
-        punctuation_loss = functional.cross_entropy(
-            outputs["punctuation_logits"].transpose(1, 2), labels["punctuation_labels"], reduction="none"
+        punctuation_loss = _weighted_token_cross_entropy(
+            outputs["punctuation_logits"],
+            labels["punctuation_labels"],
+            weights.get("punctuation_label_weights"),
+            float(weights.get("punctuation_focal_gamma", 0.0)),
         )
         loss = loss + weights.get("punctuation_loss_weight", 1.0) * _masked_mean(
             punctuation_loss, labels.get("punctuation_mask")
+        )
+    if "punctuation_action_labels" in labels and "punctuation_action_logits" in outputs:
+        punctuation_action_loss = _weighted_token_cross_entropy(
+            outputs["punctuation_action_logits"],
+            labels["punctuation_action_labels"],
+            weights.get("punctuation_action_weights"),
+            float(weights.get("punctuation_action_focal_gamma", weights.get("punctuation_focal_gamma", 0.0))),
+        )
+        loss = loss + weights.get("punctuation_action_loss_weight", 1.0) * _masked_mean(
+            punctuation_action_loss,
+            labels.get("punctuation_mask"),
         )
     if "confidence_labels" in labels:
         confidence_loss = functional.binary_cross_entropy_with_logits(
@@ -45,6 +59,22 @@ def multitask_loss(outputs: dict, labels: dict, weights: dict[str, float]):
             labels["punctuation_error_type_labels"],
         )
     return loss
+
+
+def _weighted_token_cross_entropy(logits, labels, class_weights, focal_gamma: float = 0.0):  # type: ignore[no-untyped-def]
+    import torch
+    import torch.nn.functional as functional
+
+    weight = None
+    if class_weights:
+        weight = torch.tensor(list(class_weights), dtype=logits.dtype, device=logits.device)
+    flat_logits = logits.reshape(-1, logits.shape[-1])
+    flat_labels = labels.reshape(-1).to(logits.device)
+    loss = functional.cross_entropy(flat_logits, flat_labels, weight=weight, reduction="none")
+    if focal_gamma > 0:
+        probability = torch.exp(-loss)
+        loss = ((1 - probability) ** focal_gamma) * loss
+    return loss.reshape(labels.shape)
 
 
 def _masked_mean(values, mask):  # type: ignore[no-untyped-def]

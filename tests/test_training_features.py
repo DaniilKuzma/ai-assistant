@@ -48,6 +48,60 @@ def test_training_feature_uses_word_gap_mask_instead_of_token_mask_for_punctuati
     assert feature.punctuation_labels[-1] == 0
 
 
+def test_training_feature_marks_punctuation_action_labels():
+    tokenizer = DebugTokenizer()
+    punctuation_labels = {"NONE": 0, "COMMA": 1, "DOT": 2, "COLON": 3}
+    action_labels = {"KEEP_NONE": 0, "KEEP_EXISTING": 1, "INSERT": 2, "DELETE": 3, "REPLACE": 4}
+    error_labels = {"keep": 0, "punctuation": 1, "final_punctuation": 2}
+
+    insert_feature = build_training_feature(
+        "Я думаю что это важно.",
+        "Я думаю, что это важно.",
+        tokenizer=tokenizer,
+        punctuation_label_map=punctuation_labels,
+        punctuation_action_label_map=action_labels,
+        error_type_label_map=error_labels,
+        max_length=16,
+        max_candidates=8,
+    )
+    delete_feature = build_training_feature(
+        "Я думаю, что это важно.",
+        "Я думаю что это важно.",
+        tokenizer=tokenizer,
+        punctuation_label_map=punctuation_labels,
+        punctuation_action_label_map=action_labels,
+        error_type_label_map=error_labels,
+        max_length=16,
+        max_candidates=8,
+    )
+    replace_feature = build_training_feature(
+        "Он сказал, привет.",
+        "Он сказал: привет.",
+        tokenizer=tokenizer,
+        punctuation_label_map=punctuation_labels,
+        punctuation_action_label_map=action_labels,
+        error_type_label_map=error_labels,
+        max_length=16,
+        max_candidates=8,
+    )
+    keep_feature = build_training_feature(
+        "Я думаю, что это важно.",
+        "Я думаю, что это важно.",
+        tokenizer=tokenizer,
+        punctuation_label_map=punctuation_labels,
+        punctuation_action_label_map=action_labels,
+        error_type_label_map=error_labels,
+        max_length=16,
+        max_candidates=8,
+    )
+
+    assert insert_feature.punctuation_action_labels[1] == action_labels["INSERT"]
+    assert delete_feature.punctuation_action_labels[1] == action_labels["DELETE"]
+    assert replace_feature.punctuation_action_labels[1] == action_labels["REPLACE"]
+    assert keep_feature.punctuation_action_labels[0] == action_labels["KEEP_NONE"]
+    assert keep_feature.punctuation_action_labels[1] == action_labels["KEEP_EXISTING"]
+
+
 def test_training_feature_uses_aligned_edit_span_for_repeated_candidates():
     tokenizer = DebugTokenizer()
 
@@ -124,8 +178,10 @@ def test_batch_collator_returns_tensors_with_candidate_masks():
     assert batch["candidate_spans"].shape == torch.Size([1, 6, 2])
     assert batch["candidate_replacement_ids"].shape[0:2] == torch.Size([1, 6])
     assert batch["punctuation_gap_indices"].shape == torch.Size([1, 12])
+    assert batch["punctuation_right_gap_indices"].shape == torch.Size([1, 12])
     assert batch["labels"]["candidate_labels"].shape == torch.Size([1, 6])
     assert batch["labels"]["punctuation_mask"].sum().item() == 4
+    assert batch["labels"]["punctuation_action_labels"].shape == torch.Size([1, 12])
     assert batch["labels"]["punctuation_confidence_labels"].shape == torch.Size([1, 12])
     assert batch["labels"]["punctuation_error_type_labels"].shape == torch.Size([1, 12])
     assert batch["labels"]["candidate_mask"].sum().item() >= 2

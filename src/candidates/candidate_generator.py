@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from src.candidates.frequent_errors import CONTEXT_DEPENDENT_WHITELIST, HYPHEN_WHITELIST, SPLIT_JOIN_WHITELIST
-from src.candidates.spelling_rules import spelling_candidates
+from src.candidates.frequent_errors import CONTEXT_DEPENDENT_WHITELIST, HYPHEN_WHITELIST
+from src.candidates.spelling_rules import spelling_candidate_specs
 from src.preprocessing.tokenizer import Token, tokenize_words
 
 
@@ -23,21 +23,37 @@ class CandidateGenerator:
 
     def generate(self, text: str) -> list[Candidate]:
         candidates: list[Candidate] = []
+        seen: set[tuple[int, int, str, str]] = set()
         words = tokenize_words(text)
 
         for index, token in enumerate(words):
-            candidates.append(Candidate(token.text, token.text, "keep", token.start, token.end, 1.0))
+            _append_candidate(
+                candidates,
+                seen,
+                Candidate(token.text, token.text, "keep", token.start, token.end, 1.0),
+            )
 
-            lower = token.text.lower()
-            for replacement in spelling_candidates(token.text):
-                edit_type = "split_join" if lower in SPLIT_JOIN_WHITELIST else "spelling"
-                candidates.append(Candidate(token.text, _match_case(token.text, replacement), edit_type, token.start, token.end, 0.95))
+            for spec in spelling_candidate_specs(token.text):
+                _append_candidate(
+                    candidates,
+                    seen,
+                    Candidate(
+                        token.text,
+                        _match_case(token.text, spec.replacement),
+                        spec.edit_type,
+                        token.start,
+                        token.end,
+                        spec.confidence,
+                        spec.requires_model,
+                    ),
+                )
 
-            candidates.extend(_context_candidates_starting_at(text, words, index))
+            for candidate in _context_candidates_starting_at(text, words, index):
+                _append_candidate(candidates, seen, candidate)
 
             if index == 0 and token.text[:1].islower():
                 fixed = token.text[:1].upper() + token.text[1:]
-                candidates.append(Candidate(token.text, fixed, "case", token.start, token.end, 0.9))
+                _append_candidate(candidates, seen, Candidate(token.text, fixed, "case", token.start, token.end, 0.9))
 
         lower_text = text.lower()
         for source, replacement in HYPHEN_WHITELIST.items():
@@ -46,7 +62,7 @@ class CandidateGenerator:
             start = lower_text.find(source)
             if start >= 0:
                 end = start + len(source)
-                candidates.append(Candidate(text[start:end], replacement, "hyphen", start, end, 0.95))
+                _append_candidate(candidates, seen, Candidate(text[start:end], replacement, "hyphen", start, end, 0.95))
 
         return candidates
 
@@ -83,3 +99,11 @@ def _context_candidates_starting_at(text: str, words: list[Token], index: int) -
             )
         )
     return candidates
+
+
+def _append_candidate(candidates: list[Candidate], seen: set[tuple[int, int, str, str]], candidate: Candidate) -> None:
+    key = (candidate.start, candidate.end, candidate.replacement.lower(), candidate.edit_type)
+    if key in seen:
+        return
+    seen.add(key)
+    candidates.append(candidate)

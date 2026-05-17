@@ -57,10 +57,18 @@ class StrictValidator:
     def validate(self, source: str, target: str, trusted_edits: list[Any] | None = None) -> ValidationResult:
         edits = self.diff_analyzer.analyze(source, target)
         protected = self.pre_validate(source)
-        trusted_context_keys = _trusted_context_pair_keys(trusted_edits or [], self.context_pair_threshold)
-        validated: list[Edit] = []
+        trusted = trusted_edits or []
+        trusted_context_keys = _trusted_context_pair_keys(trusted, self.context_pair_threshold)
+        trusted_strict_edits = _trusted_strict_edits(source, trusted)
+        validated: list[Edit] = [
+            edit.with_status("accepted", "trusted bounded candidate")
+            for edit in trusted_strict_edits
+            if not _touches_protected(edit, protected)
+        ]
 
         for edit in edits:
+            if _is_explained_by_trusted_edit(edit, trusted_strict_edits):
+                continue
             if _is_context_dependent_edit(edit):
                 if _is_trusted_context_pair(source, edit, trusted_context_keys) and not _touches_protected(edit, protected):
                     validated.append(edit.with_status("accepted", "trusted high-confidence context pair"))
@@ -89,6 +97,90 @@ def _insert_comma_before_common_subordinator(text: str) -> str:
 
 def _is_context_dependent_edit(edit: Edit) -> bool:
     return CONTEXT_DEPENDENT_WHITELIST.get(edit.source.lower()) == edit.replacement.lower()
+
+
+def _trusted_strict_edits(source_text: str, trusted_edits: list[Any]) -> list[Edit]:
+    edits: list[Edit] = []
+    for item in trusted_edits:
+        source = str(getattr(item, "source", ""))
+        replacement = str(getattr(item, "replacement", ""))
+        candidate_type = str(getattr(item, "edit_type", ""))
+        start = int(getattr(item, "start", -1))
+        end = int(getattr(item, "end", -1))
+        confidence = float(getattr(item, "confidence", 0.0))
+        if confidence <= 0 or not source or source == replacement:
+            continue
+        if _is_context_dependent_edit(Edit(source, replacement, "unknown", start, end, confidence=confidence)):
+            continue
+        if not _source_span_matches(source_text, source, start, end):
+            continue
+        edit_type = _trusted_candidate_edit_type(source, replacement, candidate_type)
+        if edit_type is None:
+            continue
+        edits.append(Edit(source, replacement, edit_type, start, end, confidence=confidence))
+    return _deduplicate_trusted_edits(edits)
+
+
+def _source_span_matches(source_text: str, source: str, start: int, end: int) -> bool:
+    if start < 0 or end < start or end > len(source_text):
+        return False
+    return source_text[start:end].lower() == source.lower()
+
+
+def _trusted_candidate_edit_type(source: str, replacement: str, candidate_type: str) -> str | None:
+    if candidate_type == "spelling":
+        return "spelling_replace"
+    if candidate_type == "split_join":
+        if " " in replacement and " " not in source:
+            return "split_word"
+        if " " in source and " " not in replacement:
+            return "join_words"
+        return None
+    if candidate_type == "hyphen":
+        return "hyphen_change"
+    if candidate_type == "case":
+        return "case_change"
+    return None
+
+
+def _is_explained_by_trusted_edit(edit: Edit, trusted_edits: list[Edit]) -> bool:
+    for trusted in trusted_edits:
+        if (
+            edit.source.lower() == trusted.source.lower()
+            and edit.replacement.lower() == trusted.replacement.lower()
+            and edit.edit_type in {"unknown", trusted.edit_type}
+        ):
+            return True
+        if edit.edit_type != "punctuation_insert" and _positioned_overlap(edit, trusted):
+            return True
+    if edit.edit_type == "unknown" and trusted_edits:
+        return _unknown_edit_explained_by_trusted_edits(edit, trusted_edits)
+    return False
+
+
+def _unknown_edit_explained_by_trusted_edits(edit: Edit, trusted_edits: list[Edit]) -> bool:
+    projected = edit.source.lower()
+    for trusted in trusted_edits:
+        projected = projected.replace(trusted.source.lower(), trusted.replacement.lower(), 1)
+    return projected == edit.replacement.lower()
+
+
+def _positioned_overlap(edit: Edit, trusted: Edit) -> bool:
+    if edit.start < 0 or edit.end < 0 or trusted.start < 0 or trusted.end < 0:
+        return False
+    return edit.start < trusted.end and trusted.start < edit.end
+
+
+def _deduplicate_trusted_edits(edits: list[Edit]) -> list[Edit]:
+    seen: set[tuple[int, int, str, str, str]] = set()
+    result: list[Edit] = []
+    for edit in edits:
+        key = (edit.start, edit.end, edit.source.lower(), edit.replacement.lower(), edit.edit_type)
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(edit)
+    return result
 
 
 def _trusted_context_pair_keys(trusted_edits: list[Any], threshold: float) -> set[tuple[int, int, str, str]]:

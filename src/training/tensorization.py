@@ -4,9 +4,13 @@ from dataclasses import dataclass
 import re
 from typing import Any
 
-from src.alignment.punctuation_label_builder import build_punctuation_gap_labels
+from src.alignment.punctuation_label_builder import (
+    PUNCT_ACTION_LABELS,
+    build_punctuation_gap_action_labels,
+    build_punctuation_gap_labels,
+)
 from src.candidates.candidate_generator import Candidate, CandidateGenerator
-from src.preprocessing.punctuation_gaps import word_gap_token_indices
+from src.preprocessing.punctuation_gaps import word_gap_context_token_indices
 from src.preprocessing.tokenizer import Token, tokenize_words
 from src.validation.diff_analyzer import DiffAnalyzer, Edit
 from src.validation.edit_classifier import coarse_error_type
@@ -35,8 +39,10 @@ class TrainingFeature:
     candidate_error_type_labels: list[int]
     confidence_labels: list[float]
     punctuation_labels: list[int]
+    punctuation_action_labels: list[int]
     punctuation_mask: list[bool]
     punctuation_gap_indices: list[int]
+    punctuation_right_gap_indices: list[int]
     punctuation_gap_mask: list[bool]
     punctuation_confidence_labels: list[float]
     punctuation_error_type_labels: list[int]
@@ -95,6 +101,7 @@ def build_training_feature(
     error_type_label_map: dict[str, int],
     max_length: int,
     max_candidates: int,
+    punctuation_action_label_map: dict[str, int] | None = None,
     candidate_generator: CandidateGenerator | None = None,
 ) -> TrainingFeature:
     encoded = _encode(tokenizer, source, max_length)
@@ -121,9 +128,15 @@ def build_training_feature(
     replacement_masks.extend([[False] * MAX_REPLACEMENT_TOKENS for _ in range(pad_candidates)])
     candidate_mask = [True] * len(candidates) + [False] * pad_candidates
 
-    punctuation_gap_indices, punctuation_gap_mask = word_gap_token_indices(source, offsets, max_length)
+    punctuation_action_label_map = punctuation_action_label_map or PUNCT_ACTION_LABELS
+    punctuation_gap_indices, punctuation_right_gap_indices, punctuation_gap_mask = word_gap_context_token_indices(
+        source,
+        offsets,
+        max_length,
+    )
     punctuation_mask = punctuation_gap_mask[:]
     punctuation_labels = _punctuation_labels(source, target, punctuation_label_map, max_length)
+    punctuation_action_labels = _punctuation_action_labels(source, target, punctuation_action_label_map, max_length)
     punctuation_confidence_labels, punctuation_error_type_labels = _punctuation_confidence_and_error_labels(
         source,
         target,
@@ -144,8 +157,10 @@ def build_training_feature(
         candidate_error_type_labels=error_labels,
         confidence_labels=confidence_labels,
         punctuation_labels=punctuation_labels,
+        punctuation_action_labels=punctuation_action_labels,
         punctuation_mask=punctuation_mask,
         punctuation_gap_indices=punctuation_gap_indices,
+        punctuation_right_gap_indices=punctuation_right_gap_indices,
         punctuation_gap_mask=punctuation_gap_mask,
         punctuation_confidence_labels=punctuation_confidence_labels,
         punctuation_error_type_labels=punctuation_error_type_labels,
@@ -171,11 +186,17 @@ class EditBatchCollator:
             "punctuation_gap_indices": torch.tensor(
                 [feature.punctuation_gap_indices for feature in features], dtype=torch.long
             ),
+            "punctuation_right_gap_indices": torch.tensor(
+                [feature.punctuation_right_gap_indices for feature in features], dtype=torch.long
+            ),
             "punctuation_gap_mask": torch.tensor([feature.punctuation_gap_mask for feature in features], dtype=torch.bool),
             "labels": {
                 "candidate_labels": torch.tensor([feature.candidate_labels for feature in features], dtype=torch.float),
                 "candidate_mask": torch.tensor([feature.candidate_mask for feature in features], dtype=torch.bool),
                 "punctuation_labels": torch.tensor([feature.punctuation_labels for feature in features], dtype=torch.long),
+                "punctuation_action_labels": torch.tensor(
+                    [feature.punctuation_action_labels for feature in features], dtype=torch.long
+                ),
                 "punctuation_mask": torch.tensor([feature.punctuation_mask for feature in features], dtype=torch.bool),
                 "confidence_labels": torch.tensor([feature.confidence_labels for feature in features], dtype=torch.float),
                 "error_type_labels": torch.tensor([feature.candidate_error_type_labels for feature in features], dtype=torch.long),
@@ -197,6 +218,7 @@ def build_features_from_rows(
     error_type_label_map: dict[str, int],
     max_length: int,
     max_candidates: int,
+    punctuation_action_label_map: dict[str, int] | None = None,
     show_progress: bool = False,
 ) -> list[TrainingFeature]:
     row_iterable = _with_progress(rows, enabled=show_progress, description="Building training features")
@@ -206,6 +228,7 @@ def build_features_from_rows(
             row["target"],
             tokenizer=tokenizer,
             punctuation_label_map=punctuation_label_map,
+            punctuation_action_label_map=punctuation_action_label_map,
             error_type_label_map=error_type_label_map,
             max_length=max_length,
             max_candidates=max_candidates,
@@ -321,6 +344,22 @@ def _punctuation_labels(
     for gap in build_punctuation_gap_labels(source, target):
         if 0 <= gap.gap_index < max_length:
             labels[gap.gap_index] = punctuation_label_map.get(gap.label, punctuation_label_map.get("NONE", 0))
+    return labels
+
+
+def _punctuation_action_labels(
+    source: str,
+    target: str,
+    punctuation_action_label_map: dict[str, int],
+    max_length: int,
+) -> list[int]:
+    labels = [punctuation_action_label_map.get("KEEP_NONE", 0)] * max_length
+    for gap in build_punctuation_gap_action_labels(source, target):
+        if 0 <= gap.gap_index < max_length:
+            labels[gap.gap_index] = punctuation_action_label_map.get(
+                gap.action,
+                punctuation_action_label_map.get("KEEP_NONE", 0),
+            )
     return labels
 
 

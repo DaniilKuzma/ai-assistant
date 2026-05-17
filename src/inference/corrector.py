@@ -3,9 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 import re
 
-from src.candidates.candidate_generator import CandidateGenerator
+from src.candidates.candidate_generator import Candidate, CandidateGenerator
 from src.inference.edit_realizer import apply_candidate, ensure_final_punctuation
-from src.inference.iterative_decoder import run_until_stable
 from src.inference.postprocess import normalize_spacing
 from src.validation.diff_analyzer import Edit
 from src.validation.strict_validator import StrictValidator
@@ -32,14 +31,30 @@ class Corrector:
         self.validator = StrictValidator()
 
     def correct(self, text: str) -> CorrectionResult:
-        proposed = run_until_stable(text, self._single_pass, self.max_passes)
-        validation = self.validator.validate(text, proposed)
+        proposed, trusted_edits = self._decode_with_trusted_edits(text)
+        validation = self.validator.validate(text, proposed, trusted_edits=trusted_edits)
         corrected = validation.apply_accepted()
         return CorrectionResult(text, corrected, validation.edits)
 
+    def _decode_with_trusted_edits(self, text: str) -> tuple[str, list[Candidate]]:
+        current = text
+        trusted_edits: list[Candidate] = []
+        for pass_index in range(self.max_passes):
+            updated, selected = self._single_pass_with_candidates(current)
+            if pass_index == 0:
+                trusted_edits.extend(selected)
+            if updated == current:
+                break
+            current = updated
+        return current, trusted_edits
+
     def _single_pass(self, text: str) -> str:
+        return self._single_pass_with_candidates(text)[0]
+
+    def _single_pass_with_candidates(self, text: str) -> tuple[str, list[Candidate]]:
         proposed = text
         offset = 0
+        applied: list[Candidate] = []
         for candidate in self.candidates.generate(text):
             if candidate.edit_type == "keep" or candidate.requires_model:
                 continue
@@ -54,9 +69,10 @@ class Corrector:
             before = proposed
             proposed = apply_candidate(proposed, shifted)
             offset += len(proposed) - len(before)
+            applied.append(candidate)
 
         proposed = self._punctuation_pass(proposed)
-        return normalize_spacing(proposed)
+        return normalize_spacing(proposed), applied
 
     def _punctuation_pass(self, text: str) -> str:
         text = _remove_obvious_extra_punctuation(text)

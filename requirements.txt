@@ -10,6 +10,7 @@ scikit-learn
 matplotlib
 tqdm
 pyyaml
+pymorphy3
 rapidfuzz
 razdel
 streamlit

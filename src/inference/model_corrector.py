@@ -11,7 +11,7 @@ from src.inference.edit_realizer import apply_candidate, ensure_final_punctuatio
 from src.inference.postprocess import normalize_spacing
 from src.model.edit_model import CandidateAwareEditModel, EditModelConfig
 from src.model.encoder import EncoderLoadConfig, load_encoder, load_tokenizer
-from src.preprocessing.punctuation_gaps import word_gap_token_indices
+from src.preprocessing.punctuation_gaps import word_gap_context_token_indices
 from src.preprocessing.tokenizer import tokenize_words
 from src.validation.strict_validator import StrictValidator
 
@@ -31,6 +31,7 @@ class ModelPunctuationPrediction:
     gap_index: int
     label: str
     confidence: float
+    action: str = "INSERT"
 
     @property
     def word_index(self) -> int:
@@ -111,12 +112,15 @@ class TorchCandidateModelBackend:
         punctuation_labels: dict[str, int],
         max_length: int,
         max_candidates: int,
+        punctuation_action_labels: dict[str, int] | None = None,
     ) -> None:
         self.tokenizer = tokenizer
         self.module = module
         self.device = device
         self.punctuation_labels = punctuation_labels
         self.punctuation_by_id = {value: key for key, value in punctuation_labels.items()}
+        self.punctuation_action_labels = punctuation_action_labels or _default_punctuation_action_labels()
+        self.punctuation_action_by_id = {value: key for key, value in self.punctuation_action_labels.items()}
         self.max_length = max_length
         self.max_candidates = max_candidates
 
@@ -152,6 +156,7 @@ class TorchCandidateModelBackend:
                 model_name=model_config.get("primary_encoder", "ai-forever/ruRoberta-large"),
                 fallback_model_name=model_config.get("fallback_encoder", "ai-forever/ruBert-base"),
                 punctuation_label_count=len(config.get("labels", {}).get("punctuation", {})),
+                punctuation_action_count=len(config.get("labels", {}).get("punctuation_actions", {})) or 5,
                 error_type_count=len(config.get("labels", {}).get("error_types", {})),
                 local_files_only=bool(model_config.get("local_files_only", False)),
                 lora_enabled=False,
@@ -167,6 +172,7 @@ class TorchCandidateModelBackend:
             module=module,
             device=device,
             punctuation_labels=config.get("labels", {}).get("punctuation", {}),
+            punctuation_action_labels=config.get("labels", {}).get("punctuation_actions", {}),
             max_length=int(model_config.get("max_sequence_length", 128)),
             max_candidates=int(model_config.get("max_candidates", 16)),
         )
@@ -210,7 +216,7 @@ class TorchCandidateModelBackend:
         if not self.punctuation_labels:
             return []
         encoded = _encode(self.tokenizer, text, self.max_length)
-        gap_indices, gap_mask = word_gap_token_indices(text, encoded["offset_mapping"], self.max_length)
+        gap_indices, right_gap_indices, gap_mask = word_gap_context_token_indices(text, encoded["offset_mapping"], self.max_length)
         if not any(gap_mask):
             return []
         with torch.no_grad():
@@ -218,9 +224,11 @@ class TorchCandidateModelBackend:
                 input_ids=torch.tensor([encoded["input_ids"]], dtype=torch.long, device=self.device),
                 attention_mask=torch.tensor([encoded["attention_mask"]], dtype=torch.long, device=self.device),
                 punctuation_gap_indices=torch.tensor([gap_indices], dtype=torch.long, device=self.device),
+                punctuation_right_gap_indices=torch.tensor([right_gap_indices], dtype=torch.long, device=self.device),
                 punctuation_gap_mask=torch.tensor([gap_mask], dtype=torch.bool, device=self.device),
             )
             probabilities = torch.softmax(outputs["punctuation_logits"][0], dim=-1).detach().cpu()
+            action_probabilities = torch.softmax(outputs["punctuation_action_logits"][0], dim=-1).detach().cpu()
             punctuation_confidences = None
             if "punctuation_confidence_logits" in outputs:
                 punctuation_confidences = torch.sigmoid(outputs["punctuation_confidence_logits"][0]).detach().cpu()
@@ -232,10 +240,19 @@ class TorchCandidateModelBackend:
             if gap_index >= probabilities.shape[0]:
                 break
             confidence, label_id = probabilities[gap_index].max(dim=-1)
+            _action_confidence, action_id = action_probabilities[gap_index].max(dim=-1)
             if punctuation_confidences is not None and gap_index < punctuation_confidences.shape[0]:
                 confidence = punctuation_confidences[gap_index]
             label = self.punctuation_by_id.get(int(label_id.item()), "NONE")
-            predictions.append(ModelPunctuationPrediction(gap_index, label, float(confidence.item())))
+            action = self.punctuation_action_by_id.get(int(action_id.item()), "KEEP_NONE")
+            predictions.append(
+                ModelPunctuationPrediction(
+                    gap_index,
+                    label,
+                    float(confidence.item()),
+                    action=action,
+                )
+            )
         return predictions
 
 
@@ -284,6 +301,10 @@ def _is_context_dependent_candidate(candidate: Candidate) -> bool:
     return CONTEXT_DEPENDENT_WHITELIST.get(candidate.source.lower()) == candidate.replacement.lower()
 
 
+def _default_punctuation_action_labels() -> dict[str, int]:
+    return {"KEEP_NONE": 0, "KEEP_EXISTING": 1, "INSERT": 2, "DELETE": 3, "REPLACE": 4}
+
+
 def _apply_candidates(text: str, candidates: list[Candidate]) -> str:
     proposed = text
     offset = 0
@@ -307,13 +328,18 @@ def _apply_punctuation_predictions(
     predictions: list[ModelPunctuationPrediction],
     thresholds: dict[str, float],
 ) -> str:
-    punctuation_threshold = float(thresholds.get("punctuation_threshold", 0.82))
     proposed = text
     for prediction in predictions:
-        if prediction.confidence < punctuation_threshold:
+        if prediction.confidence < _threshold_for_punctuation(prediction, thresholds):
+            continue
+        if prediction.action in {"KEEP_NONE", "KEEP_EXISTING"}:
+            continue
+        if prediction.action == "DELETE":
+            proposed = _delete_punctuation_after_word(proposed, prediction.gap_index)
             continue
         if prediction.label == "NONE":
-            proposed = _delete_punctuation_after_word(proposed, prediction.gap_index)
+            continue
+        if prediction.action not in {"INSERT", "REPLACE"}:
             continue
         if prediction.label in {"QUOTE_OPEN", "BRACKET_OPEN"}:
             proposed = _insert_punctuation_before_word(proposed, prediction.gap_index + 1, _punctuation_mark(prediction.label))
@@ -330,6 +356,27 @@ def _apply_punctuation_predictions(
         }:
             proposed = _insert_punctuation_after_word(proposed, prediction.gap_index, _punctuation_mark(prediction.label))
     return proposed
+
+
+def _threshold_for_punctuation(prediction: ModelPunctuationPrediction, thresholds: dict[str, float]) -> float:
+    fallback = float(thresholds.get("punctuation_threshold", 0.82))
+    if prediction.action == "DELETE":
+        return float(thresholds.get("punctuation_delete_threshold", fallback))
+    if prediction.label == "COMMA":
+        return float(thresholds.get("comma_threshold", fallback))
+    if prediction.label in {"DOT", "QUESTION", "EXCLAMATION", "ELLIPSIS"}:
+        return float(thresholds.get("final_punctuation_threshold", thresholds.get("final_threshold", fallback)))
+    if prediction.label == "COLON":
+        return float(thresholds.get("colon_threshold", fallback))
+    if prediction.label == "DASH":
+        return float(thresholds.get("dash_threshold", fallback))
+    if prediction.label == "SEMICOLON":
+        return float(thresholds.get("semicolon_threshold", fallback))
+    if prediction.label in {"QUOTE_OPEN", "QUOTE_CLOSE"}:
+        return float(thresholds.get("quote_threshold", fallback))
+    if prediction.label in {"BRACKET_OPEN", "BRACKET_CLOSE"}:
+        return float(thresholds.get("bracket_threshold", fallback))
+    return fallback
 
 
 def _encode(tokenizer: Any, text: str, max_length: int) -> dict[str, Any]:

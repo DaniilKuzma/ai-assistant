@@ -69,7 +69,7 @@ def test_trained_model_corrector_can_apply_context_dependent_pair_with_high_conf
     assert any(edit.source.lower() == "также" and edit.status == "accepted" for edit in result.edits)
 
 
-def test_trained_model_corrector_deletes_existing_punctuation_when_model_predicts_none_for_gap():
+def test_trained_model_corrector_keeps_existing_punctuation_when_model_predicts_none_for_gap():
     corrector = TrainedModelCorrector(
         FakeBackend({}, punctuation=[ModelPunctuationPrediction(1, "NONE", 0.99)]),
         thresholds={"punctuation_threshold": 0.9},
@@ -77,13 +77,30 @@ def test_trained_model_corrector_deletes_existing_punctuation_when_model_predict
 
     result = corrector.correct("Я думаю, это важно.")
 
+    assert result.corrected_text == "Я думаю, это важно."
+    assert not any(edit.edit_type == "punctuation_delete" and edit.status == "accepted" for edit in result.edits)
+
+
+def test_trained_model_corrector_deletes_existing_punctuation_only_with_delete_action_and_threshold():
+    low_confidence = TrainedModelCorrector(
+        FakeBackend({}, punctuation=[ModelPunctuationPrediction(1, "NONE", 0.91, action="DELETE")]),
+        thresholds={"punctuation_threshold": 0.5, "punctuation_delete_threshold": 0.95},
+    )
+    high_confidence = TrainedModelCorrector(
+        FakeBackend({}, punctuation=[ModelPunctuationPrediction(1, "NONE", 0.97, action="DELETE")]),
+        thresholds={"punctuation_threshold": 0.5, "punctuation_delete_threshold": 0.95},
+    )
+
+    assert low_confidence.correct("Я думаю, это важно.").corrected_text == "Я думаю, это важно."
+    result = high_confidence.correct("Я думаю, это важно.")
+
     assert result.corrected_text == "Я думаю это важно."
     assert any(edit.edit_type == "punctuation_delete" and edit.status == "accepted" for edit in result.edits)
 
 
 def test_trained_model_corrector_replaces_existing_punctuation_with_colon():
     corrector = TrainedModelCorrector(
-        FakeBackend({}, punctuation=[ModelPunctuationPrediction(1, "COLON", 0.99)]),
+        FakeBackend({}, punctuation=[ModelPunctuationPrediction(1, "COLON", 0.99, action="REPLACE")]),
         thresholds={"punctuation_threshold": 0.9},
     )
 
@@ -95,7 +112,7 @@ def test_trained_model_corrector_replaces_existing_punctuation_with_colon():
 
 def test_trained_model_corrector_does_not_insert_sentence_final_mark_inside_sentence():
     corrector = TrainedModelCorrector(
-        FakeBackend({}, punctuation=[ModelPunctuationPrediction(2, "DOT", 0.99)]),
+        FakeBackend({}, punctuation=[ModelPunctuationPrediction(2, "DOT", 0.99, action="INSERT")]),
         thresholds={"punctuation_threshold": 0.9},
     )
 
@@ -106,7 +123,7 @@ def test_trained_model_corrector_does_not_insert_sentence_final_mark_inside_sent
 
 def test_trained_model_corrector_inserts_dash_with_spacing():
     corrector = TrainedModelCorrector(
-        FakeBackend({}, punctuation=[ModelPunctuationPrediction(0, "DASH", 0.99)]),
+        FakeBackend({}, punctuation=[ModelPunctuationPrediction(0, "DASH", 0.99, action="INSERT")]),
         thresholds={"punctuation_threshold": 0.9},
     )
 
@@ -132,6 +149,23 @@ def test_trained_model_corrector_supports_simple_quotes_and_brackets():
     result = corrector.correct("Он сказал привет это важно.")
 
     assert result.corrected_text == "Он сказал «привет» это (важно)."
+
+
+def test_trained_model_corrector_uses_label_specific_punctuation_thresholds():
+    corrector = TrainedModelCorrector(
+        FakeBackend(
+            {},
+            punctuation=[
+                ModelPunctuationPrediction(1, "COMMA", 0.86, action="INSERT"),
+                ModelPunctuationPrediction(2, "COLON", 0.86, action="INSERT"),
+            ],
+        ),
+        thresholds={"punctuation_threshold": 0.5, "comma_threshold": 0.9, "colon_threshold": 0.8},
+    )
+
+    result = corrector.correct("Он сказал привет дальше.")
+
+    assert result.corrected_text == "Он сказал привет: дальше."
 
 
 def test_torch_backend_passes_candidate_replacement_tokens_to_model():
@@ -167,6 +201,7 @@ def test_torch_backend_passes_word_gap_indices_to_model_for_punctuation():
         module=module,
         device=torch.device("cpu"),
         punctuation_labels={"NONE": 0, "COMMA": 1, "DOT": 2},
+        punctuation_action_labels={"KEEP_NONE": 0, "KEEP_EXISTING": 1, "INSERT": 2, "DELETE": 3, "REPLACE": 4},
         max_length=8,
         max_candidates=1,
     )
@@ -174,8 +209,11 @@ def test_torch_backend_passes_word_gap_indices_to_model_for_punctuation():
     backend.predict_punctuation("Я думаю, что")
 
     gap_indices = module.last_kwargs["punctuation_gap_indices"]
+    right_gap_indices = module.last_kwargs["punctuation_right_gap_indices"]
     assert gap_indices.shape == torch.Size([1, 8])
+    assert right_gap_indices.shape == torch.Size([1, 8])
     assert gap_indices.tolist()[0][:3] == [0, 5, 7]
+    assert right_gap_indices.tolist()[0][:3] == [1, 7, 7]
 
 
 def test_torch_backend_uses_punctuation_confidence_head_for_prediction_confidence():
@@ -186,6 +224,7 @@ def test_torch_backend_uses_punctuation_confidence_head_for_prediction_confidenc
         module=module,
         device=torch.device("cpu"),
         punctuation_labels={"NONE": 0, "COMMA": 1, "DOT": 2},
+        punctuation_action_labels={"KEEP_NONE": 0, "KEEP_EXISTING": 1, "INSERT": 2, "DELETE": 3, "REPLACE": 4},
         max_length=8,
         max_candidates=1,
     )
@@ -194,6 +233,7 @@ def test_torch_backend_uses_punctuation_confidence_head_for_prediction_confidenc
 
     assert predictions
     assert predictions[0].confidence == pytest.approx(torch.sigmoid(torch.tensor(2.0)).item())
+    assert predictions[0].action in {"KEEP_NONE", "KEEP_EXISTING", "INSERT", "DELETE", "REPLACE"}
 
 
 def test_legacy_candidate_projection_heads_are_expanded_for_current_model_shape():
@@ -241,10 +281,12 @@ class CapturingModule:
         self,
         max_candidates: int,
         punctuation_label_count: int = 0,
+        punctuation_action_count: int = 5,
         punctuation_confidence_logit: float = 0.0,
     ):
         self.max_candidates = max_candidates
         self.punctuation_label_count = punctuation_label_count
+        self.punctuation_action_count = punctuation_action_count
         self.punctuation_confidence_logit = punctuation_confidence_logit
         self.last_kwargs = None
 
@@ -255,5 +297,6 @@ class CapturingModule:
             "candidate_scores": torch.zeros(1, self.max_candidates),
             "confidence_logits": torch.zeros(1, self.max_candidates),
             "punctuation_logits": torch.zeros(1, gap_count, self.punctuation_label_count),
+            "punctuation_action_logits": torch.zeros(1, gap_count, self.punctuation_action_count),
             "punctuation_confidence_logits": torch.full((1, gap_count), self.punctuation_confidence_logit),
         }

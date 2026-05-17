@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 
-def build_linear_heads(hidden_size: int, punctuation_labels: int, error_types: int):
+def build_linear_heads(hidden_size: int, punctuation_labels: int, error_types: int, punctuation_actions: int = 5):
     import torch.nn as nn
 
     return {
         "candidate_projection": nn.Linear(hidden_size * 3, hidden_size),
         "candidate_score": nn.Linear(hidden_size, 1),
+        "punctuation_projection": nn.Linear(hidden_size * 4, hidden_size),
         "punctuation_gap": nn.Linear(hidden_size, punctuation_labels),
+        "punctuation_action": nn.Linear(hidden_size, punctuation_actions),
+        "punctuation_confidence": nn.Linear(hidden_size, 1),
+        "punctuation_error_type": nn.Linear(hidden_size, error_types),
         "confidence": nn.Linear(hidden_size, 1),
         "error_type": nn.Linear(hidden_size, error_types),
     }

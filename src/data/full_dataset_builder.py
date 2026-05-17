@@ -10,14 +10,55 @@ from typing import Any
 
 import pandas as pd
 
-from src.data.clean_corpus_sources import load_clean_corpus_sentences
-from src.data.synthetic_generator import SyntheticGenerator
-from src.data.external_sources import load_hf_jsonl_pairs
+from src.candidates.morphology import morph_analyzer
 from src.candidates.frequent_errors import HYPHEN_WHITELIST, WRONG_TO_CORRECT
+from src.data.clean_corpus_sources import load_clean_corpus_sentences
+from src.data.external_sources import load_external_pair_sources, load_hf_jsonl_pairs
+from src.data.synthetic_generator import SyntheticGenerator
 from src.validation.diff_analyzer import DiffAnalyzer, Edit
 from src.validation.edit_classifier import coarse_error_type, is_allowed_edit_type, is_context_dependent_pair
 
 SPLIT_STRATEGY = "normalized_target_v2"
+PUNCTUATION_BALANCE_GROUPS = (
+    "comma_subordinate",
+    "comma_conjunction",
+    "introductory",
+    "colon",
+    "dash",
+    "semicolon",
+    "quotes_brackets",
+    "final_punctuation",
+    "delete_replace",
+)
+DEFAULT_PUNCTUATION_BALANCE = {
+    "comma_subordinate": 20_000,
+    "comma_conjunction": 15_000,
+    "introductory": 10_000,
+    "colon": 8_000,
+    "dash": 8_000,
+    "semicolon": 5_000,
+    "quotes_brackets": 8_000,
+    "final_punctuation": 20_000,
+    "delete_replace": 15_000,
+}
+ORTHOGRAPHY_BALANCE_GROUPS = (
+    "ne_verb",
+    "tsya",
+    "combo",
+    "hard_sign",
+    "prefix_z_s",
+    "ci",
+    "hissing_o_e",
+)
+DEFAULT_ORTHOGRAPHY_BALANCE = {
+    "ne_verb": 8_000,
+    "tsya": 6_000,
+    "combo": 8_000,
+    "hard_sign": 6_000,
+    "prefix_z_s": 6_000,
+    "ci": 4_000,
+    "hissing_o_e": 5_000,
+}
 
 
 @dataclass(frozen=True)
@@ -34,6 +75,8 @@ class DatasetBuildConfig:
     min_split_join_examples: int = 20_000
     min_hyphen_examples: int = 20_000
     punctuation_hard_negative_clean_ratio: float = 0.20
+    orthography_balance: tuple[tuple[str, int], ...] = tuple(DEFAULT_ORTHOGRAPHY_BALANCE.items())
+    punctuation_balance: tuple[tuple[str, int], ...] = tuple(DEFAULT_PUNCTUATION_BALANCE.items())
 
 
 def build_dataset_rows(config: DatasetBuildConfig) -> list[dict[str, Any]]:
@@ -63,6 +106,38 @@ def build_dataset_rows(config: DatasetBuildConfig) -> list[dict[str, Any]]:
         synthetic_rows.extend(
             _build_targeted_lexical_rows(
                 error_type,
+                required_count=min(missing_count, dirty_count - len(synthetic_rows)),
+                diff_analyzer=diff_analyzer,
+                domain=config.domain,
+                seen_pairs=seen_pairs,
+            )
+        )
+
+    for group, minimum_count in config.orthography_balance:
+        missing_count = max(
+            0,
+            minimum_count
+            - _count_rows_from_source_dataset([*rows, *synthetic_rows], f"synthetic_balanced_orthography_{group}"),
+        )
+        if missing_count <= 0:
+            continue
+        synthetic_rows.extend(
+            _build_targeted_orthography_rows(
+                group,
+                required_count=min(missing_count, dirty_count - len(synthetic_rows)),
+                diff_analyzer=diff_analyzer,
+                domain=config.domain,
+                seen_pairs=seen_pairs,
+            )
+        )
+
+    for group, minimum_count in config.punctuation_balance:
+        missing_count = max(0, minimum_count - _count_rows_from_source_dataset([*rows, *synthetic_rows], f"synthetic_balanced_punctuation_{group}"))
+        if missing_count <= 0:
+            continue
+        synthetic_rows.extend(
+            _build_targeted_punctuation_rows(
+                group,
                 required_count=min(missing_count, dirty_count - len(synthetic_rows)),
                 diff_analyzer=diff_analyzer,
                 domain=config.domain,
@@ -180,6 +255,8 @@ def build_dataset_from_config(config: dict[str, Any], force: bool = False) -> di
         min_split_join_examples=int(data_config.get("synthetic_balance", {}).get("split_join_min_examples", 20_000)),
         min_hyphen_examples=int(data_config.get("synthetic_balance", {}).get("hyphen_min_examples", 20_000)),
         punctuation_hard_negative_clean_ratio=float(data_config.get("punctuation_hard_negative_clean_ratio", 0.20)),
+        orthography_balance=_orthography_balance_from_config(data_config),
+        punctuation_balance=_punctuation_balance_from_config(data_config),
     )
     rows = build_dataset_rows(build_config)
     write_dataset(rows, output_path, manifest_path)
@@ -221,7 +298,10 @@ def _load_external_rows(data_config: dict[str, Any]) -> list[dict[str, Any]]:
         return []
     max_external = int(data_config.get("max_external_examples", 10_000))
     local_files_only = bool(data_config.get("external_local_files_only", False)) or _hf_offline_mode()
+    source_specs = data_config.get("external_sources", [])
     try:
+        if source_specs:
+            return load_external_pair_sources(source_specs, limit=max_external, local_files_only=local_files_only)
         return load_hf_jsonl_pairs(limit=max_external, local_files_only=local_files_only)
     except Exception:
         return []
@@ -539,6 +619,172 @@ def _build_targeted_lexical_rows(
     return rows
 
 
+def _build_targeted_orthography_rows(
+    group: str,
+    *,
+    required_count: int,
+    diff_analyzer: DiffAnalyzer,
+    domain: str,
+    seen_pairs: set[tuple[str, str]] | None = None,
+) -> list[dict[str, Any]]:
+    if required_count <= 0 or group not in ORTHOGRAPHY_BALANCE_GROUPS:
+        return []
+    entries = _orthography_balance_entries(group)
+    if not entries:
+        return []
+
+    rows: list[dict[str, Any]] = []
+    seen_pairs = seen_pairs if seen_pairs is not None else set()
+    index = 0
+    source_dataset = f"synthetic_balanced_orthography_{group}"
+    while len(rows) < required_count:
+        wrong, correct = entries[index % len(entries)]
+        target = _orthography_balance_target(correct, group, index)
+        source = target.replace(correct, wrong, 1)
+        key = (source, target)
+        edits = _supported_edits(diff_analyzer.analyze(source, target))
+        if source != target and key not in seen_pairs and edits:
+            seen_pairs.add(key)
+            rows.append(
+                _row(
+                    source=source,
+                    target=target,
+                    edits=edits,
+                    source_dataset=source_dataset,
+                    is_clean=False,
+                    is_synthetic=True,
+                    domain=domain,
+                )
+            )
+        index += 1
+    return rows
+
+
+def _build_targeted_punctuation_rows(
+    group: str,
+    *,
+    required_count: int,
+    diff_analyzer: DiffAnalyzer,
+    domain: str,
+    seen_pairs: set[tuple[str, str]] | None = None,
+) -> list[dict[str, Any]]:
+    if required_count <= 0 or group not in PUNCTUATION_BALANCE_GROUPS:
+        return []
+
+    rows: list[dict[str, Any]] = []
+    seen_pairs = seen_pairs if seen_pairs is not None else set()
+    index = 0
+    source_dataset = f"synthetic_balanced_punctuation_{group}"
+    while len(rows) < required_count:
+        source, target = _punctuation_balance_pair(group, index)
+        key = (source, target)
+        edits = _supported_edits(diff_analyzer.analyze(source, target))
+        if source != target and key not in seen_pairs and _edits_include_punctuation(edits):
+            seen_pairs.add(key)
+            rows.append(
+                _row(
+                    source=source,
+                    target=target,
+                    edits=edits,
+                    source_dataset=source_dataset,
+                    is_clean=False,
+                    is_synthetic=True,
+                    domain=domain,
+                )
+            )
+        index += 1
+    return rows
+
+
+def _punctuation_balance_pair(group: str, index: int) -> tuple[str, str]:
+    topic = _punctuation_topic(index)
+    if group == "comma_subordinate":
+        templates = [
+            ("Я думаю что {topic} готов к проверке.", "Я думаю, что {topic} готов к проверке."),
+            ("Мы останемся дома если {topic} задержится.", "Мы останемся дома, если {topic} задержится."),
+            ("Когда {topic} будет готов мы начнем проверку.", "Когда {topic} будет готов, мы начнем проверку."),
+            ("Он пришел чтобы {topic} стал понятнее.", "Он пришел, чтобы {topic} стал понятнее."),
+        ]
+    elif group == "comma_conjunction":
+        templates = [
+            ("{topic} готов но требует проверки.", "{topic} готов, но требует проверки."),
+            ("{topic} небольшой а результат важный.", "{topic} небольшой, а результат важный."),
+            ("Мы начали проверку но {topic} еще сырой.", "Мы начали проверку, но {topic} еще сырой."),
+            ("Автор сохранил текст а редактор проверил {topic}.", "Автор сохранил текст, а редактор проверил {topic}."),
+        ]
+    elif group == "introductory":
+        templates = [
+            ("Конечно {topic} требует внимания.", "Конечно, {topic} требует внимания."),
+            ("Например {topic} можно проверить отдельно.", "Например, {topic} можно проверить отдельно."),
+            ("Однако {topic} остается рабочим.", "Однако, {topic} остается рабочим."),
+            ("Во-первых {topic} уже готов.", "Во-первых, {topic} уже готов."),
+        ]
+    elif group == "colon":
+        templates = [
+            ("Он сказал «{topic} готов».", "Он сказал: «{topic} готов»."),
+            ("Нужно проверить следующее {topic}, отчет и план.", "Нужно проверить следующее: {topic}, отчет и план."),
+            ("Автор отметил главное {topic} важен.", "Автор отметил главное: {topic} важен."),
+            ("В списке три пункта {topic}, файл и отчет.", "В списке три пункта: {topic}, файл и отчет."),
+        ]
+    elif group == "dash":
+        templates = [
+            ("{topic} это важный результат.", "{topic} — это важный результат."),
+            ("{topic} часть общего плана.", "{topic} — часть общего плана."),
+            ("Главная задача это проверить текст.", "Главная задача — это проверить текст."),
+            ("Итоговый вывод рабочий вариант.", "Итоговый вывод — рабочий вариант."),
+        ]
+    elif group == "semicolon":
+        templates = [
+            ("Первая часть готова, вторая требует проверки {topic}.", "Первая часть готова; вторая требует проверки {topic}."),
+            ("Документ сохранен, отчет еще открыт для {topic}.", "Документ сохранен; отчет еще открыт для {topic}."),
+            ("Текст короткий, пример остается понятным для {topic}.", "Текст короткий; пример остается понятным для {topic}."),
+            ("План принят, правки будут завтра по теме {topic}.", "План принят; правки будут завтра по теме {topic}."),
+        ]
+    elif group == "quotes_brackets":
+        templates = [
+            ("Он сказал: {topic} готов это важно.", "Он сказал: «{topic} готов» (это важно)."),
+            ("Автор назвал это {topic} в отчете смотри приложение.", "Автор назвал это «{topic}» в отчете (смотри приложение)."),
+            ("Нужно проверить {topic} сегодня это важно.", "Нужно проверить «{topic}» сегодня (это важно)."),
+            ("Комментарий {topic} остался в тексте версия рабочая.", "Комментарий «{topic}» остался в тексте (версия рабочая)."),
+        ]
+    elif group == "final_punctuation":
+        templates = [
+            ("Как проверить {topic}", "Как проверить {topic}?"),
+            ("Проверь {topic}", "Проверь {topic}!"),
+            ("{topic} готов", "{topic} готов."),
+            ("Мы ждали {topic}.", "Мы ждали {topic}…"),
+        ]
+    elif group == "delete_replace":
+        templates = [
+            ("Я думаю:: что {topic} готов.", "Я думаю, что {topic} готов."),
+            ("{topic},, готов к проверке.", "{topic} готов к проверке."),
+            ("Он сказал,, {topic} готов.", "Он сказал: {topic} готов."),
+            ("Первая часть готова:: вторая ждет {topic}.", "Первая часть готова; вторая ждет {topic}."),
+        ]
+    else:
+        templates = [("{topic} готов", "{topic} готов.")]
+    source_template, target_template = templates[index % len(templates)]
+    return source_template.format(topic=topic), target_template.format(topic=topic)
+
+
+def _punctuation_topic(index: int) -> str:
+    nouns = [
+        "проект",
+        "отчет",
+        "раздел",
+        "документ",
+        "пример",
+        "модуль",
+        "абзац",
+        "файл",
+        "вывод",
+        "план",
+    ]
+    adjective = ["рабочий", "важный", "точный", "новый", "итоговый"][index % 5]
+    noun = nouns[(index // 5) % len(nouns)]
+    return f"{adjective} {noun} {index}"
+
+
 def _scaled_balance_targets(config: DatasetBuildConfig, dirty_count: int) -> dict[str, int]:
     requested = {
         "spelling": max(0, config.min_spelling_examples),
@@ -569,6 +815,30 @@ def _scaled_balance_targets(config: DatasetBuildConfig, dirty_count: int) -> dic
     return scaled
 
 
+def _punctuation_balance_from_config(data_config: dict[str, Any]) -> tuple[tuple[str, int], ...]:
+    synthetic_balance = data_config.get("synthetic_balance", {})
+    configured = synthetic_balance.get("punctuation_groups", {})
+    return tuple(
+        (
+            group,
+            int(configured.get(f"{group}_min_examples", configured.get(group, DEFAULT_PUNCTUATION_BALANCE[group]))),
+        )
+        for group in PUNCTUATION_BALANCE_GROUPS
+    )
+
+
+def _orthography_balance_from_config(data_config: dict[str, Any]) -> tuple[tuple[str, int], ...]:
+    synthetic_balance = data_config.get("synthetic_balance", {})
+    configured = synthetic_balance.get("orthography_groups", {})
+    return tuple(
+        (
+            group,
+            int(configured.get(f"{group}_min_examples", configured.get(group, DEFAULT_ORTHOGRAPHY_BALANCE[group]))),
+        )
+        for group in ORTHOGRAPHY_BALANCE_GROUPS
+    )
+
+
 def _lexical_balance_entries(error_type: str) -> list[tuple[str, str]]:
     if error_type == "spelling":
         return [
@@ -585,6 +855,281 @@ def _lexical_balance_entries(error_type: str) -> list[tuple[str, str]]:
     if error_type == "hyphen":
         return [(wrong, correct) for wrong, correct in HYPHEN_WHITELIST.items() if wrong != correct]
     return []
+
+
+def _orthography_balance_entries(group: str) -> list[tuple[str, str]]:
+    if group == "ne_verb":
+        forms = _known_forms(
+            [
+                "думать",
+                "знать",
+                "работать",
+                "понимать",
+                "хотеть",
+                "делать",
+                "читать",
+                "писать",
+                "говорить",
+                "видеть",
+                "слышать",
+                "помнить",
+                "любить",
+                "играть",
+                "спать",
+                "идти",
+                "ехать",
+                "решать",
+                "смотреть",
+                "отвечать",
+            ],
+            poses={"VERB", "INFN"},
+            limit=320,
+        )
+        return [(f"не{form}", f"не {form}") for form in forms]
+    if group == "tsya":
+        return [
+            (wrong, correct)
+            for correct in _known_forms(
+                [
+                    "учиться",
+                    "стараться",
+                    "смеяться",
+                    "бояться",
+                    "заниматься",
+                    "готовиться",
+                    "получаться",
+                    "казаться",
+                    "улыбаться",
+                    "делаться",
+                ],
+                poses={"VERB", "INFN"},
+                limit=320,
+            )
+            for wrong in [_toggle_tsya(correct)]
+            if wrong
+        ]
+    if group == "combo":
+        return _corrupt_forms_with_replacements(
+            _known_forms(
+                [
+                    "жизнь",
+                    "живой",
+                    "животное",
+                    "широкий",
+                    "ширина",
+                    "машина",
+                    "частый",
+                    "часто",
+                    "защита",
+                    "чаща",
+                    "чудо",
+                    "чувство",
+                    "щука",
+                    "искать",
+                    "писать",
+                    "держать",
+                    "сказать",
+                    "хотеть",
+                    "молчать",
+                    "тащить",
+                ],
+                limit=520,
+            ),
+            {"жи": "жы", "ши": "шы", "ча": "чя", "ща": "щя", "чу": "чю", "щу": "щю"},
+            limit=520,
+        )
+    if group == "hard_sign":
+        return _hard_sign_cases(limit=420)
+    if group == "prefix_z_s":
+        return _prefix_z_s_cases(limit=520)
+    if group == "ci":
+        return _corrupt_forms_with_replacements(
+            _known_forms(
+                [
+                    "цифра",
+                    "цирк",
+                    "цитата",
+                    "цивилизация",
+                    "цикл",
+                    "циркуль",
+                    "цистерна",
+                    "цилиндр",
+                    "циничный",
+                    "цинга",
+                    "циновка",
+                    "цифровой",
+                    "медицина",
+                    "акация",
+                    "станция",
+                    "операция",
+                    "лекция",
+                    "традиция",
+                    "полиция",
+                    "нация",
+                ],
+                limit=520,
+            ),
+            {"ци": "цы"},
+            limit=520,
+        )
+    if group == "hissing_o_e":
+        return _corrupt_forms_with_replacements(
+            _known_forms(
+                [
+                    "шел",
+                    "пришел",
+                    "нашел",
+                    "желтый",
+                    "черный",
+                    "дешевый",
+                    "печеный",
+                    "тушеный",
+                    "сгущенный",
+                    "жесткий",
+                    "шелковый",
+                ],
+                limit=520,
+            ),
+            {"же": "жо", "ше": "шо", "че": "чо", "ще": "що"},
+            limit=520,
+        )
+    return []
+
+
+def _orthography_balance_target(term: str, group: str, index: int) -> str:
+    templates = [
+        "В проверочном примере форма «{term}» остается важной для правила {group} в серии {index}.",
+        "Редактор видит форму «{term}» и сохраняет обычный контекст правила {group} в серии {index}.",
+        "Для обучения модели используется форма «{term}», потому что правило {group} должно быть заметным в серии {index}.",
+        "В корпусе встретилась форма «{term}», и это помогает проверить правило {group} в серии {index}.",
+    ]
+    template = templates[index % len(templates)]
+    return template.format(term=term, group=group.replace("_", "-"), index=index)
+
+
+def _known_forms(lemmas: list[str], poses: set[str] | None = None, limit: int = 300) -> list[str]:
+    forms: list[str] = []
+    seen: set[str] = set()
+    for lemma in lemmas:
+        for parsed in morph_analyzer().parse(lemma)[0].lexeme:
+            word = parsed.word.replace("ё", "е")
+            if word in seen or not re.fullmatch(r"[а-я]+", word):
+                continue
+            if poses and parsed.tag.POS not in poses:
+                continue
+            seen.add(word)
+            forms.append(word)
+            if len(forms) >= limit:
+                return forms
+    return forms
+
+
+def _toggle_tsya(word: str) -> str | None:
+    if word.endswith("ться"):
+        return word[: -len("ться")] + "тся"
+    if word.endswith("тся"):
+        return word[: -len("тся")] + "ться"
+    return None
+
+
+def _hard_sign_cases(limit: int) -> list[tuple[str, str]]:
+    correct_forms = _known_forms(
+        [
+            "подъезд",
+            "объект",
+            "объявление",
+            "съезд",
+            "въезд",
+            "изъян",
+            "разъяснение",
+            "объяснение",
+            "предъявление",
+            "съемка",
+            "адъютант",
+            "конъюнктура",
+            "субъект",
+            "инъекция",
+            "объятие",
+            "объединение",
+        ],
+        limit=420,
+    )
+    cases: list[tuple[str, str]] = []
+    for correct in correct_forms:
+        if "ъ" not in correct:
+            continue
+        cases.append((correct.replace("ъ", ""), correct))
+        cases.append((correct.replace("ъ", "ь"), correct))
+        if len(cases) >= limit:
+            return cases
+    return cases
+
+
+def _prefix_z_s_cases(limit: int) -> list[tuple[str, str]]:
+    correct_forms = _known_forms(
+        [
+            "бесполезный",
+            "бесплатный",
+            "беспокойный",
+            "бесконечный",
+            "бесшумный",
+            "безвкусный",
+            "безграмотный",
+            "бездарный",
+            "безбрежный",
+            "разбить",
+            "рассказать",
+            "расписать",
+            "исписать",
+            "избить",
+            "воспитать",
+            "возвратить",
+            "вспомнить",
+            "взбить",
+        ],
+        limit=700,
+    )
+    cases: list[tuple[str, str]] = []
+    for correct in correct_forms:
+        wrong = _toggle_prefix_z_s(correct)
+        if wrong and wrong != correct:
+            cases.append((wrong, correct))
+            if len(cases) >= limit:
+                return cases
+    return cases
+
+
+def _toggle_prefix_z_s(word: str) -> str | None:
+    for z_prefix, s_prefix in [
+        ("без", "бес"),
+        ("раз", "рас"),
+        ("из", "ис"),
+        ("воз", "вос"),
+        ("вз", "вс"),
+    ]:
+        if word.startswith(z_prefix):
+            return s_prefix + word[len(z_prefix) :]
+        if word.startswith(s_prefix):
+            return z_prefix + word[len(s_prefix) :]
+    return None
+
+
+def _corrupt_forms_with_replacements(
+    correct_forms: list[str],
+    correct_to_wrong: dict[str, str],
+    limit: int,
+) -> list[tuple[str, str]]:
+    cases: list[tuple[str, str]] = []
+    for correct in correct_forms:
+        for correct_part, wrong_part in correct_to_wrong.items():
+            if correct_part not in correct:
+                continue
+            wrong = correct.replace(correct_part, wrong_part, 1)
+            cases.append((wrong, correct))
+            break
+        if len(cases) >= limit:
+            return cases
+    return cases
 
 
 def _lexical_balance_target(term: str, index: int) -> str:
@@ -643,8 +1188,16 @@ def _count_rows_with_error_type(rows: list[dict[str, Any]], error_type: str) -> 
     return sum(error_type in _row_error_types(row) for row in rows)
 
 
+def _count_rows_from_source_dataset(rows: list[dict[str, Any]], source_dataset: str) -> int:
+    return sum(row.get("source_dataset") == source_dataset for row in rows)
+
+
 def _edits_include_error_type(edits: list[Edit], error_type: str) -> bool:
     return any(coarse_error_type(edit.edit_type) == error_type for edit in edits)
+
+
+def _edits_include_punctuation(edits: list[Edit]) -> bool:
+    return any(coarse_error_type(edit.edit_type) in {"punctuation", "final_punctuation"} for edit in edits)
 
 
 def _row_error_types(row: dict[str, Any]) -> set[str]:

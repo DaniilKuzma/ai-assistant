@@ -4,6 +4,7 @@
     "spelling_threshold": 0.92,
     "punctuation_threshold": 0.9,
     "split_join_threshold": 0.95,
+    "context_pair_threshold": 0.995,
     "hyphen_threshold": 0.95,
     "case_threshold": 0.9
   },
@@ -11,6 +12,7 @@
     "spelling_threshold": 0.85,
     "punctuation_threshold": 0.82,
     "split_join_threshold": 0.88,
+    "context_pair_threshold": 0.98,
     "hyphen_threshold": 0.88,
     "case_threshold": 0.85
   },
@@ -18,6 +20,7 @@
     "spelling_threshold": 0.75,
     "punctuation_threshold": 0.72,
     "split_join_threshold": 0.8,
+    "context_pair_threshold": 0.97,
     "hyphen_threshold": 0.8,
     "case_threshold": 0.78
   }

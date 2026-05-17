@@ -23,12 +23,12 @@
     "mode": "full-train",
     "run_model_training": true,
     "checkpoint_metric": "combined_score",
-    "max_train_examples": 100,
-    "max_val_examples": 10,
-    "max_test_examples": 10,
-    "batch_size": 4,
-    "gradient_accumulation_steps": 16,
-    "epochs": 3,
+    "max_train_examples": 150000,
+    "max_val_examples": 10000,
+    "max_test_examples": 10000,
+    "batch_size": 192,
+    "gradient_accumulation_steps": 1,
+    "epochs": 2,
     "learning_rate": 0.0001,
     "mixed_precision": true,
     "show_progress": true,
@@ -153,6 +153,7 @@
       "spelling_threshold": 0.92,
       "punctuation_threshold": 0.9,
       "split_join_threshold": 0.95,
+      "context_pair_threshold": 0.995,
       "hyphen_threshold": 0.95,
       "case_threshold": 0.9
     },
@@ -160,6 +161,7 @@
       "spelling_threshold": 0.85,
       "punctuation_threshold": 0.82,
       "split_join_threshold": 0.88,
+      "context_pair_threshold": 0.98,
       "hyphen_threshold": 0.88,
       "case_threshold": 0.85
     },
@@ -167,6 +169,7 @@
       "spelling_threshold": 0.75,
       "punctuation_threshold": 0.72,
       "split_join_threshold": 0.8,
+      "context_pair_threshold": 0.97,
       "hyphen_threshold": 0.8,
       "case_threshold": 0.78
     }
