@@ -25,7 +25,7 @@ training:
   max_val_examples: 10000
   max_test_examples: 10000
   batch_size: 4
-  gradient_accumulation_steps: 48
+  gradient_accumulation_steps: 1
   epochs: 2
   learning_rate: 0.0001
   mixed_precision: true
