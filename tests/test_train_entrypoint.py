@@ -3,7 +3,7 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
-from src.training.train import _load_evaluation_rows, train
+from src.training.train import _load_evaluation_rows, evaluate_trained_model, train
 
 
 def test_train_entrypoint_prepares_features_and_all_reports(tmp_path: Path):
@@ -133,6 +133,27 @@ def test_training_evaluation_uses_validation_split_only(tmp_path: Path):
     assert [row["split"] for row in evaluation_rows] == ["val", "val"]
 
 
+def test_training_evaluation_split_can_be_configured_to_test(tmp_path: Path):
+    processed_path = tmp_path / "dataset.csv.gz"
+    rows = [
+        {"source": "val 1", "target": "val 1", "split": "val", "is_clean": True, "is_synthetic": False, "error_types": "[]"},
+        {"source": "val 2", "target": "val 2", "split": "val", "is_clean": True, "is_synthetic": False, "error_types": "[]"},
+        {"source": "test 1", "target": "test 1", "split": "test", "is_clean": True, "is_synthetic": False, "error_types": "[]"},
+        {"source": "test 2", "target": "test 2", "split": "test", "is_clean": True, "is_synthetic": False, "error_types": "[]"},
+    ]
+    pd.DataFrame(rows).to_csv(processed_path, index=False)
+
+    evaluation_rows = _load_evaluation_rows(
+        {
+            "data": {"processed_train_path": str(processed_path)},
+            "training": {"evaluation_split": "test", "max_val_examples": 2, "max_test_examples": 2},
+        },
+        fallback_rows=[],
+    )
+
+    assert [row["split"] for row in evaluation_rows] == ["test", "test"]
+
+
 def test_training_reports_do_not_run_hidden_second_evaluation(monkeypatch, tmp_path: Path):
     calls = {"correct": 0}
 
@@ -178,3 +199,37 @@ def test_training_reports_do_not_run_hidden_second_evaluation(monkeypatch, tmp_p
     result = train(config_path)
 
     assert calls["correct"] == result["evaluation_count"]
+
+
+def test_evaluate_trained_model_uses_test_split_only(tmp_path: Path):
+    processed_path = tmp_path / "dataset.csv.gz"
+    rows = [
+        {"source": "val 1", "target": "val 1", "split": "val", "is_clean": True, "is_synthetic": False, "error_types": "[]"},
+        {"source": "val 2", "target": "val 2", "split": "val", "is_clean": True, "is_synthetic": False, "error_types": "[]"},
+        {"source": "test 1", "target": "test 1", "split": "test", "is_clean": True, "is_synthetic": False, "error_types": "[]"},
+        {"source": "test 2", "target": "test 2", "split": "test", "is_clean": True, "is_synthetic": False, "error_types": "[]"},
+    ]
+    pd.DataFrame(rows).to_csv(processed_path, index=False)
+
+    seen_sources = []
+
+    class RecordingCorrector:
+        def correct(self, text):
+            from src.inference.corrector import CorrectionResult
+
+            seen_sources.append(text)
+            return CorrectionResult(text, text, [])
+
+    config = {
+        "training": {"max_val_examples": 2, "max_test_examples": 2},
+        "data": {"processed_train_path": str(processed_path)},
+        "paths": {"reports_dir": str(tmp_path / "reports")},
+    }
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(yaml.safe_dump(config, allow_unicode=True), encoding="utf-8")
+
+    result = evaluate_trained_model(config_path, split="test", corrector=RecordingCorrector())
+
+    assert seen_sources == ["test 1", "test 2"]
+    assert result["evaluation_split"] == "test"
+    assert result["evaluation_count"] == 2

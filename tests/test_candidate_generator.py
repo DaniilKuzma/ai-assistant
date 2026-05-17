@@ -19,6 +19,15 @@ SPELLING_CASES = [
     ("сдесь", "здесь"),
 ]
 
+INFLECTED_SPELLING_CASES = [
+    ("пришол", "пришел"),
+    ("нашол", "нашел"),
+    ("произошол", "произошел"),
+    ("подезде", "подъезде"),
+    ("подезду", "подъезду"),
+    ("подездом", "подъездом"),
+]
+
 
 def test_candidate_generator_returns_keep_and_whitelist_split():
     generator = CandidateGenerator()
@@ -29,6 +38,15 @@ def test_candidate_generator_returns_keep_and_whitelist_split():
     assert ("незнаю", "незнаю", "keep") in values
     assert ("незнаю", "не знаю", "split_join") in values
     assert ("что", "что", "keep") in values
+
+
+def test_candidate_generator_treats_voobschem_as_split_join():
+    generator = CandidateGenerator()
+    candidates = generator.generate("Вообщем, это важный пример.")
+
+    values = {(candidate.source, candidate.replacement, candidate.edit_type) for candidate in candidates}
+
+    assert ("Вообщем", "В общем", "split_join") in values
 
 
 def test_candidate_generator_supports_hyphen_whitelist_pair():
@@ -55,13 +73,19 @@ def test_spelling_rules_cover_required_orthogram_classes():
         assert correct in spelling_candidates(wrong)
 
 
+def test_spelling_rules_cover_common_inflected_forms_from_synthetic_data():
+    for wrong, correct in INFLECTED_SPELLING_CASES:
+        assert correct in spelling_candidates(wrong)
+
+
 def test_candidate_generator_emits_spelling_candidates_for_expanded_orthograms():
     generator = CandidateGenerator()
-    text = " ".join(wrong for wrong, _correct in SPELLING_CASES)
+    cases = [*SPELLING_CASES, *INFLECTED_SPELLING_CASES]
+    text = " ".join(wrong for wrong, _correct in cases)
 
     values = {(candidate.source.lower(), candidate.replacement.lower(), candidate.edit_type) for candidate in generator.generate(text)}
 
-    for wrong, correct in SPELLING_CASES:
+    for wrong, correct in cases:
         assert (wrong, correct, "spelling") in values
 
 

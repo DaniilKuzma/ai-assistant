@@ -6,7 +6,7 @@ project:
 
 model:
   primary_encoder: ai-forever/ruRoberta-large
-  fallback_encoder: ai-forever/ruBert-base
+  fallback_encoder: ai-forever/ruRoberta-large
   local_files_only: false
   max_sequence_length: 128
   max_candidates: 16
@@ -19,8 +19,9 @@ model:
 training:
   mode: full-train
   run_model_training: true
+  evaluation_split: test
   checkpoint_metric: combined_score
-  max_train_examples: 15000
+  max_train_examples: 250000
   max_val_examples: 10000
   max_test_examples: 10000
   batch_size: 4
@@ -30,8 +31,8 @@ training:
   mixed_precision: true
   show_progress: true
   progress_log_every_steps: 1000
-  word_loss_weight: 1.0
-  punctuation_loss_weight: 1.0
+  word_loss_weight: 1.3
+  punctuation_loss_weight: 0.8
   confidence_loss_weight: 0.3
   error_type_loss_weight: 0.5
 
@@ -45,6 +46,7 @@ data:
     spelling_min_examples: 60000
     split_join_min_examples: 20000
     hyphen_min_examples: 20000
+  punctuation_hard_negative_clean_ratio: 0.20
   val_ratio: 0.05
   test_ratio: 0.05
   domain: synthetic_general
@@ -127,11 +129,11 @@ thresholds:
     hyphen_threshold: 0.95
     case_threshold: 0.90
   balanced:
-    spelling_threshold: 0.85
-    punctuation_threshold: 0.82
-    split_join_threshold: 0.88
+    spelling_threshold: 0.78
+    punctuation_threshold: 0.86
+    split_join_threshold: 0.84
     context_pair_threshold: 0.98
-    hyphen_threshold: 0.88
+    hyphen_threshold: 0.84
     case_threshold: 0.85
   aggressive:
     spelling_threshold: 0.75

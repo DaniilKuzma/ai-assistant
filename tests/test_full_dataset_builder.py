@@ -57,6 +57,34 @@ def test_dataset_composition_and_write_dataset(tmp_path: Path):
     assert dataset_composition(rows)["synthetic"] == 40
 
 
+def test_full_dataset_builder_adds_punctuation_hard_negative_clean_examples():
+    rows = build_dataset_rows(
+        DatasetBuildConfig(
+            target_total_examples=100,
+            clean_identity_ratio=0.2,
+            punctuation_hard_negative_clean_ratio=0.5,
+            seed=29,
+        )
+    )
+
+    hard_negative_rows = [
+        row for row in rows if row["source_dataset"] == "clean_identity_punctuation_hard_negative"
+    ]
+
+    assert len(hard_negative_rows) == 10
+    assert all(row["source"] == row["target"] for row in hard_negative_rows)
+    assert all(row["is_clean"] and not row["is_synthetic"] for row in hard_negative_rows)
+    assert all(row["edit_operations"] == "[]" for row in hard_negative_rows)
+    assert any("на севере" in row["source"] for row in hard_negative_rows)
+
+
+def test_punctuation_hard_negative_targets_are_split_unique():
+    targets = [full_dataset_builder._punctuation_hard_negative_target(index) for index in range(200)]
+    normalized = {full_dataset_builder._normalize_for_split(target) for target in targets}
+
+    assert len(normalized) == len(targets)
+
+
 def test_full_dataset_builder_keeps_target_total_with_external_rows():
     external_rows = [
         {

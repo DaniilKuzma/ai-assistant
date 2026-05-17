@@ -14,6 +14,12 @@ EXPANDED_ORTHOGRAM_CASES = [
     ("корова", "карова"),
     ("лестница", "лесница"),
     ("грамматика", "граматика"),
+    ("пришел", "пришол"),
+    ("нашел", "нашол"),
+    ("произошел", "произошол"),
+    ("подъезде", "подезде"),
+    ("подъезду", "подезду"),
+    ("подъездом", "подездом"),
 ]
 
 
@@ -60,7 +66,7 @@ def test_synthetic_generator_covers_expanded_orthogram_classes():
     generator = SyntheticGenerator(seed=7)
     target = " ".join(correct for correct, _wrong in EXPANDED_ORTHOGRAM_CASES) + "."
 
-    variants = generator.generate_variants_from_clean(target, max_variants=40)
+    variants = generator.generate_variants_from_clean(target, max_variants=80)
     sources = "\n".join(variant.source.lower() for variant in variants)
 
     for _correct, wrong in EXPANDED_ORTHOGRAM_CASES:

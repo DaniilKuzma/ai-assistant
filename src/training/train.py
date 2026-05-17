@@ -24,6 +24,41 @@ from src.training.callbacks import BestMetricTracker
 from src.training.trainer import EditModelTrainer, TrainLoopConfig
 
 
+def evaluate_trained_model(
+    config_path: str | Path = "configs/config.yaml",
+    *,
+    split: str = "test",
+    corrector: Any | None = None,
+) -> dict[str, Any]:
+    """Run final evaluation for a saved/fine-tuned corrector on a dataset split."""
+
+    config = load_config(config_path)
+    reports_dir = Path(config.get("paths", {}).get("reports_dir", "reports"))
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    rows = _load_rows_for_split(config, split=split, fallback_rows=[])
+    evaluation_corrector = corrector or _build_evaluation_corrector(config, model_training_ran=True)
+    print(f"Evaluating {len(rows)} {split} examples with {evaluation_corrector.__class__.__name__}...")
+    evaluation_result = evaluate_rows_detailed(
+        rows,
+        corrector=evaluation_corrector,
+        output_dir=reports_dir,
+        metric_weights=config.get("metrics", {}).get("combined_score_weights"),
+        show_progress=bool(config.get("training", {}).get("show_progress", False)),
+    )
+    write_threshold_precision_recall_plot(
+        threshold_sweep(evaluation_result.edit_scores, [0.5, 0.7, 0.8, 0.9, 0.95]),
+        reports_dir / "threshold_precision_recall.png",
+    )
+    return {
+        "status": "evaluated",
+        "evaluation_split": split,
+        "evaluation_count": len(rows),
+        "evaluation_metrics": evaluation_result.metrics,
+        "reports_dir": str(reports_dir),
+        "report_paths": _report_paths(reports_dir),
+    }
+
+
 def train(config_path: str | Path = "configs/config.yaml") -> dict[str, Any]:
     """Prepare data and optionally run encoder fine-tuning."""
 
@@ -54,9 +89,10 @@ def train(config_path: str | Path = "configs/config.yaml") -> dict[str, Any]:
         label_mappings=config.get("labels", {}),
         thresholds=config.get("thresholds", {}),
     )
+    evaluation_split = _training_evaluation_split(config)
     evaluation_rows = _load_evaluation_rows(config, rows)
     corrector = _build_evaluation_corrector(config, bool(result["model_training_ran"]))
-    print(f"Evaluating {len(evaluation_rows)} examples with {corrector.__class__.__name__}...")
+    print(f"Evaluating {len(evaluation_rows)} {evaluation_split} examples with {corrector.__class__.__name__}...")
     evaluation_result = evaluate_rows_detailed(
         evaluation_rows,
         corrector=corrector,
@@ -78,6 +114,7 @@ def train(config_path: str | Path = "configs/config.yaml") -> dict[str, Any]:
     write_training_report(
         {
             "feature_count": float(len(features)),
+            "evaluation_split": evaluation_split,
             "evaluation_count": float(len(evaluation_rows)),
             "model_training_ran": float(result["model_training_ran"]),
             "checkpoint_metric": checkpoint_metric,
@@ -90,6 +127,7 @@ def train(config_path: str | Path = "configs/config.yaml") -> dict[str, Any]:
     result.update(
         {
             "evaluation_count": len(evaluation_rows),
+            "evaluation_split": evaluation_split,
             "evaluation_metrics": evaluation_metrics,
             "checkpoint_metric": checkpoint_metric,
             "checkpoint_metric_value": checkpoint_metric_value,
@@ -129,18 +167,36 @@ def _full_dataset_stats(config: dict[str, Any], fallback_rows: list[dict[str, An
 
 
 def _load_evaluation_rows(config: dict[str, Any], fallback_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return _load_rows_for_split(config, split=_training_evaluation_split(config), fallback_rows=fallback_rows)
+
+
+def _training_evaluation_split(config: dict[str, Any]) -> str:
+    return str(config.get("training", {}).get("evaluation_split", "val"))
+
+
+def _load_rows_for_split(config: dict[str, Any], *, split: str, fallback_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     data_config = config.get("data", {})
     processed_path = data_config.get("processed_train_path")
     training_config = config.get("training", {})
     if processed_path and Path(processed_path).exists():
         frame = pd.read_csv(processed_path)
         if "split" not in frame.columns:
-            max_examples = int(training_config.get("max_val_examples", len(frame)))
+            max_examples = int(training_config.get(_limit_key_for_split(split), len(frame)))
             return frame.head(max_examples).to_dict("records")
-        val = frame[frame["split"] == "val"].head(int(training_config.get("max_val_examples", 0)))
-        if not val.empty:
-            return val.to_dict("records")
+        split_rows = frame[frame["split"] == split]
+        max_examples = int(training_config.get(_limit_key_for_split(split), len(split_rows)))
+        split_rows = split_rows.head(max_examples)
+        if not split_rows.empty:
+            return split_rows.to_dict("records")
     return fallback_rows
+
+
+def _limit_key_for_split(split: str) -> str:
+    return {
+        "train": "max_train_examples",
+        "val": "max_val_examples",
+        "test": "max_test_examples",
+    }.get(split, f"max_{split}_examples")
 
 
 def _build_evaluation_corrector(config: dict[str, Any], model_training_ran: bool):

@@ -33,6 +33,7 @@ class DatasetBuildConfig:
     min_spelling_examples: int = 60_000
     min_split_join_examples: int = 20_000
     min_hyphen_examples: int = 20_000
+    punctuation_hard_negative_clean_ratio: float = 0.20
 
 
 def build_dataset_rows(config: DatasetBuildConfig) -> list[dict[str, Any]]:
@@ -105,14 +106,20 @@ def build_dataset_rows(config: DatasetBuildConfig) -> list[dict[str, Any]]:
         )
     rows.extend(synthetic_rows)
 
+    hard_negative_count = int(round(clean_count * _clamp_ratio(config.punctuation_hard_negative_clean_ratio)))
     for clean_index in range(clean_count):
-        target = _clean_target(clean_index, clean_texts, sentence_factory)
+        if clean_index < hard_negative_count:
+            target = _punctuation_hard_negative_target(clean_index)
+            source_dataset = "clean_identity_punctuation_hard_negative"
+        else:
+            target = _clean_target(clean_index - hard_negative_count, clean_texts, sentence_factory)
+            source_dataset = "clean_identity"
         rows.append(
             _row(
                 source=target,
                 target=target,
                 edits=[],
-                source_dataset="clean_identity",
+                source_dataset=source_dataset,
                 is_clean=True,
                 is_synthetic=False,
                 domain=config.domain,
@@ -172,6 +179,7 @@ def build_dataset_from_config(config: dict[str, Any], force: bool = False) -> di
         min_spelling_examples=int(data_config.get("synthetic_balance", {}).get("spelling_min_examples", 60_000)),
         min_split_join_examples=int(data_config.get("synthetic_balance", {}).get("split_join_min_examples", 20_000)),
         min_hyphen_examples=int(data_config.get("synthetic_balance", {}).get("hyphen_min_examples", 20_000)),
+        punctuation_hard_negative_clean_ratio=float(data_config.get("punctuation_hard_negative_clean_ratio", 0.20)),
     )
     rows = build_dataset_rows(build_config)
     write_dataset(rows, output_path, manifest_path)
@@ -301,6 +309,123 @@ def _clean_target(index: int, clean_texts: list[str], sentence_factory: CleanSen
     if 0 <= index < len(clean_texts):
         return clean_texts[index]
     return sentence_factory.make(index - len(clean_texts))
+
+
+def _punctuation_hard_negative_target(index: int) -> str:
+    places = ["Йоркшире", "Новосибирске", "Казани", "Перми", "Владивостоке", "Самаре"]
+    months = ["январь", "март", "июнь", "сентябрь", "ноябрь", "декабрь"]
+    nouns = ["отчет", "план", "раздел", "документ", "пример", "модуль"]
+    marker = _hard_negative_marker(index)
+    place = places[index % len(places)]
+    month = months[(index // len(places)) % len(months)]
+    noun = nouns[(index // (len(places) * len(months))) % len(nouns)]
+    year = 2020 + index % 7
+    decimal = f"{10 + index % 17},{index % 10}"
+    small = 1 + index % 9
+    templates = [
+        "Он родился 31 июля {year} года в {place} на севере страны в группе {marker}.",
+        "Встреча прошла в субботу в историческом зале мэрии для группы {marker}.",
+        "Команда обсудила {noun} за {month} {year} года в группе {marker}.",
+        "Получается это решение подходит группе {marker}, но требует проверки.",
+        "Значит и следующий вариант остается рабочим для группы {marker}.",
+        "Проект демократизации системы сложнее, чем проект обновления группы {marker}.",
+        "В отчете группы {marker} указано {decimal}% роста и {small}% снижения.",
+        "Песня Lautar с активными девушками бэк-вокалистками вошла в программу группы {marker}.",
+        "Компания открыла офис в Москве на Тверской улице для группы {marker}.",
+        "Состояние у группы {marker} удовлетворительное и никто в психологической помощи не нуждается.",
+    ]
+    template = templates[index % len(templates)]
+    return template.format(
+        place=place,
+        month=month,
+        noun=noun,
+        year=year,
+        decimal=decimal,
+        small=small,
+        marker=marker,
+    )
+
+
+def _hard_negative_marker(index: int) -> str:
+    adjectives = [
+        "алой",
+        "белой",
+        "быстрой",
+        "важной",
+        "гибкой",
+        "дальней",
+        "единой",
+        "живой",
+        "зимней",
+        "краткой",
+        "левой",
+        "мягкой",
+        "новой",
+        "общей",
+        "первой",
+        "ровной",
+        "сильной",
+        "точной",
+        "умной",
+        "ясной",
+    ]
+    nouns = [
+        "анкеты",
+        "базы",
+        "версии",
+        "группы",
+        "детали",
+        "записи",
+        "карты",
+        "линии",
+        "модели",
+        "нормы",
+        "опции",
+        "папки",
+        "рамки",
+        "схемы",
+        "таблицы",
+        "формы",
+        "цепочки",
+        "шкалы",
+        "этапа",
+        "ячейки",
+    ]
+    suffixes = [
+        "альфа",
+        "бета",
+        "гамма",
+        "дельта",
+        "зета",
+        "каппа",
+        "лямбда",
+        "омега",
+        "сигма",
+        "тау",
+        "вектор",
+        "контур",
+        "профиль",
+        "сектор",
+        "уровень",
+        "фактор",
+        "шаблон",
+        "элемент",
+        "маркер",
+        "индекс",
+        "поток",
+        "режим",
+        "сигнал",
+        "узел",
+        "фрагмент",
+    ]
+    adjective = adjectives[index % len(adjectives)]
+    noun = nouns[(index // len(adjectives)) % len(nouns)]
+    suffix = suffixes[(index // (len(adjectives) * len(nouns))) % len(suffixes)]
+    return f"{adjective} {noun} {suffix}"
+
+
+def _clamp_ratio(value: float) -> float:
+    return max(0.0, min(1.0, value))
 
 
 def _build_synthetic_rows_from_clean_corpus(
