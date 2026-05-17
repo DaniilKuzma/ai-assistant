@@ -1,4 +1,5 @@
 from src.candidates.candidate_generator import Candidate
+import pytest
 import torch
 
 from src.inference.model_corrector import (
@@ -47,16 +48,28 @@ def test_trained_model_corrector_applies_candidate_when_model_score_passes_thres
     assert any(edit.edit_type == "split_word" and edit.status == "accepted" for edit in result.edits)
 
 
-def test_trained_model_corrector_can_apply_context_dependent_pair_when_score_is_high():
+def test_trained_model_corrector_rejects_context_dependent_pair_without_strict_context():
     corrector = TrainedModelCorrector(FakeBackend({"так же": 0.99}), thresholds={"split_join_threshold": 0.9})
 
     result = corrector.correct("Он также пришел.")
 
-    assert result.corrected_text == "Он так же пришел."
-    assert any(edit.edit_type == "split_word" and edit.status == "accepted" for edit in result.edits)
+    assert result.corrected_text == "Он также пришел."
+    assert any(edit.source.lower() == "также" and edit.status == "rejected" for edit in result.edits)
 
 
-def test_trained_model_corrector_keeps_existing_punctuation_when_model_predicts_none():
+def test_trained_model_corrector_can_apply_context_dependent_pair_with_high_confidence_and_strict_context():
+    corrector = TrainedModelCorrector(
+        FakeBackend({"так же": 0.99}),
+        thresholds={"split_join_threshold": 0.9, "context_pair_threshold": 0.98},
+    )
+
+    result = corrector.correct("Он сделал также как я.")
+
+    assert result.corrected_text == "Он сделал так же как я."
+    assert any(edit.source.lower() == "также" and edit.status == "accepted" for edit in result.edits)
+
+
+def test_trained_model_corrector_deletes_existing_punctuation_when_model_predicts_none_for_gap():
     corrector = TrainedModelCorrector(
         FakeBackend({}, punctuation=[ModelPunctuationPrediction(1, "NONE", 0.99)]),
         thresholds={"punctuation_threshold": 0.9},
@@ -64,8 +77,8 @@ def test_trained_model_corrector_keeps_existing_punctuation_when_model_predicts_
 
     result = corrector.correct("Я думаю, это важно.")
 
-    assert result.corrected_text == "Я думаю, это важно."
-    assert not any(edit.edit_type == "punctuation_delete" and edit.status == "accepted" for edit in result.edits)
+    assert result.corrected_text == "Я думаю это важно."
+    assert any(edit.edit_type == "punctuation_delete" and edit.status == "accepted" for edit in result.edits)
 
 
 def test_trained_model_corrector_replaces_existing_punctuation_with_colon():
@@ -107,9 +120,9 @@ def test_trained_model_corrector_supports_simple_quotes_and_brackets():
         FakeBackend(
             {},
             punctuation=[
-                ModelPunctuationPrediction(2, "QUOTE_OPEN", 0.99),
+                ModelPunctuationPrediction(1, "QUOTE_OPEN", 0.99),
                 ModelPunctuationPrediction(2, "QUOTE_CLOSE", 0.99),
-                ModelPunctuationPrediction(4, "BRACKET_OPEN", 0.99),
+                ModelPunctuationPrediction(3, "BRACKET_OPEN", 0.99),
                 ModelPunctuationPrediction(4, "BRACKET_CLOSE", 0.99),
             ],
         ),
@@ -144,6 +157,43 @@ def test_torch_backend_passes_candidate_replacement_tokens_to_model():
     assert replacement_ids.shape[0:2] == torch.Size([1, 3])
     assert replacement_mask[0, 1].any()
     assert replacement_ids[0, 1].sum().item() > 0
+
+
+def test_torch_backend_passes_word_gap_indices_to_model_for_punctuation():
+    tokenizer = FakeTokenizer()
+    module = CapturingModule(max_candidates=1, punctuation_label_count=3)
+    backend = TorchCandidateModelBackend(
+        tokenizer=tokenizer,
+        module=module,
+        device=torch.device("cpu"),
+        punctuation_labels={"NONE": 0, "COMMA": 1, "DOT": 2},
+        max_length=8,
+        max_candidates=1,
+    )
+
+    backend.predict_punctuation("Я думаю, что")
+
+    gap_indices = module.last_kwargs["punctuation_gap_indices"]
+    assert gap_indices.shape == torch.Size([1, 8])
+    assert gap_indices.tolist()[0][:3] == [0, 5, 7]
+
+
+def test_torch_backend_uses_punctuation_confidence_head_for_prediction_confidence():
+    tokenizer = FakeTokenizer()
+    module = CapturingModule(max_candidates=1, punctuation_label_count=3, punctuation_confidence_logit=2.0)
+    backend = TorchCandidateModelBackend(
+        tokenizer=tokenizer,
+        module=module,
+        device=torch.device("cpu"),
+        punctuation_labels={"NONE": 0, "COMMA": 1, "DOT": 2},
+        max_length=8,
+        max_candidates=1,
+    )
+
+    predictions = backend.predict_punctuation("Я думаю что")
+
+    assert predictions
+    assert predictions[0].confidence == pytest.approx(torch.sigmoid(torch.tensor(2.0)).item())
 
 
 def test_legacy_candidate_projection_heads_are_expanded_for_current_model_shape():
@@ -187,13 +237,23 @@ class FakeTokenizer:
 
 
 class CapturingModule:
-    def __init__(self, max_candidates: int):
+    def __init__(
+        self,
+        max_candidates: int,
+        punctuation_label_count: int = 0,
+        punctuation_confidence_logit: float = 0.0,
+    ):
         self.max_candidates = max_candidates
+        self.punctuation_label_count = punctuation_label_count
+        self.punctuation_confidence_logit = punctuation_confidence_logit
         self.last_kwargs = None
 
     def __call__(self, **kwargs):
         self.last_kwargs = kwargs
+        gap_count = kwargs.get("punctuation_gap_indices", torch.zeros(1, 0)).shape[1]
         return {
             "candidate_scores": torch.zeros(1, self.max_candidates),
             "confidence_logits": torch.zeros(1, self.max_candidates),
+            "punctuation_logits": torch.zeros(1, gap_count, self.punctuation_label_count),
+            "punctuation_confidence_logits": torch.full((1, gap_count), self.punctuation_confidence_logit),
         }

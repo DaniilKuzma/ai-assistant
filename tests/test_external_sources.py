@@ -22,3 +22,15 @@ def test_external_source_loader_filters_unsupported_pairs(tmp_path: Path):
     assert rows[0]["source_dataset"] == "unit_external"
     assert rows[0]["is_synthetic"] is False
     assert rows[0]["is_clean"] is False
+
+
+def test_external_source_loader_filters_context_dependent_pairs(tmp_path: Path):
+    path = tmp_path / "external.jsonl"
+    path.write_text(
+        '{"source": "Он пришел чтобы помочь.", "correction": "Он пришел что бы помочь.", "domain": "unit"}\n',
+        encoding="utf-8",
+    )
+
+    rows = load_local_jsonl_pairs(path, source_dataset="unit_external")
+
+    assert rows == []

@@ -6,12 +6,20 @@ from typing import Any
 
 from src.alignment.punctuation_label_builder import build_punctuation_gap_labels
 from src.candidates.candidate_generator import Candidate, CandidateGenerator
+from src.preprocessing.punctuation_gaps import word_gap_token_indices
+from src.preprocessing.tokenizer import Token, tokenize_words
 from src.validation.diff_analyzer import DiffAnalyzer, Edit
 from src.validation.edit_classifier import coarse_error_type
 
 
 MAX_REPLACEMENT_TOKENS = 8
 WORD_EDIT_TYPES = {"spelling_replace", "split_word", "join_words", "hyphen_change", "case_change"}
+PUNCTUATION_EDIT_TYPES = {
+    "punctuation_insert",
+    "punctuation_delete",
+    "punctuation_replace",
+    "final_punctuation",
+}
 
 
 @dataclass(frozen=True)
@@ -28,6 +36,10 @@ class TrainingFeature:
     confidence_labels: list[float]
     punctuation_labels: list[int]
     punctuation_mask: list[bool]
+    punctuation_gap_indices: list[int]
+    punctuation_gap_mask: list[bool]
+    punctuation_confidence_labels: list[float]
+    punctuation_error_type_labels: list[int]
     candidate_replacements: list[str]
     candidate_replacement_ids: list[list[int]]
     candidate_replacement_mask: list[list[bool]]
@@ -109,8 +121,16 @@ def build_training_feature(
     replacement_masks.extend([[False] * MAX_REPLACEMENT_TOKENS for _ in range(pad_candidates)])
     candidate_mask = [True] * len(candidates) + [False] * pad_candidates
 
+    punctuation_gap_indices, punctuation_gap_mask = word_gap_token_indices(source, offsets, max_length)
+    punctuation_mask = punctuation_gap_mask[:]
     punctuation_labels = _punctuation_labels(source, target, punctuation_label_map, max_length)
-    punctuation_mask = [bool(value) for value in encoded["attention_mask"]]
+    punctuation_confidence_labels, punctuation_error_type_labels = _punctuation_confidence_and_error_labels(
+        source,
+        target,
+        error_type_label_map,
+        max_length,
+        punctuation_gap_mask,
+    )
 
     return TrainingFeature(
         source=source,
@@ -125,6 +145,10 @@ def build_training_feature(
         confidence_labels=confidence_labels,
         punctuation_labels=punctuation_labels,
         punctuation_mask=punctuation_mask,
+        punctuation_gap_indices=punctuation_gap_indices,
+        punctuation_gap_mask=punctuation_gap_mask,
+        punctuation_confidence_labels=punctuation_confidence_labels,
+        punctuation_error_type_labels=punctuation_error_type_labels,
         candidate_replacements=replacements,
         candidate_replacement_ids=replacement_ids,
         candidate_replacement_mask=replacement_masks,
@@ -144,6 +168,10 @@ class EditBatchCollator:
             "candidate_replacement_mask": torch.tensor(
                 [feature.candidate_replacement_mask for feature in features], dtype=torch.bool
             ),
+            "punctuation_gap_indices": torch.tensor(
+                [feature.punctuation_gap_indices for feature in features], dtype=torch.long
+            ),
+            "punctuation_gap_mask": torch.tensor([feature.punctuation_gap_mask for feature in features], dtype=torch.bool),
             "labels": {
                 "candidate_labels": torch.tensor([feature.candidate_labels for feature in features], dtype=torch.float),
                 "candidate_mask": torch.tensor([feature.candidate_mask for feature in features], dtype=torch.bool),
@@ -151,6 +179,12 @@ class EditBatchCollator:
                 "punctuation_mask": torch.tensor([feature.punctuation_mask for feature in features], dtype=torch.bool),
                 "confidence_labels": torch.tensor([feature.confidence_labels for feature in features], dtype=torch.float),
                 "error_type_labels": torch.tensor([feature.candidate_error_type_labels for feature in features], dtype=torch.long),
+                "punctuation_confidence_labels": torch.tensor(
+                    [feature.punctuation_confidence_labels for feature in features], dtype=torch.float
+                ),
+                "punctuation_error_type_labels": torch.tensor(
+                    [feature.punctuation_error_type_labels for feature in features], dtype=torch.long
+                ),
             },
         }
 
@@ -277,9 +311,63 @@ def _candidate_edit_type_for_labels(candidate_type: str) -> str:
     }.get(candidate_type, candidate_type)
 
 
-def _punctuation_labels(source: str, target: str, punctuation_label_map: dict[str, int], max_length: int) -> list[int]:
+def _punctuation_labels(
+    source: str,
+    target: str,
+    punctuation_label_map: dict[str, int],
+    max_length: int,
+) -> list[int]:
     labels = [punctuation_label_map.get("NONE", 0)] * max_length
     for gap in build_punctuation_gap_labels(source, target):
         if 0 <= gap.gap_index < max_length:
             labels[gap.gap_index] = punctuation_label_map.get(gap.label, punctuation_label_map.get("NONE", 0))
     return labels
+
+
+def _punctuation_confidence_and_error_labels(
+    source: str,
+    target: str,
+    error_type_label_map: dict[str, int],
+    max_length: int,
+    punctuation_gap_mask: list[bool],
+) -> tuple[list[float], list[int]]:
+    confidence_labels = [0.0] * max_length
+    keep_label = error_type_label_map.get("keep", 0)
+    error_type_labels = [
+        keep_label if index < len(punctuation_gap_mask) and punctuation_gap_mask[index] else -100
+        for index in range(max_length)
+    ]
+    words = tokenize_words(source)
+
+    for edit in DiffAnalyzer().analyze(source, target):
+        if edit.edit_type not in PUNCTUATION_EDIT_TYPES:
+            continue
+        gap_index = _punctuation_edit_gap_index(words, edit)
+        if gap_index < 0 or gap_index >= max_length:
+            continue
+        if not punctuation_gap_mask[gap_index]:
+            continue
+        confidence_labels[gap_index] = 1.0
+        error_type_labels[gap_index] = error_type_label_map.get(coarse_error_type(edit.edit_type), keep_label)
+
+    return confidence_labels, error_type_labels
+
+
+def _punctuation_edit_gap_index(words: list[Token], edit: Edit) -> int:
+    if not words:
+        return -1
+    if edit.edit_type == "final_punctuation":
+        return len(words) - 1
+    return _gap_index_for_position(words, edit.start)
+
+
+def _gap_index_for_position(words: list[Token], position: int) -> int:
+    if position < 0:
+        return 0
+    gap = 0
+    for index, word in enumerate(words):
+        if word.end <= position:
+            gap = index
+        elif word.start > position:
+            break
+    return max(0, min(gap, len(words) - 1))

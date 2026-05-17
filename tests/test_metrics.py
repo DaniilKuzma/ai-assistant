@@ -1,3 +1,5 @@
+import pytest
+
 from src.evaluation.metrics import compute_metrics, combined_score
 
 
@@ -13,6 +15,42 @@ def test_metrics_count_exact_match_and_clean_overcorrection():
     assert metrics["dirty_improved_rate"] == 1.0
     assert metrics["clean_overcorrection_rate"] == 1.0
     assert metrics["edit_f1"] > 0
+
+
+def test_dirty_rates_treat_partial_gold_edits_as_improvement_not_worse():
+    rows = [
+        {
+            "source": "Я незнаю что делать",
+            "target": "Я не знаю, что делать.",
+            "prediction": "Я не знаю что делать",
+            "is_clean": False,
+        }
+    ]
+
+    metrics = compute_metrics(rows)
+
+    assert metrics["exact_match"] == 0.0
+    assert metrics["dirty_improved_rate"] == 1.0
+    assert metrics["dirty_worse_rate"] == 0.0
+    assert metrics["edit_precision"] == 1.0
+    assert 0.0 < metrics["edit_recall"] < 1.0
+
+
+def test_edit_metrics_keep_repeated_edits_distinct_by_position():
+    rows = [
+        {
+            "source": "Он пришел она ушла он вернулся она осталась",
+            "target": "Он пришел, она ушла, он вернулся она осталась",
+            "prediction": "Он пришел она ушла, он вернулся она осталась",
+            "is_clean": False,
+        }
+    ]
+
+    metrics = compute_metrics(rows)
+
+    assert metrics["punctuation_precision"] == 1.0
+    assert metrics["punctuation_recall"] == 0.5
+    assert metrics["punctuation_f1"] == pytest.approx(2 / 3)
 
 
 def test_combined_score_penalizes_clean_overcorrection():

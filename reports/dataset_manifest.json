@@ -2,21 +2,21 @@
   "total": 450000,
   "composition": {
     "clean": 45000,
-    "synthetic": 403243,
-    "real": 1757
+    "synthetic": 403391,
+    "real": 1609
   },
   "error_type_counts": {
-    "case": 916,
-    "final_punctuation": 144092,
+    "case": 809,
+    "final_punctuation": 144086,
     "hyphen": 20028,
-    "punctuation": 175335,
-    "spelling": 61829,
-    "split_join": 20086
+    "punctuation": 175236,
+    "spelling": 61838,
+    "split_join": 20062
   },
   "splits": {
-    "test": 22500,
-    "val": 22500,
-    "train": 405000
+    "test": 22504,
+    "val": 22506,
+    "train": 404990
   },
   "split_strategy": "normalized_target_v2",
   "columns": [

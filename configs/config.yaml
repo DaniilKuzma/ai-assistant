@@ -23,8 +23,8 @@ training:
   max_train_examples: 15000
   max_val_examples: 10000
   max_test_examples: 10000
-  batch_size: 192
-  gradient_accumulation_steps: 1
+  batch_size: 4
+  gradient_accumulation_steps: 48
   epochs: 2
   learning_rate: 0.0001
   mixed_precision: true
@@ -123,18 +123,21 @@ thresholds:
     spelling_threshold: 0.92
     punctuation_threshold: 0.90
     split_join_threshold: 0.95
+    context_pair_threshold: 0.995
     hyphen_threshold: 0.95
     case_threshold: 0.90
   balanced:
     spelling_threshold: 0.85
     punctuation_threshold: 0.82
     split_join_threshold: 0.88
+    context_pair_threshold: 0.98
     hyphen_threshold: 0.88
     case_threshold: 0.85
   aggressive:
     spelling_threshold: 0.75
     punctuation_threshold: 0.72
     split_join_threshold: 0.80
+    context_pair_threshold: 0.97
     hyphen_threshold: 0.80
     case_threshold: 0.78
 

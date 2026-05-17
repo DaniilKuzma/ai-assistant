@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from collections import Counter
 from collections.abc import Iterable
 from typing import Any
 
-from src.validation.diff_analyzer import DiffAnalyzer
+from src.validation.diff_analyzer import DiffAnalyzer, Edit
 from src.validation.edit_classifier import coarse_error_type
 
 
@@ -40,8 +41,8 @@ def _base_metrics(rows: list[dict]) -> dict[str, float]:
     dirty = [row for row in rows if not row.get("is_clean", False)]
     clean = [row for row in rows if row.get("is_clean", False)]
 
-    dirty_improved = _safe_rate(sum(_is_exact(row) and row["source"] != row["target"] for row in dirty), len(dirty))
-    dirty_worse = _safe_rate(sum(row["prediction"] not in {row["source"], row["target"]} for row in dirty), len(dirty))
+    dirty_improved = _safe_rate(sum(is_dirty_improved_row(row) for row in dirty), len(dirty))
+    dirty_worse = _safe_rate(sum(is_dirty_worse_row(row) for row in dirty), len(dirty))
     clean_over = _safe_rate(sum(not _is_exact(row) for row in clean), len(clean))
 
     edit_scores = _edit_scores(rows)
@@ -75,22 +76,42 @@ def _scoped_metrics(rows: list[dict], weights: dict[str, float] | None) -> dict[
 
 def _edit_scores(rows: list[dict]) -> dict[str, float]:
     analyzer = DiffAnalyzer()
-    predicted: list[str] = []
-    gold: list[str] = []
-    predicted_spelling: list[str] = []
-    gold_spelling: list[str] = []
-    predicted_punct: list[str] = []
-    gold_punct: list[str] = []
+    predicted: Counter[tuple[Any, ...]] = Counter()
+    gold: Counter[tuple[Any, ...]] = Counter()
+    predicted_spelling: Counter[tuple[Any, ...]] = Counter()
+    gold_spelling: Counter[tuple[Any, ...]] = Counter()
+    predicted_punct: Counter[tuple[Any, ...]] = Counter()
+    gold_punct: Counter[tuple[Any, ...]] = Counter()
 
-    for row in rows:
+    for row_id, row in enumerate(rows):
         pred_edits = analyzer.analyze(row["source"], row["prediction"])
         gold_edits = analyzer.analyze(row["source"], row["target"])
-        predicted.extend(_keys(pred_edits))
-        gold.extend(_keys(gold_edits))
-        predicted_spelling.extend(_keys([edit for edit in pred_edits if coarse_error_type(edit.edit_type) in {"spelling", "split_join", "hyphen", "case"}]))
-        gold_spelling.extend(_keys([edit for edit in gold_edits if coarse_error_type(edit.edit_type) in {"spelling", "split_join", "hyphen", "case"}]))
-        predicted_punct.extend(_keys([edit for edit in pred_edits if coarse_error_type(edit.edit_type) in {"punctuation", "final_punctuation"}]))
-        gold_punct.extend(_keys([edit for edit in gold_edits if coarse_error_type(edit.edit_type) in {"punctuation", "final_punctuation"}]))
+        predicted.update(_edit_keys(pred_edits, row_id=row_id))
+        gold.update(_edit_keys(gold_edits, row_id=row_id))
+        predicted_spelling.update(
+            _edit_keys(
+                _filter_edits_by_coarse_type(pred_edits, {"spelling", "split_join", "hyphen", "case"}),
+                row_id=row_id,
+            )
+        )
+        gold_spelling.update(
+            _edit_keys(
+                _filter_edits_by_coarse_type(gold_edits, {"spelling", "split_join", "hyphen", "case"}),
+                row_id=row_id,
+            )
+        )
+        predicted_punct.update(
+            _edit_keys(
+                _filter_edits_by_coarse_type(pred_edits, {"punctuation", "final_punctuation"}),
+                row_id=row_id,
+            )
+        )
+        gold_punct.update(
+            _edit_keys(
+                _filter_edits_by_coarse_type(gold_edits, {"punctuation", "final_punctuation"}),
+                row_id=row_id,
+            )
+        )
 
     edit_p, edit_r, edit_f1 = _precision_recall_f1(predicted, gold)
     spelling_p, spelling_r, spelling_f1 = _precision_recall_f1(predicted_spelling, gold_spelling)
@@ -109,16 +130,65 @@ def _edit_scores(rows: list[dict]) -> dict[str, float]:
     }
 
 
-def _keys(edits: list) -> list[str]:
-    return [f"{edit.edit_type}:{edit.source}->{edit.replacement}" for edit in edits]
+def edit_key(edit: Edit, row_id: int | None = None) -> tuple[Any, ...]:
+    key = (edit.edit_type, edit.start, edit.end, edit.source, edit.replacement)
+    if row_id is None:
+        return key
+    return (row_id, *key)
 
 
-def _precision_recall_f1(predicted: list[str], gold: list[str]) -> tuple[float, float, float]:
-    predicted_set = set(predicted)
-    gold_set = set(gold)
-    true_positive = len(predicted_set & gold_set)
-    precision = _safe_rate(true_positive, len(predicted_set))
-    recall = _safe_rate(true_positive, len(gold_set))
+def mark_correct_edits(predicted_edits: list[Edit], gold_edits: list[Edit]) -> list[bool]:
+    remaining_gold = Counter(edit_key(edit) for edit in gold_edits)
+    flags: list[bool] = []
+    for edit in predicted_edits:
+        key = edit_key(edit)
+        is_correct = remaining_gold[key] > 0
+        flags.append(is_correct)
+        if is_correct:
+            remaining_gold[key] -= 1
+    return flags
+
+
+def is_dirty_improved_row(row: dict[str, Any]) -> bool:
+    if row.get("is_clean", False) or row["source"] == row["target"]:
+        return False
+    return _row_edit_counts(row)["true_positive"] > 0
+
+
+def is_dirty_worse_row(row: dict[str, Any]) -> bool:
+    if row.get("is_clean", False) or row["source"] == row["target"]:
+        return False
+    return _row_edit_counts(row)["false_positive"] > 0
+
+
+def _row_edit_counts(row: dict[str, Any]) -> dict[str, int]:
+    analyzer = DiffAnalyzer()
+    predicted = Counter(edit_key(edit) for edit in analyzer.analyze(row["source"], row["prediction"]))
+    gold = Counter(edit_key(edit) for edit in analyzer.analyze(row["source"], row["target"]))
+    true_positive = sum((predicted & gold).values())
+    predicted_total = sum(predicted.values())
+    gold_total = sum(gold.values())
+    return {
+        "true_positive": true_positive,
+        "false_positive": max(0, predicted_total - true_positive),
+        "false_negative": max(0, gold_total - true_positive),
+    }
+
+
+def _edit_keys(edits: list[Edit], row_id: int) -> list[tuple[Any, ...]]:
+    return [edit_key(edit, row_id=row_id) for edit in edits]
+
+
+def _filter_edits_by_coarse_type(edits: list[Edit], coarse_types: set[str]) -> list[Edit]:
+    return [edit for edit in edits if coarse_error_type(edit.edit_type) in coarse_types]
+
+
+def _precision_recall_f1(predicted: Counter[tuple[Any, ...]], gold: Counter[tuple[Any, ...]]) -> tuple[float, float, float]:
+    true_positive = sum((predicted & gold).values())
+    predicted_total = sum(predicted.values())
+    gold_total = sum(gold.values())
+    precision = _safe_rate(true_positive, predicted_total)
+    recall = _safe_rate(true_positive, gold_total)
     if precision + recall == 0:
         return precision, recall, 0.0
     return precision, recall, 2 * precision * recall / (precision + recall)

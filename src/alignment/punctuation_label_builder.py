@@ -33,7 +33,7 @@ def build_punctuation_gap_labels(source: str, target: str) -> list[PunctuationGa
     if not words:
         return []
 
-    labels = [PunctuationGapLabel(index, "NONE") for index in range(len(words))]
+    labels = _labels_from_source_punctuation(source, words)
     mutable = list(labels)
 
     for edit in DiffAnalyzer().analyze(source, target):
@@ -49,12 +49,33 @@ def _apply_punctuation_edit_label(labels: list[PunctuationGapLabel], words: list
         return
 
     if edit.edit_type not in {"punctuation_insert", "punctuation_replace"}:
+        if edit.edit_type == "punctuation_delete":
+            gap = _gap_index_for_position(words, edit.start)
+            labels[gap] = PunctuationGapLabel(gap, "NONE")
         return
     if edit.replacement not in PUNCT_LABELS:
         return
 
     gap = _gap_index_for_position(words, edit.start)
     labels[gap] = PunctuationGapLabel(gap, PUNCT_LABELS[edit.replacement])
+
+
+def _labels_from_source_punctuation(text: str, words: list[Token]) -> list[PunctuationGapLabel]:
+    labels = [PunctuationGapLabel(index, "NONE") for index in range(len(words))]
+    for index, word in enumerate(words):
+        punctuation = _punctuation_after_word(text, word.end)
+        if punctuation in PUNCT_LABELS:
+            labels[index] = PunctuationGapLabel(index, PUNCT_LABELS[punctuation])
+    return labels
+
+
+def _punctuation_after_word(text: str, position: int) -> str:
+    index = position
+    while index < len(text) and text[index].isspace():
+        index += 1
+    if index < len(text):
+        return text[index]
+    return ""
 
 
 def _gap_index_for_position(words: list[Token], position: int) -> int:

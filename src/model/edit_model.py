@@ -61,6 +61,8 @@ class CandidateAwareEditModel:
                 candidate_mask=None,
                 candidate_replacement_ids=None,
                 candidate_replacement_mask=None,
+                punctuation_gap_indices=None,
+                punctuation_gap_mask=None,
                 **kwargs,
             ):
                 output = self.encoder(input_ids=input_ids, attention_mask=attention_mask, **kwargs)
@@ -91,10 +93,16 @@ class CandidateAwareEditModel:
                 if candidate_mask is not None:
                     candidate_scores = candidate_scores.masked_fill(~candidate_mask, -1e4)
                     confidence_logits = confidence_logits.masked_fill(~candidate_mask, -1e4)
+                punctuation_representations = hidden
+                if punctuation_gap_indices is not None:
+                    punctuation_representations = _gather_gap_representations(hidden, punctuation_gap_indices)
+                punctuation_confidence_logits = self.heads["confidence"](punctuation_representations).squeeze(-1)
                 return {
                     "hidden_states": hidden,
                     "candidate_scores": candidate_scores,
-                    "punctuation_logits": self.heads["punctuation_gap"](hidden),
+                    "punctuation_logits": self.heads["punctuation_gap"](punctuation_representations),
+                    "punctuation_confidence_logits": punctuation_confidence_logits,
+                    "punctuation_error_type_logits": self.heads["error_type"](punctuation_representations),
                     "confidence_logits": confidence_logits,
                     "error_type_logits": error_type_logits,
                 }
@@ -167,6 +175,14 @@ def _input_embeddings(encoder):  # type: ignore[no-untyped-def]
         if embeddings is not None:
             return embeddings
     raise AttributeError("Cannot resolve encoder input embeddings for candidate replacement pooling")
+
+
+def _gather_gap_representations(hidden, gap_indices):  # type: ignore[no-untyped-def]
+    gap_indices = gap_indices.to(hidden.device)
+    sequence_length = hidden.shape[1]
+    clamped = gap_indices.clamp(min=0, max=max(0, sequence_length - 1))
+    expanded = clamped.unsqueeze(-1).expand(-1, -1, hidden.shape[-1])
+    return hidden.gather(dim=1, index=expanded)
 
 
 def _encoder_hidden_size(encoder: Any) -> int:

@@ -225,6 +225,8 @@ def _run_model_training(config: dict[str, Any], features) -> dict[str, Any]:  # 
             "candidate_mask": collated["candidate_mask"].to(device),
             "candidate_replacement_ids": collated["candidate_replacement_ids"].to(device),
             "candidate_replacement_mask": collated["candidate_replacement_mask"].to(device),
+            "punctuation_gap_indices": collated["punctuation_gap_indices"].to(device),
+            "punctuation_gap_mask": collated["punctuation_gap_mask"].to(device),
             "labels": labels,
         }
 

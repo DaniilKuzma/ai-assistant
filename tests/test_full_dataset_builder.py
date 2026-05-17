@@ -12,6 +12,7 @@ from src.data.full_dataset_builder import (
     dataset_composition,
     write_dataset,
 )
+from src.validation.diff_analyzer import DiffAnalyzer
 from src.validation.edit_classifier import is_allowed_edit_type
 
 
@@ -161,6 +162,15 @@ def test_full_dataset_builder_balances_required_lexical_error_types():
     assert _count_rows_with_error_type(rows, "split_join") >= 20
     assert _count_rows_with_error_type(rows, "hyphen") >= 20
     assert dataset_composition(rows)["clean"] == 18
+
+
+def test_supported_edits_excludes_context_dependent_pairs_from_training_labels():
+    analyzer = DiffAnalyzer()
+    edits = analyzer.analyze("Он пришел чтобы помочь.", "Он пришел что бы помочь.")
+
+    supported_edits = full_dataset_builder._supported_edits(edits)
+
+    assert supported_edits == []
 
 
 def test_lexical_balance_targets_are_unique_beyond_base_template_capacity():

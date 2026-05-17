@@ -5,7 +5,7 @@ import json
 from typing import Any
 
 from src.validation.diff_analyzer import DiffAnalyzer, Edit
-from src.validation.edit_classifier import coarse_error_type, is_allowed_edit_type
+from src.validation.edit_classifier import coarse_error_type, is_allowed_edit_type, is_context_dependent_pair
 
 
 DEFAULT_HF_JSONL_SOURCES = [
@@ -59,10 +59,13 @@ def load_local_jsonl_pairs(path: str | Path, source_dataset: str, limit: int | N
             target = str(item.get("correction") or item.get("target") or "").strip()
             if not source or not target or source == target:
                 continue
-            edits = [edit for edit in diff_analyzer.analyze(source, target) if is_allowed_edit_type(edit.edit_type)]
-            if not edits:
+            analyzed_edits = diff_analyzer.analyze(source, target)
+            if any(not is_allowed_edit_type(edit.edit_type) for edit in analyzed_edits):
                 continue
-            if any(not is_allowed_edit_type(edit.edit_type) for edit in diff_analyzer.analyze(source, target)):
+            if any(is_context_dependent_pair(edit.source, edit.replacement) for edit in analyzed_edits):
+                continue
+            edits = list(analyzed_edits)
+            if not edits:
                 continue
             rows.append(_real_row(source, target, edits, source_dataset, str(item.get("domain") or "external")))
             if limit is not None and len(rows) >= limit:

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from src.candidates.frequent_errors import CONTEXT_DEPENDENT_WHITELIST
+
 
 SPELLING_TYPES = {"spelling_replace", "split_word", "join_words", "hyphen_change", "case_change"}
 PUNCTUATION_TYPES = {
@@ -13,6 +15,10 @@ ALLOWED_EDIT_TYPES = SPELLING_TYPES | PUNCTUATION_TYPES
 
 def is_allowed_edit_type(edit_type: str) -> bool:
     return edit_type in ALLOWED_EDIT_TYPES
+
+
+def is_context_dependent_pair(source: str, replacement: str) -> bool:
+    return CONTEXT_DEPENDENT_WHITELIST.get(source.lower()) == replacement.lower()
 
 
 def coarse_error_type(edit_type: str) -> str:

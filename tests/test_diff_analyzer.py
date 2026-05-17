@@ -23,6 +23,21 @@ def test_diff_analyzer_classifies_hyphen_and_case():
     assert "final_punctuation" in edit_types
 
 
+def test_diff_analyzer_rejects_case_change_after_number_or_latin_prefix():
+    analyzer = DiffAnalyzer()
+
+    date_edits = analyzer.analyze("14 августа будет встреча", "14 Августа будет встреча.")
+    latin_edits = analyzer.analyze("G20 призывает к миру", "G20 Призывает к миру.")
+    mid_sentence_edits = analyzer.analyze("Встреча 14 августа", "Встреча 14 Августа.")
+
+    assert not any(edit.edit_type == "case_change" for edit in date_edits)
+    assert any(edit.edit_type == "unknown" for edit in date_edits)
+    assert not any(edit.edit_type == "case_change" for edit in latin_edits)
+    assert any(edit.edit_type == "unknown" for edit in latin_edits)
+    assert not any(edit.edit_type == "case_change" for edit in mid_sentence_edits)
+    assert any(edit.edit_type == "unknown" for edit in mid_sentence_edits)
+
+
 def test_diff_analyzer_rejects_unknown_replacement():
     analyzer = DiffAnalyzer()
 

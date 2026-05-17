@@ -5,12 +5,13 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from src.candidates.candidate_generator import Candidate, CandidateGenerator
+from src.candidates.frequent_errors import CONTEXT_DEPENDENT_WHITELIST
 from src.inference.corrector import CorrectionResult
 from src.inference.edit_realizer import apply_candidate, ensure_final_punctuation
-from src.inference.iterative_decoder import run_until_stable
 from src.inference.postprocess import normalize_spacing
 from src.model.edit_model import CandidateAwareEditModel, EditModelConfig
 from src.model.encoder import EncoderLoadConfig, load_encoder, load_tokenizer
+from src.preprocessing.punctuation_gaps import word_gap_token_indices
 from src.preprocessing.tokenizer import tokenize_words
 from src.validation.strict_validator import StrictValidator
 
@@ -27,9 +28,13 @@ class ModelCandidatePrediction:
 
 @dataclass(frozen=True)
 class ModelPunctuationPrediction:
-    word_index: int
+    gap_index: int
     label: str
     confidence: float
+
+    @property
+    def word_index(self) -> int:
+        return self.gap_index
 
 
 class CandidateModelBackend(Protocol):
@@ -54,7 +59,9 @@ class TrainedModelCorrector:
         self.thresholds = thresholds or {}
         self.max_passes = max_passes
         self.candidates = CandidateGenerator()
-        self.validator = StrictValidator()
+        self.validator = StrictValidator(
+            context_pair_threshold=float(self.thresholds.get("context_pair_threshold", 0.98))
+        )
 
     @classmethod
     def from_config(cls, config: dict[str, Any]) -> "TrainedModelCorrector":
@@ -65,18 +72,33 @@ class TrainedModelCorrector:
         return cls(backend, thresholds=thresholds, max_passes=int(config.get("decoder", {}).get("max_passes", 3)))
 
     def correct(self, text: str) -> CorrectionResult:
-        proposed = run_until_stable(text, self._single_pass, self.max_passes)
-        validation = self.validator.validate(text, proposed)
+        proposed, trusted_edits = self._decode_with_trusted_edits(text)
+        validation = self.validator.validate(text, proposed, trusted_edits=trusted_edits)
         corrected = validation.apply_accepted()
         return CorrectionResult(text, corrected, validation.edits)
 
     def _single_pass(self, text: str) -> str:
+        return self._single_pass_with_candidates(text)[0]
+
+    def _decode_with_trusted_edits(self, text: str) -> tuple[str, list[Candidate]]:
+        current = text
+        trusted_edits: list[Candidate] = []
+        for pass_index in range(self.max_passes):
+            updated, selected = self._single_pass_with_candidates(current)
+            if pass_index == 0:
+                trusted_edits.extend(selected)
+            if updated == current:
+                break
+            current = updated
+        return current, trusted_edits
+
+    def _single_pass_with_candidates(self, text: str) -> tuple[str, list[Candidate]]:
         candidates = self.candidates.generate(text)
         selected = _select_candidates(self.backend.score_candidates(text, candidates), self.thresholds)
         proposed = _apply_candidates(text, selected)
         proposed = _apply_punctuation_predictions(proposed, self.backend.predict_punctuation(proposed), self.thresholds)
         proposed = ensure_final_punctuation(proposed, ".")
-        return normalize_spacing(proposed)
+        return normalize_spacing(proposed), selected
 
 
 class TorchCandidateModelBackend:
@@ -188,20 +210,32 @@ class TorchCandidateModelBackend:
         if not self.punctuation_labels:
             return []
         encoded = _encode(self.tokenizer, text, self.max_length)
+        gap_indices, gap_mask = word_gap_token_indices(text, encoded["offset_mapping"], self.max_length)
+        if not any(gap_mask):
+            return []
         with torch.no_grad():
             outputs = self.module(
                 input_ids=torch.tensor([encoded["input_ids"]], dtype=torch.long, device=self.device),
                 attention_mask=torch.tensor([encoded["attention_mask"]], dtype=torch.long, device=self.device),
+                punctuation_gap_indices=torch.tensor([gap_indices], dtype=torch.long, device=self.device),
+                punctuation_gap_mask=torch.tensor([gap_mask], dtype=torch.bool, device=self.device),
             )
             probabilities = torch.softmax(outputs["punctuation_logits"][0], dim=-1).detach().cpu()
+            punctuation_confidences = None
+            if "punctuation_confidence_logits" in outputs:
+                punctuation_confidences = torch.sigmoid(outputs["punctuation_confidence_logits"][0]).detach().cpu()
 
         predictions: list[ModelPunctuationPrediction] = []
-        for word_index, _word in enumerate(tokenize_words(text)):
-            if word_index >= probabilities.shape[0]:
+        for gap_index, active in enumerate(gap_mask):
+            if not active:
+                continue
+            if gap_index >= probabilities.shape[0]:
                 break
-            confidence, label_id = probabilities[word_index].max(dim=-1)
+            confidence, label_id = probabilities[gap_index].max(dim=-1)
+            if punctuation_confidences is not None and gap_index < punctuation_confidences.shape[0]:
+                confidence = punctuation_confidences[gap_index]
             label = self.punctuation_by_id.get(int(label_id.item()), "NONE")
-            predictions.append(ModelPunctuationPrediction(word_index, label, float(confidence.item())))
+            predictions.append(ModelPunctuationPrediction(gap_index, label, float(confidence.item())))
         return predictions
 
 
@@ -227,6 +261,7 @@ def _select_candidates(
                 start=candidate.start,
                 end=candidate.end,
                 confidence=prediction.confidence,
+                requires_model=candidate.requires_model,
             )
         )
         occupied.append((candidate.start, candidate.end))
@@ -234,6 +269,8 @@ def _select_candidates(
 
 
 def _threshold_for_candidate(candidate: Candidate, thresholds: dict[str, float]) -> float:
+    if candidate.requires_model and _is_context_dependent_candidate(candidate):
+        return float(thresholds.get("context_pair_threshold", 0.98))
     if candidate.edit_type == "split_join":
         return float(thresholds.get("split_join_threshold", 0.88))
     if candidate.edit_type == "hyphen":
@@ -241,6 +278,10 @@ def _threshold_for_candidate(candidate: Candidate, thresholds: dict[str, float])
     if candidate.edit_type == "case":
         return float(thresholds.get("case_threshold", 0.85))
     return float(thresholds.get("spelling_threshold", 0.85))
+
+
+def _is_context_dependent_candidate(candidate: Candidate) -> bool:
+    return CONTEXT_DEPENDENT_WHITELIST.get(candidate.source.lower()) == candidate.replacement.lower()
 
 
 def _apply_candidates(text: str, candidates: list[Candidate]) -> str:
@@ -272,11 +313,12 @@ def _apply_punctuation_predictions(
         if prediction.confidence < punctuation_threshold:
             continue
         if prediction.label == "NONE":
+            proposed = _delete_punctuation_after_word(proposed, prediction.gap_index)
             continue
         if prediction.label in {"QUOTE_OPEN", "BRACKET_OPEN"}:
-            proposed = _insert_punctuation_before_word(proposed, prediction.word_index, _punctuation_mark(prediction.label))
+            proposed = _insert_punctuation_before_word(proposed, prediction.gap_index + 1, _punctuation_mark(prediction.label))
         elif prediction.label in {"DOT", "QUESTION", "EXCLAMATION", "ELLIPSIS"}:
-            if _is_last_word_index(proposed, prediction.word_index):
+            if _is_last_word_index(proposed, prediction.gap_index):
                 proposed = _replace_final_punctuation(proposed, _punctuation_mark(prediction.label))
         elif prediction.label in {
             "COMMA",
@@ -286,7 +328,7 @@ def _apply_punctuation_predictions(
             "QUOTE_CLOSE",
             "BRACKET_CLOSE",
         }:
-            proposed = _insert_punctuation_after_word(proposed, prediction.word_index, _punctuation_mark(prediction.label))
+            proposed = _insert_punctuation_after_word(proposed, prediction.gap_index, _punctuation_mark(prediction.label))
     return proposed
 
 
@@ -438,6 +480,24 @@ def _insert_punctuation_before_word(text: str, word_index: int, mark: str) -> st
     if position > 0 and text[position - 1] == mark:
         return text
     return text[:position] + mark + text[position:]
+
+
+def _delete_punctuation_after_word(text: str, word_index: int) -> str:
+    words = tokenize_words(text)
+    if word_index < 0 or word_index >= len(words):
+        return text
+    position = words[word_index].end
+    punct_position = _punctuation_position_after(text, position)
+    if punct_position is None:
+        return text
+    char = text[punct_position]
+    if char not in ",:;—«»()[]":
+        return text
+    if char == "—":
+        left = text[:position].rstrip()
+        right = text[punct_position + 1 :].lstrip()
+        return f"{left} {right}" if right else left
+    return text[:punct_position] + text[punct_position + 1 :]
 
 
 def _punctuation_position_after(text: str, position: int) -> int | None:

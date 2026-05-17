@@ -6,6 +6,8 @@ from typing import Any
 
 import pandas as pd
 
+from src.evaluation.metrics import is_dirty_worse_row
+
 
 def write_dataset_report(stats: dict[str, int], path: str | Path) -> None:
     lines = ["# Dataset Report", "", *[f"- {key}: {value}" for key, value in stats.items()]]
@@ -84,7 +86,7 @@ def write_required_evaluation_reports(rows: list[dict], metrics: dict[str, float
         [
             row
             for row in rows
-            if not row.get("is_clean") and row.get("prediction") not in {row.get("source"), row.get("target")}
+            if not row.get("is_clean") and is_dirty_worse_row(row)
         ],
         columns=example_columns,
     ).to_csv(output / "dirty_worse_examples.csv", index=False)

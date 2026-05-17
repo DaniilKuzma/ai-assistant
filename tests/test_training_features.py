@@ -20,6 +20,32 @@ def test_training_feature_marks_gold_candidate_and_punctuation_labels():
     assert feature.candidate_labels[gold_index] == 1.0
     assert 1 in feature.punctuation_labels
     assert 2 in feature.punctuation_labels
+    assert sum(feature.punctuation_gap_mask) == 4
+    assert sum(feature.punctuation_mask) == 4
+    assert feature.punctuation_gap_indices[:4] == [0, 1, 2, 3]
+    assert feature.punctuation_confidence_labels[:4] == [0.0, 1.0, 0.0, 1.0]
+    assert feature.punctuation_error_type_labels[:4] == [0, 2, 0, 3]
+
+
+def test_training_feature_uses_word_gap_mask_instead_of_token_mask_for_punctuation():
+    tokenizer = DebugTokenizer()
+
+    feature = build_training_feature(
+        "Я думаю, что это важно.",
+        "Я думаю что это важно.",
+        tokenizer=tokenizer,
+        punctuation_label_map={"NONE": 0, "COMMA": 1, "DOT": 2},
+        error_type_label_map={"keep": 0, "punctuation": 1, "final_punctuation": 2},
+        max_length=16,
+        max_candidates=8,
+    )
+
+    assert sum(feature.attention_mask) == 7
+    assert sum(feature.punctuation_gap_mask) == 5
+    assert feature.punctuation_labels[1] == 0
+    assert feature.punctuation_confidence_labels[1] == 1.0
+    assert feature.punctuation_error_type_labels[1] == 1
+    assert feature.punctuation_labels[-1] == 0
 
 
 def test_training_feature_uses_aligned_edit_span_for_repeated_candidates():
@@ -97,7 +123,11 @@ def test_batch_collator_returns_tensors_with_candidate_masks():
     assert batch["input_ids"].shape == torch.Size([1, 12])
     assert batch["candidate_spans"].shape == torch.Size([1, 6, 2])
     assert batch["candidate_replacement_ids"].shape[0:2] == torch.Size([1, 6])
+    assert batch["punctuation_gap_indices"].shape == torch.Size([1, 12])
     assert batch["labels"]["candidate_labels"].shape == torch.Size([1, 6])
+    assert batch["labels"]["punctuation_mask"].sum().item() == 4
+    assert batch["labels"]["punctuation_confidence_labels"].shape == torch.Size([1, 12])
+    assert batch["labels"]["punctuation_error_type_labels"].shape == torch.Size([1, 12])
     assert batch["labels"]["candidate_mask"].sum().item() >= 2
 
 

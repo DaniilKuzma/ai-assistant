@@ -10,6 +10,7 @@ from src.preprocessing.tokenizer import PUNCTUATION
 
 FINAL_PUNCT = ".!?"
 PUNCT_RE = re.compile(r"[,.!?:;—…\"'()«»]")
+SENTENCE_START_PREFIX_CHARS = set(" \t\r\n\"'«„“([{—-")
 
 
 @dataclass(frozen=True)
@@ -91,17 +92,17 @@ class DiffAnalyzer:
         return edits
 
     def _case_edits(self, source: str, target: str) -> list[Edit]:
-        source_match = re.search(r"[А-Яа-яЁё]", source)
-        target_match = re.search(r"[А-Яа-яЁё]", target)
-        if not source_match or not target_match:
-            return []
-        if source_match.start() != target_match.start():
-            return []
-        source_char = source[source_match.start()]
-        target_char = target[target_match.start()]
-        if source_char != target_char and source_char.lower() == target_char.lower() and target_char.isupper():
-            return [Edit(source_char, target_char, "case_change", source_match.start(), source_match.start() + 1, confidence=0.9)]
-        return []
+        edits: list[Edit] = []
+        for index, (source_char, target_char) in enumerate(zip(source, target, strict=False)):
+            if not _is_russian_letter(source_char) or not _is_russian_letter(target_char):
+                continue
+            if source_char == target_char or source_char.lower() != target_char.lower():
+                continue
+            if target_char.isupper() and _is_sentence_start_case_position(source, index):
+                edits.append(Edit(source_char, target_char, "case_change", index, index + 1, confidence=0.9))
+            else:
+                edits.append(Edit(source_char, target_char, "unknown", index, index + 1, confidence=0.0))
+        return edits
 
     def _punctuation_edits(self, source: str, target: str) -> list[Edit]:
         edits: list[Edit] = []
@@ -179,6 +180,14 @@ def _split_join_edit_type(source: str, replacement: str) -> str:
     if len(source.split()) > len(replacement.split()):
         return "join_words"
     return "split_word"
+
+
+def _is_sentence_start_case_position(text: str, position: int) -> bool:
+    return all(char in SENTENCE_START_PREFIX_CHARS for char in text[:position])
+
+
+def _is_russian_letter(char: str) -> bool:
+    return bool(re.fullmatch(r"[А-Яа-яЁё]", char))
 
 
 def _punctuation_inserts(position: int, inserted: str) -> list[Edit]:

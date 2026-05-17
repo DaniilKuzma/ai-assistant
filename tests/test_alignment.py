@@ -44,3 +44,10 @@ def test_punctuation_gap_labels_support_colon_replacement_from_alignment():
 
     assert labels[1].label == "COLON"
     assert labels[-1].label == "DOT"
+
+
+def test_punctuation_gap_labels_mark_deleted_punctuation_as_none():
+    labels = build_punctuation_gap_labels("Я думаю, что это важно.", "Я думаю что это важно.")
+
+    assert labels[1].label == "NONE"
+    assert labels[-1].label == "DOT"

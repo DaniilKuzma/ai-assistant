@@ -15,7 +15,7 @@ from src.data.synthetic_generator import SyntheticGenerator
 from src.data.external_sources import load_hf_jsonl_pairs
 from src.candidates.frequent_errors import HYPHEN_WHITELIST, WRONG_TO_CORRECT
 from src.validation.diff_analyzer import DiffAnalyzer, Edit
-from src.validation.edit_classifier import coarse_error_type, is_allowed_edit_type
+from src.validation.edit_classifier import coarse_error_type, is_allowed_edit_type, is_context_dependent_pair
 
 SPLIT_STRATEGY = "normalized_target_v2"
 
@@ -538,7 +538,11 @@ def _row_error_types(row: dict[str, Any]) -> set[str]:
 
 
 def _supported_edits(edits: list[Edit]) -> list[Edit]:
-    return [edit for edit in edits if is_allowed_edit_type(edit.edit_type)]
+    if any(not is_allowed_edit_type(edit.edit_type) for edit in edits):
+        return []
+    if any(is_context_dependent_pair(edit.source, edit.replacement) for edit in edits):
+        return []
+    return list(edits)
 
 
 def _row(

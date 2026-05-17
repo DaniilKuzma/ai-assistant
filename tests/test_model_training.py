@@ -38,12 +38,36 @@ def test_candidate_aware_model_scores_each_candidate_span():
         attention_mask=torch.tensor([[1, 1, 1, 1]]),
         candidate_spans=torch.tensor([[[1, 2], [2, 3], [0, 0]]]),
         candidate_mask=torch.tensor([[1, 1, 0]], dtype=torch.bool),
+        punctuation_gap_indices=torch.tensor([[0, 2, 3]]),
     )
 
     assert outputs["candidate_scores"].shape == torch.Size([1, 3])
     assert outputs["confidence_logits"].shape == torch.Size([1, 3])
     assert outputs["error_type_logits"].shape == torch.Size([1, 3, 5])
-    assert outputs["punctuation_logits"].shape == torch.Size([1, 4, 4])
+    assert outputs["punctuation_logits"].shape == torch.Size([1, 3, 4])
+    assert outputs["punctuation_confidence_logits"].shape == torch.Size([1, 3])
+    assert outputs["punctuation_error_type_logits"].shape == torch.Size([1, 3, 5])
+
+
+def test_candidate_aware_model_predicts_punctuation_on_gap_representations():
+    torch.manual_seed(11)
+    model = CandidateAwareEditModel.from_encoder(
+        FakeEncoder(),
+        EditModelConfig(punctuation_label_count=4, error_type_count=5, lora_enabled=False),
+    ).module
+
+    outputs = model(
+        input_ids=torch.tensor([[1, 2, 3, 4]]),
+        attention_mask=torch.tensor([[1, 1, 1, 1]]),
+        candidate_spans=torch.tensor([[[1, 2]]]),
+        candidate_mask=torch.tensor([[1]], dtype=torch.bool),
+        punctuation_gap_indices=torch.tensor([[1, 3]]),
+    )
+
+    assert outputs["punctuation_logits"].shape == torch.Size([1, 2, 4])
+    assert outputs["punctuation_confidence_logits"].shape == torch.Size([1, 2])
+    assert outputs["punctuation_error_type_logits"].shape == torch.Size([1, 2, 5])
+    assert not torch.equal(outputs["punctuation_logits"][0, 0], outputs["punctuation_logits"][0, 1])
 
 
 def test_candidate_aware_model_uses_replacement_tokens_to_score_candidates():
@@ -87,6 +111,8 @@ def test_multitask_loss_ignores_padded_candidates():
         "punctuation_logits": torch.randn(1, 4, 3),
         "confidence_logits": torch.tensor([[2.0, -1.0, 20.0]]),
         "error_type_logits": torch.randn(1, 3, 4),
+        "punctuation_confidence_logits": torch.tensor([[2.0, -1.0, 0.0, 20.0]]),
+        "punctuation_error_type_logits": torch.randn(1, 4, 4),
     }
     labels = {
         "candidate_labels": torch.tensor([[1.0, 0.0, 0.0]]),
@@ -95,6 +121,8 @@ def test_multitask_loss_ignores_padded_candidates():
         "punctuation_mask": torch.tensor([[1, 1, 1, 1]], dtype=torch.bool),
         "confidence_labels": torch.tensor([[1.0, 0.0, 0.0]]),
         "error_type_labels": torch.tensor([[1, 0, -100]]),
+        "punctuation_confidence_labels": torch.tensor([[1.0, 0.0, 0.0, 0.0]]),
+        "punctuation_error_type_labels": torch.tensor([[2, 0, 0, -100]]),
     }
 
     loss = multitask_loss(outputs, labels, {})

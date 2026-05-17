@@ -5,9 +5,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from src.evaluation.metrics import compute_metrics
+from src.evaluation.metrics import compute_metrics, mark_correct_edits
 from src.evaluation.reports import write_edit_logs, write_required_evaluation_reports
 from src.inference.corrector import Corrector
+from src.validation.diff_analyzer import DiffAnalyzer
 
 
 @dataclass(frozen=True)
@@ -49,12 +50,21 @@ def evaluate_rows_detailed(
     accepted: list[dict] = []
     rejected: list[dict] = []
     edit_scores: list[dict[str, Any]] = []
+    analyzer = DiffAnalyzer()
+    total_gold_edits = 0
     for row_id, row in enumerate(_with_progress(row_list, enabled=show_progress, description="Evaluating")):
         result = corrector.correct(row["source"])
         prediction = result.corrected_text
         evaluated_row = {**row, "prediction": prediction}
         evaluated.append(evaluated_row)
-        row_is_correct = prediction == row["target"]
+        gold_edits = analyzer.analyze(row["source"], row["target"])
+        total_gold_edits += len(gold_edits)
+        accepted_for_scoring = [edit for edit in result.edits if edit.status == "accepted"]
+        correct_flags = mark_correct_edits(accepted_for_scoring, gold_edits)
+        correctness_by_identity = {
+            id(edit): is_correct
+            for edit, is_correct in zip(accepted_for_scoring, correct_flags, strict=False)
+        }
         for edit in result.edits:
             serialized = {
                 "row_id": row_id,
@@ -69,19 +79,22 @@ def evaluate_rows_detailed(
                 accepted.append(serialized)
             else:
                 rejected.append(serialized)
-            edit_scores.append(
-                {
-                    "confidence": edit.confidence,
-                    "is_correct": row_is_correct and edit.status == "accepted",
-                }
-            )
+            if edit.status == "accepted":
+                edit_scores.append(
+                    {
+                        "confidence": edit.confidence,
+                        "is_correct": correctness_by_identity.get(id(edit), False),
+                    }
+                )
+    for score in edit_scores:
+        score["total_gold_edits"] = total_gold_edits
     metrics = compute_metrics(evaluated, weights=metric_weights)
     if output_dir is not None:
         write_required_evaluation_reports(evaluated, metrics, output_dir)
         write_edit_logs(accepted, rejected, output_dir)
     return EvaluationResult(
         metrics=metrics,
-        edit_scores=edit_scores or [{"confidence": 0.0, "is_correct": False}],
+        edit_scores=edit_scores or [{"confidence": 0.0, "is_correct": False, "total_gold_edits": total_gold_edits}],
         accepted_edits=accepted,
         rejected_edits=rejected,
     )
