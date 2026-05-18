@@ -1,5 +1,6 @@
 from src.validation.strict_validator import StrictValidator
 from src.candidates.candidate_generator import Candidate
+import pytest
 
 
 def test_validator_accepts_allowed_spelling_and_punctuation_edits():
@@ -111,3 +112,169 @@ def test_validator_applies_positioned_punctuation_when_unknown_word_change_is_re
     assert any(edit.edit_type == "unknown" and edit.status == "rejected" for edit in result.edits)
     assert any(edit.edit_type == "punctuation_insert" and edit.status == "accepted" for edit in result.edits)
     assert result.apply_accepted() == "Он сказал: привет."
+
+
+def test_validator_rejects_dangerous_tsya_direction_even_with_high_confidence_model_candidate():
+    validator = StrictValidator(tsya_threshold=0.98)
+    source = "Они могут появиться завтра."
+    target = "Они могут появится завтра."
+    trusted = [
+        Candidate(
+            "появиться",
+            "появится",
+            "spelling",
+            start=10,
+            end=19,
+            confidence=0.99,
+            requires_model=True,
+            rule_id="tsya_soft_delete",
+        )
+    ]
+
+    result = validator.validate(source, target, trusted_edits=trusted)
+
+    assert any(
+        edit.source == "появиться"
+        and edit.status == "rejected"
+        and edit.reason == "dangerous_tsya"
+        and edit.rule_id == "tsya_soft_delete"
+        for edit in result.edits
+    )
+    assert result.apply_accepted() == source
+
+
+def test_validator_rejects_finite_tsya_to_infinitive_even_with_high_confidence_model_candidate():
+    validator = StrictValidator(tsya_threshold=0.98)
+    source = "Он учится каждый день."
+    target = "Он учиться каждый день."
+    trusted = [
+        Candidate(
+            "учится",
+            "учиться",
+            "spelling",
+            start=3,
+            end=9,
+            confidence=0.99,
+            requires_model=True,
+            rule_id="tsya_soft_insert",
+        )
+    ]
+
+    result = validator.validate(source, target, trusted_edits=trusted)
+
+    assert any(edit.source == "учится" and edit.status == "rejected" and edit.reason == "dangerous_tsya" for edit in result.edits)
+    assert result.apply_accepted() == source
+
+
+def test_validator_allows_useful_tsya_direction_from_high_confidence_model_candidate():
+    validator = StrictValidator(tsya_threshold=0.98)
+    source = "Они могут появится завтра."
+    target = "Они могут появиться завтра."
+    trusted = [
+        Candidate(
+            "появится",
+            "появиться",
+            "spelling",
+            start=10,
+            end=18,
+            confidence=0.99,
+            requires_model=True,
+            rule_id="tsya_soft_insert",
+        )
+    ]
+
+    result = validator.validate(source, target, trusted_edits=trusted)
+
+    assert any(edit.source == "появится" and edit.status == "accepted" and edit.rule_id == "tsya_soft_insert" for edit in result.edits)
+    assert result.apply_accepted() == target
+
+
+def test_validator_rejects_useful_tsya_direction_without_high_confidence_model_candidate():
+    validator = StrictValidator(tsya_threshold=0.98)
+    source = "Они могут появится завтра."
+    target = "Они могут появиться завтра."
+    trusted = [
+        Candidate(
+            "появится",
+            "появиться",
+            "spelling",
+            start=10,
+            end=18,
+            confidence=0.97,
+            requires_model=True,
+            rule_id="tsya_soft_insert",
+        )
+    ]
+
+    result = validator.validate(source, target, trusted_edits=trusted)
+
+    assert any(edit.source == "появится" and edit.status == "rejected" and edit.reason == "dangerous_tsya" for edit in result.edits)
+    assert result.apply_accepted() == source
+
+
+@pytest.mark.parametrize(
+    ("source", "target", "reason"),
+    [
+        ("Индекс вырос на 4,71%.", "Индекс вырос на 4,7,1%.", "breaks_percent"),
+        ("Компания поставила 1,39 млрд кубометров газа.", "Компания поставила 1,3,9 млрд кубометров газа.", "breaks_number"),
+        ("Температура была 10.5.", "Температура была 10,5.", "breaks_number"),
+    ],
+)
+def test_validator_rejects_number_decimal_and_percent_breakage(source, target, reason):
+    validator = StrictValidator()
+
+    result = validator.validate(source, target)
+
+    assert any(edit.status == "rejected" and edit.reason == reason for edit in result.edits)
+    assert result.apply_accepted() == source
+
+
+@pytest.mark.parametrize(
+    ("source", "target"),
+    [
+        ("Напиши на test@example.com.", "Напиши на test@example,com."),
+        ("Сайт https://example.com работает.", "Сайт https://example,com работает."),
+    ],
+)
+def test_validator_rejects_edits_inside_protected_spans_with_specific_reason(source, target):
+    validator = StrictValidator()
+
+    result = validator.validate(source, target)
+
+    assert any(edit.status == "rejected" and edit.reason == "protected_span" for edit in result.edits)
+    assert result.apply_accepted() == source
+
+
+@pytest.mark.parametrize(
+    ("source", "target"),
+    [
+        ("Мы ждали файл…", "Мы ждали файл……"),
+        ("Готово.", "Готово.."),
+        ("Правда?", "Правда?!"),
+        ("Стоп!", "Стоп!!!?"),
+    ],
+)
+def test_validator_rejects_repeated_punctuation_noise(source, target):
+    validator = StrictValidator()
+
+    result = validator.validate(source, target)
+
+    assert any(edit.status == "rejected" and edit.reason == "punctuation_noise" for edit in result.edits)
+    assert result.apply_accepted() == source
+
+
+@pytest.mark.parametrize(
+    ("source", "target"),
+    [
+        ("Отчет за 2024 г.", "Отчет за 2024 г.."),
+        ("См. приложение.", "См приложение."),
+        ("Заявка № 12 готова.", "Заявка №, 12 готова."),
+    ],
+)
+def test_validator_rejects_abbreviation_breakage(source, target):
+    validator = StrictValidator()
+
+    result = validator.validate(source, target)
+
+    assert any(edit.status == "rejected" and edit.reason == "breaks_abbreviation" for edit in result.edits)
+    assert result.apply_accepted() == source

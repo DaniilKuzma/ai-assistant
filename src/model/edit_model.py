@@ -10,7 +10,7 @@ from src.model.heads import build_linear_heads
 @dataclass(frozen=True)
 class EditModelConfig:
     model_name: str = "ai-forever/ruRoberta-large"
-    fallback_model_name: str = "ai-forever/ruBert-base"
+    fallback_model_name: str = "ai-forever/ruRoberta-large"
     punctuation_label_count: int = 13
     punctuation_action_count: int = 5
     error_type_count: int = 7

@@ -17,10 +17,12 @@ def test_diff_analyzer_classifies_hyphen_and_case():
 
     edits = analyzer.analyze("сегодня что то произошло", "Сегодня что-то произошло.")
     edit_types = [edit.edit_type for edit in edits]
+    rule_ids = {edit.rule_id for edit in edits}
 
     assert "case_change" in edit_types
     assert "hyphen_change" in edit_types
     assert "final_punctuation" in edit_types
+    assert "hyphen_particles" in rule_ids
 
 
 def test_diff_analyzer_rejects_case_change_after_number_or_latin_prefix():
@@ -55,3 +57,13 @@ def test_diff_analyzer_keeps_position_for_punctuation_insert_inside_number():
     assert comma_edits
     assert comma_edits[0].start == comma_edits[0].end
     assert 11 < comma_edits[0].start < 16
+
+
+def test_diff_analyzer_keeps_rule_id_for_generated_orthography_edits():
+    analyzer = DiffAnalyzer()
+
+    edits = analyzer.analyze("Я недумаю и вижу чящу.", "Я не думаю и вижу чащу.")
+    rule_ids = {(edit.replacement.lower(), edit.rule_id) for edit in edits}
+
+    assert ("не думаю", "ne_verb") in rule_ids
+    assert any(replacement == "чащу" and rule.startswith("pattern_") for replacement, rule in rule_ids)

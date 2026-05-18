@@ -47,33 +47,12 @@ data:
   manifest_path: reports/dataset_manifest.json
   target_total_examples: 450000
   clean_identity_ratio: 0.10
-  synthetic_balance:
-    spelling_min_examples: 60000
-    split_join_min_examples: 20000
-    hyphen_min_examples: 20000
-    orthography_groups:
-      ne_verb_min_examples: 8000
-      tsya_min_examples: 6000
-      combo_min_examples: 8000
-      hard_sign_min_examples: 6000
-      prefix_z_s_min_examples: 6000
-      ci_min_examples: 4000
-      hissing_o_e_min_examples: 5000
-    punctuation_groups:
-      comma_subordinate_min_examples: 20000
-      comma_conjunction_min_examples: 15000
-      introductory_min_examples: 10000
-      colon_min_examples: 8000
-      dash_min_examples: 8000
-      semicolon_min_examples: 5000
-      quotes_brackets_min_examples: 8000
-      final_punctuation_min_examples: 20000
-      delete_replace_min_examples: 15000
-  punctuation_hard_negative_clean_ratio: 0.20
+  punctuation_hard_negative_clean_ratio: 0.0
   val_ratio: 0.05
   test_ratio: 0.05
   domain: synthetic_general
   use_external_sources: true
+  external_local_files_only: true
   max_external_examples: 10000
   external_sources:
     - name: rus_spell_gold
@@ -188,6 +167,7 @@ data:
 thresholds:
   mode: balanced
   conservative:
+    default_threshold: 0.90
     spelling_threshold: 0.92
     punctuation_threshold: 0.90
     comma_threshold: 0.90
@@ -199,10 +179,18 @@ thresholds:
     bracket_threshold: 0.94
     punctuation_delete_threshold: 0.98
     split_join_threshold: 0.95
+    dictionary_threshold: 0.95
     context_pair_threshold: 0.995
+    tsya_threshold: 0.995
+    ne_adjective_threshold: 0.98
+    ne_participle_threshold: 0.99
+    comma_subordinate_threshold: 0.92
+    introductory_word_threshold: 0.94
+    dash_subject_predicate_threshold: 0.96
     hyphen_threshold: 0.95
     case_threshold: 0.90
   balanced:
+    default_threshold: 0.85
     spelling_threshold: 0.78
     punctuation_threshold: 0.86
     comma_threshold: 0.86
@@ -214,10 +202,18 @@ thresholds:
     bracket_threshold: 0.90
     punctuation_delete_threshold: 0.95
     split_join_threshold: 0.84
+    dictionary_threshold: 0.92
     context_pair_threshold: 0.98
+    tsya_threshold: 0.97
+    ne_adjective_threshold: 0.96
+    ne_participle_threshold: 0.98
+    comma_subordinate_threshold: 0.88
+    introductory_word_threshold: 0.92
+    dash_subject_predicate_threshold: 0.93
     hyphen_threshold: 0.84
     case_threshold: 0.85
   aggressive:
+    default_threshold: 0.80
     spelling_threshold: 0.75
     punctuation_threshold: 0.72
     comma_threshold: 0.72
@@ -229,7 +225,14 @@ thresholds:
     bracket_threshold: 0.82
     punctuation_delete_threshold: 0.90
     split_join_threshold: 0.80
+    dictionary_threshold: 0.88
     context_pair_threshold: 0.97
+    tsya_threshold: 0.97
+    ne_adjective_threshold: 0.94
+    ne_participle_threshold: 0.96
+    comma_subordinate_threshold: 0.82
+    introductory_word_threshold: 0.86
+    dash_subject_predicate_threshold: 0.90
     hyphen_threshold: 0.80
     case_threshold: 0.78
 

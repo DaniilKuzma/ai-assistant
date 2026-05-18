@@ -7,6 +7,7 @@ from typing import Any
 
 from src.evaluation.metrics import compute_metrics, mark_correct_edits
 from src.evaluation.reports import write_edit_logs, write_required_evaluation_reports
+from src.evaluation.rule_metrics import write_rule_reports
 from src.inference.corrector import Corrector
 from src.validation.diff_analyzer import DiffAnalyzer
 
@@ -26,6 +27,7 @@ def evaluate_rows(
     *,
     metric_weights: dict[str, float] | None = None,
     show_progress: bool = False,
+    report_metadata: dict[str, Any] | None = None,
 ) -> dict[str, float]:
     return evaluate_rows_detailed(
         rows,
@@ -33,6 +35,7 @@ def evaluate_rows(
         output_dir=output_dir,
         metric_weights=metric_weights,
         show_progress=show_progress,
+        report_metadata=report_metadata,
     ).metrics
 
 
@@ -43,6 +46,7 @@ def evaluate_rows_detailed(
     *,
     metric_weights: dict[str, float] | None = None,
     show_progress: bool = False,
+    report_metadata: dict[str, Any] | None = None,
 ) -> EvaluationResult:
     corrector = corrector or Corrector()
     row_list = list(rows)
@@ -71,6 +75,9 @@ def evaluate_rows_detailed(
                 "source": edit.source,
                 "replacement": edit.replacement,
                 "edit_type": edit.edit_type,
+                "start": edit.start,
+                "end": edit.end,
+                "rule_id": edit.rule_id,
                 "status": edit.status,
                 "reason": edit.reason,
                 "confidence": edit.confidence,
@@ -84,17 +91,20 @@ def evaluate_rows_detailed(
                     {
                         "confidence": edit.confidence,
                         "is_correct": correctness_by_identity.get(id(edit), False),
+                        "rule_id": edit.rule_id,
                     }
                 )
     for score in edit_scores:
         score["total_gold_edits"] = total_gold_edits
     metrics = compute_metrics(evaluated, weights=metric_weights)
     if output_dir is not None:
-        write_required_evaluation_reports(evaluated, metrics, output_dir)
+        write_required_evaluation_reports(evaluated, metrics, output_dir, metadata=report_metadata)
         write_edit_logs(accepted, rejected, output_dir)
+        write_rule_reports(evaluated, accepted, rejected, output_dir)
     return EvaluationResult(
         metrics=metrics,
-        edit_scores=edit_scores or [{"confidence": 0.0, "is_correct": False, "total_gold_edits": total_gold_edits}],
+        edit_scores=edit_scores
+        or [{"confidence": 0.0, "is_correct": False, "rule_id": "", "total_gold_edits": total_gold_edits}],
         accepted_edits=accepted,
         rejected_edits=rejected,
     )

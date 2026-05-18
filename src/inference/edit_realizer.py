@@ -11,6 +11,6 @@ def apply_candidate(text: str, candidate: Candidate) -> str:
 
 def ensure_final_punctuation(text: str, mark: str = ".") -> str:
     stripped = text.rstrip()
-    if not stripped or stripped[-1] in ".!?":
+    if not stripped or stripped[-1] in ".!?…":
         return text
     return stripped + mark

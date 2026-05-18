@@ -14,6 +14,13 @@
     "BRACKET_OPEN": 11,
     "BRACKET_CLOSE": 12
   },
+  "punctuation_actions": {
+    "KEEP_NONE": 0,
+    "KEEP_EXISTING": 1,
+    "INSERT": 2,
+    "DELETE": 3,
+    "REPLACE": 4
+  },
   "error_types": {
     "keep": 0,
     "spelling": 1,

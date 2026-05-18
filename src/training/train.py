@@ -24,6 +24,9 @@ from src.training.callbacks import BestMetricTracker
 from src.training.trainer import EditModelTrainer, TrainLoopConfig
 
 
+DISABLE_MODEL_TRAINING_ENV = "RUSSIAN_CORRECTOR_DISABLE_MODEL_TRAINING"
+
+
 def evaluate_trained_model(
     config_path: str | Path = "configs/config.yaml",
     *,
@@ -44,6 +47,11 @@ def evaluate_trained_model(
         output_dir=reports_dir,
         metric_weights=config.get("metrics", {}).get("combined_score_weights"),
         show_progress=bool(config.get("training", {}).get("show_progress", False)),
+        report_metadata={
+            "evaluation_backend": "provided_corrector" if corrector is not None else "freshly_trained_model",
+            "model_training_disabled": False,
+            "model_training_disabled_source": "",
+        },
     )
     write_threshold_precision_recall_plot(
         threshold_sweep(evaluation_result.edit_scores, [0.5, 0.7, 0.8, 0.9, 0.95]),
@@ -73,11 +81,15 @@ def train(config_path: str | Path = "configs/config.yaml") -> dict[str, Any]:
     output_dir = config.get("paths", {}).get("adapter_output_dir", "models/adapters/latest")
 
     run_model_training = _run_model_training_enabled(config)
+    model_training_disabled_source = _model_training_disabled_source(config)
+    model_training_disabled = bool(model_training_disabled_source)
     result: dict[str, Any] = {
         "status": "features_prepared",
         "output_dir": output_dir,
         "feature_count": len(features),
         "model_training_ran": False,
+        "model_training_disabled": model_training_disabled,
+        "model_training_disabled_source": model_training_disabled_source,
     }
 
     if run_model_training:
@@ -91,14 +103,22 @@ def train(config_path: str | Path = "configs/config.yaml") -> dict[str, Any]:
     )
     evaluation_split = _training_evaluation_split(config)
     evaluation_rows = _load_evaluation_rows(config, rows)
-    corrector = _build_evaluation_corrector(config, bool(result["model_training_ran"]))
-    print(f"Evaluating {len(evaluation_rows)} {evaluation_split} examples with {corrector.__class__.__name__}...")
+    corrector, backend_metadata = _select_evaluation_corrector(
+        config,
+        model_training_ran=bool(result["model_training_ran"]),
+        model_training_disabled_source=model_training_disabled_source,
+    )
+    print(
+        f"Evaluating {len(evaluation_rows)} {evaluation_split} examples "
+        f"with {corrector.__class__.__name__} ({backend_metadata['evaluation_backend']})..."
+    )
     evaluation_result = evaluate_rows_detailed(
         evaluation_rows,
         corrector=corrector,
         output_dir=reports_dir,
         metric_weights=config.get("metrics", {}).get("combined_score_weights"),
         show_progress=bool(config.get("training", {}).get("show_progress", False)),
+        report_metadata=backend_metadata,
     )
     evaluation_metrics = evaluation_result.metrics
     checkpoint_metric = str(config.get("training", {}).get("checkpoint_metric", "combined_score"))
@@ -117,6 +137,9 @@ def train(config_path: str | Path = "configs/config.yaml") -> dict[str, Any]:
             "evaluation_split": evaluation_split,
             "evaluation_count": float(len(evaluation_rows)),
             "model_training_ran": float(result["model_training_ran"]),
+            "model_training_disabled": model_training_disabled,
+            "model_training_disabled_source": model_training_disabled_source,
+            **backend_metadata,
             "checkpoint_metric": checkpoint_metric,
             "checkpoint_metric_value": checkpoint_metric_value,
             "is_best_checkpoint": float(is_best_checkpoint),
@@ -129,6 +152,7 @@ def train(config_path: str | Path = "configs/config.yaml") -> dict[str, Any]:
             "evaluation_count": len(evaluation_rows),
             "evaluation_split": evaluation_split,
             "evaluation_metrics": evaluation_metrics,
+            **backend_metadata,
             "checkpoint_metric": checkpoint_metric,
             "checkpoint_metric_value": checkpoint_metric_value,
             "is_best_checkpoint": is_best_checkpoint,
@@ -205,12 +229,60 @@ def _build_evaluation_corrector(config: dict[str, Any], model_training_ran: bool
     return Corrector()
 
 
+def _select_evaluation_corrector(
+    config: dict[str, Any],
+    *,
+    model_training_ran: bool,
+    model_training_disabled_source: str,
+) -> tuple[Any, dict[str, Any]]:
+    metadata: dict[str, Any] = {
+        "model_training_disabled": bool(model_training_disabled_source),
+        "model_training_disabled_source": model_training_disabled_source,
+    }
+    if model_training_ran:
+        return _build_evaluation_corrector(config, True), {
+            **metadata,
+            "evaluation_backend": "freshly_trained_model",
+            "checkpoint_load_error": "",
+        }
+
+    if model_training_disabled_source and _configured_model_artifacts_exist(config):
+        try:
+            return TrainedModelCorrector.from_config(config), {
+                **metadata,
+                "evaluation_backend": "existing_model_checkpoint",
+                "checkpoint_load_error": "",
+            }
+        except Exception as exc:
+            return _build_evaluation_corrector(config, False), {
+                **metadata,
+                "evaluation_backend": "no_model",
+                "checkpoint_load_error": f"{exc.__class__.__name__}: {exc}",
+            }
+
+    return _build_evaluation_corrector(config, False), {
+        **metadata,
+        "evaluation_backend": "no_model",
+        "checkpoint_load_error": "",
+    }
+
+
+def _configured_model_artifacts_exist(config: dict[str, Any]) -> bool:
+    paths = config.get("paths", {})
+    adapter_dir = Path(paths.get("adapter_output_dir", "models/adapters/latest"))
+    heads_path = Path(paths.get("heads_output_dir", "models/heads/latest")) / "heads.pt"
+    return adapter_dir.exists() and heads_path.exists()
+
+
 def _report_paths(reports_dir: Path) -> dict[str, str]:
     names = [
         "dataset_report.md",
         "training_report.md",
         "evaluation_summary.csv",
         "error_by_type.csv",
+        "rule_precision_recall.csv",
+        "error_by_rule.csv",
+        "rule_worse_examples.csv",
         "clean_overcorrection_examples.csv",
         "dirty_worse_examples.csv",
         "accepted_edits.csv",
@@ -230,7 +302,7 @@ def _build_features(config: dict[str, Any], rows: list[dict[str, Any]]):
         tokenizer = load_tokenizer(
             EncoderLoadConfig(
                 model_name=model_config.get("primary_encoder", "ai-forever/ruRoberta-large"),
-                fallback_model_name=model_config.get("fallback_encoder", "ai-forever/ruBert-base"),
+                fallback_model_name=model_config.get("fallback_encoder", "ai-forever/ruRoberta-large"),
                 local_files_only=bool(model_config.get("local_files_only", False)),
             )
         )
@@ -256,7 +328,7 @@ def _run_model_training(config: dict[str, Any], features) -> dict[str, Any]:  # 
     edit_model = CandidateAwareEditModel(
         EditModelConfig(
             model_name=model_config.get("primary_encoder", "ai-forever/ruRoberta-large"),
-            fallback_model_name=model_config.get("fallback_encoder", "ai-forever/ruBert-base"),
+            fallback_model_name=model_config.get("fallback_encoder", "ai-forever/ruRoberta-large"),
             punctuation_label_count=len(config.get("labels", {}).get("punctuation", {})),
             punctuation_action_count=len(config.get("labels", {}).get("punctuation_actions", {})) or 5,
             error_type_count=len(config.get("labels", {}).get("error_types", {})),
@@ -326,12 +398,21 @@ def _run_model_training(config: dict[str, Any], features) -> dict[str, Any]:  # 
 
 
 def _run_model_training_enabled(config: dict[str, Any]) -> bool:
-    if os.environ.get("RUSSIAN_CORRECTOR_DISABLE_MODEL_TRAINING") == "1":
+    if os.environ.get(DISABLE_MODEL_TRAINING_ENV) == "1":
         return False
     value = config.get("training", {}).get("run_model_training", False)
     if not isinstance(value, bool):
         raise ValueError("training.run_model_training must be true or false, not a string/value alias")
     return value
+
+
+def _model_training_disabled_source(config: dict[str, Any]) -> str:
+    if os.environ.get(DISABLE_MODEL_TRAINING_ENV) == "1":
+        return DISABLE_MODEL_TRAINING_ENV
+    value = config.get("training", {}).get("run_model_training", False)
+    if value is False:
+        return "training.run_model_training"
+    return ""
 
 
 def main() -> None:

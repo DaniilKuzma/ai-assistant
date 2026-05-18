@@ -10,7 +10,7 @@ def test_train_entrypoint_prepares_features_and_all_reports(tmp_path: Path):
     config = {
         "model": {
             "primary_encoder": "ai-forever/ruRoberta-large",
-            "fallback_encoder": "ai-forever/ruBert-base",
+            "fallback_encoder": "ai-forever/ruRoberta-large",
             "local_files_only": False,
             "max_sequence_length": 32,
             "max_candidates": 8,
@@ -46,10 +46,12 @@ def test_train_entrypoint_prepares_features_and_all_reports(tmp_path: Path):
     assert result["evaluation_count"] == 4
     assert result["reports_dir"] == str(tmp_path / "reports")
     assert "evaluation_summary.csv" in result["report_paths"]
+    assert "rule_precision_recall.csv" in result["report_paths"]
     for name in [
         "dataset_report.md",
         "training_report.md",
         "evaluation_summary.csv",
+        "rule_precision_recall.csv",
         "accepted_edits.csv",
         "rejected_edits.csv",
         "loss_curves.png",

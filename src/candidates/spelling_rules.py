@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from src.candidates.frequent_errors import SPLIT_JOIN_WHITELIST, WRONG_TO_CORRECT
 from src.candidates.orthography_rules import OrthographyCandidate, generated_orthography_candidates
+from src.rules.base import RuleMode
 
 
 @dataclass(frozen=True)
@@ -13,6 +13,7 @@ class SpellingCandidateSpec:
     confidence: float = 0.95
     requires_model: bool = False
     rule: str = "frequent_errors"
+    mode: RuleMode = "deterministic"
 
 
 def spelling_candidates(word: str) -> list[str]:
@@ -20,12 +21,7 @@ def spelling_candidates(word: str) -> list[str]:
 
 
 def spelling_candidate_specs(word: str) -> list[SpellingCandidateSpec]:
-    lower = word.lower()
     candidates: list[SpellingCandidateSpec] = []
-    known = WRONG_TO_CORRECT.get(lower)
-    if known:
-        edit_type = "split_join" if lower in SPLIT_JOIN_WHITELIST else "spelling"
-        candidates.append(SpellingCandidateSpec(known, edit_type=edit_type, confidence=0.95))
 
     for generated in generated_orthography_candidates(word):
         candidates.append(_from_generated(generated))
@@ -40,6 +36,7 @@ def _from_generated(candidate: OrthographyCandidate) -> SpellingCandidateSpec:
         confidence=candidate.confidence,
         requires_model=candidate.requires_model,
         rule=candidate.rule,
+        mode=candidate.mode,
     )
 
 

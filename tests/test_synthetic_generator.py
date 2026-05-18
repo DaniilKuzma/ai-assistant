@@ -1,4 +1,5 @@
 from src.data.synthetic_generator import SyntheticGenerator
+from src.rules.registry import rule_by_id
 
 EXPANDED_ORTHOGRAM_CASES = [
     ("хочется", "хочеться"),
@@ -31,6 +32,88 @@ def test_synthetic_generator_creates_allowed_error_example():
     assert example.source != example.target
     assert example.target == "Я не знаю, что делать."
     assert set(example.error_types).issubset({"spelling", "punctuation", "split_join", "hyphen", "final_punctuation"})
+
+
+def test_synthetic_transformations_carry_rule_ids():
+    generator = SyntheticGenerator(seed=7)
+
+    transformations = generator._available_transformations("Я не знаю, что делать.")
+
+    assert transformations
+    assert all(transformation.rule_id for transformation in transformations)
+
+
+def test_ne_verb_rule_generates_corruption_and_candidate_with_same_rule_id():
+    rule = rule_by_id("ne_verb")
+
+    corruptions = list(rule.generate_corruptions("Я не думаю об этом."))
+    corruption_values = {(item.apply("Я не думаю об этом."), item.rule_id) for item in corruptions}
+    candidates = list(rule.generate_candidates("недумаю"))
+
+    assert ("Я недумаю об этом.", "ne_verb") in corruption_values
+    assert any(candidate.replacement == "не думаю" and candidate.rule_id == "ne_verb" for candidate in candidates)
+
+
+def test_cha_shcha_rule_generates_corruption_and_candidate_with_same_rule_id():
+    rule = rule_by_id("pattern_чя_ча")
+
+    corruptions = list(rule.generate_corruptions("Я вижу чащу."))
+    corruption_values = {(item.apply("Я вижу чащу."), item.rule_id) for item in corruptions}
+    candidates = list(rule.generate_candidates("чящу"))
+
+    assert ("Я вижу чящу.", "pattern_чя_ча") in corruption_values
+    assert any(candidate.replacement == "чащу" and candidate.rule_id == "pattern_чя_ча" for candidate in candidates)
+
+
+def test_hyphen_particle_rule_generates_corruption_and_candidate_with_same_rule_id():
+    rule = rule_by_id("hyphen_particles")
+    target = "Кто-то пришёл."
+
+    corruptions = list(rule.generate_corruptions(target))
+    corruption_values = {(item.apply(target), item.rule_id) for item in corruptions}
+    candidates = list(rule.generate_span("Кто то пришёл.", tuple(), 0))
+
+    assert ("Кто то пришёл.", "hyphen_particles") in corruption_values
+    assert any(candidate.replacement.lower() == "кто-то" and candidate.rule_id == "hyphen_particles" for candidate in candidates)
+
+
+def test_koe_koy_rule_generates_corruption_and_candidate_with_same_rule_id():
+    rule = rule_by_id("hyphen_koe_koy")
+    target = "Кое-где это указано."
+
+    corruptions = list(rule.generate_corruptions(target))
+    corruption_values = {(item.apply(target), item.rule_id) for item in corruptions}
+    candidates = list(rule.generate_span("Кое где это указано.", tuple(), 0))
+
+    assert ("Кое где это указано.", "hyphen_koe_koy") in corruption_values
+    assert any(candidate.replacement.lower() == "кое-где" and candidate.rule_id == "hyphen_koe_koy" for candidate in candidates)
+
+
+def test_po_adverb_rule_generates_corruption_and_candidate_with_same_rule_id():
+    rule = rule_by_id("hyphen_po_adverbs")
+    target = "Он говорит по-русски."
+
+    corruptions = list(rule.generate_corruptions(target))
+    corruption_values = {(item.apply(target), item.rule_id) for item in corruptions}
+    candidates = list(rule.generate_span("Он говорит по русски.", tuple(), 2))
+
+    assert ("Он говорит по русски.", "hyphen_po_adverbs") in corruption_values
+    assert any(candidate.replacement.lower() == "по-русски" and candidate.rule_id == "hyphen_po_adverbs" for candidate in candidates)
+
+
+def test_pol_polu_rule_generates_corruption_and_candidate_with_same_rule_id():
+    rule = rule_by_id("pol_polu_compounds")
+    target = "Пол-лимона и полуфинал готовы."
+
+    corruptions = list(rule.generate_corruptions(target))
+    corruption_values = {(item.apply(target), item.rule_id) for item in corruptions}
+    hyphen_candidates = list(rule.generate_span("Пол лимона готов.", tuple(), 0))
+    joined_candidates = list(rule.generate_span("Ждали полу финал.", tuple(), 1))
+
+    assert ("Пол лимона и полуфинал готовы.", "pol_polu_compounds") in corruption_values
+    assert ("Пол-лимона и полу финал готовы.", "pol_polu_compounds") in corruption_values
+    assert any(candidate.replacement.lower() == "пол-лимона" and candidate.rule_id == "pol_polu_compounds" for candidate in hyphen_candidates)
+    assert any(candidate.replacement.lower() == "полуфинал" and candidate.rule_id == "pol_polu_compounds" for candidate in joined_candidates)
 
 
 def test_synthetic_generator_can_create_identity_examples():

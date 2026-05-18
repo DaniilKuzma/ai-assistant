@@ -8,6 +8,7 @@ from src.inference.model_corrector import (
     TorchCandidateModelBackend,
     TrainedModelCorrector,
     _prepare_heads_state_dict_for_module,
+    _select_candidates,
 )
 from src.model.heads import build_linear_heads
 
@@ -46,6 +47,103 @@ def test_trained_model_corrector_applies_candidate_when_model_score_passes_thres
 
     assert result.corrected_text == "Я не знаю что делать."
     assert any(edit.edit_type == "split_word" and edit.status == "accepted" for edit in result.edits)
+
+
+def test_trained_model_corrector_applies_candidate_with_rule_threshold():
+    corrector = TrainedModelCorrector(
+        FakeBackend({"Жизнь": 0.80}),
+        thresholds={"frequent_errors_threshold": 0.70, "spelling_threshold": 0.95},
+    )
+
+    result = corrector.correct("Жызнь прекрасна.")
+
+    assert result.corrected_text == "Жизнь прекрасна."
+    assert any(edit.rule_id and edit.source == "Жызнь" and edit.status == "accepted" for edit in result.edits)
+
+
+def test_candidate_threshold_precedence_uses_rule_family_edit_type_and_default():
+    exact = Candidate(
+        "жызнь",
+        "жизнь",
+        "spelling",
+        0,
+        5,
+        confidence=0.94,
+        rule_id="pattern_жы_жи",
+        mode="deterministic",
+    )
+    family = Candidate(
+        "учится",
+        "учиться",
+        "spelling",
+        0,
+        6,
+        confidence=0.9,
+        requires_model=True,
+        rule_id="tsya_soft_insert",
+        mode="model_required",
+    )
+    spelling = Candidate("чясто", "часто", "spelling", 0, 5, confidence=0.94, mode="deterministic")
+    edit_type = Candidate("что то", "что-то", "hyphen", 0, 6, confidence=0.95, mode="candidate_only")
+    default = Candidate("ошыпка", "ошибка", "unknown_edit", 0, 6, confidence=0.5)
+
+    assert not _select_candidates(
+        [ModelCandidatePrediction(exact, score=0.89, confidence=0.89)],
+        {"pattern_жы_жи_threshold": 0.90, "deterministic_threshold": 0.70, "spelling_threshold": 0.50},
+    )
+    assert not _select_candidates(
+        [ModelCandidatePrediction(family, score=0.97, confidence=0.97)],
+        {"tsya_threshold": 0.98, "model_required_threshold": 0.90, "spelling_threshold": 0.50},
+    )
+    assert _select_candidates(
+        [ModelCandidatePrediction(spelling, score=0.71, confidence=0.71)],
+        {"spelling_threshold": 0.70, "default_threshold": 0.95},
+    )
+    assert _select_candidates(
+        [ModelCandidatePrediction(edit_type, score=0.86, confidence=0.86)],
+        {"hyphen_threshold": 0.85, "candidate_only_threshold": 0.90},
+    )
+    assert not _select_candidates(
+        [ModelCandidatePrediction(default, score=0.84, confidence=0.84)],
+        {"default_threshold": 0.85},
+    )
+
+
+def test_model_selection_treats_zero_length_punctuation_at_same_gap_as_conflicting():
+    comma = Candidate(
+        "",
+        ",",
+        "punctuation_insert",
+        7,
+        7,
+        confidence=0.9,
+        requires_model=True,
+        rule_id="comma_subordinate",
+        mode="model_required",
+    )
+    colon = Candidate(
+        "",
+        ":",
+        "punctuation_insert",
+        7,
+        7,
+        confidence=0.9,
+        requires_model=True,
+        rule_id="enumeration_colon",
+        mode="model_required",
+    )
+
+    selected = _select_candidates(
+        [
+            ModelCandidatePrediction(comma, score=0.99, confidence=0.99),
+            ModelCandidatePrediction(colon, score=0.98, confidence=0.98),
+        ],
+        {"punctuation_insert_threshold": 0.9, "model_required_threshold": 0.9},
+    )
+
+    assert len(selected) == 1
+    assert selected[0].replacement == ","
+    assert selected[0].rule_id == "comma_subordinate"
 
 
 def test_trained_model_corrector_rejects_context_dependent_pair_without_strict_context():
@@ -168,6 +266,64 @@ def test_trained_model_corrector_uses_label_specific_punctuation_thresholds():
     assert result.corrected_text == "Он сказал привет: дальше."
 
 
+def test_trained_model_corrector_uses_rule_specific_punctuation_threshold_before_label():
+    corrector = TrainedModelCorrector(
+        FakeBackend(
+            {},
+            punctuation=[ModelPunctuationPrediction(1, "COMMA", 0.89, action="INSERT", rule_id="comma_subordinate")],
+        ),
+        thresholds={"punctuation_threshold": 0.5, "comma_threshold": 0.95, "comma_subordinate_threshold": 0.88},
+    )
+
+    result = corrector.correct("Я думаю что важно.")
+
+    assert result.corrected_text == "Я думаю, что важно."
+
+
+def test_trained_model_corrector_does_not_select_low_score_tsya_candidate():
+    corrector = TrainedModelCorrector(
+        FakeBackend({"появиться": 0.4}),
+        thresholds={"spelling_threshold": 0.9, "tsya_threshold": 0.98},
+    )
+
+    result = corrector.correct("Они могут появится завтра.")
+
+    assert result.corrected_text == "Они могут появится завтра."
+    assert not any(edit.source.lower() == "появится" and edit.replacement.lower() == "появиться" for edit in result.edits)
+
+
+def test_trained_model_corrector_rejects_high_confidence_dangerous_tsya_prediction():
+    corrector = TrainedModelCorrector(
+        FakeBackend({"появится": 0.99}),
+        thresholds={"spelling_threshold": 0.5, "tsya_threshold": 0.98},
+    )
+
+    result = corrector.correct("Они могут появиться завтра.")
+
+    assert result.corrected_text == "Они могут появиться завтра."
+    assert any(edit.source == "появиться" and edit.status == "rejected" and edit.reason == "dangerous_tsya" for edit in result.edits)
+
+
+def test_trained_model_corrector_accepts_high_confidence_useful_tsya_prediction():
+    corrector = TrainedModelCorrector(
+        FakeBackend({"появиться": 0.99}),
+        thresholds={"spelling_threshold": 0.5, "tsya_threshold": 0.98},
+    )
+
+    result = corrector.correct("Они могут появится завтра.")
+
+    assert result.corrected_text == "Они могут появиться завтра."
+    assert any(edit.source == "появится" and edit.status == "accepted" and edit.rule_id == "tsya_soft_insert" for edit in result.edits)
+
+
+def test_trained_model_corrector_does_not_append_dot_after_ellipsis():
+    corrector = TrainedModelCorrector(FakeBackend({}))
+
+    result = corrector.correct("Мы ждали файл…")
+
+    assert result.corrected_text == "Мы ждали файл…"
+
+
 def test_torch_backend_passes_candidate_replacement_tokens_to_model():
     tokenizer = FakeTokenizer()
     module = CapturingModule(max_candidates=3)
@@ -189,8 +345,29 @@ def test_torch_backend_passes_candidate_replacement_tokens_to_model():
     replacement_ids = module.last_kwargs["candidate_replacement_ids"]
     replacement_mask = module.last_kwargs["candidate_replacement_mask"]
     assert replacement_ids.shape[0:2] == torch.Size([1, 3])
-    assert replacement_mask[0, 1].any()
-    assert replacement_ids[0, 1].sum().item() > 0
+    assert replacement_mask[0, 0].any()
+    assert replacement_ids[0, 0].sum().item() > 0
+
+
+def test_torch_backend_candidate_budget_prefers_edit_over_keep():
+    tokenizer = FakeTokenizer()
+    module = CapturingModule(max_candidates=1)
+    backend = TorchCandidateModelBackend(
+        tokenizer=tokenizer,
+        module=module,
+        device=torch.device("cpu"),
+        punctuation_labels={},
+        max_length=32,
+        max_candidates=1,
+    )
+    candidates = [
+        Candidate("слово", "слово", "keep", 0, 5),
+        Candidate("недумаю", "не думаю", "split_join", 6, 13, confidence=0.97),
+    ]
+
+    predictions = backend.score_candidates("слово недумаю", candidates)
+
+    assert [prediction.candidate.replacement for prediction in predictions] == ["не думаю"]
 
 
 def test_torch_backend_passes_word_gap_indices_to_model_for_punctuation():

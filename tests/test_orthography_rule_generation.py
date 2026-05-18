@@ -65,6 +65,28 @@ def test_candidate_generator_emits_ne_plus_verb_split_candidates_for_hundreds_of
     assert set(cases).issubset(found)
 
 
+def test_rule_registry_has_unique_ids():
+    from src.rules.registry import all_rules
+
+    ids = [rule.spec.id for rule in all_rules()]
+
+    assert len(ids) == len(set(ids))
+    assert "ne_verb" in ids
+    assert "tsya_soft_insert" in ids
+
+
+def test_tsya_rules_are_model_required_bidirectional_rules():
+    from src.rules.registry import rule_by_id
+
+    insert_rule = rule_by_id("tsya_soft_insert")
+    delete_rule = rule_by_id("tsya_soft_delete")
+
+    assert insert_rule.spec.mode == "model_required"
+    assert delete_rule.spec.mode == "model_required"
+    assert any(candidate.replacement == "учиться" and candidate.requires_model for candidate in insert_rule.generate_candidates("учится"))
+    assert any(candidate.replacement == "учится" and candidate.requires_model for candidate in delete_rule.generate_candidates("учиться"))
+
+
 def test_candidate_generator_does_not_split_known_ne_exceptions():
     generator = CandidateGenerator()
     candidates = generator.generate("Я ненавижу шум, недоумеваю и недооценил риск.")
@@ -107,19 +129,26 @@ def test_candidate_generator_emits_tsya_candidates_as_model_scored_when_context_
     candidates = generator.generate("Он учится и хочет учиться.")
 
     values = {
-        (candidate.source.lower(), candidate.replacement.lower(), candidate.edit_type, candidate.requires_model)
+        (
+            candidate.source.lower(),
+            candidate.replacement.lower(),
+            candidate.edit_type,
+            candidate.mode,
+            candidate.requires_model,
+            candidate.requires_scoring,
+        )
         for candidate in candidates
     }
 
-    assert ("учится", "учиться", "spelling", True) in values
-    assert ("учиться", "учится", "spelling", True) in values
+    assert ("учится", "учиться", "spelling", "model_required", True, True) in values
+    assert ("учиться", "учится", "spelling", "model_required", True, True) in values
 
 
-def test_rule_backed_corrector_accepts_trusted_generated_spelling_candidates():
-    result = Corrector().correct("Жызнью доволен, но безполезными чорными обяснениями нет.")
+def test_plain_corrector_does_not_apply_candidate_only_ne_verb_without_scorer():
+    result = Corrector().correct("Я недумаю об этом.")
 
-    assert result.corrected_text == "Жизнью доволен, но бесполезными черными объяснениями нет."
-    assert all(edit.status == "accepted" for edit in result.edits)
+    assert result.corrected_text == "Я недумаю об этом."
+    assert not any(edit.source.lower() == "недумаю" and edit.replacement.lower() == "не думаю" for edit in result.edits)
 
 
 def test_model_corrector_can_apply_generated_ne_verb_candidate_after_scoring():

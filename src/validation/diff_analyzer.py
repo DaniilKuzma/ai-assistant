@@ -4,13 +4,14 @@ from dataclasses import dataclass, replace
 import difflib
 import re
 
+from src.candidates.candidate_generator import CandidateGenerator
 from src.candidates.frequent_errors import CONTEXT_DEPENDENT_WHITELIST, HYPHEN_WHITELIST, SPLIT_JOIN_WHITELIST, WRONG_TO_CORRECT
 from src.candidates.spelling_rules import spelling_candidate_specs
 from src.preprocessing.tokenizer import PUNCTUATION
 from src.preprocessing.tokenizer import tokenize_words
 
 
-FINAL_PUNCT = ".!?"
+FINAL_PUNCT = ".!?…"
 PUNCT_RE = re.compile(r"[,.!?:;—…\"'()«»]")
 SENTENCE_START_PREFIX_CHARS = set(" \t\r\n\"'«„“([{—-")
 
@@ -25,6 +26,7 @@ class Edit:
     status: str = "proposed"
     reason: str = ""
     confidence: float = 1.0
+    rule_id: str = ""
 
     def with_status(self, status: str, reason: str = "") -> "Edit":
         return replace(self, status=status, reason=reason)
@@ -62,12 +64,32 @@ class DiffAnalyzer:
             if wrong in source_lower and correct in target_lower:
                 start = source_lower.find(wrong)
                 edit_type = "split_word" if " " in correct else "spelling_replace"
-                edits.append(Edit(source[start : start + len(wrong)], correct, edit_type, start, start + len(wrong), confidence=0.95))
+                edits.append(
+                    Edit(
+                        source[start : start + len(wrong)],
+                        correct,
+                        edit_type,
+                        start,
+                        start + len(wrong),
+                        confidence=0.95,
+                        rule_id="frequent_errors",
+                    )
+                )
 
         for wrong, correct in SPLIT_JOIN_WHITELIST.items():
             if correct in source_lower and wrong in target_lower:
                 start = source_lower.find(correct)
-                edits.append(Edit(source[start : start + len(correct)], wrong, "join_words", start, start + len(correct), confidence=0.95))
+                edits.append(
+                    Edit(
+                        source[start : start + len(correct)],
+                        wrong,
+                        "join_words",
+                        start,
+                        start + len(correct),
+                        confidence=0.95,
+                        rule_id="frequent_errors",
+                    )
+                )
 
         for source_phrase, replacement in CONTEXT_DEPENDENT_WHITELIST.items():
             if source_phrase in source_lower and replacement in target_lower:
@@ -81,15 +103,43 @@ class DiffAnalyzer:
                         start,
                         start + len(source_phrase),
                         confidence=0.95,
+                        rule_id="context_pair",
                     )
                 )
+
+        for candidate in CandidateGenerator().generate(source):
+            if candidate.edit_type != "hyphen":
+                continue
+            if candidate.replacement.lower() not in target_lower:
+                continue
+            edits.append(
+                Edit(
+                    candidate.source,
+                    candidate.replacement,
+                    "hyphen_change",
+                    candidate.start,
+                    candidate.end,
+                    confidence=candidate.confidence,
+                    rule_id=candidate.rule_id,
+                )
+            )
 
         for wrong, correct in HYPHEN_WHITELIST.items():
             if wrong == correct:
                 continue
             if wrong in source_lower and correct in target_lower:
                 start = source_lower.find(wrong)
-                edits.append(Edit(source[start : start + len(wrong)], correct, "hyphen_change", start, start + len(wrong), confidence=0.95))
+                edits.append(
+                    Edit(
+                        source[start : start + len(wrong)],
+                        correct,
+                        "hyphen_change",
+                        start,
+                        start + len(wrong),
+                        confidence=0.95,
+                        rule_id="hyphen_whitelist",
+                    )
+                )
 
         for token in tokenize_words(source):
             for spec in spelling_candidate_specs(token.text):
@@ -109,6 +159,7 @@ class DiffAnalyzer:
                         token.start,
                         token.end,
                         confidence=spec.confidence,
+                        rule_id=spec.rule,
                     )
                 )
 
@@ -282,10 +333,15 @@ def _punctuation_replacements(source: str, target: str, i1: int, i2: int, j1: in
 def _deduplicate(edits: list[Edit]) -> list[Edit]:
     seen: set[tuple[str, str, str, int, int]] = set()
     result: list[Edit] = []
+    result_index_by_key: dict[tuple[str, str, str, int, int], int] = {}
     for edit in edits:
         key = (edit.source, edit.replacement, edit.edit_type, edit.start, edit.end)
         if key in seen:
+            existing_index = result_index_by_key[key]
+            if not result[existing_index].rule_id and edit.rule_id:
+                result[existing_index] = edit
             continue
         seen.add(key)
+        result_index_by_key[key] = len(result)
         result.append(edit)
     return result

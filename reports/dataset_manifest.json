@@ -1,22 +1,23 @@
 {
-  "total": 450000,
+  "total": 2000,
+  "final_total_rows": 2000,
   "composition": {
-    "clean": 45000,
-    "synthetic": 395000,
-    "real": 10000
+    "clean": 200,
+    "synthetic": 1756,
+    "real": 44
   },
   "error_type_counts": {
-    "case": 2904,
-    "final_punctuation": 88301,
-    "hyphen": 20022,
-    "punctuation": 182769,
-    "spelling": 95904,
-    "split_join": 28050
+    "case": 12,
+    "final_punctuation": 159,
+    "hyphen": 139,
+    "punctuation": 640,
+    "spelling": 686,
+    "split_join": 194
   },
   "splits": {
-    "test": 22671,
-    "val": 22507,
-    "train": 404822
+    "test": 101,
+    "val": 102,
+    "train": 1797
   },
   "split_strategy": "normalized_target_v2",
   "columns": [
@@ -29,5 +30,12 @@
     "split",
     "domain",
     "edit_operations"
-  ]
+  ],
+  "synthetic_rows": 1756,
+  "clean_rows": 200,
+  "requested_limit": 2000,
+  "external_available_rows": 10000,
+  "external_allocated_budget": 44,
+  "external_used_rows": 44,
+  "external_cap_reason": "external_rows_capped_to_scaled_budget"
 }

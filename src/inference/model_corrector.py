@@ -5,7 +5,8 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from src.candidates.candidate_generator import Candidate, CandidateGenerator
-from src.candidates.frequent_errors import CONTEXT_DEPENDENT_WHITELIST
+from src.candidates.candidate_ranking import rank_candidates_for_budget
+from src.config.thresholds import threshold_for_candidate, threshold_for_punctuation_prediction
 from src.inference.corrector import CorrectionResult
 from src.inference.edit_realizer import apply_candidate, ensure_final_punctuation
 from src.inference.postprocess import normalize_spacing
@@ -24,6 +25,7 @@ class ModelCandidatePrediction:
     candidate: Candidate
     score: float
     confidence: float
+    rule_id: str = ""
 
 
 @dataclass(frozen=True)
@@ -32,6 +34,7 @@ class ModelPunctuationPrediction:
     label: str
     confidence: float
     action: str = "INSERT"
+    rule_id: str = ""
 
     @property
     def word_index(self) -> int:
@@ -61,7 +64,13 @@ class TrainedModelCorrector:
         self.max_passes = max_passes
         self.candidates = CandidateGenerator()
         self.validator = StrictValidator(
-            context_pair_threshold=float(self.thresholds.get("context_pair_threshold", 0.98))
+            context_pair_threshold=float(self.thresholds.get("context_pair_threshold", 0.98)),
+            tsya_threshold=float(
+                self.thresholds.get(
+                    "tsya_threshold",
+                    self.thresholds.get("context_pair_threshold", 0.98),
+                )
+            ),
         )
 
     @classmethod
@@ -140,7 +149,7 @@ class TorchCandidateModelBackend:
 
         encoder_load_config = EncoderLoadConfig(
             model_name=model_config.get("primary_encoder", "ai-forever/ruRoberta-large"),
-            fallback_model_name=model_config.get("fallback_encoder", "ai-forever/ruBert-base"),
+            fallback_model_name=model_config.get("fallback_encoder", "ai-forever/ruRoberta-large"),
             local_files_only=bool(model_config.get("local_files_only", False)),
         )
         tokenizer = load_tokenizer(encoder_load_config)
@@ -154,7 +163,7 @@ class TorchCandidateModelBackend:
             encoder,
             EditModelConfig(
                 model_name=model_config.get("primary_encoder", "ai-forever/ruRoberta-large"),
-                fallback_model_name=model_config.get("fallback_encoder", "ai-forever/ruBert-base"),
+                fallback_model_name=model_config.get("fallback_encoder", "ai-forever/ruRoberta-large"),
                 punctuation_label_count=len(config.get("labels", {}).get("punctuation", {})),
                 punctuation_action_count=len(config.get("labels", {}).get("punctuation_actions", {})) or 5,
                 error_type_count=len(config.get("labels", {}).get("error_types", {})),
@@ -180,7 +189,7 @@ class TorchCandidateModelBackend:
     def score_candidates(self, text: str, candidates: list[Candidate]) -> list[ModelCandidatePrediction]:
         import torch
 
-        active_candidates = candidates[: self.max_candidates]
+        active_candidates = rank_candidates_for_budget(candidates, self.max_candidates)
         encoded = _encode(self.tokenizer, text, self.max_length)
         spans = [_candidate_to_token_span(candidate, encoded["offset_mapping"]) for candidate in active_candidates]
         replacements = [_encode_replacement(self.tokenizer, candidate.replacement) for candidate in active_candidates]
@@ -206,7 +215,12 @@ class TorchCandidateModelBackend:
             confidences = torch.sigmoid(outputs["confidence_logits"][0]).detach().cpu().tolist()
 
         return [
-            ModelCandidatePrediction(candidate=candidate, score=float(scores[index]), confidence=float(confidences[index]))
+            ModelCandidatePrediction(
+                candidate=candidate,
+                score=float(scores[index]),
+                confidence=float(confidences[index]),
+                rule_id=candidate.rule_id,
+            )
             for index, candidate in enumerate(active_candidates)
         ]
 
@@ -266,9 +280,10 @@ def _select_candidates(
         candidate = prediction.candidate
         if candidate.edit_type == "keep":
             continue
-        if prediction.score < _threshold_for_candidate(candidate, thresholds):
+        rule_id = prediction.rule_id or candidate.rule_id
+        if prediction.score < threshold_for_candidate(candidate, thresholds, rule_id=rule_id):
             continue
-        if any(candidate.start < end and start < candidate.end for start, end in occupied):
+        if any(_candidates_conflict(candidate.start, candidate.end, start, end) for start, end in occupied):
             continue
         selected.append(
             Candidate(
@@ -279,26 +294,22 @@ def _select_candidates(
                 end=candidate.end,
                 confidence=prediction.confidence,
                 requires_model=candidate.requires_model,
+                rule_id=prediction.rule_id or candidate.rule_id,
+                mode=candidate.mode,
+                action=candidate.action,
+                label=candidate.label,
+                gap_index=candidate.gap_index,
+                requires=candidate.requires,
             )
         )
         occupied.append((candidate.start, candidate.end))
     return selected
 
 
-def _threshold_for_candidate(candidate: Candidate, thresholds: dict[str, float]) -> float:
-    if candidate.requires_model and _is_context_dependent_candidate(candidate):
-        return float(thresholds.get("context_pair_threshold", 0.98))
-    if candidate.edit_type == "split_join":
-        return float(thresholds.get("split_join_threshold", 0.88))
-    if candidate.edit_type == "hyphen":
-        return float(thresholds.get("hyphen_threshold", 0.88))
-    if candidate.edit_type == "case":
-        return float(thresholds.get("case_threshold", 0.85))
-    return float(thresholds.get("spelling_threshold", 0.85))
-
-
-def _is_context_dependent_candidate(candidate: Candidate) -> bool:
-    return CONTEXT_DEPENDENT_WHITELIST.get(candidate.source.lower()) == candidate.replacement.lower()
+def _candidates_conflict(candidate_start: int, candidate_end: int, occupied_start: int, occupied_end: int) -> bool:
+    if candidate_start == candidate_end or occupied_start == occupied_end:
+        return candidate_start == occupied_start
+    return candidate_start < occupied_end and occupied_start < candidate_end
 
 
 def _default_punctuation_action_labels() -> dict[str, int]:
@@ -316,6 +327,13 @@ def _apply_candidates(text: str, candidates: list[Candidate]) -> str:
             start=candidate.start + offset,
             end=candidate.end + offset,
             confidence=candidate.confidence,
+            requires_model=candidate.requires_model,
+            rule_id=candidate.rule_id,
+            mode=candidate.mode,
+            action=candidate.action,
+            label=candidate.label,
+            gap_index=candidate.gap_index,
+            requires=candidate.requires,
         )
         before = proposed
         proposed = apply_candidate(proposed, shifted)
@@ -330,7 +348,7 @@ def _apply_punctuation_predictions(
 ) -> str:
     proposed = text
     for prediction in predictions:
-        if prediction.confidence < _threshold_for_punctuation(prediction, thresholds):
+        if prediction.confidence < threshold_for_punctuation_prediction(prediction, thresholds):
             continue
         if prediction.action in {"KEEP_NONE", "KEEP_EXISTING"}:
             continue
@@ -356,27 +374,6 @@ def _apply_punctuation_predictions(
         }:
             proposed = _insert_punctuation_after_word(proposed, prediction.gap_index, _punctuation_mark(prediction.label))
     return proposed
-
-
-def _threshold_for_punctuation(prediction: ModelPunctuationPrediction, thresholds: dict[str, float]) -> float:
-    fallback = float(thresholds.get("punctuation_threshold", 0.82))
-    if prediction.action == "DELETE":
-        return float(thresholds.get("punctuation_delete_threshold", fallback))
-    if prediction.label == "COMMA":
-        return float(thresholds.get("comma_threshold", fallback))
-    if prediction.label in {"DOT", "QUESTION", "EXCLAMATION", "ELLIPSIS"}:
-        return float(thresholds.get("final_punctuation_threshold", thresholds.get("final_threshold", fallback)))
-    if prediction.label == "COLON":
-        return float(thresholds.get("colon_threshold", fallback))
-    if prediction.label == "DASH":
-        return float(thresholds.get("dash_threshold", fallback))
-    if prediction.label == "SEMICOLON":
-        return float(thresholds.get("semicolon_threshold", fallback))
-    if prediction.label in {"QUOTE_OPEN", "QUOTE_CLOSE"}:
-        return float(thresholds.get("quote_threshold", fallback))
-    if prediction.label in {"BRACKET_OPEN", "BRACKET_CLOSE"}:
-        return float(thresholds.get("bracket_threshold", fallback))
-    return fallback
 
 
 def _encode(tokenizer: Any, text: str, max_length: int) -> dict[str, Any]:

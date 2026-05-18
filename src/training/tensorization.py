@@ -10,6 +10,7 @@ from src.alignment.punctuation_label_builder import (
     build_punctuation_gap_labels,
 )
 from src.candidates.candidate_generator import Candidate, CandidateGenerator
+from src.candidates.candidate_ranking import rank_candidates_for_budget
 from src.preprocessing.punctuation_gaps import word_gap_context_token_indices
 from src.preprocessing.tokenizer import Token, tokenize_words
 from src.validation.diff_analyzer import DiffAnalyzer, Edit
@@ -107,7 +108,7 @@ def build_training_feature(
     encoded = _encode(tokenizer, source, max_length)
     offsets = encoded["offset_mapping"]
     candidates = (candidate_generator or CandidateGenerator()).generate(source)
-    candidates = candidates[:max_candidates]
+    candidates = rank_candidates_for_budget(candidates, max_candidates)
     alignment_edits = DiffAnalyzer().analyze(source, target)
     spans = [_candidate_to_token_span(candidate, offsets) for candidate in candidates]
     labels = [_candidate_label(candidate, alignment_edits) for candidate in candidates]

@@ -14,7 +14,7 @@
 1. preprocessing и protected spans;
 2. tokenizer/aligner;
 3. encoder-only модель `ai-forever/ruRoberta-large`;
-4. fallback encoder `ai-forever/ruBert-base`;
+4. fallback encoder `ai-forever/ruRoberta-large`;
 5. candidate scoring head;
 6. punctuation gap head;
 7. confidence и error type heads;
@@ -70,7 +70,7 @@ python -m src.training.train
 
 Параметры задаются в `configs/config.yaml`: режимы quick-debug/small/full, LoRA, batch size, gradient accumulation, mixed precision, thresholds и loss weights.
 
-Главный `configs/config.yaml` настроен на full-train fine-tune по датасету `450000` строк: загружается локально кешированная `ai-forever/ruRoberta-large` через `AutoModel`, при нехватке памяти используется fallback `ai-forever/ruBert-base`. Seq2seq-классы не используются.
+Главный `configs/config.yaml` настроен на full-train fine-tune по датасету `450000` строк: загружается локально кешированная `ai-forever/ruRoberta-large` через `AutoModel`; fallback также указывает на ruRoberta large. Seq2seq-классы не используются.
 
 ```bash
 python -m src.training.train configs/config.yaml

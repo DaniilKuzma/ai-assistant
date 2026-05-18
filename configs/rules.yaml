@@ -1,0 +1,597 @@
+orthography:
+  letter_vowels_not_after_hissing_c:
+    title: "Правила употребления букв: гласные не после шипящих и ц"
+    status: dictionary_model_required
+    requires:
+      - dictionary
+      - model
+    rules: []
+    notes: "Орфограммка: а/я, у/ю, о, ё, э/е, и, ы вне позиций после шипящих и ц; широкого правила в реестре нет."
+  letter_basic_hissing_vowel_patterns:
+    title: "Правила употребления букв: базовые гласные после шипящих и ц"
+    status: implemented
+    tags:
+      - orthography
+    requires:
+      - dictionary
+    rules:
+      - pattern_жы_жи
+      - pattern_шы_ши
+      - pattern_чя_ча
+      - pattern_щя_ща
+      - pattern_чю_чу
+      - pattern_щю_щу
+      - pattern_цы_ци
+      - pattern_жо_же
+      - pattern_шо_ше
+      - pattern_чо_че
+      - pattern_що_ще
+      - cy_exception
+    tests:
+      - tests/test_orthography_rule_generation.py::test_candidate_generator_emits_spelling_pattern_candidates_for_hundreds_of_forms
+      - tests/test_synthetic_generator.py::test_cha_shcha_rule_generates_corruption_and_candidate_with_same_rule_id
+    notes: "Покрыты реальные словарно проверяемые кандидаты для жи/ши, ча/ща, чу/щу, ци/цы и о/е после шипящих; восстановление ё не заявляется."
+  letter_y:
+    title: "Правила употребления букв: буква й"
+    status: planned
+    requires:
+      - dictionary
+    rules: []
+    notes: "Отдельного RuleSpec для буквы й нет."
+  hard_soft_signs:
+    title: "Буквы ъ и ь: разделительные знаки и знак мягкости"
+    status: partial
+    requires:
+      - dictionary
+    rules:
+      - soft_to_hard_sign
+      - missing_hard_sign
+    notes: "Покрыт только ъ после приставки перед е/ю/я и замена ошибочного ь на ъ; остальные функции ь не реализованы."
+  soft_sign_grammatical_forms:
+    title: "Буква ь в грамматических формах"
+    status: model_required
+    tags:
+      - orthography
+      - morphological_rules
+    requires:
+      - morphology
+      - model
+    rules:
+      - tsya_soft_delete
+      - tsya_soft_insert
+    notes: "Есть кандидаты для -тся/-ться, но выбор требует контекста и модельного скоринга."
+  unstressed_root_vowels:
+    title: "Написание значимых частей слова: безударные гласные в корнях"
+    status: dictionary_model_required
+    requires:
+      - dictionary
+      - model
+    rules: []
+    notes: "Общее правило проверяемых, непроверяемых и трудных корневых гласных не реализовано."
+  alternating_roots:
+    title: "Написание отдельных корней: чередующиеся гласные"
+    status: planned
+    requires:
+      - morphology
+      - dictionary
+    rules: []
+    notes: "Корни с чередованием а/о и и/е требуют отдельного морфемного/словарного слоя."
+  prefix_vowels:
+    title: "Безударные гласные в приставках, включая пре-/при- и раз-/роз-"
+    status: dictionary_model_required
+    requires:
+      - morphology
+      - dictionary
+      - model
+    rules: []
+    notes: "Частые ошибки могут встречаться в whitelist, но отдельного RuleSpec для класса нет."
+  suffix_vowels:
+    title: "Безударные гласные и особенности написания суффиксов"
+    status: dictionary_model_required
+    requires:
+      - morphology
+      - dictionary
+      - model
+    rules: []
+    notes: "Суффиксы -енн/-ян, -ек/-ик, -ыва/-ива и другие подгруппы Орфограммки пока не выделены в правила."
+  fleeting_connecting_vowels:
+    title: "Беглые и соединительные гласные"
+    status: planned
+    requires:
+      - morphology
+      - dictionary
+    rules: []
+    notes: "Нет отдельного кандидатора для беглых и соединительных гласных."
+  case_endings:
+    title: "Безударные гласные в падежных окончаниях"
+    status: dictionary_model_required
+    tags:
+      - orthography
+      - morphological_rules
+      - syntactic_rules
+    requires:
+      - morphology
+      - syntax
+      - dictionary
+      - model
+    rules: []
+    notes: "Падежные окончания требуют морфологии, согласования и контекста."
+  verb_endings:
+    title: "Безударные гласные в глагольных формах"
+    status: dictionary_model_required
+    requires:
+      - morphology
+      - dictionary
+      - model
+    rules: []
+    notes: "Гласные в окончаниях и инфинитиве перед -ть не имеют отдельного RuleSpec."
+  ne_ni_particles:
+    title: "Частицы не и ни"
+    status: candidate_only
+    tags:
+      - orthography
+      - context_pairs
+      - morphological_rules
+    requires:
+      - morphology
+      - model
+    rules:
+      - ne_verb
+    notes: "Реализованы кандидаты для ошибочного слитного написания не с глаголами; ни и сложные контексты не покрыты."
+  consonants_prefix_z_s:
+    title: "Правописание согласных: приставки на з-/с-"
+    status: implemented
+    tags:
+      - orthography
+    requires:
+      - dictionary
+    rules:
+      - sdelat_prefix
+      - prefix_z_to_s
+      - prefix_s_to_z
+    tests:
+      - tests/test_orthography_rule_generation.py::test_candidate_generator_emits_spelling_pattern_candidates_for_hundreds_of_forms
+    notes: "Покрыты словарно проверяемые кандидаты для з-/с- перед глухими, звонкими, сонорными и гласными."
+  consonants_voiced_devoiced:
+    title: "Правописание согласных: парные глухие и звонкие"
+    status: dictionary_model_required
+    requires:
+      - dictionary
+      - model
+    rules: []
+    notes: "Общее правило парных согласных за пределами приставок не реализовано."
+  consonants_unpronounced:
+    title: "Правописание согласных: непроизносимые согласные"
+    status: dictionary_model_required
+    requires:
+      - dictionary
+      - model
+    rules: []
+    notes: "Нет отдельного RuleSpec для лестница/сердце-подобных случаев."
+  consonant_clusters:
+    title: "Группы согласных на стыке значимых частей слова"
+    status: planned
+    requires:
+      - morphology
+      - dictionary
+    rules: []
+    notes: "Сочетания тс/дс/тц/дц, тч, сч/зч и другие стыки пока не реализованы."
+  consonants_double:
+    title: "Двойные согласные"
+    status: dictionary_model_required
+    requires:
+      - morphology
+      - dictionary
+      - model
+    rules: []
+    notes: "Н/нн, двойные согласные в корнях, заимствованиях и сокращениях не выделены в исполняемые правила."
+  nonletter_signs:
+    title: "Правила употребления небуквенных знаков: дефис, косая черта, апостроф"
+    status: planned
+    requires:
+      - dictionary
+      - syntax
+    rules: []
+    notes: "Небуквенные знаки как самостоятельный раздел Орфограммки не покрыты отдельными правилами."
+  solid_hyphen_separate_nouns:
+    title: "Слитное, дефисное и раздельное написание существительных"
+    status: syntax_required
+    requires:
+      - morphology
+      - syntax
+      - dictionary
+    rules: []
+    notes: "Сложносокращенные слова, пол-, приложения, должности и собственные имена требуют отдельной классификации."
+  solid_hyphen_separate_adjectives:
+    title: "Слитное, дефисное и раздельное написание прилагательных"
+    status: syntax_required
+    requires:
+      - morphology
+      - syntax
+      - dictionary
+    rules: []
+    notes: "Дефисные оттенки качества, терминологические и подчинительные основы не реализованы отдельными RuleSpec."
+  solid_hyphen_separate_pronouns_adverbs_particles:
+    title: "Дефисное написание местоименных слов, наречий и сочетаний с частицами"
+    status: candidate_only
+    tags:
+      - orthography
+      - hyphen_solid_separate
+    requires:
+      - dictionary
+      - model
+    rules:
+      - hyphen_particles
+      - hyphen_koe_koy
+      - hyphen_po_adverbs
+      - hyphen_whitelist
+    notes: "Реализованы кандидаты для -то/-либо/-нибудь, кое-/кой-, наречий по-... и legacy whitelist; применение требует scorer."
+  solid_hyphen_separate_service_words:
+    title: "Служебные слова, союзы, частицы и междометия: слитно или раздельно"
+    status: model_required
+    tags:
+      - orthography
+      - context_pairs
+      - hyphen_solid_separate
+    requires:
+      - model
+    rules:
+      - context_pair
+    notes: "Есть контекстно-зависимые кандидаты также/так же, тоже/то же, чтобы/что бы, зато/за то, несмотря/не смотря."
+  solid_hyphen_separate_ne:
+    title: "Написания с отрицанием не"
+    status: syntax_required
+    requires:
+      - morphology
+      - syntax
+      - model
+    rules: []
+    notes: "Слитное/раздельное не с существительными, прилагательными, причастиями и противопоставлением не реализовано."
+  solid_hyphen_separate_general:
+    title: "Общие правила слитного и дефисного написания"
+    status: model_required
+    requires:
+      - dictionary
+      - morphology
+      - model
+    rules:
+      - pol_polu_compounds
+    notes: "Частично реализованы только bounded candidates для пол-/полу-; иноязычные первые части, числительные и повторы остаются planned."
+  capitalization_names:
+    title: "Прописные и строчные буквы: личные имена и собственные имена"
+    status: ner_required
+    requires:
+      - ner
+      - dictionary
+    rules: []
+    notes: "Имена, псевдонимы, религиозные и мифологические имена требуют NER/словарей."
+  capitalization_geo_org_events:
+    title: "Прописные и строчные буквы: география, организации, документы, события, награды"
+    status: ner_required
+    requires:
+      - ner
+      - dictionary
+    rules: []
+    notes: "Географические, административные, астрономические, исторические и организационные названия не реализованы."
+  capitalization_sentence_start:
+    title: "Прописные буквы после знаков препинания и в начале предложения"
+    status: implemented
+    tags:
+      - orthography
+      - capitalization
+    requires: []
+    rules:
+      - sentence_start_case
+    tests:
+      - tests/test_candidate_generator.py::test_candidate_generator_only_sentence_start_case_candidate
+    notes: "Реализован легкий fallback для первого токена текста; внутренние границы предложений остаются будущей работой."
+  abbreviations_initial:
+    title: "Аббревиатуры и производные от них слова"
+    status: dictionary_model_required
+    requires:
+      - dictionary
+      - model
+    rules: []
+    notes: "Инициальные аббревиатуры и производные не представлены отдельным RuleSpec."
+  graphical_abbreviations:
+    title: "Графические сокращения и точка после сокращений"
+    status: dictionary_model_required
+    requires:
+      - dictionary
+    rules: []
+    notes: "Общеупотребительные и самостоятельные сокращения требуют словаря сокращений."
+  foreign_words:
+    title: "Правописание иностранных слов"
+    status: dictionary_model_required
+    requires:
+      - dictionary
+      - model
+    rules: []
+    notes: "Английские, латинские и прочие иноязычные слова не нормализуются отдельными правилами."
+  typos_letter_operations:
+    title: "Опечатки: пропуск, вставка, изменение или перестановка буквы"
+    status: dictionary_model_required
+    requires:
+      - dictionary
+      - model
+    rules: []
+    notes: "Общий edit-distance/словарный исправитель опечаток не добавлен как RuleSpec."
+  typos_space_operations:
+    title: "Опечатки: пробелы внутри и между словами"
+    status: dictionary_model_required
+    requires:
+      - dictionary
+      - model
+    rules: []
+    notes: "Пропуск/вставка пробела, межбуквенные пробелы и ошибочное склеивание слов покрыты только отдельными whitelist-кандидатами в других группах."
+  typical_dictionary_words:
+    title: "Типичные ошибки: словарные слова"
+    status: partial
+    tags:
+      - orthography
+      - dictionary_errors
+    requires:
+      - dictionary
+    rules:
+      - frequent_errors
+    notes: "Реализован ограниченный whitelist частых словарных ошибок; это не полноценная словарная орфография."
+  typical_unsettled_neologisms:
+    title: "Типичные ошибки: неустоявшиеся написания, термины и неологизмы"
+    status: dictionary_model_required
+    requires:
+      - dictionary
+      - model
+    rules: []
+    notes: "Неустоявшиеся варианты и неизвестные термины требуют обновляемого словаря и модели."
+  homophones:
+    title: "Типичные ошибки: омофоны"
+    status: model_required
+    requires:
+      - syntax
+      - model
+    rules: []
+    notes: "Омофоны требуют контекстного выбора; исполняемых правил в реестре нет."
+
+punctuation:
+  sentence_boundary_and_middle_punctuation:
+    title: "Знаки препинания в конце, в начале, в середине предложения"
+    status: partial
+    tags:
+      - punctuation
+      - complex_punctuation
+    requires:
+      - syntax
+      - model
+    rules: []
+    notes: "Крупный раздел Орфограммки; отдельные реализованные подслучаи вынесены ниже."
+  sentence_final_default_dot:
+    title: "Знаки препинания в конце предложения: точка по умолчанию"
+    status: implemented
+    tags:
+      - punctuation
+      - final_punctuation
+    requires: []
+    rules:
+      - final_punctuation_default
+    tests:
+      - tests/test_punctuation_rules.py::test_final_dot_is_available_as_gap_candidate_without_repeated_marks
+    notes: "Fallback добавляет финальную точку при отсутствии конечного знака; выбор ?/!/... не реализован этим правилом."
+  sentence_inner_end_marks:
+    title: "Знаки конца предложения внутри предложения"
+    status: syntax_required
+    requires:
+      - syntax
+      - model
+    rules: []
+    notes: "Непонятная точка и похожие случаи требуют синтаксиса и контекста."
+  comma_subject_predicate:
+    title: "Запятая между подлежащим и сказуемым"
+    status: syntax_required
+    requires:
+      - syntax
+    rules: []
+    notes: "Нет отдельного правила удаления/запрета такой запятой."
+  extra_comma_government:
+    title: "Лишняя запятая в управлении"
+    status: syntax_required
+    requires:
+      - syntax
+    rules: []
+    notes: "Требует синтаксического управления; RuleSpec отсутствует."
+  dash_subject_predicate:
+    title: "Тире между подлежащим и сказуемым"
+    status: model_required
+    requires:
+      - syntax
+      - model
+    rules:
+      - subject_predicate_dash
+    notes: "Генерируется bounded candidate для очевидного шаблона перед словом это; применение требует scorer/validator."
+  dash_incomplete_sentence:
+    title: "Тире в неполном предложении"
+    status: syntax_required
+    requires:
+      - syntax
+      - model
+    rules: []
+    notes: "Нет исполняемого правила."
+  dash_connection:
+    title: "Тире в функции соединения"
+    status: syntax_required
+    requires:
+      - syntax
+    rules: []
+    notes: "Нет исполняемого правила."
+  homogeneous_commas:
+    title: "Однородные члены: запятые при союзах и без союзов"
+    status: syntax_required
+    tags:
+      - punctuation
+      - syntactic_rules
+      - homogeneous_members
+    requires:
+      - syntax
+      - model
+    rules: []
+    notes: "Синтетические группы comma_conjunction не считаются реализованными RuleSpec и здесь не перечисляются."
+  homogeneous_generalizing_word:
+    title: "Однородные члены: обобщающее слово, двоеточие и тире"
+    status: model_required
+    requires:
+      - syntax
+      - model
+    rules:
+      - enumeration_colon
+    notes: "Генерируется bounded candidate двоеточия после простого обобщающего маркера; применение требует scorer/validator."
+  homogeneous_definitions:
+    title: "Однородные и неоднородные определения"
+    status: syntax_required
+    requires:
+      - syntax
+      - model
+    rules: []
+    notes: "Определения и причастные обороты требуют синтаксиса."
+  detached_definitions:
+    title: "Обособленные члены: согласованные определения"
+    status: syntax_required
+    tags:
+      - punctuation
+      - syntactic_rules
+      - detached_members
+    requires:
+      - syntax
+      - model
+    rules: []
+    notes: "Обороты до/после определяемого слова и местоимений не реализованы."
+  detached_applications:
+    title: "Обособленные члены: приложения"
+    status: syntax_required
+    requires:
+      - syntax
+      - ner
+      - model
+    rules: []
+    notes: "Приложения требуют синтаксиса и часто NER."
+  detached_adverbials:
+    title: "Обособленные члены: обстоятельства и деепричастные обороты"
+    status: syntax_required
+    requires:
+      - syntax
+      - model
+    rules: []
+    notes: "Деепричастные обороты, одиночные деепричастия и исключения не реализованы."
+  detached_limiting_specifying_joining:
+    title: "Обособленные члены: ограничительно-выделительные, уточняющие, пояснительные и присоединительные обороты"
+    status: syntax_required
+    requires:
+      - syntax
+      - model
+    rules: []
+    notes: "Нужен синтаксический анализ и контекстная классификация."
+  indivisible_combinations:
+    title: "Неразложимые сочетания"
+    status: model_required
+    requires:
+      - syntax
+      - dictionary
+      - model
+    rules: []
+    notes: "Устойчивые выражения с союзами, частицами и местоименными словами требуют словаря и модели."
+  comparative_turnovers:
+    title: "Сравнительный оборот"
+    status: syntax_required
+    requires:
+      - syntax
+      - model
+    rules: []
+    notes: "Обороты с как и другими сравнительными союзами не реализованы."
+  introductory_words:
+    title: "Вводные и вставные конструкции"
+    status: model_required
+    tags:
+      - punctuation
+      - introductory_constructions
+    requires:
+      - syntax
+      - model
+    rules:
+      - introductory_comma
+    notes: "Генерируются candidates для конечно, например, во-первых, кажется, возможно; омонимия и распространенные конструкции требуют scorer/validator."
+  addresses_interjections_particles:
+    title: "Обращения, междометия, частицы и утвердительные/отрицательные слова"
+    status: syntax_required
+    requires:
+      - syntax
+      - model
+    rules:
+      - address_comma
+    notes: "Есть candidate-only правило для явных обращений по syntax/NER признакам; междометия, частицы и слова да/нет не реализованы."
+  complex_sentence_compound:
+    title: "Сложносочиненное предложение"
+    status: syntax_required
+    requires:
+      - syntax
+      - model
+    rules: []
+    notes: "Запятая и точка с запятой между частями ССП не представлены RuleSpec."
+  complex_sentence_subordinate:
+    title: "Сложноподчиненное предложение"
+    status: model_required
+    tags:
+      - punctuation
+      - syntactic_rules
+      - complex_punctuation
+    requires:
+      - syntax
+      - model
+    rules:
+      - comma_subordinate
+    notes: "Генерируются candidates перед что, чтобы, если, когда, потому что; применение требует scorer/validator."
+  complex_sentence_asyndetic:
+    title: "Бессоюзное сложное предложение"
+    status: syntax_required
+    requires:
+      - syntax
+      - model
+    rules: []
+    notes: "Нет отдельного правила для БСП."
+  direct_speech_quotes:
+    title: "Прямая речь и цитаты"
+    status: model_required
+    tags:
+      - punctuation
+      - direct_speech
+    requires:
+      - model
+    rules:
+      - direct_speech_quotes
+      - direct_speech_colon
+    notes: "Покрыта только простая генерация candidates для кавычек и двоеточия после глаголов речи; применение требует scorer/validator."
+  punctuation_combinations:
+    title: "Сочетание знаков препинания"
+    status: partial
+    tags:
+      - punctuation
+      - punctuation_combinations
+    requires: []
+    rules:
+      - punctuation_delete_replace
+    notes: "Покрыты очевидные дубли и удаление/замена лишних знаков; полная система сочетаний знаков не реализована."
+  complex_mark_interaction:
+    title: "Взаимодействие знаков препинания в сложных конструкциях"
+    status: syntax_required
+    tags:
+      - punctuation
+      - complex_punctuation
+    requires:
+      - syntax
+      - model
+    rules: []
+    notes: "Два двоеточия, двоеточие и тире требуют синтаксиса и контекста."
+  neural_punctuation:
+    title: "Нейропунктуация"
+    status: model_required
+    requires:
+      - model
+    rules: []
+    notes: "Постановка запятой, тире, двоеточия, точки с запятой и удаление лишних знаков как общий нейросетевой слой планируются отдельно."

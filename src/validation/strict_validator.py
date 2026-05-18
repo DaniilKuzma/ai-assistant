@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 from typing import Any
 
-from src.candidates.frequent_errors import CONTEXT_DEPENDENT_WHITELIST
+from src.candidates.frequent_errors import CONTEXT_DEPENDENT_WHITELIST, WRONG_TO_CORRECT
 from src.preprocessing.protected_spans import ProtectedSpan, find_protected_spans
 from src.preprocessing.tokenizer import tokenize_words
+from src.rules.orthography import SCORING_REQUIRED_RULE_IDS
 from src.validation.diff_analyzer import DiffAnalyzer, Edit
 from src.validation.edit_classifier import is_allowed_edit_type
 
@@ -47,9 +49,10 @@ class ValidationResult:
 
 
 class StrictValidator:
-    def __init__(self, context_pair_threshold: float = 0.98) -> None:
+    def __init__(self, context_pair_threshold: float = 0.98, tsya_threshold: float | None = 0.98) -> None:
         self.diff_analyzer = DiffAnalyzer()
         self.context_pair_threshold = context_pair_threshold
+        self.tsya_threshold = context_pair_threshold if tsya_threshold is None else tsya_threshold
 
     def pre_validate(self, text: str) -> list[ProtectedSpan]:
         return find_protected_spans(text)
@@ -60,21 +63,31 @@ class StrictValidator:
         trusted = trusted_edits or []
         trusted_context_keys = _trusted_context_pair_keys(trusted, self.context_pair_threshold)
         trusted_strict_edits = _trusted_strict_edits(source, trusted)
-        validated: list[Edit] = [
-            edit.with_status("accepted", "trusted bounded candidate")
-            for edit in trusted_strict_edits
-            if not _touches_protected(edit, protected)
-        ]
+        trusted_tsya_keys = _trusted_tsya_keys(source, trusted, self.tsya_threshold)
+        validated: list[Edit] = []
+
+        for edit in trusted_strict_edits:
+            guard_reason = _guard_rejection_reason(source, target, edit, protected, trusted_tsya_keys)
+            if guard_reason:
+                validated.append(edit.with_status("rejected", guard_reason))
+            else:
+                validated.append(edit.with_status("accepted", "trusted bounded candidate"))
 
         for edit in edits:
             if _is_explained_by_trusted_edit(edit, trusted_strict_edits):
                 continue
+            guard_reason = _guard_rejection_reason(source, target, edit, protected, trusted_tsya_keys)
+            if guard_reason:
+                validated.append(edit.with_status("rejected", guard_reason))
+                continue
             if _is_context_dependent_edit(edit):
-                if _is_trusted_context_pair(source, edit, trusted_context_keys) and not _touches_protected(edit, protected):
+                if _is_trusted_context_pair(source, edit, trusted_context_keys):
                     validated.append(edit.with_status("accepted", "trusted high-confidence context pair"))
                 else:
                     validated.append(edit.with_status("rejected", "context-dependent pair requires trusted model confidence"))
-            elif is_allowed_edit_type(edit.edit_type) and not _touches_protected(edit, protected):
+            elif _is_scoring_required_rule_edit(edit):
+                validated.append(edit.with_status("rejected", "requires_trusted_candidate"))
+            elif is_allowed_edit_type(edit.edit_type):
                 validated.append(edit.with_status("accepted", "allowed strict-scope edit"))
             else:
                 validated.append(edit.with_status("rejected", "outside strict spelling/punctuation scope"))
@@ -82,10 +95,197 @@ class StrictValidator:
         return ValidationResult(source=source, target=target, edits=validated)
 
 
+PERCENT_RE = re.compile(r"(?<![\w])\d+(?:[.,]\d+)?%")
+NUMBER_RE = re.compile(r"(?<![\w])\d+(?:[.,:/-]\d+)*")
+DECIMAL_RE = re.compile(r"(?<![\w])\d+[.,]\d+(?![\w])")
+ABBREVIATION_RE = re.compile(
+    r"(?:\b\d{4}\s+[гГ]\.|\b(?:см|т\.д|т\.п|ул|стр|рис|г)\.|№\s*\d+)",
+    re.IGNORECASE,
+)
+PUNCTUATION_NOISE_RE = re.compile(r"(?:…[.!?…]+|[.!?]+…|\.{2,}|[!?]{2,})")
+
+
+def _guard_rejection_reason(
+    source: str,
+    target: str,
+    edit: Edit,
+    protected: list[ProtectedSpan],
+    trusted_tsya_keys: set[tuple[int, int, str, str]],
+) -> str:
+    if _is_tsya_pair(edit.source.lower(), edit.replacement.lower()):
+        if _is_dangerous_tsya_edit(source, edit) or not _is_trusted_tsya_edit(edit, trusted_tsya_keys):
+            return "dangerous_tsya"
+    elif _is_dangerous_tsya_edit(source, edit):
+        return "dangerous_tsya"
+    number_reason = _breaks_number_or_percent(source, target, edit)
+    if number_reason:
+        return number_reason
+    if _breaks_abbreviation(source, target, edit):
+        return "breaks_abbreviation"
+    if _breaks_protected_span(edit, protected):
+        return "protected_span"
+    if _creates_repeated_punctuation_noise(source, target, edit):
+        return "punctuation_noise"
+    return ""
+
+
 def _touches_protected(edit: Edit, protected: list[ProtectedSpan]) -> bool:
     if edit.start < 0 or edit.end < 0:
         return False
     return any(edit.start < span.end and span.start < edit.end for span in protected)
+
+
+def _breaks_protected_span(edit: Edit, protected: list[ProtectedSpan]) -> bool:
+    return any(_edit_touches_span(edit, span.start, span.end) for span in protected)
+
+
+def _breaks_number_or_percent(source: str, target: str, edit: Edit) -> str:
+    percent_spans = _regex_spans(PERCENT_RE, source)
+    if any(_edit_touches_span(edit, start, end) for start, end in percent_spans) or _creates_percent_punctuation(target):
+        return "breaks_percent"
+    if _breaks_decimal_number(source, target, edit):
+        return "breaks_number"
+    number_spans = _regex_spans(NUMBER_RE, source)
+    if any(_edit_touches_span(edit, start, end) for start, end in number_spans):
+        return "breaks_number"
+    return ""
+
+
+def _breaks_decimal_number(source: str, target: str, edit: Edit) -> bool:
+    del target
+    return any(_edit_touches_span(edit, start, end) for start, end in _regex_spans(DECIMAL_RE, source))
+
+
+def _breaks_abbreviation(source: str, target: str, edit: Edit) -> bool:
+    del target
+    return any(_edit_touches_span(edit, start, end, include_insert_end=True) for start, end in _regex_spans(ABBREVIATION_RE, source))
+
+
+def _creates_repeated_punctuation_noise(source: str, target: str, edit: Edit) -> bool:
+    del edit
+    return not _has_punctuation_noise(source) and _has_punctuation_noise(target)
+
+
+def _is_dangerous_tsya_edit(source_text: str, edit: Edit) -> bool:
+    source = edit.source.lower()
+    replacement = edit.replacement.lower()
+    if WRONG_TO_CORRECT.get(source) == replacement and edit.rule_id == "frequent_errors":
+        return False
+    if not _is_tsya_pair(source, replacement):
+        return False
+    expects_infinitive = _previous_word_requires_infinitive(source_text, edit.start)
+    if source.endswith("ться") and replacement.endswith("тся"):
+        return expects_infinitive
+    if source.endswith("тся") and replacement.endswith("ться"):
+        return not expects_infinitive
+    return False
+
+
+def _is_tsya_pair(source: str, replacement: str) -> bool:
+    return (
+        source.endswith("ться")
+        and replacement == source[: -len("ться")] + "тся"
+    ) or (
+        source.endswith("тся")
+        and replacement == source[: -len("тся")] + "ться"
+    )
+
+
+def _previous_word_requires_infinitive(text: str, position: int) -> bool:
+    previous = ""
+    for word in tokenize_words(text):
+        if word.end <= position:
+            previous = word.text.lower()
+            continue
+        break
+    return previous in INFINITIVE_TRIGGER_WORDS
+
+
+INFINITIVE_TRIGGER_WORDS = frozenset(
+    {
+        "будем",
+        "будет",
+        "будете",
+        "будешь",
+        "буду",
+        "будут",
+        "должен",
+        "должна",
+        "должно",
+        "должны",
+        "можем",
+        "может",
+        "можете",
+        "можешь",
+        "мог",
+        "могла",
+        "могли",
+        "могло",
+        "могу",
+        "могут",
+        "надо",
+        "нужно",
+        "стал",
+        "стала",
+        "стали",
+        "стало",
+        "хотел",
+        "хотела",
+        "хотели",
+        "хотело",
+        "хотеть",
+        "хотим",
+        "хотите",
+        "хотят",
+        "хочет",
+        "хочешь",
+        "хочу",
+    }
+)
+
+
+def _is_trusted_tsya_edit(edit: Edit, trusted_keys: set[tuple[int, int, str, str]]) -> bool:
+    return (edit.start, edit.end, edit.source.lower(), edit.replacement.lower()) in trusted_keys
+
+
+def _trusted_tsya_keys(source_text: str, trusted_edits: list[Any], threshold: float) -> set[tuple[int, int, str, str]]:
+    keys: set[tuple[int, int, str, str]] = set()
+    for edit in trusted_edits:
+        source = str(getattr(edit, "source", "")).lower()
+        replacement = str(getattr(edit, "replacement", "")).lower()
+        confidence = float(getattr(edit, "confidence", 0.0))
+        start = int(getattr(edit, "start", -1))
+        end = int(getattr(edit, "end", -1))
+        if confidence < threshold or not bool(getattr(edit, "requires_model", False)):
+            continue
+        if not _is_tsya_pair(source, replacement):
+            continue
+        if not _source_span_matches(source_text, source, start, end):
+            continue
+        keys.add((start, end, source, replacement))
+    return keys
+
+
+def _regex_spans(pattern: re.Pattern[str], text: str) -> list[tuple[int, int]]:
+    return [(match.start(), match.end()) for match in pattern.finditer(text)]
+
+
+def _edit_touches_span(edit: Edit, start: int, end: int, *, include_insert_end: bool = False) -> bool:
+    if edit.start < 0 or edit.end < 0:
+        return False
+    if edit.start == edit.end:
+        if include_insert_end and edit.start == end:
+            return True
+        return start < edit.start < end
+    return edit.start < end and start < edit.end
+
+
+def _creates_percent_punctuation(text: str) -> bool:
+    return bool(re.search(r"\d\s*[,.;:]\s*%", text))
+
+
+def _has_punctuation_noise(text: str) -> bool:
+    return bool(PUNCTUATION_NOISE_RE.search(text))
 
 
 def _insert_comma_before_common_subordinator(text: str) -> str:
@@ -99,6 +299,10 @@ def _is_context_dependent_edit(edit: Edit) -> bool:
     return CONTEXT_DEPENDENT_WHITELIST.get(edit.source.lower()) == edit.replacement.lower()
 
 
+def _is_scoring_required_rule_edit(edit: Edit) -> bool:
+    return edit.rule_id in SCORING_REQUIRED_RULE_IDS
+
+
 def _trusted_strict_edits(source_text: str, trusted_edits: list[Any]) -> list[Edit]:
     edits: list[Edit] = []
     for item in trusted_edits:
@@ -108,7 +312,10 @@ def _trusted_strict_edits(source_text: str, trusted_edits: list[Any]) -> list[Ed
         start = int(getattr(item, "start", -1))
         end = int(getattr(item, "end", -1))
         confidence = float(getattr(item, "confidence", 0.0))
-        if confidence <= 0 or not source or source == replacement:
+        rule_id = str(getattr(item, "rule_id", ""))
+        if confidence <= 0 or source == replacement:
+            continue
+        if not source and candidate_type not in {"punctuation_insert", "final_punctuation"}:
             continue
         if _is_context_dependent_edit(Edit(source, replacement, "unknown", start, end, confidence=confidence)):
             continue
@@ -117,13 +324,15 @@ def _trusted_strict_edits(source_text: str, trusted_edits: list[Any]) -> list[Ed
         edit_type = _trusted_candidate_edit_type(source, replacement, candidate_type)
         if edit_type is None:
             continue
-        edits.append(Edit(source, replacement, edit_type, start, end, confidence=confidence))
+        edits.append(Edit(source, replacement, edit_type, start, end, confidence=confidence, rule_id=rule_id))
     return _deduplicate_trusted_edits(edits)
 
 
 def _source_span_matches(source_text: str, source: str, start: int, end: int) -> bool:
     if start < 0 or end < start or end > len(source_text):
         return False
+    if not source:
+        return start == end
     return source_text[start:end].lower() == source.lower()
 
 
@@ -140,6 +349,13 @@ def _trusted_candidate_edit_type(source: str, replacement: str, candidate_type: 
         return "hyphen_change"
     if candidate_type == "case":
         return "case_change"
+    if candidate_type in {
+        "punctuation_insert",
+        "punctuation_delete",
+        "punctuation_replace",
+        "final_punctuation",
+    }:
+        return candidate_type
     return None
 
 
@@ -208,6 +424,8 @@ def _passes_context_pair_guard(source_text: str, edit: Edit) -> bool:
     next_word = _next_word_after(source_text, edit.end)
     if source == "также" and replacement == "так же":
         return next_word == "как"
+    if source == "тоже" and replacement == "то же":
+        return next_word == "что"
     if source == "что бы" and replacement == "чтобы":
         return _looks_like_infinitive(next_word)
     return False

@@ -20,6 +20,10 @@ def test_main_pipeline_notebook_executes_top_to_bottom(tmp_path: Path, monkeypat
                 config["data"]["manifest_path"] = str(tmp_path / "reports" / "dataset_manifest.json")
                 config["data"]["use_external_sources"] = False
                 config["data"].setdefault("clean_corpus", {})["enabled"] = False
+                config["data"]["debug_clean_texts"] = [
+                    f"В тестовой записи редактор не знает, что делать, и пишет по-русски в разделе {index}."
+                    for index in range(12)
+                ]
                 config["paths"]["adapter_output_dir"] = str(tmp_path / "models" / "adapters" / "latest")
                 config["paths"]["heads_output_dir"] = str(tmp_path / "models" / "heads" / "latest")
                 config["paths"]["reports_dir"] = str(tmp_path / "reports")

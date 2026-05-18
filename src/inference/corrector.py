@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import re
+from typing import Any
 
 from src.candidates.candidate_generator import Candidate, CandidateGenerator
-from src.inference.edit_realizer import apply_candidate, ensure_final_punctuation
+from src.inference.edit_realizer import apply_candidate
 from src.inference.postprocess import normalize_spacing
+from src.rules.punctuation import apply_punctuation_rules
 from src.validation.diff_analyzer import Edit
 from src.validation.strict_validator import StrictValidator
 
@@ -20,8 +21,9 @@ class CorrectionResult:
 class Corrector:
     """Safe inference facade.
 
-    The lightweight path uses deterministic whitelist scoring. A trained model can
-    be wired in later to choose among the same bounded candidates.
+    The lightweight path only applies conservative deterministic fallback edits.
+    Candidate-only and model-required edits stay candidates until a scorer selects
+    them.
     """
 
     def __init__(self, max_passes: int = 3, mode: str = "balanced") -> None:
@@ -36,9 +38,9 @@ class Corrector:
         corrected = validation.apply_accepted()
         return CorrectionResult(text, corrected, validation.edits)
 
-    def _decode_with_trusted_edits(self, text: str) -> tuple[str, list[Candidate]]:
+    def _decode_with_trusted_edits(self, text: str) -> tuple[str, list[Any]]:
         current = text
-        trusted_edits: list[Candidate] = []
+        trusted_edits: list[Any] = []
         for pass_index in range(self.max_passes):
             updated, selected = self._single_pass_with_candidates(current)
             if pass_index == 0:
@@ -51,12 +53,12 @@ class Corrector:
     def _single_pass(self, text: str) -> str:
         return self._single_pass_with_candidates(text)[0]
 
-    def _single_pass_with_candidates(self, text: str) -> tuple[str, list[Candidate]]:
+    def _single_pass_with_candidates(self, text: str) -> tuple[str, list[Any]]:
         proposed = text
         offset = 0
-        applied: list[Candidate] = []
+        applied: list[Any] = []
         for candidate in self.candidates.generate(text):
-            if candidate.edit_type == "keep" or candidate.requires_model:
+            if candidate.edit_type == "keep" or candidate.requires_scoring:
                 continue
             shifted = candidate.__class__(
                 source=candidate.source,
@@ -65,53 +67,25 @@ class Corrector:
                 start=candidate.start + offset,
                 end=candidate.end + offset,
                 confidence=candidate.confidence,
+                requires_model=candidate.requires_model,
+                rule_id=candidate.rule_id,
+                mode=candidate.mode,
+                action=candidate.action,
+                label=candidate.label,
+                gap_index=candidate.gap_index,
+                requires=candidate.requires,
             )
             before = proposed
             proposed = apply_candidate(proposed, shifted)
             offset += len(proposed) - len(before)
             applied.append(candidate)
 
-        proposed = self._punctuation_pass(proposed)
+        proposed, punctuation_edits = self._punctuation_pass_with_edits(proposed)
+        applied.extend(punctuation_edits)
         return normalize_spacing(proposed), applied
 
     def _punctuation_pass(self, text: str) -> str:
-        text = _remove_obvious_extra_punctuation(text)
-        text = _normalize_simple_direct_speech_quotes(text)
-        text = _add_simple_direct_speech_colon(text)
-        text = _add_obvious_subject_predicate_dash(text)
-        text = _add_simple_enumeration_colon(text)
-        text = re.sub(r"\b(не знаю|думаю|считаю) что\b", r"\1, что", text, flags=re.IGNORECASE)
-        text = re.sub(r"\b(во-первых|во-вторых|в-третьих)\s+(?!,)", r"\1, ", text, flags=re.IGNORECASE)
-        text = ensure_final_punctuation(text, ".")
-        return text
+        return self._punctuation_pass_with_edits(text)[0]
 
-
-def _remove_obvious_extra_punctuation(text: str) -> str:
-    text = re.sub(r"([,;:])\s*\1+", r"\1", text)
-    text = re.sub(r",\s*([.!?…])", r"\1", text)
-    text = re.sub(r"([«(])\s*([,;:])\s*", r"\1", text)
-    text = re.sub(r"\s*([,;:])\s*([»)])", r"\2", text)
-    return text
-
-
-def _normalize_simple_direct_speech_quotes(text: str) -> str:
-    speech_verbs = r"сказал[аи]?|спросил[аи]?|ответил[аи]?|написал[аи]?"
-    return re.sub(
-        rf"\b({speech_verbs})\s*:?\s*\"([^\"\n]+)\"",
-        r"\1: «\2»",
-        text,
-        flags=re.IGNORECASE,
-    )
-
-
-def _add_simple_direct_speech_colon(text: str) -> str:
-    speech_verbs = r"сказал[аи]?|спросил[аи]?|ответил[аи]?|написал[аи]?"
-    return re.sub(rf"\b({speech_verbs})\s+(«[^»]+»)", r"\1: \2", text, flags=re.IGNORECASE)
-
-
-def _add_obvious_subject_predicate_dash(text: str) -> str:
-    return re.sub(r"^([А-ЯЁ][а-яё]+)\s+это\s+", r"\1 — это ", text)
-
-
-def _add_simple_enumeration_colon(text: str) -> str:
-    return re.sub(r"\b(следующее)\s+(?=[а-яёА-ЯЁ])", r"\1: ", text, count=1)
+    def _punctuation_pass_with_edits(self, text: str) -> tuple[str, list[Any]]:
+        return apply_punctuation_rules(text, allowed_modes={"deterministic"})

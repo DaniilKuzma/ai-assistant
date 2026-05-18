@@ -11,6 +11,7 @@ matplotlib
 tqdm
 pyyaml
 pymorphy3
+natasha>=1.6.0,<2.0
 rapidfuzz
 razdel
 streamlit

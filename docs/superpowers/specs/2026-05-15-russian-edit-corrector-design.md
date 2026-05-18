@@ -19,7 +19,7 @@ The project uses the second option because it gives strict control over possible
 - `candidates`: whitelist-backed spelling, split/join, hyphen, frequent-error, and sentence-start case candidates.
 - `validation`: diff analysis and strict pre/post validation. Only spelling, punctuation, split/join whitelist, hyphen whitelist, sentence-start capitalization, and final punctuation are accepted.
 - `alignment`: source-target alignment for filtering datasets and building edit/punctuation labels.
-- `model`: encoder-only multitask model using `ai-forever/ruRoberta-large` or fallback `ai-forever/ruBert-base`, LoRA-compatible, with candidate scoring, punctuation gap, confidence, and error-type heads.
+- `model`: encoder-only multitask model using `ai-forever/ruRoberta-large`, LoRA-compatible, with candidate scoring, punctuation gap, confidence, and error-type heads.
 - `training`: configurable training pipeline with PEFT/LoRA, mixed precision, gradient accumulation, and checkpoint saving for adapters, heads, tokenizer reference, label mappings, and thresholds.
 - `inference`: iterative correction with `max_passes`, thresholds, candidate ranking, validator, and edit realization.
 - `evaluation`: exact match, edit F1, spelling/punctuation F1, dirty improved/worse, clean overcorrection, grouped reports, and threshold sweeps.

@@ -27,6 +27,24 @@ def test_training_feature_marks_gold_candidate_and_punctuation_labels():
     assert feature.punctuation_error_type_labels[:4] == [0, 2, 0, 3]
 
 
+def test_training_feature_candidate_budget_keeps_late_edit_candidate():
+    tokenizer = DebugTokenizer()
+    source = " ".join([f"слово{i}" for i in range(30)]) + " недумаю"
+    target = " ".join([f"слово{i}" for i in range(30)]) + " не думаю"
+
+    feature = build_training_feature(
+        source,
+        target,
+        tokenizer=tokenizer,
+        punctuation_label_map={"NONE": 0},
+        error_type_label_map={"keep": 0, "split_join": 1},
+        max_length=80,
+        max_candidates=16,
+    )
+
+    assert "не думаю" in [replacement.lower() for replacement in feature.candidate_replacements]
+
+
 def test_training_feature_uses_word_gap_mask_instead_of_token_mask_for_punctuation():
     tokenizer = DebugTokenizer()
 

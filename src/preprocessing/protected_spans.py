@@ -16,6 +16,7 @@ PROTECTED_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("url", re.compile(r"https?://[^\s]+|www\.[^\s]+", re.IGNORECASE)),
     ("email", re.compile(r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}")),
     ("date", re.compile(r"\b\d{1,2}[./-]\d{1,2}[./-]\d{2,4}\b")),
+    ("abbreviation", re.compile(r"\b\d{4}\s+[гГ]\.|\b(?:г|см|т\.д|т\.п|ул|стр|рис)\.|№\s*\d+", re.IGNORECASE)),
     ("number", re.compile(r"\b\d+(?:[.,:/-]\d+)*\b")),
     ("nickname", re.compile(r"(?<!\w)@[A-Za-zА-Яа-яЁё0-9_]+")),
     ("english", re.compile(r"\b[A-Za-z][A-Za-z0-9_+-]*\b")),

@@ -6,7 +6,7 @@ from typing import Any
 
 
 PRIMARY_ENCODER = "ai-forever/ruRoberta-large"
-FALLBACK_ENCODER = "ai-forever/ruBert-base"
+FALLBACK_ENCODER = "ai-forever/ruRoberta-large"
 
 
 @dataclass(frozen=True)

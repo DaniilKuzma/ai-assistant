@@ -30,19 +30,22 @@ def test_evaluate_rows_writes_required_reports(tmp_path: Path):
             "source": "Во первых это важно",
             "target": "Во-первых, это важно.",
             "error_types": ["hyphen", "punctuation", "final_punctuation"],
-            "source_dataset": "synthetic_rules",
+            "source_dataset": "synthetic_open_corpus_hyphen",
             "is_clean": False,
             "is_synthetic": True,
         },
     ]
 
-    metrics = evaluate_rows(rows, output_dir=tmp_path)
+    metrics = evaluate_rows(rows, corrector=RequiredReportsCorrector(), output_dir=tmp_path)
 
     assert metrics["exact_match"] == 1.0
     assert "combined_score" in metrics
     for name in [
         "evaluation_summary.csv",
         "error_by_type.csv",
+        "rule_precision_recall.csv",
+        "error_by_rule.csv",
+        "rule_worse_examples.csv",
         "clean_overcorrection_examples.csv",
         "dirty_worse_examples.csv",
         "accepted_edits.csv",
@@ -95,6 +98,26 @@ def test_threshold_scores_mark_individual_partial_edits_correct():
     assert sweep.iloc[0]["recall"] == pytest.approx(1 / 3)
 
 
+def test_evaluation_reports_include_rule_id_in_edit_outputs(tmp_path: Path):
+    rows = [
+        {
+            "source": "Я недумаю",
+            "target": "Я не думаю",
+            "error_types": ["split_join"],
+            "source_dataset": "unit",
+            "is_clean": False,
+        }
+    ]
+
+    result = evaluate_rows_detailed(rows, corrector=RuleIdCorrector(), output_dir=tmp_path)
+    accepted_report = pd.read_csv(tmp_path / "accepted_edits.csv")
+
+    assert "rule_id" in accepted_report.columns
+    assert accepted_report.loc[0, "rule_id"] == "ne_verb"
+    assert result.accepted_edits[0]["rule_id"] == "ne_verb"
+    assert result.edit_scores[0]["rule_id"] == "ne_verb"
+
+
 class PartialCorrector:
     def correct(self, text: str) -> CorrectionResult:
         return CorrectionResult(
@@ -109,6 +132,105 @@ class PartialCorrector:
                     end=8,
                     status="accepted",
                     confidence=0.95,
+                )
+            ],
+        )
+
+
+class RequiredReportsCorrector:
+    def correct(self, text: str) -> CorrectionResult:
+        if text == "Я незнаю что делать":
+            return CorrectionResult(
+                source_text=text,
+                corrected_text="Я не знаю, что делать.",
+                edits=[
+                    Edit(
+                        "незнаю",
+                        "не знаю",
+                        "split_word",
+                        start=2,
+                        end=8,
+                        status="accepted",
+                        confidence=0.95,
+                        rule_id="frequent_errors",
+                    ),
+                    Edit(
+                        "",
+                        ",",
+                        "punctuation_insert",
+                        start=10,
+                        end=10,
+                        status="accepted",
+                        confidence=0.86,
+                        rule_id="comma_subordinate",
+                    ),
+                    Edit(
+                        "",
+                        ".",
+                        "final_punctuation",
+                        start=19,
+                        end=19,
+                        status="accepted",
+                        confidence=0.9,
+                        rule_id="final_punctuation_default",
+                    ),
+                ],
+            )
+        if text == "Во первых это важно":
+            return CorrectionResult(
+                source_text=text,
+                corrected_text="Во-первых, это важно.",
+                edits=[
+                    Edit(
+                        "Во первых",
+                        "Во-первых",
+                        "hyphen_change",
+                        start=0,
+                        end=9,
+                        status="accepted",
+                        confidence=0.88,
+                        rule_id="hyphen_whitelist",
+                    ),
+                    Edit(
+                        "",
+                        ",",
+                        "punctuation_insert",
+                        start=9,
+                        end=9,
+                        status="accepted",
+                        confidence=0.86,
+                        rule_id="introductory_comma",
+                    ),
+                    Edit(
+                        "",
+                        ".",
+                        "final_punctuation",
+                        start=19,
+                        end=19,
+                        status="accepted",
+                        confidence=0.9,
+                        rule_id="final_punctuation_default",
+                    ),
+                ],
+            )
+        return CorrectionResult(source_text=text, corrected_text=text, edits=[])
+
+
+class RuleIdCorrector:
+    def correct(self, text: str) -> CorrectionResult:
+        return CorrectionResult(
+            source_text=text,
+            corrected_text="Я не думаю",
+            edits=[
+                Edit(
+                    "недумаю",
+                    "не думаю",
+                    "split_word",
+                    start=2,
+                    end=9,
+                    status="accepted",
+                    confidence=0.97,
+                    rule_id="ne_verb",
                 )
             ],
         )

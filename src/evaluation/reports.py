@@ -21,7 +21,7 @@ def write_evaluation_summary(metrics: dict[str, float], path: str | Path) -> Non
 def write_edit_logs(accepted: list[dict], rejected: list[dict], output_dir: str | Path) -> None:
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
-    columns = ["row_id", "source", "replacement", "edit_type", "status", "reason", "confidence"]
+    columns = ["row_id", "source", "replacement", "edit_type", "rule_id", "status", "reason", "confidence"]
     pd.DataFrame(accepted, columns=columns).to_csv(output / "accepted_edits.csv", index=False)
     pd.DataFrame(rejected, columns=columns).to_csv(output / "rejected_edits.csv", index=False)
 
@@ -69,12 +69,18 @@ def write_threshold_precision_recall_plot(frame: pd.DataFrame, path: str | Path)
     plt.close(figure)
 
 
-def write_required_evaluation_reports(rows: list[dict], metrics: dict[str, float], output_dir: str | Path) -> None:
+def write_required_evaluation_reports(
+    rows: list[dict],
+    metrics: dict[str, float],
+    output_dir: str | Path,
+    *,
+    metadata: dict[str, Any] | None = None,
+) -> None:
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
     example_columns = ["source", "target", "prediction", "error_types", "source_dataset", "is_clean", "is_synthetic", "split", "domain"]
 
-    pd.DataFrame([metrics]).to_csv(output / "evaluation_summary.csv", index=False)
+    pd.DataFrame([{**metrics, **(metadata or {})}]).to_csv(output / "evaluation_summary.csv", index=False)
     pd.DataFrame(_error_by_type(rows)).to_csv(output / "error_by_type.csv", index=False)
     pd.DataFrame(
         [row for row in rows if row.get("is_clean") and row.get("prediction") != row.get("target")],
