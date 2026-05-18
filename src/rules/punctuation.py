@@ -23,6 +23,8 @@ PUNCTUATION_LABELS = {
     "»": "QUOTE_CLOSE",
     "(": "BRACKET_OPEN",
     ")": "BRACKET_CLOSE",
+    "[": "BRACKET_OPEN",
+    "]": "BRACKET_CLOSE",
 }
 CLOSING_FINAL_WRAPPERS = frozenset("\"'»”)]}")
 SUBORDINATE_MARKERS = frozenset({"что", "чтобы", "если", "когда", "поскольку", "где", "куда", "откуда"})
@@ -51,7 +53,33 @@ COMPARATIVE_MARKERS = frozenset({"словно", "будто"})
 COMPLEX_COMPARATIVE_MARKERS = (("как", "будто"),)
 GERUND_FALLBACK_SUFFIXES = ("вшись", "в")
 PROTECTED_PUNCTUATION_RE = re.compile(r"(?<![\w])\d+(?:[.,]\d+)?%|(?<![\w])\d+(?:[.,:/-]\d+)*")
-PUNCTUATION_NOISE_RE = re.compile(r"(?:…[.!?…]+|[.!?]+…|\.{2,}|[!?]{2,}|([,;:])\s*\1)")
+PUNCTUATION_NOISE_RE = re.compile(r"(?:…[.!?…]+|[.!?]+…|[!?]\.|\.{2,}|[!?]{2,}|([,;:])\s*\1)")
+SPEECH_VERBS = frozenset(
+    {
+        "говорит",
+        "написал",
+        "написала",
+        "написали",
+        "ответил",
+        "ответила",
+        "ответили",
+        "сказал",
+        "сказала",
+        "сказали",
+        "сообщил",
+        "сообщила",
+        "сообщили",
+        "спросил",
+        "спросила",
+        "спросили",
+    }
+)
+DIRECT_SPEECH_BLOCKERS = SUBORDINATE_MARKERS | {"будто", "словно"}
+ENUMERATION_COLON_MARKERS = frozenset({"следующее", "следующие"})
+EXPLANATION_COLON_MARKERS = frozenset({"одно"})
+CONSEQUENCE_DASH_PATTERNS = frozenset({("начался", "дождь")})
+ASYNDETIC_DASH_PATTERNS = frozenset({("солнце", "село")})
+SEMICOLON_PATTERNS = frozenset({("документ", "готов", "отчет", "отправлен")})
 
 
 @dataclass(frozen=True)
@@ -155,6 +183,12 @@ def generate_punctuation_candidates(
         _append_punctuation_candidate(candidates, seen, candidate)
     for candidate in _subject_predicate_dash_candidates(text, words, protected):
         _append_punctuation_candidate(candidates, seen, candidate)
+    for candidate in _direct_speech_candidates(text, words, protected):
+        _append_punctuation_candidate(candidates, seen, candidate)
+    for candidate in _quote_bracket_balance_candidates(text, words, protected):
+        _append_punctuation_candidate(candidates, seen, candidate)
+    for candidate in _colon_dash_semicolon_candidates(text, words, protected):
+        _append_punctuation_candidate(candidates, seen, candidate)
 
     for rule in PUNCTUATION_RULES:
         if rule.spec.id in {
@@ -167,6 +201,18 @@ def generate_punctuation_candidates(
             "detached_adverbial_comma",
             "comparative_turnover_comma",
             "subject_predicate_dash",
+            "direct_speech_colon",
+            "direct_speech_dash",
+            "direct_speech_quotes",
+            "quote_open",
+            "quote_close",
+            "quote_pair_balance",
+            "bracket_pair_balance",
+            "enumeration_colon",
+            "explanation_colon",
+            "consequence_dash",
+            "asyndetic_dash",
+            "semicolon",
         }:
             continue
         if allowed_modes is not None and rule.spec.mode not in allowed_modes:
@@ -473,6 +519,335 @@ def _subject_predicate_dash_candidates(
     return candidates
 
 
+def _direct_speech_candidates(
+    text: str,
+    words: list[Token],
+    protected: tuple[tuple[int, int], ...],
+) -> list[PunctuationGapCandidate]:
+    if _has_punctuation_noise(text) or len(words) < 4:
+        return []
+
+    candidates: list[PunctuationGapCandidate] = []
+    candidates.extend(_direct_speech_after_author_candidates(text, words, protected))
+    candidates.extend(_direct_speech_dash_candidates(text, words, protected))
+    return candidates
+
+
+def _direct_speech_after_author_candidates(
+    text: str,
+    words: list[Token],
+    protected: tuple[tuple[int, int], ...],
+) -> list[PunctuationGapCandidate]:
+    colon_spec = _spec_by_id("direct_speech_colon")
+    quotes_spec = _spec_by_id("direct_speech_quotes")
+    candidates: list[PunctuationGapCandidate] = []
+    lowered = [word.text.lower() for word in words]
+
+    for index, word in enumerate(words[:-2]):
+        if lowered[index] not in SPEECH_VERBS:
+            continue
+        next_word = words[index + 1]
+        if lowered[index + 1] in DIRECT_SPEECH_BLOCKERS:
+            continue
+        if not _is_safe_punctuation_gap(text, word.end, next_word.start, protected):
+            continue
+        speech_end_index = _last_word_index_before(words, _sentence_content_end(text))
+        if speech_end_index is None or speech_end_index - index < 2:
+            continue
+
+        candidates.append(
+            _candidate(
+                source="",
+                replacement=":",
+                edit_type="punctuation_insert",
+                start=word.end,
+                end=word.end,
+                spec=colon_spec,
+                action="INSERT",
+                label="COLON",
+                gap_index=index,
+            )
+        )
+        if not _has_quote_between(text, next_word.start, words[speech_end_index].end):
+            candidates.append(
+                _candidate(
+                    source="",
+                    replacement="«",
+                    edit_type="punctuation_insert",
+                    start=next_word.start,
+                    end=next_word.start,
+                    spec=quotes_spec,
+                    action="INSERT",
+                    label="QUOTE_OPEN",
+                    gap_index=index,
+                )
+            )
+            candidates.append(
+                _candidate(
+                    source="",
+                    replacement="»",
+                    edit_type="punctuation_insert",
+                    start=words[speech_end_index].end,
+                    end=words[speech_end_index].end,
+                    spec=quotes_spec,
+                    action="INSERT",
+                    label="QUOTE_CLOSE",
+                    gap_index=speech_end_index,
+                )
+            )
+    return candidates
+
+
+def _direct_speech_dash_candidates(
+    text: str,
+    words: list[Token],
+    protected: tuple[tuple[int, int], ...],
+) -> list[PunctuationGapCandidate]:
+    spec = _spec_by_id("direct_speech_dash")
+    candidates: list[PunctuationGapCandidate] = []
+    speech_verbs = "|".join(sorted(SPEECH_VERBS, key=len, reverse=True))
+    for match in re.finditer(rf"»\s+({speech_verbs})\b", text, flags=re.IGNORECASE):
+        position = match.start() + 1
+        verb_start = match.start(1)
+        if not _is_safe_punctuation_gap(text, position, verb_start, protected):
+            continue
+        candidates.append(
+            _candidate(
+                source="",
+                replacement=" — ",
+                edit_type="punctuation_insert",
+                start=position,
+                end=position,
+                spec=spec,
+                action="INSERT",
+                label="DASH",
+                gap_index=_gap_index_for_position(words, position),
+            )
+        )
+    return candidates
+
+
+def _quote_bracket_balance_candidates(
+    text: str,
+    words: list[Token],
+    protected: tuple[tuple[int, int], ...],
+) -> list[PunctuationGapCandidate]:
+    if _has_punctuation_noise(text):
+        return []
+
+    candidates: list[PunctuationGapCandidate] = []
+    candidates.extend(_straight_quote_candidates(text, words, protected))
+    close_position = _sentence_content_end(text)
+    if not _safe_punctuation_insert_position(text, close_position, protected):
+        return candidates
+    gap_index = _gap_index_for_position(words, close_position)
+
+    if text.count("«") == text.count("»") + 1 and not _has_unclosed_pair_suffix(text, "»", close_position):
+        spec = _spec_by_id("quote_pair_balance")
+        candidates.append(
+            _candidate(
+                source="",
+                replacement="»",
+                edit_type="punctuation_insert",
+                start=close_position,
+                end=close_position,
+                spec=spec,
+                action="INSERT",
+                label="QUOTE_CLOSE",
+                gap_index=gap_index,
+            )
+        )
+
+    if text.count("(") == text.count(")") + 1 and not _has_unclosed_pair_suffix(text, ")", close_position):
+        spec = _spec_by_id("bracket_pair_balance")
+        candidates.append(
+            _candidate(
+                source="",
+                replacement=")",
+                edit_type="punctuation_insert",
+                start=close_position,
+                end=close_position,
+                spec=spec,
+                action="INSERT",
+                label="BRACKET_CLOSE",
+                gap_index=gap_index,
+            )
+        )
+
+    if text.count("[") == text.count("]") + 1 and not _has_unclosed_pair_suffix(text, "]", close_position):
+        spec = _spec_by_id("bracket_pair_balance")
+        candidates.append(
+            _candidate(
+                source="",
+                replacement="]",
+                edit_type="punctuation_insert",
+                start=close_position,
+                end=close_position,
+                spec=spec,
+                action="INSERT",
+                label="BRACKET_CLOSE",
+                gap_index=gap_index,
+            )
+        )
+    return candidates
+
+
+def _straight_quote_candidates(
+    text: str,
+    words: list[Token],
+    protected: tuple[tuple[int, int], ...],
+) -> list[PunctuationGapCandidate]:
+    quote_positions = [index for index, char in enumerate(text) if char == '"']
+    if len(quote_positions) < 2 or len(quote_positions) % 2:
+        return []
+
+    open_spec = _spec_by_id("quote_open")
+    close_spec = _spec_by_id("quote_close")
+    candidates: list[PunctuationGapCandidate] = []
+    for pair_index in range(0, len(quote_positions), 2):
+        open_position = quote_positions[pair_index]
+        close_position = quote_positions[pair_index + 1]
+        if _edit_touches_spans(open_position, open_position + 1, protected):
+            continue
+        if _edit_touches_spans(close_position, close_position + 1, protected):
+            continue
+        candidates.append(
+            _candidate(
+                source='"',
+                replacement="«",
+                edit_type="punctuation_replace",
+                start=open_position,
+                end=open_position + 1,
+                spec=open_spec,
+                action="REPLACE",
+                label="QUOTE_OPEN",
+                gap_index=_gap_index_for_position(words, open_position),
+            )
+        )
+        candidates.append(
+            _candidate(
+                source='"',
+                replacement="»",
+                edit_type="punctuation_replace",
+                start=close_position,
+                end=close_position + 1,
+                spec=close_spec,
+                action="REPLACE",
+                label="QUOTE_CLOSE",
+                gap_index=_gap_index_for_position(words, close_position),
+            )
+        )
+    return candidates
+
+
+def _colon_dash_semicolon_candidates(
+    text: str,
+    words: list[Token],
+    protected: tuple[tuple[int, int], ...],
+) -> list[PunctuationGapCandidate]:
+    if _has_punctuation_noise(text) or len(words) < 3:
+        return []
+
+    candidates: list[PunctuationGapCandidate] = []
+    candidates.extend(_marker_after_word_candidates(text, words, protected, ENUMERATION_COLON_MARKERS, "enumeration_colon", ":"))
+    candidates.extend(_marker_after_word_candidates(text, words, protected, EXPLANATION_COLON_MARKERS, "explanation_colon", ":"))
+    candidates.extend(_fixed_prefix_pattern_candidate(text, words, protected, CONSEQUENCE_DASH_PATTERNS, "consequence_dash", "—"))
+    candidates.extend(_fixed_prefix_pattern_candidate(text, words, protected, ASYNDETIC_DASH_PATTERNS, "asyndetic_dash", "—"))
+    candidates.extend(_semicolon_candidates(text, words, protected))
+    return candidates
+
+
+def _marker_after_word_candidates(
+    text: str,
+    words: list[Token],
+    protected: tuple[tuple[int, int], ...],
+    markers: frozenset[str],
+    rule_id: str,
+    replacement: str,
+) -> list[PunctuationGapCandidate]:
+    spec = _spec_by_id(rule_id)
+    label = PUNCTUATION_LABELS[replacement]
+    candidates: list[PunctuationGapCandidate] = []
+    for index, word in enumerate(words[:-1]):
+        if word.text.lower() not in markers:
+            continue
+        if not _is_safe_punctuation_gap(text, word.end, words[index + 1].start, protected):
+            continue
+        candidates.append(
+            _candidate(
+                source="",
+                replacement=replacement,
+                edit_type="punctuation_insert",
+                start=word.end,
+                end=word.end,
+                spec=spec,
+                action="INSERT",
+                label=label,
+                gap_index=index,
+            )
+        )
+    return candidates
+
+
+def _fixed_prefix_pattern_candidate(
+    text: str,
+    words: list[Token],
+    protected: tuple[tuple[int, int], ...],
+    patterns: frozenset[tuple[str, str]],
+    rule_id: str,
+    replacement: str,
+) -> list[PunctuationGapCandidate]:
+    if len(words) < 4:
+        return []
+    lowered = tuple(word.text.lower() for word in words)
+    if lowered[:2] not in patterns:
+        return []
+    if not _is_safe_punctuation_gap(text, words[1].end, words[2].start, protected):
+        return []
+    spec = _spec_by_id(rule_id)
+    return [
+        _candidate(
+            source="",
+            replacement=replacement,
+            edit_type="punctuation_insert",
+            start=words[1].end,
+            end=words[1].end,
+            spec=spec,
+            action="INSERT",
+            label=PUNCTUATION_LABELS[replacement],
+            gap_index=1,
+        )
+    ]
+
+
+def _semicolon_candidates(
+    text: str,
+    words: list[Token],
+    protected: tuple[tuple[int, int], ...],
+) -> list[PunctuationGapCandidate]:
+    if len(words) < 4:
+        return []
+    lowered = tuple(word.text.lower() for word in words)
+    if lowered[:4] not in SEMICOLON_PATTERNS:
+        return []
+    if not _is_safe_punctuation_gap(text, words[1].end, words[2].start, protected):
+        return []
+    spec = _spec_by_id("semicolon")
+    return [
+        _candidate(
+            source="",
+            replacement=";",
+            edit_type="punctuation_insert",
+            start=words[1].end,
+            end=words[1].end,
+            spec=spec,
+            action="INSERT",
+            label="SEMICOLON",
+            gap_index=1,
+        )
+    ]
+
+
 def _looks_like_possible_address_opening(words: list[Token]) -> bool:
     first = words[0].text
     second = words[1].text.lower()
@@ -718,6 +1093,42 @@ def _edit_touches_spans(start: int, end: int, spans: tuple[tuple[int, int], ...]
     return any(start < span_end and span_start < end for span_start, span_end in spans)
 
 
+def _safe_punctuation_insert_position(
+    text: str,
+    position: int,
+    protected: tuple[tuple[int, int], ...],
+) -> bool:
+    if position < 0 or position > len(text):
+        return False
+    if _position_inside_spans(position, protected):
+        return False
+    return not (position < len(text) and text[position] in "«»()[]")
+
+
+def _sentence_content_end(text: str) -> int:
+    end = len(text.rstrip())
+    while end > 0 and text[end - 1] in ".!?…":
+        end -= 1
+    while end > 0 and text[end - 1].isspace():
+        end -= 1
+    return end
+
+
+def _last_word_index_before(words: list[Token], position: int) -> int | None:
+    for index in range(len(words) - 1, -1, -1):
+        if words[index].end <= position:
+            return index
+    return None
+
+
+def _has_quote_between(text: str, start: int, end: int) -> bool:
+    return any(char in "\"'«»“”„" for char in text[max(0, start) : max(start, end)])
+
+
+def _has_unclosed_pair_suffix(text: str, close_char: str, position: int) -> bool:
+    return position < len(text) and text[position] == close_char
+
+
 def _has_punctuation_between(text: str, start: int, end: int, chars: str) -> bool:
     return any(char in chars for char in text[max(0, start) : max(start, end)])
 
@@ -850,10 +1261,10 @@ PUNCTUATION_RULES: tuple[object, ...] = (
             edit_type="punctuation",
             mode="model_required",
             confidence=0.86,
-            requires=("model",),
-            description="Generate simple direct speech quote normalization edits for model scoring.",
+            requires=("syntax", "model"),
+            description="Generate bounded direct speech quote candidates for model scoring.",
         ),
-        _normalize_simple_direct_speech_quotes,
+        _identity,
     ),
     FunctionPunctuationRule(
         RuleSpec(
@@ -863,10 +1274,75 @@ PUNCTUATION_RULES: tuple[object, ...] = (
             edit_type="punctuation",
             mode="model_required",
             confidence=0.86,
-            requires=("model",),
-            description="Generate colon-before-direct-speech edits for model scoring.",
+            requires=("syntax", "model"),
+            description="Generate bounded colon-before-direct-speech candidates for model scoring.",
         ),
-        _add_simple_direct_speech_colon,
+        _identity,
+    ),
+    FunctionPunctuationRule(
+        RuleSpec(
+            id="direct_speech_dash",
+            group="direct_speech",
+            scope="punctuation_gap",
+            edit_type="punctuation",
+            mode="model_required",
+            confidence=0.84,
+            requires=("syntax", "model"),
+            description="Generate bounded dash candidates around already quoted direct speech.",
+        ),
+        _identity,
+    ),
+    FunctionPunctuationRule(
+        RuleSpec(
+            id="quote_open",
+            group="quotes_brackets",
+            scope="punctuation_gap",
+            edit_type="punctuation",
+            mode="model_required",
+            confidence=0.82,
+            requires=("model",),
+            description="Generate opening quote candidates for model scoring.",
+        ),
+        _identity,
+    ),
+    FunctionPunctuationRule(
+        RuleSpec(
+            id="quote_close",
+            group="quotes_brackets",
+            scope="punctuation_gap",
+            edit_type="punctuation",
+            mode="model_required",
+            confidence=0.82,
+            requires=("model",),
+            description="Generate closing quote candidates for model scoring.",
+        ),
+        _identity,
+    ),
+    FunctionPunctuationRule(
+        RuleSpec(
+            id="quote_pair_balance",
+            group="quotes_brackets",
+            scope="punctuation_gap",
+            edit_type="punctuation",
+            mode="model_required",
+            confidence=0.82,
+            requires=("model",),
+            description="Generate quote pair-balance candidates only for one-sided imbalance.",
+        ),
+        _identity,
+    ),
+    FunctionPunctuationRule(
+        RuleSpec(
+            id="bracket_pair_balance",
+            group="quotes_brackets",
+            scope="punctuation_gap",
+            edit_type="punctuation",
+            mode="model_required",
+            confidence=0.82,
+            requires=("model",),
+            description="Generate bracket pair-balance candidates only for one-sided imbalance.",
+        ),
+        _identity,
     ),
     FunctionPunctuationRule(
         RuleSpec(
@@ -892,7 +1368,59 @@ PUNCTUATION_RULES: tuple[object, ...] = (
             requires=("syntax", "model"),
             description="Generate enumeration colon edits for model scoring.",
         ),
-        _add_simple_enumeration_colon,
+        _identity,
+    ),
+    FunctionPunctuationRule(
+        RuleSpec(
+            id="explanation_colon",
+            group="colon",
+            scope="punctuation_gap",
+            edit_type="punctuation",
+            mode="model_required",
+            confidence=0.82,
+            requires=("syntax", "model"),
+            description="Generate bounded explanation colon candidates for model scoring.",
+        ),
+        _identity,
+    ),
+    FunctionPunctuationRule(
+        RuleSpec(
+            id="consequence_dash",
+            group="dash",
+            scope="punctuation_gap",
+            edit_type="punctuation",
+            mode="model_required",
+            confidence=0.82,
+            requires=("syntax", "model"),
+            description="Generate bounded consequence dash candidates for model scoring.",
+        ),
+        _identity,
+    ),
+    FunctionPunctuationRule(
+        RuleSpec(
+            id="asyndetic_dash",
+            group="dash",
+            scope="punctuation_gap",
+            edit_type="punctuation",
+            mode="model_required",
+            confidence=0.82,
+            requires=("syntax", "model"),
+            description="Generate bounded asyndetic dash candidates for model scoring.",
+        ),
+        _identity,
+    ),
+    FunctionPunctuationRule(
+        RuleSpec(
+            id="semicolon",
+            group="semicolon",
+            scope="punctuation_gap",
+            edit_type="punctuation",
+            mode="model_required",
+            confidence=0.82,
+            requires=("syntax", "model"),
+            description="Generate bounded semicolon candidates for model scoring.",
+        ),
+        _identity,
     ),
     RegexPunctuationRule(
         RuleSpec(

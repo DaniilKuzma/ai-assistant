@@ -58,7 +58,7 @@ data:
   manifest_path: reports/dataset_manifest.json
   target_total_examples: 450000
   clean_identity_ratio: 0.10
-  punctuation_hard_negative_clean_ratio: 0.0
+  punctuation_hard_negative_clean_ratio: 0.25
   val_ratio: 0.05
   test_ratio: 0.05
   domain: synthetic_general

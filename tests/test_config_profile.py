@@ -18,7 +18,7 @@ def test_main_config_is_full_train_profile_for_450k_dataset():
     assert config["data"]["processed_train_path"] == "data/processed/correction_dataset.csv.gz"
     assert config["data"]["clean_corpus"]["enabled"] is True
     assert config["data"]["external_local_files_only"] is True
-    assert config["data"]["punctuation_hard_negative_clean_ratio"] == 0.0
+    assert config["data"]["punctuation_hard_negative_clean_ratio"] > 0.0
     assert config["dictionary"]["enabled"] is True
     assert config["dictionary"]["lexicon_path"] == "data/processed/russian_lexicon.txt"
     assert config["dictionary"]["max_candidates"] == 2
@@ -49,7 +49,7 @@ def test_main_config_is_full_train_profile_for_450k_dataset():
 def test_project_model_references_use_ruroberta_large_only():
     checked_paths = [
         Path("configs/config.yaml"),
-        Path("README.md"),
+        Path("AI_INDEX.md"),
         Path("docs/superpowers/specs/2026-05-15-russian-edit-corrector-design.md"),
         Path("src/model/encoder.py"),
         Path("src/model/edit_model.py"),

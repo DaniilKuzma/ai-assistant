@@ -49,7 +49,7 @@ def evaluate_trained_model(
         metric_weights=config.get("metrics", {}).get("combined_score_weights"),
         show_progress=bool(config.get("training", {}).get("show_progress", False)),
         report_metadata={
-            "evaluation_backend": "provided_corrector" if corrector is not None else "freshly_trained_model",
+            "evaluation_backend": "stub_scorer" if corrector is not None else "existing_checkpoint",
             "model_training_disabled": False,
             "model_training_disabled_source": "",
         },
@@ -247,7 +247,7 @@ def _select_evaluation_corrector(
     if model_training_ran:
         return _build_evaluation_corrector(config, True), {
             **metadata,
-            "evaluation_backend": "freshly_trained_model",
+            "evaluation_backend": "existing_checkpoint",
             "checkpoint_load_error": "",
         }
 
@@ -255,7 +255,7 @@ def _select_evaluation_corrector(
         try:
             return TrainedModelCorrector.from_config(config), {
                 **metadata,
-                "evaluation_backend": "existing_model_checkpoint",
+                "evaluation_backend": "existing_checkpoint",
                 "checkpoint_load_error": "",
             }
         except Exception as exc:

@@ -105,7 +105,7 @@ ABBREVIATION_RE = re.compile(
     r"(?:\b\d{4}\s+[гГ]\.|\b(?:см|т\.д|т\.п|ул|стр|рис|г)\.|№\s*\d+)",
     re.IGNORECASE,
 )
-PUNCTUATION_NOISE_RE = re.compile(r"(?:…[.!?…]+|[.!?]+…|\.{2,}|[!?]{2,}|([,;:])\s*\1)")
+PUNCTUATION_NOISE_RE = re.compile(r"(?:…[.!?…]+|[.!?]+…|[!?]\.|\.{2,}|[!?]{2,}|([,;:])\s*\1)")
 
 
 def _guard_rejection_reason(
@@ -138,6 +138,8 @@ def _guard_rejection_reason(
         return "protected_span"
     if _creates_repeated_punctuation_noise(source, target, edit):
         return "punctuation_noise"
+    if _creates_unbalanced_pairs(source, target, edit):
+        return "unbalanced_pairs"
     return ""
 
 
@@ -194,6 +196,32 @@ def _breaks_abbreviation(source: str, target: str, edit: Edit) -> bool:
 def _creates_repeated_punctuation_noise(source: str, target: str, edit: Edit) -> bool:
     del edit
     return not _has_punctuation_noise(source) and _has_punctuation_noise(target)
+
+
+def _creates_unbalanced_pairs(source: str, target: str, edit: Edit) -> bool:
+    del edit
+    return _paired_punctuation_imbalance_score(target) > _paired_punctuation_imbalance_score(source)
+
+
+def _paired_punctuation_imbalance_score(text: str) -> int:
+    score = text.count('"') % 2
+    for open_char, close_char in (("«", "»"), ("(", ")"), ("[", "]")):
+        score += _ordered_pair_imbalance(text, open_char, close_char)
+    return score
+
+
+def _ordered_pair_imbalance(text: str, open_char: str, close_char: str) -> int:
+    balance = 0
+    unmatched_close = 0
+    for char in text:
+        if char == open_char:
+            balance += 1
+        elif char == close_char:
+            if balance:
+                balance -= 1
+            else:
+                unmatched_close += 1
+    return balance + unmatched_close
 
 
 def _is_dangerous_tsya_edit(source_text: str, edit: Edit) -> bool:

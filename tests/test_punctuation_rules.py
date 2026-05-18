@@ -236,6 +236,88 @@ def test_subject_predicate_dash_candidate_for_explicit_eto_pattern():
     assert candidate.gap_index == 0
 
 
+def test_direct_speech_candidates_are_model_required_and_not_auto_applied():
+    source = "Он сказал проект готов."
+    candidates = CandidateGenerator().generate(source)
+
+    colon = _punctuation_candidate(candidates, "direct_speech_colon", "COLON", "INSERT")
+    quote_open = _punctuation_candidate(candidates, "direct_speech_quotes", "QUOTE_OPEN", "INSERT")
+    quote_close = _punctuation_candidate(candidates, "direct_speech_quotes", "QUOTE_CLOSE", "INSERT")
+
+    assert colon.start == colon.end == len("Он сказал")
+    assert quote_open.start == quote_open.end == len("Он сказал ")
+    assert quote_close.start == quote_close.end == len("Он сказал проект готов")
+    for candidate in (colon, quote_open, quote_close):
+        assert candidate.mode == "model_required"
+        assert candidate.requires_model is True
+        assert candidate.requires_scoring is True
+        assert candidate.requires == ("syntax", "model")
+
+    result = Corrector().correct(source)
+    assert result.corrected_text == source
+
+
+def test_valid_direct_speech_quotes_are_not_repaired_or_rebalanced():
+    candidates = _punctuation_candidates(CandidateGenerator().generate("Он сказал: «Проект готов»."))
+
+    assert not [
+        candidate
+        for candidate in candidates
+        if candidate.rule_id
+        in {"direct_speech_colon", "direct_speech_dash", "direct_speech_quotes", "quote_pair_balance", "bracket_pair_balance"}
+    ]
+
+
+def test_quote_and_bracket_balance_candidates_are_model_required_only_for_one_sided_pairs():
+    quote_candidates = CandidateGenerator().generate("Он сказал: «Проект готов.")
+    bracket_candidates = CandidateGenerator().generate("Проверь документ (черновик.")
+
+    quote_close = _punctuation_candidate(quote_candidates, "quote_pair_balance", "QUOTE_CLOSE", "INSERT")
+    bracket_close = _punctuation_candidate(bracket_candidates, "bracket_pair_balance", "BRACKET_CLOSE", "INSERT")
+
+    assert quote_close.start == quote_close.end == len("Он сказал: «Проект готов")
+    assert bracket_close.start == bracket_close.end == len("Проверь документ (черновик")
+    for candidate in (quote_close, bracket_close):
+        assert candidate.mode == "model_required"
+        assert candidate.requires_model is True
+        assert candidate.requires_scoring is True
+        assert candidate.requires == ("model",)
+
+
+def test_straight_quote_candidates_use_explicit_quote_open_and_close_rule_ids():
+    candidates = CandidateGenerator().generate('Он сказал "Проект готов".')
+
+    quote_open = _punctuation_candidate(candidates, "quote_open", "QUOTE_OPEN", "REPLACE")
+    quote_close = _punctuation_candidate(candidates, "quote_close", "QUOTE_CLOSE", "REPLACE")
+
+    assert quote_open.source == '"'
+    assert quote_open.replacement == "«"
+    assert quote_close.source == '"'
+    assert quote_close.replacement == "»"
+    for candidate in (quote_open, quote_close):
+        assert candidate.mode == "model_required"
+        assert candidate.requires_model is True
+        assert candidate.requires_scoring is True
+        assert candidate.requires == ("model",)
+
+
+def test_colon_dash_semicolon_candidates_are_model_required():
+    examples = [
+        ("Возьми следующее документы и ключи.", "enumeration_colon", "COLON"),
+        ("Он понял одно проект готов.", "explanation_colon", "COLON"),
+        ("Начался дождь мы остались дома.", "consequence_dash", "DASH"),
+        ("Солнце село стало холодно.", "asyndetic_dash", "DASH"),
+        ("Документ готов отчет отправлен.", "semicolon", "SEMICOLON"),
+    ]
+
+    for text, rule_id, label in examples:
+        candidate = _punctuation_candidate(CandidateGenerator().generate(text), rule_id, label, "INSERT")
+        assert candidate.mode == "model_required"
+        assert candidate.requires_model is True
+        assert candidate.requires_scoring is True
+        assert candidate.requires == ("syntax", "model")
+
+
 def test_punctuation_candidates_do_not_create_duplicate_noise():
     candidates = CandidateGenerator().generate("Мы пришли,, но встреча закончилась.")
 

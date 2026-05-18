@@ -339,6 +339,59 @@ class NePartOfSpeechRule:
 
         return candidates
 
+    def generate_corruptions(
+        self,
+        text: str,
+        tokens: tuple[Any, ...] | None = None,
+        token_index: int | None = None,
+        protected: tuple[tuple[int, int], ...] = (),
+    ) -> Iterable[RuleCorruption]:
+        word_tokens = _word_tokens(text, tokens)
+        corruptions: list[RuleCorruption] = []
+        for index, token in _iter_token_positions(word_tokens, token_index):
+            if _span_overlaps_protected(int(token.start), int(token.end), protected):
+                continue
+            word = str(getattr(token, "text", "")).lower()
+            if word.startswith("не") and len(word) > 4 and is_known_word(word):
+                base = word[2:]
+                dirty = f"не {base}"
+                if _has_known_pos(base, self.poses) and _span_rule_repairs(self, text, token, dirty):
+                    corruptions.append(_token_corruption(self.spec, token, dirty, self.spec.edit_type, "ne_pos"))
+                continue
+            if word != "не" or index + 1 >= len(word_tokens):
+                continue
+            next_token = word_tokens[index + 1]
+            start, end = int(token.start), int(next_token.end)
+            if _span_overlaps_protected(start, end, protected):
+                continue
+            base = str(getattr(next_token, "text", "")).lower()
+            dirty = f"не{base}"
+            if (
+                _has_known_pos(base, self.poses)
+                and is_known_word(dirty)
+                and _span_rule_repairs_span(self, text, start, end, dirty)
+            ):
+                corruptions.append(
+                    RuleCorruption(
+                        start=start,
+                        end=end,
+                        replacement=_match_case(text[start:end], dirty),
+                        error_type=self.spec.edit_type,
+                        group="ne_pos",
+                        rule_id=self.spec.id,
+                    )
+                )
+        return corruptions
+
+    def clean_to_dirty(
+        self,
+        text: str,
+        tokens: tuple[Any, ...] | None = None,
+        token_index: int | None = None,
+        protected: tuple[tuple[int, int], ...] = (),
+    ) -> Iterable[RuleCorruption]:
+        return self.generate_corruptions(text, tokens, token_index, protected)
+
 
 @dataclass(frozen=True)
 class NiStableExpressionRule:
@@ -361,6 +414,25 @@ class NiStableExpressionRule:
             if candidate:
                 candidates.append(candidate)
         return candidates
+
+    def generate_corruptions(
+        self,
+        text: str,
+        tokens: tuple[Any, ...] | None = None,
+        token_index: int | None = None,
+        protected: tuple[tuple[int, int], ...] = (),
+    ) -> Iterable[RuleCorruption]:
+        del tokens, token_index
+        return _phrase_corruptions_for_pairs(self, text, NI_STABLE_EXPRESSION_PAIRS, "ne_ni", protected)
+
+    def clean_to_dirty(
+        self,
+        text: str,
+        tokens: tuple[Any, ...] | None = None,
+        token_index: int | None = None,
+        protected: tuple[tuple[int, int], ...] = (),
+    ) -> Iterable[RuleCorruption]:
+        return self.generate_corruptions(text, tokens, token_index, protected)
 
 
 @dataclass(frozen=True)
@@ -396,6 +468,33 @@ class NnRule:
 
     def generate(self, token: str, context: RuleContext | None = None) -> Iterable[RuleCandidate]:
         return self.generate_candidates(token, context)
+
+    def generate_corruptions(
+        self,
+        text: str,
+        tokens: tuple[Any, ...] | None = None,
+        token_index: int | None = None,
+        protected: tuple[tuple[int, int], ...] = (),
+    ) -> Iterable[RuleCorruption]:
+        corruptions: list[RuleCorruption] = []
+        for _index, token in _iter_token_positions(_word_tokens(text, tokens), token_index):
+            if _span_overlaps_protected(int(token.start), int(token.end), protected):
+                continue
+            word = str(getattr(token, "text", "")).lower()
+            for dirty in _n_nn_variants(word):
+                if not _same_rule_repairs(self, dirty, word):
+                    continue
+                corruptions.append(_token_corruption(self.spec, token, dirty, self.spec.edit_type, self.spec.group))
+        return corruptions
+
+    def clean_to_dirty(
+        self,
+        text: str,
+        tokens: tuple[Any, ...] | None = None,
+        token_index: int | None = None,
+        protected: tuple[tuple[int, int], ...] = (),
+    ) -> Iterable[RuleCorruption]:
+        return self.generate_corruptions(text, tokens, token_index, protected)
 
     def _matches(self, source: str, replacement: str) -> bool:
         if self.rule_id == "n_nn_short_form":
@@ -438,6 +537,32 @@ class PrefixPrePriRule:
 
     def generate(self, token: str, context: RuleContext | None = None) -> Iterable[RuleCandidate]:
         return self.generate_candidates(token, context)
+
+    def generate_corruptions(
+        self,
+        text: str,
+        tokens: tuple[Any, ...] | None = None,
+        token_index: int | None = None,
+        protected: tuple[tuple[int, int], ...] = (),
+    ) -> Iterable[RuleCorruption]:
+        corruptions: list[RuleCorruption] = []
+        for _index, token in _iter_token_positions(_word_tokens(text, tokens), token_index):
+            if _span_overlaps_protected(int(token.start), int(token.end), protected):
+                continue
+            word = str(getattr(token, "text", "")).lower()
+            dirty = _toggle_pre_pri(word)
+            if dirty and _same_rule_repairs(self, dirty, word):
+                corruptions.append(_token_corruption(self.spec, token, dirty, self.spec.edit_type, self.spec.group))
+        return corruptions
+
+    def clean_to_dirty(
+        self,
+        text: str,
+        tokens: tuple[Any, ...] | None = None,
+        token_index: int | None = None,
+        protected: tuple[tuple[int, int], ...] = (),
+    ) -> Iterable[RuleCorruption]:
+        return self.generate_corruptions(text, tokens, token_index, protected)
 
 
 @dataclass(frozen=True)
@@ -1012,6 +1137,25 @@ class ContextPairRule:
                 candidates.append(candidate)
         return candidates
 
+    def generate_corruptions(
+        self,
+        text: str,
+        tokens: tuple[Any, ...] | None = None,
+        token_index: int | None = None,
+        protected: tuple[tuple[int, int], ...] = (),
+    ) -> Iterable[RuleCorruption]:
+        del tokens, token_index
+        return _phrase_corruptions_for_pairs(self, text, self.pairs, "context_pairs", protected)
+
+    def clean_to_dirty(
+        self,
+        text: str,
+        tokens: tuple[Any, ...] | None = None,
+        token_index: int | None = None,
+        protected: tuple[tuple[int, int], ...] = (),
+    ) -> Iterable[RuleCorruption]:
+        return self.generate_corruptions(text, tokens, token_index, protected)
+
 
 @dataclass(frozen=True)
 class HyphenParticleRule:
@@ -1567,6 +1711,10 @@ def _phrase_span_candidate(
 def _span_rule_repairs(rule: object, clean_text: str, clean_token: Any, dirty_replacement: str) -> bool:
     start = int(clean_token.start)
     end = int(clean_token.end)
+    return _span_rule_repairs_span(rule, clean_text, start, end, dirty_replacement)
+
+
+def _span_rule_repairs_span(rule: object, clean_text: str, start: int, end: int, dirty_replacement: str) -> bool:
     clean = clean_text[start:end]
     dirty = _match_case(clean, dirty_replacement)
     dirty_text = clean_text[:start] + dirty + clean_text[end:]
@@ -1574,6 +1722,40 @@ def _span_rule_repairs(rule: object, clean_text: str, clean_token: Any, dirty_re
         if candidate.rule_id == rule.spec.id and candidate.replacement.lower() == clean.lower():
             return True
     return False
+
+
+def _phrase_corruptions_for_pairs(
+    rule: object,
+    text: str,
+    pairs: tuple[tuple[str, str], ...],
+    group: str,
+    protected: tuple[tuple[int, int], ...],
+) -> list[RuleCorruption]:
+    corruptions: list[RuleCorruption] = []
+    lower = text.lower()
+    seen: set[tuple[int, int, str]] = set()
+    for dirty, clean in pairs:
+        start = lower.find(clean)
+        if start < 0:
+            continue
+        end = start + len(clean)
+        if _span_overlaps_protected(start, end, protected):
+            continue
+        key = (start, end, dirty)
+        if key in seen or not _span_rule_repairs_span(rule, text, start, end, dirty):
+            continue
+        seen.add(key)
+        corruptions.append(
+            RuleCorruption(
+                start=start,
+                end=end,
+                replacement=_match_case(text[start:end], dirty),
+                error_type=rule.spec.edit_type,
+                group=group,
+                rule_id=rule.spec.id,
+            )
+        )
+    return corruptions
 
 
 def _word_tokens(text: str, tokens: tuple[Any, ...] | None) -> tuple[Any, ...]:

@@ -1,52 +1,235 @@
 row_id,source,replacement,edit_type,rule_id,status,reason,confidence
-5,,.,final_punctuation,final_punctuation_default,accepted,trusted bounded candidate,0.9
-6,важный,Важный,case_change,sentence_start_case,accepted,trusted bounded candidate,0.9
-6,,.,final_punctuation,final_punctuation_default,accepted,trusted bounded candidate,0.9
-7,безполезная,бесполезная,spelling_replace,prefix_z_to_s,accepted,trusted bounded candidate,0.95
-8,,.,final_punctuation,final_punctuation_default,accepted,trusted bounded candidate,0.9
-9,безпокойный,беспокойный,spelling_replace,frequent_errors,accepted,trusted bounded candidate,0.95
-10,точный,Точный,case_change,sentence_start_case,accepted,trusted bounded candidate,0.9
-11,:,,punctuation_delete,punctuation_delete_replace,accepted,trusted bounded candidate,0.85
-14,жывою,живою,spelling_replace,pattern_жы_жи,accepted,trusted bounded candidate,0.94
-16,итоговый,Итоговый,case_change,sentence_start_case,accepted,trusted bounded candidate,0.9
-20,цырков,цирков,spelling_replace,pattern_цы_ци,accepted,trusted bounded candidate,0.94
-21,жызней,жизней,spelling_replace,pattern_жы_жи,accepted,trusted bounded candidate,0.94
-24,чюдо,чудо,spelling_replace,frequent_errors,accepted,trusted bounded candidate,0.95
-25,бесграмотный,безграмотный,spelling_replace,frequent_errors,accepted,trusted bounded candidate,0.95
-26,обявление,объявление,spelling_replace,frequent_errors,accepted,trusted bounded candidate,0.95
-29,зделал,сделал,spelling_replace,frequent_errors,accepted,trusted bounded candidate,0.95
-31,пришодший,пришедший,spelling_replace,pattern_шо_ше,accepted,trusted bounded candidate,0.94
-32,летний,Летний,case_change,sentence_start_case,accepted,trusted bounded candidate,0.9
-36,машына,машина,spelling_replace,frequent_errors,accepted,trusted bounded candidate,0.95
-40,подезду,подъезду,spelling_replace,frequent_errors,accepted,trusted bounded candidate,0.95
-41,жывой,живой,spelling_replace,frequent_errors,accepted,trusted bounded candidate,0.95
-42,рабочий,Рабочий,case_change,sentence_start_case,accepted,trusted bounded candidate,0.9
-43,цырку,цирку,spelling_replace,pattern_цы_ци,accepted,trusted bounded candidate,0.94
-47,итоговый,Итоговый,case_change,sentence_start_case,accepted,trusted bounded candidate,0.9
-47,",",,punctuation_delete,punctuation_delete_replace,accepted,trusted bounded candidate,0.85
-48,шол,шел,spelling_replace,frequent_errors,accepted,trusted bounded candidate,0.95
-51,шол,шел,spelling_replace,frequent_errors,accepted,trusted bounded candidate,0.95
-58,чяща,чаща,spelling_replace,frequent_errors,accepted,trusted bounded candidate,0.95
-61,или,Или,case_change,sentence_start_case,accepted,trusted bounded candidate,0.9
-61,,.,final_punctuation,final_punctuation_default,accepted,trusted bounded candidate,0.9
-63,итоговый,Итоговый,case_change,sentence_start_case,accepted,trusted bounded candidate,0.9
-64,обьектах,объектах,spelling_replace,soft_to_hard_sign,accepted,trusted bounded candidate,0.95
-66,точный,Точный,case_change,sentence_start_case,accepted,trusted bounded candidate,0.9
-67,жывотное,животное,spelling_replace,frequent_errors,accepted,trusted bounded candidate,0.95
-71,важный,Важный,case_change,sentence_start_case,accepted,trusted bounded candidate,0.9
-71,",",,punctuation_delete,punctuation_delete_replace,accepted,trusted bounded candidate,0.85
-76,херфси,Херфси,case_change,sentence_start_case,accepted,trusted bounded candidate,0.9
-76,,.,final_punctuation,final_punctuation_default,accepted,trusted bounded candidate,0.9
-79,обьектами,объектами,spelling_replace,soft_to_hard_sign,accepted,trusted bounded candidate,0.95
-80,шодших,шедших,spelling_replace,pattern_шо_ше,accepted,trusted bounded candidate,0.94
-82,точный,Точный,case_change,sentence_start_case,accepted,trusted bounded candidate,0.9
-82,",",,punctuation_delete,punctuation_delete_replace,accepted,trusted bounded candidate,0.85
-87,жызни,жизни,spelling_replace,pattern_жы_жи,accepted,trusted bounded candidate,0.94
-88,,.,final_punctuation,final_punctuation_default,accepted,trusted bounded candidate,0.9
-91,важный,Важный,case_change,sentence_start_case,accepted,trusted bounded candidate,0.9
-91,",",,punctuation_delete,punctuation_delete_replace,accepted,trusted bounded candidate,0.85
-92,",",,punctuation_delete,punctuation_delete_replace,accepted,trusted bounded candidate,0.85
-93,",",,punctuation_delete,punctuation_delete_replace,accepted,trusted bounded candidate,0.85
-94,,.,final_punctuation,final_punctuation_default,accepted,trusted bounded candidate,0.9
-97,важный,Важный,case_change,sentence_start_case,accepted,trusted bounded candidate,0.9
-97,,.,final_punctuation,final_punctuation_default,accepted,trusted bounded candidate,0.9
+0,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.9327681660652161
+1,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.9627746939659119
+2,приувеличивать,преувеличивать,spelling_replace,prefix_pre_pri,accepted,trusted bounded candidate,0.7308027148246765
+3,,«,punctuation_insert,,accepted,trusted bounded candidate,0.999971866607666
+3,,»,punctuation_insert,,accepted,trusted bounded candidate,0.9999936819076538
+3,,(,punctuation_insert,,accepted,trusted bounded candidate,0.9997491240501404
+3,,),punctuation_insert,,accepted,allowed strict-scope edit,0.85
+4,:,,punctuation_delete,punctuation_delete_replace,accepted,trusted bounded candidate,0.9990507960319519
+4,:,",",punctuation_replace,,accepted,trusted bounded candidate,0.9999772310256958
+5,кажеться,кажется,spelling_replace,frequent_error_exact,accepted,trusted bounded candidate,0.9967696666717529
+6,вообщем,в общем,split_word,frequent_error_exact,accepted,trusted bounded candidate,0.9618851542472839
+7,,",",punctuation_insert,,accepted,trusted bounded candidate,0.9863306283950806
+8,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.928737223148346
+9,,",",punctuation_insert,,accepted,trusted bounded candidate,0.9999812841415405
+10,,.,final_punctuation,final_punctuation_default,accepted,trusted bounded candidate,0.9897041916847229
+11,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9550283551216125
+12,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.8550735116004944
+13,,»,punctuation_insert,direct_speech_quotes,accepted,trusted bounded candidate,0.9553413987159729
+13,,:,punctuation_insert,,accepted,trusted bounded candidate,0.9999501705169678
+13,,«,punctuation_insert,,accepted,allowed strict-scope edit,0.85
+16,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.950465738773346
+17,наидлинейшею,наидлиннейшею,spelling_replace,n_nn_adjective,accepted,trusted bounded candidate,0.7664941549301147
+18,цытата,цитата,spelling_replace,frequent_error_exact,accepted,trusted bounded candidate,0.8999010920524597
+19,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.8937954306602478
+20,,",",punctuation_insert,,accepted,trusted bounded candidate,0.9676610231399536
+21,вообщем,в общем,split_word,frequent_error_exact,accepted,trusted bounded candidate,0.9620532393455505
+23,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.935359001159668
+26,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9613102078437805
+27,жывым,живым,spelling_replace,pattern_жы_жи,accepted,trusted bounded candidate,0.9619128108024597
+28,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.942196249961853
+29,,",",punctuation_insert,,accepted,trusted bounded candidate,0.9660922288894653
+30,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9751685857772827
+31,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.9908401370048523
+31,,«,punctuation_insert,direct_speech_quotes,accepted,trusted bounded candidate,0.9714806079864502
+31,,»,punctuation_insert,direct_speech_quotes,accepted,trusted bounded candidate,0.9907650947570801
+32,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.9871776103973389
+33,,!,final_punctuation,,accepted,trusted bounded candidate,0.9994016885757446
+34,",",,punctuation_delete,punctuation_delete_replace,accepted,trusted bounded candidate,0.9976726174354553
+35,,:,punctuation_insert,,accepted,trusted bounded candidate,0.9995682835578918
+36,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9491301774978638
+37,",",;,punctuation_replace,,accepted,trusted bounded candidate,0.9998193383216858
+38,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.9494413733482361
+40,вада,вода,spelling_replace,frequent_error_exact,accepted,trusted bounded candidate,0.8857098817825317
+41,жывотное,животное,spelling_replace,frequent_error_exact,accepted,trusted bounded candidate,0.9319857358932495
+42,обявленьям,объявленьям,spelling_replace,missing_hard_sign,accepted,trusted bounded candidate,0.8379024863243103
+45,вообщем,в общем,split_word,frequent_error_exact,accepted,trusted bounded candidate,0.9640734195709229
+46,безконечною,бесконечною,spelling_replace,prefix_z_to_s,accepted,trusted bounded candidate,0.9217731952667236
+47,незнаю,не знаю,split_word,frequent_error_exact,accepted,trusted bounded candidate,0.9811406135559082
+48,цырк,цирк,spelling_replace,frequent_error_exact,accepted,trusted bounded candidate,0.9070125222206116
+49,чюдо,чудо,spelling_replace,frequent_error_exact,accepted,trusted bounded candidate,0.8892518281936646
+50,,«,punctuation_insert,,accepted,trusted bounded candidate,0.999944806098938
+50,,»,punctuation_insert,,accepted,trusted bounded candidate,0.9999985694885254
+50,,(,punctuation_insert,,accepted,trusted bounded candidate,0.9999686479568481
+50,,),punctuation_insert,,accepted,allowed strict-scope edit,0.85
+51,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9763100147247314
+53,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9760343432426453
+55,шыроки,широки,spelling_replace,pattern_шы_ши,accepted,trusted bounded candidate,0.941214382648468
+56,цырком,цирком,spelling_replace,pattern_цы_ци,accepted,trusted bounded candidate,0.8886241316795349
+57,"""",«,punctuation_replace,quote_open,accepted,trusted bounded candidate,0.9999127388000488
+57,не случайно,неслучайно,join_words,ne_adverb,accepted,trusted bounded candidate,0.9997896552085876
+57,небольшой,не большой,split_word,ne_adjective,accepted,trusted bounded candidate,0.9998799562454224
+57,"""",»,punctuation_replace,quote_close,accepted,trusted bounded candidate,0.9999675750732422
+58,;,,punctuation_delete,punctuation_delete_replace,accepted,trusted bounded candidate,0.9996716976165771
+59,,.,final_punctuation,final_punctuation_default,accepted,trusted bounded candidate,0.997803270816803
+60,кто нибудь,кто-нибудь,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.8960455060005188
+62,харашо,хорошо,spelling_replace,frequent_error_exact,accepted,trusted bounded candidate,0.9212162494659424
+63,:,,punctuation_delete,punctuation_delete_replace,accepted,trusted bounded candidate,0.9997803568840027
+64,,",",punctuation_insert,,accepted,trusted bounded candidate,0.9993657469749451
+65,:,,punctuation_delete,punctuation_delete_replace,accepted,trusted bounded candidate,0.9995070695877075
+65,:,",",punctuation_replace,,accepted,trusted bounded candidate,0.9999939203262329
+68,.,…,final_punctuation,,accepted,trusted bounded candidate,0.9944427609443665
+69,:,,punctuation_delete,punctuation_delete_replace,accepted,trusted bounded candidate,0.9999054670333862
+69,:,",",punctuation_replace,,accepted,trusted bounded candidate,0.9999536275863647
+71,длиною,длинною,spelling_replace,n_nn_adjective,accepted,trusted bounded candidate,0.8652364015579224
+72,во первых,во-первых,hyphen_change,hyphen_whitelist,accepted,trusted bounded candidate,0.8277139663696289
+73,малако,молоко,spelling_replace,frequent_error_exact,accepted,trusted bounded candidate,0.9060335159301758
+75,незнаю,не знаю,split_word,frequent_error_exact,accepted,trusted bounded candidate,0.9789503812789917
+76,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.947087287902832
+78,,",",punctuation_insert,,accepted,trusted bounded candidate,0.9993928670883179
+79,"""",«,punctuation_replace,quote_open,accepted,trusted bounded candidate,0.9999840259552002
+79,"""",»,punctuation_replace,quote_close,accepted,trusted bounded candidate,0.9998433589935303
+80,,",",punctuation_insert,,accepted,trusted bounded candidate,0.9999823570251465
+81,,",",punctuation_insert,,accepted,trusted bounded candidate,0.9981877207756042
+82,,",",punctuation_insert,,accepted,trusted bounded candidate,0.9422190189361572
+83,вада,вода,spelling_replace,frequent_error_exact,accepted,trusted bounded candidate,0.8907867074012756
+84,"""",«,punctuation_replace,quote_open,accepted,trusted bounded candidate,0.9999550580978394
+84,"""",»,punctuation_replace,quote_close,accepted,trusted bounded candidate,0.9998956918716431
+86,всмысле,в смысле,split_word,frequent_error_exact,accepted,trusted bounded candidate,0.9564881920814514
+87,,.,final_punctuation,final_punctuation_default,accepted,trusted bounded candidate,0.9943472743034363
+88,обьект,объект,spelling_replace,frequent_error_exact,accepted,trusted bounded candidate,0.9461649060249329
+90,,.,final_punctuation,final_punctuation_default,accepted,trusted bounded candidate,0.9965816140174866
+91,",",;,punctuation_replace,,accepted,trusted bounded candidate,0.9997557997703552
+94,чюдо,чудо,spelling_replace,frequent_error_exact,accepted,trusted bounded candidate,0.8924834132194519
+95,кто нибудь,кто-нибудь,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.8917545080184937
+96,чювство,чувство,spelling_replace,frequent_error_exact,accepted,trusted bounded candidate,0.9283738732337952
+97,",",;,punctuation_replace,,accepted,trusted bounded candidate,0.9995531439781189
+99,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.9955676198005676
+100,нашодшая,нашедшая,spelling_replace,pattern_шо_ше,accepted,trusted bounded candidate,0.8914189338684082
+101,намерены,намеренны,spelling_replace,n_nn_short_form,accepted,trusted bounded candidate,0.9998844861984253
+103,неработало,не работало,split_word,ne_verb,accepted,trusted bounded candidate,0.8928694128990173
+104,обьект,объект,spelling_replace,frequent_error_exact,accepted,trusted bounded candidate,0.9455007910728455
+105,ннаидлиннейшею,наидлиннейшею,spelling_replace,n_nn_adjective,accepted,trusted bounded candidate,0.8204005360603333
+107,цыклам,циклам,spelling_replace,pattern_цы_ци,accepted,trusted bounded candidate,0.9444771409034729
+109,кто нибудь,кто-нибудь,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.8878777623176575
+114,жолтых,желтых,spelling_replace,pattern_жо_же,accepted,trusted bounded candidate,0.8358858227729797
+115,,",",punctuation_insert,,accepted,trusted bounded candidate,0.9995094537734985
+117,малако,молоко,spelling_replace,frequent_error_exact,accepted,trusted bounded candidate,0.9174258708953857
+120,подезду,подъезду,spelling_replace,frequent_error_exact,accepted,trusted bounded candidate,0.8803210258483887
+121,подезду,подъезду,spelling_replace,frequent_error_exact,accepted,trusted bounded candidate,0.8833150267601013
+122,малако,молоко,spelling_replace,frequent_error_exact,accepted,trusted bounded candidate,0.9171891212463379
+123,подезд,подъезд,spelling_replace,frequent_error_exact,accepted,trusted bounded candidate,0.8821620941162109
+124,вада,вода,spelling_replace,frequent_error_exact,accepted,trusted bounded candidate,0.8884673118591309
+127,шол,шел,spelling_replace,frequent_error_exact,accepted,trusted bounded candidate,0.9979556798934937
+128,,:,punctuation_insert,direct_speech_colon,accepted,trusted bounded candidate,0.8779369592666626
+128,налоговой,Налоговой,case_change,capitalization_ner,accepted,trusted bounded candidate,0.9999885559082031
+128,службы,Службы,case_change,capitalization_ner,accepted,trusted bounded candidate,0.9999973773956299
+128,"""",«,punctuation_replace,quote_open,accepted,trusted bounded candidate,0.9999551773071289
+128,"""",»,punctuation_replace,quote_close,accepted,trusted bounded candidate,0.9996216297149658
+128,,",",punctuation_insert,,accepted,allowed strict-scope edit,0.85
+129,жывотного,животного,spelling_replace,pattern_жы_жи,accepted,trusted bounded candidate,0.9546305537223816
+130,цыклах,циклах,spelling_replace,pattern_цы_ци,accepted,trusted bounded candidate,0.8366748094558716
+131,,—,punctuation_insert,,accepted,trusted bounded candidate,0.9998542070388794
+132,безпокойны,беспокойны,spelling_replace,prefix_z_to_s,accepted,trusted bounded candidate,0.7883323431015015
+133,,.,final_punctuation,final_punctuation_default,accepted,trusted bounded candidate,0.9992498755455017
+134,обьект,объект,spelling_replace,frequent_error_exact,accepted,trusted bounded candidate,0.9442741870880127
+135,идущой,идущей,spelling_replace,pattern_що_ще,accepted,trusted bounded candidate,0.786573052406311
+137,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.9056727290153503
+138,,—,punctuation_insert,,accepted,trusted bounded candidate,0.999823272228241
+139,подезд,подъезд,spelling_replace,frequent_error_exact,accepted,trusted bounded candidate,0.8747230172157288
+140,,«,punctuation_insert,,accepted,trusted bounded candidate,0.9999197721481323
+140,,(,punctuation_insert,,accepted,trusted bounded candidate,0.9999969005584717
+140,,),punctuation_insert,,accepted,allowed strict-scope edit,0.85
+140,,»,punctuation_insert,,accepted,allowed strict-scope edit,0.85
+141,что то,что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.8360570073127747
+142,безконечное,бесконечное,spelling_replace,prefix_z_to_s,accepted,trusted bounded candidate,0.8123645782470703
+143,щюка,щука,spelling_replace,frequent_error_exact,accepted,trusted bounded candidate,0.894608199596405
+144,во первых,во-первых,hyphen_change,hyphen_whitelist,accepted,trusted bounded candidate,0.8391339182853699
+145,чюдо,чудо,spelling_replace,frequent_error_exact,accepted,trusted bounded candidate,0.8979330062866211
+146,во первых,во-первых,hyphen_change,hyphen_whitelist,accepted,trusted bounded candidate,0.8316899538040161
+148,безплатнее,бесплатнее,spelling_replace,prefix_z_to_s,accepted,trusted bounded candidate,0.8012057542800903
+149,врядли,вряд ли,split_word,frequent_error_exact,accepted,trusted bounded candidate,0.8854809403419495
+151,жывотному,животному,spelling_replace,pattern_жы_жи,accepted,trusted bounded candidate,0.9461398124694824
+153,кое как,кое-как,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.884792685508728
+155,,—,punctuation_insert,,accepted,trusted bounded candidate,0.9999562501907349
+158,,«,punctuation_insert,,accepted,trusted bounded candidate,0.9999657869338989
+158,,»,punctuation_insert,,accepted,trusted bounded candidate,0.9999911785125732
+158,,(,punctuation_insert,,accepted,trusted bounded candidate,0.9994174242019653
+158,,),punctuation_insert,,accepted,allowed strict-scope edit,0.85
+164,подездов,подъездов,spelling_replace,missing_hard_sign,accepted,trusted bounded candidate,0.7596817016601562
+165,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.9997240900993347
+168,,«,punctuation_insert,,accepted,trusted bounded candidate,0.9999551773071289
+168,,»,punctuation_insert,,accepted,trusted bounded candidate,0.9999963045120239
+168,,(,punctuation_insert,,accepted,trusted bounded candidate,0.9994778037071228
+168,,),punctuation_insert,,accepted,allowed strict-scope edit,0.85
+169,,.,final_punctuation,final_punctuation_default,accepted,trusted bounded candidate,0.9734663963317871
+170,:,,punctuation_delete,punctuation_delete_replace,accepted,trusted bounded candidate,0.9996930360794067
+171,",",,punctuation_delete,punctuation_delete_replace,accepted,trusted bounded candidate,0.9975678324699402
+172,во первых,во-первых,hyphen_change,hyphen_whitelist,accepted,trusted bounded candidate,0.825797438621521
+173,",",,punctuation_delete,punctuation_delete_replace,accepted,trusted bounded candidate,0.9953183531761169
+175,:,,punctuation_delete,punctuation_delete_replace,accepted,trusted bounded candidate,0.9996988773345947
+175,:,",",punctuation_replace,,accepted,trusted bounded candidate,0.9998660087585449
+177,во первых,во-первых,hyphen_change,hyphen_whitelist,accepted,trusted bounded candidate,0.8287990093231201
+178,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.995318591594696
+179,чтобы,Чтобы,case_change,capitalization_sentence_start,accepted,trusted bounded candidate,0.9135966897010803
+181,",",,punctuation_delete,punctuation_delete_replace,accepted,trusted bounded candidate,0.9981669187545776
+182,что то,что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.830321192741394
+183,,.,final_punctuation,final_punctuation_default,accepted,trusted bounded candidate,0.991682767868042
+184,во первых,во-первых,hyphen_change,hyphen_whitelist,accepted,trusted bounded candidate,0.8338034749031067
+185,",",,punctuation_delete,punctuation_delete_replace,accepted,trusted bounded candidate,0.9976677298545837
+186,,",",punctuation_insert,,accepted,trusted bounded candidate,0.9994562268257141
+187,кто нибудь,кто-нибудь,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.8887200355529785
+188,,:,punctuation_insert,,accepted,trusted bounded candidate,0.9992535710334778
+189,во первых,во-первых,hyphen_change,hyphen_whitelist,accepted,trusted bounded candidate,0.8335129618644714
+190,во первых,во-первых,hyphen_change,hyphen_whitelist,accepted,trusted bounded candidate,0.8378440141677856
+191,,:,punctuation_insert,,accepted,trusted bounded candidate,0.9996335506439209
+192,кто нибудь,кто-нибудь,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.896091639995575
+194,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9728023409843445
+196,кое как,кое-как,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.8843603730201721
+197,:,,punctuation_delete,punctuation_delete_replace,accepted,trusted bounded candidate,0.9997187256813049
+199,:,,punctuation_delete,punctuation_delete_replace,accepted,trusted bounded candidate,0.9995388984680176
+199,:,",",punctuation_replace,,accepted,trusted bounded candidate,0.9999945163726807
+200,малако,молоко,spelling_replace,frequent_error_exact,accepted,trusted bounded candidate,0.9057771563529968
+201,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9504397511482239
+202,кое как,кое-как,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.8869205117225647
+203,малако,молоко,spelling_replace,frequent_error_exact,accepted,trusted bounded candidate,0.9070402979850769
+205,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9578887224197388
+206,,:,punctuation_insert,,accepted,trusted bounded candidate,0.9997394680976868
+207,кто нибудь,кто-нибудь,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.8969440460205078
+208,,",",punctuation_insert,,accepted,trusted bounded candidate,0.9999816417694092
+209,,.,final_punctuation,final_punctuation_default,accepted,trusted bounded candidate,0.9968419075012207
+210,",",,punctuation_delete,punctuation_delete_replace,accepted,trusted bounded candidate,0.9977141618728638
+212,во первых,во-первых,hyphen_change,hyphen_whitelist,accepted,trusted bounded candidate,0.8373843431472778
+213,кто нибудь,кто-нибудь,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.8871440887451172
+214,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9479721188545227
+215,:,,punctuation_delete,punctuation_delete_replace,accepted,trusted bounded candidate,0.9998989105224609
+215,:,",",punctuation_replace,,accepted,trusted bounded candidate,0.9999561309814453
+216,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9768351316452026
+217,",",,punctuation_delete,punctuation_delete_replace,accepted,trusted bounded candidate,0.9926968216896057
+218,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.9865540862083435
+219,",",,punctuation_delete,punctuation_delete_replace,accepted,trusted bounded candidate,0.9978127479553223
+220,:,,punctuation_delete,punctuation_delete_replace,accepted,trusted bounded candidate,0.9990680813789368
+220,:,",",punctuation_replace,,accepted,trusted bounded candidate,0.999971866607666
+221,,:,punctuation_insert,,accepted,trusted bounded candidate,0.9994530081748962
+222,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.975590705871582
+223,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9775766730308533
+226,,—,punctuation_insert,,accepted,trusted bounded candidate,0.9994761347770691
+228,",",,punctuation_delete,punctuation_delete_replace,accepted,trusted bounded candidate,0.9976311922073364
+230,,!,final_punctuation,,accepted,trusted bounded candidate,0.9994544386863708
+231,кто нибудь,кто-нибудь,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.8898890018463135
+232,,«,punctuation_insert,direct_speech_quotes,accepted,trusted bounded candidate,0.9266873002052307
+232,,»,punctuation_insert,direct_speech_quotes,accepted,trusted bounded candidate,0.9754964113235474
+232,,:,punctuation_insert,,accepted,trusted bounded candidate,0.9996335506439209
+233,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9295153021812439
+234,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9726187586784363
+235,,.,final_punctuation,final_punctuation_default,accepted,trusted bounded candidate,0.9955097436904907
+236,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.9674349427223206
+237,,",",punctuation_insert,,accepted,trusted bounded candidate,0.9999822378158569
+238,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9575838446617126
+240,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.948555052280426
+241,,—,punctuation_insert,,accepted,trusted bounded candidate,0.9997217059135437
+242,,.,final_punctuation,final_punctuation_default,accepted,trusted bounded candidate,0.9953500032424927
+244,:,,punctuation_delete,punctuation_delete_replace,accepted,trusted bounded candidate,0.9996916055679321
+245,,»,punctuation_insert,direct_speech_quotes,accepted,trusted bounded candidate,0.9671612977981567
+245,,:,punctuation_insert,,accepted,trusted bounded candidate,0.9998831748962402
+245,,«,punctuation_insert,,accepted,allowed strict-scope edit,0.85
+246,,.,final_punctuation,final_punctuation_default,accepted,trusted bounded candidate,0.9962426424026489
+247,",",,punctuation_delete,punctuation_delete_replace,accepted,trusted bounded candidate,0.9983227849006653
+248,.,…,final_punctuation,,accepted,trusted bounded candidate,0.9934912323951721
+251,:,,punctuation_delete,punctuation_delete_replace,accepted,trusted bounded candidate,0.9996994733810425
+251,:,",",punctuation_replace,,accepted,trusted bounded candidate,0.9998144507408142
+252,,!,final_punctuation,,accepted,trusted bounded candidate,0.9996728897094727
+255,.,…,final_punctuation,,accepted,trusted bounded candidate,0.9937991499900818
+256,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.936011791229248
+257,кто нибудь,кто-нибудь,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.8904097080230713

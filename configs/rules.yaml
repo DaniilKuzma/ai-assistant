@@ -1,3 +1,112 @@
+synthetic_generation:
+  enabled:
+    pattern_жы_жи:
+      domain: orthography
+      groups: [combo]
+      source_datasets: [synthetic_balanced_orthography_combo, synthetic_open_corpus_combo]
+    pattern_шы_ши:
+      domain: orthography
+      groups: [combo]
+      source_datasets: [synthetic_balanced_orthography_combo, synthetic_open_corpus_combo]
+    pattern_чя_ча:
+      domain: orthography
+      groups: [combo]
+      source_datasets: [synthetic_balanced_orthography_combo, synthetic_open_corpus_combo]
+    pattern_щя_ща:
+      domain: orthography
+      groups: [combo]
+      source_datasets: [synthetic_balanced_orthography_combo, synthetic_open_corpus_combo]
+    pattern_чю_чу:
+      domain: orthography
+      groups: [combo]
+      source_datasets: [synthetic_balanced_orthography_combo, synthetic_open_corpus_combo]
+    pattern_щю_щу:
+      domain: orthography
+      groups: [combo]
+      source_datasets: [synthetic_balanced_orthography_combo, synthetic_open_corpus_combo]
+    pattern_цы_ци:
+      domain: orthography
+      groups: [ci]
+      source_datasets: [synthetic_balanced_orthography_ci, synthetic_open_corpus_ci]
+    pattern_жо_же:
+      domain: orthography
+      groups: [hissing_o_e]
+      source_datasets: [synthetic_balanced_orthography_hissing_o_e, synthetic_open_corpus_hissing_o_e]
+    pattern_шо_ше:
+      domain: orthography
+      groups: [hissing_o_e]
+      source_datasets: [synthetic_balanced_orthography_hissing_o_e, synthetic_open_corpus_hissing_o_e]
+    pattern_чо_че:
+      domain: orthography
+      groups: [hissing_o_e]
+      source_datasets: [synthetic_balanced_orthography_hissing_o_e, synthetic_open_corpus_hissing_o_e]
+    pattern_що_ще:
+      domain: orthography
+      groups: [hissing_o_e]
+      source_datasets: [synthetic_balanced_orthography_hissing_o_e, synthetic_open_corpus_hissing_o_e]
+    cy_exception:
+      domain: orthography
+      groups: [ci]
+      source_datasets: [synthetic_balanced_orthography_ci, synthetic_open_corpus_ci]
+    sdelat_prefix:
+      domain: orthography
+      groups: [prefix_z_s]
+      source_datasets: [synthetic_balanced_orthography_prefix_z_s, synthetic_open_corpus_prefix_z_s]
+    prefix_z_to_s:
+      domain: orthography
+      groups: [prefix_z_s]
+      source_datasets: [synthetic_balanced_orthography_prefix_z_s, synthetic_open_corpus_prefix_z_s]
+    prefix_s_to_z:
+      domain: orthography
+      groups: [prefix_z_s]
+      source_datasets: [synthetic_balanced_orthography_prefix_z_s, synthetic_open_corpus_prefix_z_s]
+    final_punctuation_default:
+      domain: punctuation
+      groups: [final_punctuation]
+      source_datasets: [synthetic_balanced_punctuation_final_punctuation, synthetic_open_corpus_final_punctuation]
+    ne_verb:
+      domain: orthography
+      groups: [ne_verb]
+      source_datasets: [synthetic_balanced_orthography_ne_verb, synthetic_open_corpus_ne_verb]
+    tsya_soft_delete:
+      domain: orthography
+      groups: [tsya]
+      source_datasets: [synthetic_balanced_orthography_tsya, synthetic_open_corpus_tsya]
+    tsya_soft_insert:
+      domain: orthography
+      groups: [tsya]
+      source_datasets: [synthetic_balanced_orthography_tsya, synthetic_open_corpus_tsya]
+    hyphen_particles:
+      domain: orthography
+      groups: [hyphen_particles]
+      source_datasets: [synthetic_open_corpus_hyphen_particles]
+    hyphen_koe_koy:
+      domain: orthography
+      groups: [hyphen_koe_koy]
+      source_datasets: [synthetic_open_corpus_hyphen_koe_koy]
+    hyphen_po_adverbs:
+      domain: orthography
+      groups: [hyphen_po_adverbs]
+      source_datasets: [synthetic_open_corpus_hyphen_po_adverbs]
+    pol_polu_compounds:
+      domain: orthography
+      groups: [hyphen]
+      source_datasets: [synthetic_open_corpus_hyphen]
+    dictionary_fuzzy:
+      domain: orthography
+      groups: [dictionary_fuzzy]
+      source_datasets: [synthetic_balanced_orthography_dictionary_fuzzy, synthetic_open_corpus_dictionary_fuzzy]
+    punctuation_delete_replace:
+      domain: punctuation
+      groups: [delete_replace, punctuation_noise]
+      source_datasets: [synthetic_balanced_punctuation_delete_replace, synthetic_balanced_punctuation_punctuation_noise]
+  disabled:
+    yo_e_candidate: "Disabled by default because е/ё requires opt-in lexicon support and model scoring."
+    capitalization_ner: "Requires NER-backed spans; synthetic corruption is unsafe without labeled entity boundaries."
+    abbreviation_case_protection: "Covered by hard negatives; corruption of valid abbreviations would train unsafe casing."
+    capitalization_sentence_start: "Covered by hard negatives; broad lowercase sentence-start corruption is too noisy without discourse context."
+    neural_punctuation: "Metadata-only neural punctuation bucket; no executable bounded rule_id."
+
 orthography:
   letter_vowels_not_after_hissing_c:
     orfogrammka_id: "orfogrammka:1.1.1"
@@ -485,6 +594,8 @@ orthography:
       - swapped_letters_candidate
       - missing_letter_candidate
       - extra_letter_candidate
+    aliases:
+      - dictionary_fuzzy
     notes: "Частично покрыты bounded lexicon-backed candidates для соседней клавиши, перестановки соседних букв, пропуска и лишней буквы; применение требует scorer."
   typos_space_operations:
     orfogrammka_id: "orfogrammka:7.2,7.5,7.7,7.8"
@@ -637,9 +748,8 @@ punctuation:
     requires:
       - syntax
       - model
-    rules:
-      - comma_conjunction
-    notes: "Генерируются bounded candidates перед а, но, однако, зато; применение требует scorer/validator."
+    rules: []
+    notes: "Таксономический раздел Орфограммки; исполняемый bounded candidate comma_conjunction учитывается в report bucket homogeneous_commas."
   homogeneous_commas:
     orfogrammka_id: "orfogrammka:punctuation:4.1-4.5"
     title: "Однородные члены: запятые при союзах и без союзов"
@@ -653,8 +763,9 @@ punctuation:
       - syntax
       - model
     rules:
+      - comma_conjunction
       - homogeneous_comma
-    notes: "Генерируются bounded candidates для повторяющихся союзов; широкие однородные/неоднородные определения не реализованы."
+    notes: "Генерируются bounded candidates для союзных запятых и повторяющихся союзов; широкие однородные/неоднородные определения не реализованы."
   homogeneous_generalizing_word:
     orfogrammka_id: "orfogrammka:punctuation:4.7-4.8"
     title: "Однородные члены: обобщающее слово, двоеточие и тире"
@@ -665,7 +776,7 @@ punctuation:
       - model
     rules:
       - enumeration_colon
-    notes: "Генерируется bounded candidate двоеточия после простого обобщающего маркера; применение требует scorer/validator."
+    notes: "Генерируются bounded candidates двоеточия после простых обобщающих маркеров; применение требует scorer/validator."
   homogeneous_definitions:
     orfogrammka_id: "orfogrammka:punctuation:4.10-4.11,4.14"
     title: "Однородные и неоднородные определения"
@@ -773,13 +884,13 @@ punctuation:
     orfogrammka_id: "orfogrammka:punctuation:7.1"
     title: "Сложносочиненное предложение"
     parent_group: comma_conjunction
-    status: syntax_required
+    status: model_required
     requires:
       - syntax
       - model
     rules:
       - semicolon
-    notes: "Точка с запятой между частями ССП описана metadata id для отчетов; отдельного RuleSpec нет."
+    notes: "Генерируются bounded candidates точки с запятой для ограниченных двухчастных конструкций; применение требует scorer/validator."
   complex_sentence_subordinate:
     orfogrammka_id: "orfogrammka:punctuation:7.2"
     title: "Сложноподчиненное предложение"
@@ -799,12 +910,15 @@ punctuation:
     orfogrammka_id: "orfogrammka:punctuation:7.3"
     title: "Бессоюзное сложное предложение"
     parent_group: colon_dash_semicolon
-    status: syntax_required
+    status: model_required
     requires:
       - syntax
       - model
-    rules: []
-    notes: "Нет отдельного правила для БСП."
+    rules:
+      - explanation_colon
+      - consequence_dash
+      - asyndetic_dash
+    notes: "Генерируются bounded candidates двоеточия и тире для ограниченных БСП-шаблонов; применение требует scorer/validator."
   direct_speech_quotes:
     orfogrammka_id: "orfogrammka:punctuation:8.1-8.2"
     title: "Прямая речь и цитаты"
@@ -814,11 +928,13 @@ punctuation:
       - punctuation
       - direct_speech
     requires:
+      - syntax
       - model
     rules:
       - direct_speech_quotes
       - direct_speech_colon
-    notes: "Покрыта только простая генерация candidates для кавычек и двоеточия после глаголов речи; применение требует scorer/validator."
+      - direct_speech_dash
+    notes: "Генерируются bounded candidates двоеточия, кавычек и тире для ограниченных конструкций прямой речи; применение требует scorer/validator."
   quotes_brackets:
     orfogrammka_id: "orfogrammka:punctuation:8.2,9.5"
     title: "Кавычки и скобки"
@@ -830,8 +946,13 @@ punctuation:
     requires:
       - model
     rules:
+      - quote_open
+      - quote_close
+      - quote_pair_balance
+      - bracket_pair_balance
+    aliases:
       - quotes_brackets
-    notes: "Синтетические кавычки и скобки описаны metadata id для датасетов и отчетов; отдельного RuleSpec нет."
+    notes: "Генерируются model-required candidates для кавычек и obvious one-sided balance скобок/кавычек; validator отклоняет edits, создающие дисбаланс."
   punctuation_combinations:
     orfogrammka_id: "orfogrammka:punctuation:9"
     title: "Сочетание знаков препинания"
@@ -843,7 +964,7 @@ punctuation:
     requires: []
     rules:
       - punctuation_delete_replace
-    notes: "Покрыты очевидные дубли и удаление/замена лишних знаков; полная система сочетаний знаков не реализована."
+    notes: "Покрыты очевидные дубли и validator guards для многоточия, повторов !/?, точки после ?/!/…; полная система сочетаний знаков не реализована."
   complex_mark_interaction:
     orfogrammka_id: "orfogrammka:punctuation:9.3-9.4"
     title: "Взаимодействие запятой, тире, двоеточия и точки с запятой"

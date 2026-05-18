@@ -108,15 +108,21 @@ class DiffAnalyzer:
                 )
 
         for candidate in CandidateGenerator().generate(source):
-            if candidate.edit_type != "hyphen":
+            if candidate.edit_type not in {"hyphen", "split_join"}:
                 continue
             if candidate.replacement.lower() not in target_lower:
                 continue
+            if not _candidate_matches_word_alignment(source, target, candidate.start, candidate.end, candidate.replacement):
+                continue
+            edit_type = "hyphen_change" if candidate.edit_type == "hyphen" else _split_join_edit_type(
+                candidate.source,
+                candidate.replacement,
+            )
             edits.append(
                 Edit(
                     candidate.source,
                     candidate.replacement,
-                    "hyphen_change",
+                    edit_type,
                     candidate.start,
                     candidate.end,
                     confidence=candidate.confidence,
@@ -267,19 +273,22 @@ def _is_russian_letter(char: str) -> bool:
 def _candidate_matches_word_alignment(source: str, target: str, start: int, end: int, replacement: str) -> bool:
     source_words = tokenize_words(source)
     target_words = tokenize_words(target)
-    source_index = next(
-        (index for index, word in enumerate(source_words) if word.start == start and word.end == end),
-        None,
-    )
-    if source_index is None:
+    source_indexes = [
+        index
+        for index, word in enumerate(source_words)
+        if start <= word.start and word.end <= end
+    ]
+    if not source_indexes:
         return False
-    replacement_words = replacement.lower().split()
+    replacement_words = [word.text.lower() for word in tokenize_words(replacement)]
     matcher = difflib.SequenceMatcher(
         a=[word.text.lower() for word in source_words],
         b=[word.text.lower() for word in target_words],
     )
     for tag, i1, i2, j1, j2 in matcher.get_opcodes():
-        if tag == "equal" or not (i1 <= source_index < i2):
+        if tag == "equal" or i1 > source_indexes[0] or i2 < source_indexes[-1] + 1:
+            continue
+        if source_indexes != list(range(i1, i2)):
             continue
         return [word.text.lower() for word in target_words[j1:j2]] == replacement_words
     return False
@@ -338,7 +347,10 @@ def _deduplicate(edits: list[Edit]) -> list[Edit]:
         key = (edit.source, edit.replacement, edit.edit_type, edit.start, edit.end)
         if key in seen:
             existing_index = result_index_by_key[key]
-            if not result[existing_index].rule_id and edit.rule_id:
+            if (
+                (not result[existing_index].rule_id and edit.rule_id)
+                or (result[existing_index].rule_id == "context_pair" and edit.rule_id.startswith("context_"))
+            ):
                 result[existing_index] = edit
             continue
         seen.add(key)

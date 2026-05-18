@@ -16,6 +16,8 @@ CLEAN_CASES = [
     pytest.param("В 2024 г. проект завершили.", id="year_abbreviation"),
     pytest.param("г. Москва готовит отчет.", id="city_graphical_abbreviation"),
     pytest.param("США и НББ согласовали документ.", id="all_caps_abbreviations"),
+    pytest.param("США, РФ и НББ согласовали документ.", id="all_caps_abbreviations_extended"),
+    pytest.param("69-летний эксперт подготовил отчет.", id="numeric_hyphenated_lowercase"),
     pytest.param("Мы ждали файл…", id="ellipsis_final"),
     pytest.param("Документ готов!", id="exclamation_final"),
     pytest.param("Ты видел отчёт?", id="question_final"),
@@ -24,6 +26,7 @@ CLEAN_CASES = [
     pytest.param("Кто-то пришёл.", id="hyphen_particle"),
     pytest.param("Кое-где были ошибки.", id="hyphen_koe"),
     pytest.param("Он говорит по-русски.", id="hyphen_po_adverb"),
+    pytest.param("Он сказал: «Проект готов» (это важно).", id="correct_quotes_brackets"),
     pytest.param("Он сделал так же, как я.", id="context_tak_zhe"),
     pytest.param("Также он пришёл вовремя.", id="context_takzhe"),
     pytest.param("Он сделал то же упражнение.", id="context_to_zhe"),
@@ -45,7 +48,10 @@ CLEAN_CASES = [
     pytest.param("Жаренный на масле картофель остыл.", id="n_nn_deverbal_clean"),
     pytest.param("Превосходный результат всех устроил.", id="prefix_pre_pri_clean"),
     pytest.param("Он сказал, что проект готов.", id="normal_subordinate_comma"),
+    pytest.param("Мы проверяем что-то важное.", id="chto_not_always_comma"),
+    pytest.param("Он работает как инженер.", id="kak_without_comma"),
     pytest.param("Конечно, проект сложный.", id="normal_introductory_comma"),
+    pytest.param("Однако проект сложный.", id="correct_introductory_homonym_without_comma"),
     pytest.param("Мы пришли, но встреча уже закончилась.", id="normal_conjunction_comma"),
 ]
 

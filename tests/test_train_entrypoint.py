@@ -3,7 +3,7 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
-from src.training.train import _build_features, _load_evaluation_rows, evaluate_trained_model, train
+from src.training.train import _build_features, _load_evaluation_rows, _select_evaluation_corrector, evaluate_trained_model, train
 
 
 def test_train_entrypoint_prepares_features_and_all_reports(tmp_path: Path):
@@ -141,6 +141,36 @@ def test_train_uses_trained_corrector_for_reports_when_model_training_runs(monke
     train(config_path)
 
     assert used["trained"] is True
+
+
+def test_no_training_existing_checkpoint_backend_uses_allowed_name(monkeypatch, tmp_path: Path):
+    class FakeTrainedCorrector:
+        @classmethod
+        def from_config(cls, config):
+            return cls()
+
+    adapter_dir = tmp_path / "models" / "adapters"
+    heads_dir = tmp_path / "models" / "heads"
+    adapter_dir.mkdir(parents=True)
+    heads_dir.mkdir(parents=True)
+    (heads_dir / "heads.pt").write_bytes(b"placeholder")
+
+    monkeypatch.setattr("src.training.train.TrainedModelCorrector", FakeTrainedCorrector)
+
+    _corrector, metadata = _select_evaluation_corrector(
+        {
+            "paths": {
+                "adapter_output_dir": str(adapter_dir),
+                "heads_output_dir": str(heads_dir),
+            }
+        },
+        model_training_ran=False,
+        model_training_disabled_source="RUSSIAN_CORRECTOR_DISABLE_MODEL_TRAINING",
+    )
+
+    assert metadata["evaluation_backend"] == "existing_checkpoint"
+    assert metadata["model_training_disabled"] is True
+    assert metadata["checkpoint_load_error"] == ""
 
 
 def test_training_evaluation_uses_validation_split_only(tmp_path: Path):

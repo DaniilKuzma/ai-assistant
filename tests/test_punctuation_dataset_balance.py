@@ -1,4 +1,5 @@
 from collections import Counter
+import json
 
 from src.alignment.punctuation_label_builder import build_punctuation_gap_action_labels, build_punctuation_gap_labels
 from src.data.full_dataset_builder import _build_synthetic_rows_from_clean_corpus, _build_targeted_punctuation_rows
@@ -10,12 +11,18 @@ PUNCTUATION_GROUPS = [
     "comma_subordinate",
     "comma_conjunction",
     "introductory",
+    "address_comma",
+    "homogeneous_members",
+    "detached_members",
     "colon",
     "dash",
+    "subject_predicate_dash",
+    "direct_speech",
     "semicolon",
     "quotes_brackets",
     "final_punctuation",
     "delete_replace",
+    "punctuation_noise",
 ]
 
 
@@ -74,6 +81,36 @@ def test_targeted_punctuation_rows_create_expected_mark_and_action_labels():
     assert actions["DELETE"] >= 20
     assert actions["REPLACE"] >= 20
     assert actions["KEEP_EXISTING"] >= 20
+
+
+def test_targeted_punctuation_rows_use_real_rule_ids_for_complex_groups():
+    diff_analyzer = DiffAnalyzer()
+    expected_rule_ids = {
+        "address_comma": {"address_comma"},
+        "homogeneous_members": {"homogeneous_comma"},
+        "detached_members": {"detached_adverbial_comma"},
+        "subject_predicate_dash": {"subject_predicate_dash"},
+        "direct_speech": {"direct_speech_colon", "direct_speech_quotes", "direct_speech_dash"},
+        "quotes_brackets": {"quote_open", "quote_close", "quote_pair_balance", "bracket_pair_balance"},
+        "punctuation_noise": {"punctuation_delete_replace"},
+    }
+
+    for group, expected in expected_rule_ids.items():
+        rows = _build_targeted_punctuation_rows(
+            group,
+            required_count=20,
+            diff_analyzer=diff_analyzer,
+            domain="test",
+            seen_pairs=set(),
+        )
+        rule_ids = {
+            operation["rule_id"]
+            for row in rows
+            for operation in json.loads(row["edit_operations"])
+        }
+
+        assert rule_ids <= expected
+        assert rule_ids & expected
 
 
 def test_open_corpus_synthetic_rows_are_based_on_clean_targets():

@@ -7,7 +7,7 @@ name = "russian-edit-corrector"
 version = "0.1.0"
 description = "Candidate-aware edit-based Russian spelling and punctuation corrector."
 requires-python = ">=3.10"
-readme = "README.md"
+readme = "AI_INDEX.md"
 
 [tool.setuptools.packages.find]
 where = ["."]

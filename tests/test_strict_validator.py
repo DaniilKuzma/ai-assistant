@@ -313,7 +313,11 @@ def test_validator_rejects_edits_inside_protected_spans_with_specific_reason(sou
     ("source", "target"),
     [
         ("Мы ждали файл…", "Мы ждали файл……"),
+        ("Мы ждали файл…", "Мы ждали файл…."),
+        ("Мы ждали файл…", "Мы ждали файл……."),
         ("Готово.", "Готово.."),
+        ("Документ готов!", "Документ готов!."),
+        ("Ты видел отчёт?", "Ты видел отчёт?."),
         ("Правда?", "Правда?!"),
         ("Стоп!", "Стоп!!!?"),
     ],
@@ -325,6 +329,44 @@ def test_validator_rejects_repeated_punctuation_noise(source, target):
 
     assert any(edit.status == "rejected" and edit.reason == "punctuation_noise" for edit in result.edits)
     assert result.apply_accepted() == source
+
+
+@pytest.mark.parametrize(
+    ("source", "target", "trusted"),
+    [
+        (
+            "Он сказал: «Проект готов».",
+            "Он сказал: «Проект готов.",
+            Candidate("»", "", "punctuation_delete", start=24, end=25, confidence=0.99, requires_model=True),
+        ),
+        (
+            "Проверь документ (черновик).",
+            "Проверь документ черновик).",
+            Candidate("(", "", "punctuation_delete", start=16, end=17, confidence=0.99, requires_model=True),
+        ),
+        (
+            "Проверь документ черновик.",
+            "Проверь документ (черновик.",
+            Candidate("", "(", "punctuation_insert", start=16, end=16, confidence=0.99, requires_model=True),
+        ),
+    ],
+)
+def test_validator_rejects_edits_creating_unbalanced_quotes_or_brackets(source, target, trusted):
+    result = StrictValidator().validate(source, target, trusted_edits=[trusted])
+
+    assert any(edit.status == "rejected" and edit.reason == "unbalanced_pairs" for edit in result.edits)
+    assert result.apply_accepted() == source
+
+
+def test_validator_allows_trusted_edit_that_repairs_quote_balance():
+    source = "Он сказал: «Проект готов."
+    target = "Он сказал: «Проект готов»."
+    trusted = Candidate("", "»", "punctuation_insert", start=24, end=24, confidence=0.99, requires_model=True)
+
+    result = StrictValidator().validate(source, target, trusted_edits=[trusted])
+
+    assert any(edit.edit_type == "punctuation_insert" and edit.status == "accepted" for edit in result.edits)
+    assert result.apply_accepted() == target
 
 
 @pytest.mark.parametrize(

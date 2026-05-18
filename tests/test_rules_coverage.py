@@ -300,6 +300,38 @@ def test_implemented_groups_require_real_rule_ids(tmp_path):
         validate_rules_coverage(path)
 
 
+def test_implemented_rule_ids_have_synthetic_or_explicit_disabled_reason():
+    from src.rules.coverage_matrix import iter_coverage_entries, load_rules_coverage
+
+    data = load_rules_coverage(RULES_PATH)
+    synthetic = data.get("synthetic_generation", {})
+    enabled = set((synthetic.get("enabled") or {}).keys())
+    disabled = synthetic.get("disabled") or {}
+
+    required_rule_ids = {
+        rule_id
+        for _domain, _group, entry in iter_coverage_entries(data)
+        if entry["status"] == "implemented"
+        for rule_id in entry["rules"]
+    }
+
+    assert required_rule_ids
+    for rule_id in required_rule_ids:
+        assert rule_id in enabled or disabled.get(rule_id), f"{rule_id} needs synthetic coverage or disabled reason"
+
+
+def test_synthetic_generation_metadata_represents_orthography_and_punctuation():
+    data = yaml.safe_load(RULES_PATH.read_text(encoding="utf-8"))
+    enabled = data.get("synthetic_generation", {}).get("enabled", {})
+    domains = {
+        domain
+        for metadata in enabled.values()
+        for domain in [metadata.get("domain")]
+    }
+
+    assert {"orthography", "punctuation"} <= domains
+
+
 def test_candidate_only_and_partial_groups_require_real_rule_ids(tmp_path):
     from src.rules.coverage_matrix import validate_rules_coverage
 

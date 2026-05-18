@@ -14,41 +14,71 @@ PUNCTUATION_BALANCE_GROUPS = (
     "comma_subordinate",
     "comma_conjunction",
     "introductory",
+    "address_comma",
+    "homogeneous_members",
+    "detached_members",
     "colon",
     "dash",
+    "subject_predicate_dash",
+    "direct_speech",
     "semicolon",
     "quotes_brackets",
     "final_punctuation",
     "delete_replace",
+    "punctuation_noise",
 )
 DEFAULT_PUNCTUATION_BALANCE = {
     "comma_subordinate": 20_000,
     "comma_conjunction": 15_000,
     "introductory": 10_000,
+    "address_comma": 6_000,
+    "homogeneous_members": 8_000,
+    "detached_members": 8_000,
     "colon": 8_000,
     "dash": 8_000,
+    "subject_predicate_dash": 8_000,
+    "direct_speech": 8_000,
     "semicolon": 5_000,
     "quotes_brackets": 8_000,
     "final_punctuation": 20_000,
     "delete_replace": 15_000,
+    "punctuation_noise": 10_000,
 }
 ORTHOGRAPHY_BALANCE_GROUPS = (
     "ne_verb",
+    "ne_pos",
     "tsya",
     "combo",
     "hard_sign",
     "prefix_z_s",
+    "prefix_pre_pri",
     "ci",
     "hissing_o_e",
+    "n_nn",
+    "context_pairs",
+    "dictionary_fuzzy",
 )
 DEFAULT_ORTHOGRAPHY_BALANCE = {
     "ne_verb": 8_000,
+    "ne_pos": 6_000,
     "tsya": 6_000,
     "combo": 8_000,
     "hard_sign": 6_000,
     "prefix_z_s": 6_000,
+    "prefix_pre_pri": 4_000,
     "ci": 4_000,
     "hissing_o_e": 5_000,
+    "n_nn": 5_000,
+    "context_pairs": 5_000,
+    "dictionary_fuzzy": 5_000,
+}
+
+DICTIONARY_FUZZY_SYNTHETIC_ERRORS = {
+    "библиотека": "библеотека",
+    "корова": "карова",
+    "молоко": "малако",
+    "собака": "сабака",
+    "территория": "територия",
 }
 
 
@@ -72,6 +102,7 @@ def synthetic_transformations(text: str) -> list[SyntheticTransformation]:
         *_punctuation_transformations(text, protected),
         *_paired_punctuation_transformations(text, protected),
         *_orthography_transformations(text, protected),
+        *_dictionary_fuzzy_transformations(text, protected),
         *_lexical_transformations(text, protected),
     ]
 
@@ -143,6 +174,29 @@ def _lexical_transformations(text: str, protected: tuple[tuple[int, int], ...]) 
     return transformations
 
 
+def _dictionary_fuzzy_transformations(text: str, protected: tuple[tuple[int, int], ...]) -> list[SyntheticTransformation]:
+    transformations: list[SyntheticTransformation] = []
+    lower = text.lower()
+    for clean, dirty in DICTIONARY_FUZZY_SYNTHETIC_ERRORS.items():
+        start = lower.find(clean)
+        if start < 0:
+            continue
+        end = start + len(clean)
+        if _span_overlaps_protected(start, end, protected):
+            continue
+        transformations.append(
+            SyntheticTransformation(
+                start,
+                end,
+                _match_case(text[start:end], dirty),
+                "spelling",
+                "dictionary_fuzzy",
+                "dictionary_fuzzy",
+            )
+        )
+    return transformations
+
+
 def _orthography_transformations(text: str, protected: tuple[tuple[int, int], ...]) -> list[SyntheticTransformation]:
     transformations: list[SyntheticTransformation] = []
     words = tuple(tokenize_words(text))
@@ -195,7 +249,7 @@ def _punctuation_transformations(text: str, protected: tuple[tuple[int, int], ..
                     index + 1,
                     char,
                     "punctuation",
-                    "delete_replace",
+                    "punctuation_noise",
                     "punctuation_delete_replace",
                 )
             )
@@ -208,17 +262,19 @@ def _paired_punctuation_transformations(text: str, protected: tuple[tuple[int, i
         if _span_overlaps_protected(match.start(), match.end(), protected):
             continue
         inner = match.group(1)
+        group = "direct_speech" if _looks_like_direct_speech_quote(text, match.start()) else "quotes_brackets"
+        rule_id = "direct_speech_quotes" if group == "direct_speech" else "quote_pair_balance"
         transformations.append(
-            SyntheticTransformation(match.start(), match.end(), inner, "punctuation", "quotes_brackets", "quotes_brackets")
+            SyntheticTransformation(match.start(), match.end(), inner, "punctuation", group, rule_id)
         )
         transformations.append(
-            SyntheticTransformation(match.start(), match.end(), f'"{inner}"', "punctuation", "quotes_brackets", "quotes_brackets")
+            SyntheticTransformation(match.start(), match.end(), f'"{inner}"', "punctuation", group, "quote_open" if group == "quotes_brackets" else "direct_speech_quotes")
         )
     for match in re.finditer(r"\(([^)\n]+)\)", text):
         if _span_overlaps_protected(match.start(), match.end(), protected):
             continue
         transformations.append(
-            SyntheticTransformation(match.start(), match.end(), match.group(1), "punctuation", "quotes_brackets", "quotes_brackets")
+            SyntheticTransformation(match.start(), match.end(), match.group(1), "punctuation", "quotes_brackets", "bracket_pair_balance")
         )
     return transformations
 
@@ -250,16 +306,28 @@ def _punctuation_group(text: str, index: int, char: str) -> str:
     if char == ",":
         following = text[index + 1 : index + 24].lower()
         prefix = text[max(0, index - 20) : index + 1].lower()
+        before = text[:index].lower()
+        after = text[index + 1 :].lower()
         if re.match(r"\s*(что|чтобы|если|когда)\b", following):
             return "comma_subordinate"
         if re.match(r"\s*(но|а)\b", following):
             return "comma_conjunction"
         if re.search(r"\b(конечно|например|однако|во-первых),$", prefix):
             return "introductory"
+        if re.search(r"^\s*(коллеги|иван|мария)$", before):
+            return "address_comma"
+        if re.search(r"\b(и|ни)\s+[а-яё]+$", before) and re.match(r"\s*(и|ни)\b", following):
+            return "homogeneous_members"
+        if re.search(r"^(закончив|сделав|прочитав)\s+[а-яё]+$", before.strip()):
+            return "detached_members"
         return "comma"
     if char == ":":
+        if re.search(r"\b(сказал|сказала|спросил|ответил)\s*:$", text[: index + 1].lower()):
+            return "direct_speech"
         return "colon"
     if char == "—":
+        if re.match(r"\s*это\b", text[index + 1 :].lower()):
+            return "subject_predicate_dash"
         return "dash"
     if char == ";":
         return "semicolon"
@@ -271,10 +339,16 @@ def _punctuation_rule_id(group: str) -> str:
         "comma_subordinate": "comma_subordinate",
         "comma_conjunction": "comma_conjunction",
         "introductory": "introductory_comma",
+        "address_comma": "address_comma",
+        "homogeneous_members": "homogeneous_comma",
+        "detached_members": "detached_adverbial_comma",
         "colon": "enumeration_colon",
         "dash": "subject_predicate_dash",
+        "subject_predicate_dash": "subject_predicate_dash",
+        "direct_speech": "direct_speech_colon",
         "semicolon": "semicolon",
         "comma": "comma",
+        "punctuation_noise": "punctuation_delete_replace",
     }.get(group, "punctuation_delete_replace")
 
 
@@ -291,6 +365,11 @@ def _punctuation_replacements_for(char: str) -> list[str]:
         ";": [","],
         "—": [","],
     }.get(char, [])
+
+
+def _looks_like_direct_speech_quote(text: str, quote_start: int) -> bool:
+    prefix = text[max(0, quote_start - 24) : quote_start].lower()
+    return bool(re.search(r"\b(сказал|сказала|спросил|ответил)\s*:\s*$", prefix))
 
 
 def _overlaps_any(transformation: SyntheticTransformation, selected: list[SyntheticTransformation]) -> bool:

@@ -56,6 +56,8 @@ def test_dataset_composition_and_write_dataset(tmp_path: Path):
     assert manifest["error_type_counts"]["spelling"] > 0
     assert manifest["error_type_counts"]["split_join"] > 0
     assert manifest["error_type_counts"]["hyphen"] > 0
+    assert manifest["rule_id_counts"]
+    assert manifest["hard_negative_count"] >= 1
     assert dataset_composition(rows)["synthetic"] == 40
 
 
@@ -183,7 +185,7 @@ def test_full_dataset_builder_uses_open_corpus_clean_identity_examples():
     assert all(row["target"] in set(_clean_texts(60)) for row in clean_rows)
 
 
-def test_full_dataset_builder_adds_punctuation_hard_negative_clean_examples():
+def test_full_dataset_builder_adds_hard_negative_clean_examples():
     rows = build_dataset_rows(
         DatasetBuildConfig(
             target_total_examples=100,
@@ -193,15 +195,37 @@ def test_full_dataset_builder_adds_punctuation_hard_negative_clean_examples():
         )
     )
 
-    hard_negative_rows = [
-        row for row in rows if row["source_dataset"] == "clean_identity_punctuation_hard_negative"
-    ]
+    hard_negative_rows = [row for row in rows if row["source_dataset"] == "clean_identity_hard_negative"]
 
     assert len(hard_negative_rows) == 10
     assert all(row["source"] == row["target"] for row in hard_negative_rows)
     assert all(row["is_clean"] and not row["is_synthetic"] for row in hard_negative_rows)
     assert all(row["edit_operations"] == "[]" for row in hard_negative_rows)
-    assert any("на севере" in row["source"] for row in hard_negative_rows)
+    assert any("40,16%" in row["source"] for row in hard_negative_rows)
+    assert any("https://example.com" in row["source"] for row in hard_negative_rows)
+    assert any("69-летний" in row["source"] for row in hard_negative_rows)
+
+
+def test_full_dataset_builder_limit_preserves_clean_synthetic_hard_negatives_and_caps_external_rows():
+    external_rows = [_minimal_external_row(index) for index in range(50)]
+
+    rows = build_dataset_rows(
+        DatasetBuildConfig(
+            target_total_examples=12,
+            clean_identity_ratio=0.25,
+            punctuation_hard_negative_clean_ratio=1.0,
+            external_rows=tuple(external_rows),
+            seed=31,
+        )
+    )
+    composition = dataset_composition(rows)
+    hard_negative_rows = [row for row in rows if row["source_dataset"] == "clean_identity_hard_negative"]
+
+    assert len(rows) == 12
+    assert composition["clean"] > 0
+    assert composition["synthetic"] > 0
+    assert composition["real"] < len(external_rows)
+    assert hard_negative_rows
 
 
 def test_punctuation_hard_negative_targets_are_split_unique():
@@ -317,6 +341,7 @@ def test_full_dataset_builder_uses_clean_corpus_texts_for_synthetic_targets():
         DatasetBuildConfig(
             target_total_examples=30,
             clean_identity_ratio=0.1,
+            punctuation_hard_negative_clean_ratio=0.0,
             seed=7,
             clean_texts=clean_texts,
             **_clean_corpus_only_balance(),
@@ -415,6 +440,27 @@ def test_full_dataset_builder_keeps_synthetic_rule_ids_in_edit_operations():
     assert any(operation["rule_id"] == "ne_verb" for operation in edit_operations)
 
 
+def test_write_dataset_manifest_counts_rule_ids_and_hard_negatives(tmp_path: Path):
+    rows = build_dataset_rows(
+        DatasetBuildConfig(
+            target_total_examples=80,
+            clean_identity_ratio=0.2,
+            punctuation_hard_negative_clean_ratio=0.5,
+            seed=37,
+        )
+    )
+    output_path = tmp_path / "dataset.csv.gz"
+    manifest_path = tmp_path / "manifest.json"
+
+    write_dataset(rows, output_path, manifest_path)
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+    assert manifest["rule_id_counts"]
+    assert manifest["hard_negative_count"] == 8
+    assert manifest["composition"]["clean"] == 16
+    assert "final_punctuation_default" in manifest["rule_id_counts"]
+
+
 def test_diff_analyzer_classifies_generated_orthography_edits():
     analyzer = DiffAnalyzer()
     examples = [
@@ -429,13 +475,13 @@ def test_diff_analyzer_classifies_generated_orthography_edits():
         assert any(edit.edit_type == expected_type for edit in edits)
 
 
-def test_supported_edits_excludes_context_dependent_pairs_from_training_labels():
+def test_supported_edits_keeps_rule_backed_context_dependent_pairs_for_model_training():
     analyzer = DiffAnalyzer()
     edits = analyzer.analyze("Он пришел чтобы помочь.", "Он пришел что бы помочь.")
 
     supported_edits = full_dataset_builder._supported_edits(edits)
 
-    assert supported_edits == []
+    assert any(edit.rule_id == "context_chto_by" for edit in supported_edits)
 
 
 def test_lexical_balance_targets_are_unique_beyond_base_template_capacity():

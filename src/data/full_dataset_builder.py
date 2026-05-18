@@ -23,6 +23,7 @@ from src.rules.rule_ids import normalize_rule_id
 from src.rules.synthetic import (
     DEFAULT_ORTHOGRAPHY_BALANCE,
     DEFAULT_PUNCTUATION_BALANCE,
+    DICTIONARY_FUZZY_SYNTHETIC_ERRORS,
     ORTHOGRAPHY_BALANCE_GROUPS,
     PUNCTUATION_BALANCE_GROUPS,
 )
@@ -55,7 +56,7 @@ class DatasetBuildConfig:
     min_spelling_examples: int = 60_000
     min_split_join_examples: int = 20_000
     min_hyphen_examples: int = 20_000
-    punctuation_hard_negative_clean_ratio: float = 0.0
+    punctuation_hard_negative_clean_ratio: float = 0.25
     orthography_balance: tuple[tuple[str, int], ...] = tuple(DEFAULT_ORTHOGRAPHY_BALANCE.items())
     punctuation_balance: tuple[tuple[str, int], ...] = tuple(DEFAULT_PUNCTUATION_BALANCE.items())
 
@@ -68,8 +69,11 @@ def build_dataset_rows(config: DatasetBuildConfig) -> list[dict[str, Any]]:
     diff_analyzer = DiffAnalyzer()
     generator = SyntheticGenerator(seed=config.seed, max_errors_per_sentence=3)
     clean_count = int(round(config.target_total_examples * config.clean_identity_ratio))
+    if config.target_total_examples > 0 and config.clean_identity_ratio > 0:
+        clean_count = max(1, min(clean_count, config.target_total_examples))
     real_rows = [_normalize_dataset_row(row, default_domain=config.domain) for row in config.external_rows]
-    real_rows = real_rows[: max(0, config.target_total_examples - clean_count)]
+    min_synthetic_count = 1 if config.target_total_examples - clean_count > 0 else 0
+    real_rows = real_rows[: max(0, config.target_total_examples - clean_count - min_synthetic_count)]
     dirty_count = config.target_total_examples - clean_count - len(real_rows)
 
     rows: list[dict[str, Any]] = []
@@ -150,11 +154,11 @@ def build_dataset_rows(config: DatasetBuildConfig) -> list[dict[str, Any]]:
         )
     rows.extend(synthetic_rows)
 
-    hard_negative_count = int(round(clean_count * _clamp_ratio(config.punctuation_hard_negative_clean_ratio)))
+    hard_negative_count = _hard_negative_count(clean_count, config.punctuation_hard_negative_clean_ratio)
     for clean_index in range(clean_count):
         if clean_index < hard_negative_count:
-            target = _punctuation_hard_negative_target(clean_index)
-            source_dataset = "clean_identity_punctuation_hard_negative"
+            target = _hard_negative_target(clean_index)
+            source_dataset = "clean_identity_hard_negative"
         else:
             clean_target_index = clean_index - hard_negative_count
             target = _clean_target(clean_target_index, clean_texts, sentence_factory)
@@ -299,6 +303,23 @@ def error_type_counts(rows: list[dict[str, Any]]) -> dict[str, int]:
     return dict(sorted(counts.items()))
 
 
+def rule_id_counts(rows: list[dict[str, Any]]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for row in rows:
+        for operation in _parse_jsonish_list(row.get("edit_operations", [])):
+            if not isinstance(operation, dict):
+                continue
+            rule_id = _normalize_rule_id(operation.get("rule_id", ""))
+            if rule_id == "unknown":
+                continue
+            counts[rule_id] = counts.get(rule_id, 0) + 1
+    return dict(sorted(counts.items()))
+
+
+def hard_negative_count(rows: list[dict[str, Any]]) -> int:
+    return sum(row.get("source_dataset") == "clean_identity_hard_negative" for row in rows)
+
+
 def _dataset_manifest(rows: list[dict[str, Any]], *, manifest_metadata: dict[str, Any] | None = None) -> dict[str, Any]:
     composition = dataset_composition(rows)
     manifest = {
@@ -306,6 +327,8 @@ def _dataset_manifest(rows: list[dict[str, Any]], *, manifest_metadata: dict[str
         "final_total_rows": len(rows),
         "composition": composition,
         "error_type_counts": error_type_counts(rows),
+        "rule_id_counts": rule_id_counts(rows),
+        "hard_negative_count": hard_negative_count(rows),
         "splits": _split_counts(rows),
         "split_strategy": SPLIT_STRATEGY,
         "columns": DATASET_COLUMNS,
@@ -318,6 +341,8 @@ def _dataset_manifest(rows: list[dict[str, Any]], *, manifest_metadata: dict[str
         manifest["final_total_rows"] = len(rows)
         manifest["composition"] = composition
         manifest["error_type_counts"] = error_type_counts(rows)
+        manifest["rule_id_counts"] = rule_id_counts(rows)
+        manifest["hard_negative_count"] = hard_negative_count(rows)
         manifest["splits"] = _split_counts(rows)
         manifest["columns"] = DATASET_COLUMNS
         manifest["synthetic_rows"] = composition["synthetic"]
@@ -459,7 +484,16 @@ def _clean_target(index: int, clean_texts: list[str], sentence_factory: CleanSen
     return (sentence_factory or CleanSentenceFactory()).make(index)
 
 
-def _punctuation_hard_negative_target(index: int) -> str:
+def _hard_negative_count(clean_count: int, ratio: float) -> int:
+    if clean_count <= 0:
+        return 0
+    clamped = _clamp_ratio(ratio)
+    if clamped <= 0:
+        return 0
+    return max(1, min(clean_count, int(round(clean_count * clamped))))
+
+
+def _hard_negative_target(index: int) -> str:
     places = ["Йоркшире", "Новосибирске", "Казани", "Перми", "Владивостоке", "Самаре"]
     months = ["январь", "март", "июнь", "сентябрь", "ноябрь", "декабрь"]
     nouns = ["отчет", "план", "раздел", "документ", "пример", "модуль"]
@@ -471,6 +505,15 @@ def _punctuation_hard_negative_target(index: int) -> str:
     decimal = f"{10 + index % 17},{index % 10}"
     small = 1 + index % 9
     templates = [
+        "В отчете группы {marker} указано 40,16% роста и 5% снижения.",
+        "Сайт https://example.com работает, а почта test@example.com указана верно для группы {marker}.",
+        "Они могут появиться завтра, а он учится каждый день в группе {marker}.",
+        "Кто-то пришел, кое-где были ошибки, и он говорит по-русски для группы {marker}.",
+        "Он сказал: «Проект готов» (это важно) для группы {marker}.",
+        "Конечно, проект сложный, но команда готова для группы {marker}.",
+        "Он работает как инженер в группе {marker}.",
+        "Мы проверяем что-то важное для группы {marker}.",
+        "69-летний эксперт из США, РФ и НББ согласовал документ для группы {marker}.",
         "Он родился 31 июля {year} года в {place} на севере страны в группе {marker}.",
         "Встреча прошла в субботу в историческом зале мэрии для группы {marker}.",
         "Команда обсудила {noun} за {month} {year} года в группе {marker}.",
@@ -492,6 +535,10 @@ def _punctuation_hard_negative_target(index: int) -> str:
         small=small,
         marker=marker,
     )
+
+
+def _punctuation_hard_negative_target(index: int) -> str:
+    return _hard_negative_target(index)
 
 
 def _hard_negative_marker(index: int) -> str:
@@ -713,7 +760,15 @@ def _build_targeted_orthography_rows(
         target = _orthography_balance_target(correct, group, index)
         source = target.replace(correct, wrong, 1)
         key = (source, target)
-        edits = _supported_edits(diff_analyzer.analyze(source, target))
+        edits = _orthography_edits_for_pair(
+            source,
+            target,
+            wrong=wrong,
+            correct=correct,
+            rule_id=rule_id,
+            group=group,
+            diff_analyzer=diff_analyzer,
+        )
         if source != target and key not in seen_pairs and edits:
             seen_pairs.add(key)
             rows.append(
@@ -730,6 +785,37 @@ def _build_targeted_orthography_rows(
                 )
         index += 1
     return rows
+
+
+def _orthography_edits_for_pair(
+    source: str,
+    target: str,
+    *,
+    wrong: str,
+    correct: str,
+    rule_id: str,
+    group: str,
+    diff_analyzer: DiffAnalyzer,
+) -> list[Edit]:
+    edits = _supported_edits(diff_analyzer.analyze(source, target))
+    if edits:
+        return edits
+    if group != "dictionary_fuzzy":
+        return []
+    start = source.lower().find(wrong.lower())
+    if start < 0:
+        return []
+    return [
+        Edit(
+            source[start : start + len(wrong)],
+            correct,
+            "spelling_replace",
+            start,
+            start + len(wrong),
+            confidence=0.85,
+            rule_id=rule_id,
+        )
+    ]
 
 
 def _build_targeted_punctuation_rows(
@@ -762,7 +848,7 @@ def _build_targeted_punctuation_rows(
                     is_clean=False,
                     is_synthetic=True,
                     domain=domain,
-                    rule_ids=[_punctuation_rule_id(group)],
+                    rule_ids=_punctuation_rule_ids(group, source, target),
                 )
             )
         index += 1
@@ -792,6 +878,27 @@ def _punctuation_balance_pair(group: str, index: int) -> tuple[str, str]:
             ("Однако {topic} остается рабочим.", "Однако, {topic} остается рабочим."),
             ("Во-первых {topic} уже готов.", "Во-первых, {topic} уже готов."),
         ]
+    elif group == "address_comma":
+        templates = [
+            ("Коллеги проверьте {topic}.", "Коллеги, проверьте {topic}."),
+            ("Иван открой {topic}.", "Иван, открой {topic}."),
+            ("Мария посмотри {topic}.", "Мария, посмотри {topic}."),
+            ("Коллеги исправим {topic}.", "Коллеги, исправим {topic}."),
+        ]
+    elif group == "homogeneous_members":
+        templates = [
+            ("Мы проверили и файл и {topic}.", "Мы проверили и файл, и {topic}."),
+            ("Автор сохранил ни план ни {topic}.", "Автор сохранил ни план, ни {topic}."),
+            ("В архиве есть и отчет и {topic}.", "В архиве есть и отчет, и {topic}."),
+            ("Редактор смотрит и текст и {topic}.", "Редактор смотрит и текст, и {topic}."),
+        ]
+    elif group == "detached_members":
+        templates = [
+            ("Закончив работу мы проверили {topic}.", "Закончив работу, мы проверили {topic}."),
+            ("Сделав правки автор сохранил {topic}.", "Сделав правки, автор сохранил {topic}."),
+            ("Прочитав отчет редактор открыл {topic}.", "Прочитав отчет, редактор открыл {topic}."),
+            ("Закончив проверку команда приняла {topic}.", "Закончив проверку, команда приняла {topic}."),
+        ]
     elif group == "colon":
         templates = [
             ("Он сказал «{topic} готов».", "Он сказал: «{topic} готов»."),
@@ -805,6 +912,20 @@ def _punctuation_balance_pair(group: str, index: int) -> tuple[str, str]:
             ("{topic} часть общего плана.", "{topic} — часть общего плана."),
             ("Главная задача это проверить текст.", "Главная задача — это проверить текст."),
             ("Итоговый вывод рабочий вариант.", "Итоговый вывод — рабочий вариант."),
+        ]
+    elif group == "subject_predicate_dash":
+        templates = [
+            ("Москва это столица.", "Москва — это столица."),
+            ("Главная задача это проверить {topic}.", "Главная задача — это проверить {topic}."),
+            ("Итоговый вывод это рабочий вариант.", "Итоговый вывод — это рабочий вариант."),
+            ("Документ это важный результат.", "Документ — это важный результат."),
+        ]
+    elif group == "direct_speech":
+        templates = [
+            ("Он сказал {topic} готов.", "Он сказал: «{topic} готов»."),
+            ("Она ответила {topic} принят.", "Она ответила: «{topic} принят»."),
+            ("Редактор спросил {topic} готов?", "Редактор спросил: «{topic} готов?»"),
+            ("«{topic} готов» сказал автор.", "«{topic} готов» — сказал автор."),
         ]
     elif group == "semicolon":
         templates = [
@@ -833,6 +954,13 @@ def _punctuation_balance_pair(group: str, index: int) -> tuple[str, str]:
             ("{topic},, готов к проверке.", "{topic} готов к проверке."),
             ("Он сказал,, {topic} готов.", "Он сказал: {topic} готов."),
             ("Первая часть готова:: вторая ждет {topic}.", "Первая часть готова; вторая ждет {topic}."),
+        ]
+    elif group == "punctuation_noise":
+        templates = [
+            ("Я думаю,, что {topic} готов.", "Я думаю, что {topic} готов."),
+            ("{topic} готов!!", "{topic} готов!"),
+            ("Он сказал:: {topic} готов.", "Он сказал: {topic} готов."),
+            ("Первая часть готова;; вторая ждет {topic}.", "Первая часть готова; вторая ждет {topic}."),
         ]
     else:
         templates = [("{topic} готов", "{topic} готов.")]
@@ -1009,6 +1137,20 @@ def _orthography_balance_entries(group: str) -> list[tuple[str, str, str]]:
             limit=320,
         )
         return _rule_backed_orthography_entries(group, [f"не {form}" for form in forms])
+    if group == "ne_pos":
+        return _rule_backed_orthography_entries(
+            group,
+            [
+                "некрасивый",
+                "неинтересный",
+                "непонятный",
+                "непрочитанный",
+                "непроверенный",
+                "недолго",
+                "небыстро",
+                "несложно",
+            ],
+        )
     if group == "tsya":
         return _rule_backed_orthography_entries(
             group,
@@ -1062,6 +1204,23 @@ def _orthography_balance_entries(group: str) -> list[tuple[str, str, str]]:
         return _rule_backed_orthography_entries(group, _hard_sign_terms(limit=420))
     if group == "prefix_z_s":
         return _rule_backed_orthography_entries(group, _prefix_z_s_terms(limit=520))
+    if group == "prefix_pre_pri":
+        return _rule_backed_orthography_entries(
+            group,
+            _known_forms(
+                [
+                    "превосходный",
+                    "приблизительный",
+                    "преувеличивать",
+                    "приоритет",
+                    "привычный",
+                    "прекрасный",
+                    "препятствие",
+                    "прибрежный",
+                ],
+                limit=420,
+            ),
+        )
     if group == "ci":
         return _rule_backed_orthography_entries(
             group,
@@ -1111,6 +1270,50 @@ def _orthography_balance_entries(group: str) -> list[tuple[str, str, str]]:
                 limit=520,
             ),
         )
+    if group == "n_nn":
+        return _rule_backed_orthography_entries(
+            group,
+            _known_forms(
+                [
+                    "длинный",
+                    "раненный",
+                    "раненый",
+                    "жареный",
+                    "жаренный",
+                    "прочитан",
+                    "искусственный",
+                    "деревянный",
+                    "ветреный",
+                    "сделанный",
+                ],
+                limit=520,
+            ),
+        )
+    if group == "context_pairs":
+        return _rule_backed_orthography_entries(
+            group,
+            [
+                "так же",
+                "также",
+                "то же",
+                "тоже",
+                "что бы",
+                "чтобы",
+                "за то",
+                "зато",
+                "в следствие",
+                "вследствие",
+                "не смотря",
+                "несмотря",
+                "не смотря на",
+                "несмотря на",
+            ],
+        )
+    if group == "dictionary_fuzzy":
+        return [
+            (dirty, clean, "dictionary_fuzzy")
+            for clean, dirty in DICTIONARY_FUZZY_SYNTHETIC_ERRORS.items()
+        ]
     return []
 
 
@@ -1302,7 +1505,11 @@ def _row_error_types(row: dict[str, Any]) -> set[str]:
 def _supported_edits(edits: list[Edit]) -> list[Edit]:
     if any(not is_allowed_edit_type(edit.edit_type) for edit in edits):
         return []
-    if any(is_context_dependent_pair(edit.source, edit.replacement) for edit in edits):
+    if any(
+        is_context_dependent_pair(edit.source, edit.replacement)
+        and not str(edit.rule_id).startswith("context_")
+        for edit in edits
+    ):
         return []
     return list(edits)
 
@@ -1334,13 +1541,38 @@ def _punctuation_rule_id(group: str) -> str:
         "comma_subordinate": "comma_subordinate",
         "comma_conjunction": "comma_conjunction",
         "introductory": "introductory_comma",
+        "address_comma": "address_comma",
+        "homogeneous_members": "homogeneous_comma",
+        "detached_members": "detached_adverbial_comma",
         "colon": "enumeration_colon",
         "dash": "subject_predicate_dash",
+        "subject_predicate_dash": "subject_predicate_dash",
+        "direct_speech": "direct_speech_colon",
         "semicolon": "semicolon",
-        "quotes_brackets": "quotes_brackets",
+        "quotes_brackets": "quote_pair_balance",
         "final_punctuation": "final_punctuation_default",
         "delete_replace": "punctuation_delete_replace",
+        "punctuation_noise": "punctuation_delete_replace",
     }.get(group, group)
+
+
+def _punctuation_rule_ids(group: str, source: str, target: str) -> list[str]:
+    if group == "direct_speech":
+        if "—" in target and "—" not in source:
+            return ["direct_speech_dash"]
+        return ["direct_speech_colon", "direct_speech_quotes", "direct_speech_quotes"]
+    if group == "quotes_brackets":
+        rule_ids: list[str] = []
+        if "«" in target and "«" not in source:
+            rule_ids.append("quote_open")
+        if "»" in target and "»" not in source:
+            rule_ids.append("quote_close")
+        if "(" in target and "(" not in source:
+            rule_ids.append("bracket_pair_balance")
+        if ")" in target and ")" not in source:
+            rule_ids.append("bracket_pair_balance")
+        return rule_ids or ["quote_pair_balance"]
+    return [_punctuation_rule_id(group)]
 
 
 def _normalize_dataset_row(row: dict[str, Any], *, default_domain: str = "synthetic_general") -> dict[str, Any]:

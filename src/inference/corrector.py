@@ -72,7 +72,7 @@ class Corrector:
         offset = 0
         applied: list[Any] = []
         for candidate in self.candidates.generate(text):
-            if candidate.edit_type == "keep" or candidate.requires_scoring:
+            if not _can_apply_without_model(candidate):
                 continue
             shifted = candidate.__class__(
                 source=candidate.source,
@@ -104,3 +104,11 @@ class Corrector:
 
     def _punctuation_pass_with_edits(self, text: str) -> tuple[str, list[Any]]:
         return apply_punctuation_rules(text, allowed_modes={"deterministic"})
+
+
+def _can_apply_without_model(candidate: Candidate) -> bool:
+    if candidate.edit_type == "keep":
+        return False
+    if not candidate.requires_scoring:
+        return True
+    return candidate.edit_type == "case" and candidate.rule_id == "capitalization_sentence_start"

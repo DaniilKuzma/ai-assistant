@@ -1,1 +1,16 @@
 row_id,source,replacement,edit_type,rule_id,status,reason,confidence
+57,,неслучайно планируем,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+57,случайно планируем небольшой,большой,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+81,.,!,final_punctuation,,rejected,requires_trusted_candidate,0.9
+90,,?,final_punctuation,,rejected,requires_trusted_candidate,0.9
+92,делаеться,делается,spelling_replace,frequent_error_exact,rejected,requires_trusted_candidate,0.9280238747596741
+115,.,!,final_punctuation,,rejected,requires_trusted_candidate,0.9
+119,хочеться,хочется,spelling_replace,frequent_error_exact,rejected,requires_trusted_candidate,0.9664636850357056
+125,делаеться,делается,spelling_replace,frequent_error_exact,rejected,requires_trusted_candidate,0.9382817149162292
+154,смееться,смеется,spelling_replace,tsya_soft_delete,rejected,requires_trusted_candidate,0.9404304623603821
+193,смееться,смеется,spelling_replace,tsya_soft_delete,rejected,requires_trusted_candidate,0.940708577632904
+224,,»,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.9424967169761658
+224,,:,punctuation_insert,,rejected,unbalanced_pairs,0.9995269775390625
+235,,?,final_punctuation,,rejected,requires_trusted_candidate,0.9
+249,,»,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.9450482130050659
+249,,:,punctuation_insert,,rejected,unbalanced_pairs,0.9994840621948242

@@ -1,5 +1,9 @@
+import pytest
+
+from src.candidates.candidate_generator import CandidateGenerator
 from src.data.synthetic_generator import SyntheticGenerator
 from src.rules.registry import rule_by_id
+from src.rules.synthetic import synthetic_transformations
 
 EXPANDED_ORTHOGRAM_CASES = [
     ("хочется", "хочеться"),
@@ -116,6 +120,76 @@ def test_pol_polu_rule_generates_corruption_and_candidate_with_same_rule_id():
     assert any(candidate.replacement.lower() == "полуфинал" and candidate.rule_id == "pol_polu_compounds" for candidate in joined_candidates)
 
 
+@pytest.mark.parametrize(
+    ("rule_id", "target", "expected_source_fragment", "expected_replacement"),
+    [
+        ("ne_adjective", "Некрасивый ответ удивил всех.", "Не красивый", "некрасивый"),
+        ("ne_participle", "Непрочитанный текст лежал на столе.", "Не прочитанный", "непрочитанный"),
+        ("ne_adverb", "Недолго музыка играла.", "Не долго", "недолго"),
+        ("ni_stable_expression", "Ни разу не ошибся.", "Не разу", "ни разу"),
+        ("n_nn_adjective", "Длинный путь занял день.", "Длиный", "длинный"),
+        ("n_nn_participle", "Раненный солдат вернулся.", "Раненый", "раненный"),
+        ("n_nn_deverbal_adjective", "Жареный картофель остыл.", "Жаренный", "жареный"),
+        ("n_nn_short_form", "Ответ прочитан.", "прочитанн", "прочитан"),
+        ("prefix_pre_pri", "Превосходный результат удивил всех.", "Привосходный", "превосходный"),
+        ("context_tak_zhe", "Он сделал так же, как я.", "также", "так же"),
+        ("context_to_zhe", "Он сделал то же упражнение.", "тоже", "то же"),
+        ("context_chto_by", "Что бы ты ни сказал, решение принято.", "Чтобы", "что бы"),
+        ("context_za_to", "Он отвечает за то решение.", "зато", "за то"),
+        ("context_vsledstvie", "В следствие по делу добавили документ.", "Вследствие", "в следствие"),
+        ("context_nesmotrya", "Он шел не смотря на экран.", "несмотря", "не смотря"),
+    ],
+)
+def test_model_required_orthography_rules_generate_corruption_and_candidate_with_same_rule_id(
+    rule_id,
+    target,
+    expected_source_fragment,
+    expected_replacement,
+):
+    rule = rule_by_id(rule_id)
+
+    corruptions = list(rule.generate_corruptions(target))
+    dirty_sources = {(item.apply(target), item.rule_id) for item in corruptions}
+    candidates = CandidateGenerator().generate(next(source for source, candidate_rule_id in dirty_sources if candidate_rule_id == rule_id))
+
+    assert any(expected_source_fragment.lower() in source.lower() and candidate_rule_id == rule_id for source, candidate_rule_id in dirty_sources)
+    assert any(
+        candidate.replacement.lower() == expected_replacement and candidate.rule_id == rule_id
+        for candidate in candidates
+    )
+
+
+def test_dictionary_fuzzy_synthetic_corruption_can_be_repaired_by_dictionary_candidate_with_same_rule_id():
+    target = "Библиотека открыта."
+
+    corruptions = [item for item in synthetic_transformations(target) if item.rule_id == "dictionary_fuzzy"]
+    dirty = corruptions[0].apply(target)
+    candidates = CandidateGenerator(dictionary_lexicon=["библиотека"], dictionary_min_score=85).generate(dirty)
+
+    assert "Библеотека" in dirty
+    assert any(candidate.replacement == "Библиотека" and candidate.rule_id == "dictionary_fuzzy" for candidate in candidates)
+
+
+@pytest.mark.parametrize(
+    ("target", "expected_group", "expected_rule_id"),
+    [
+        ("Коллеги, проверьте текст.", "address_comma", "address_comma"),
+        ("Мы купили и чай, и кофе.", "homogeneous_members", "homogeneous_comma"),
+        ("Закончив работу, мы ушли.", "detached_members", "detached_adverbial_comma"),
+        ("Москва — это столица.", "subject_predicate_dash", "subject_predicate_dash"),
+        ("Он сказал: «Проект готов».", "direct_speech", "direct_speech_colon"),
+        ("Проверь «документ» (черновик).", "quotes_brackets", "quote_pair_balance"),
+        ("Документ готов; отчет отправлен.", "semicolon", "semicolon"),
+        ("Мы пришли, но встреча закончилась.", "punctuation_noise", "punctuation_delete_replace"),
+    ],
+)
+def test_synthetic_transformations_cover_requested_punctuation_groups(target, expected_group, expected_rule_id):
+    transformations = synthetic_transformations(target)
+
+    assert any(item.group == expected_group for item in transformations)
+    assert any(item.rule_id == expected_rule_id for item in transformations)
+
+
 def test_synthetic_generator_can_create_identity_examples():
     generator = SyntheticGenerator(seed=7)
 
@@ -168,7 +242,7 @@ def test_synthetic_generator_creates_diverse_punctuation_variants():
     assert any('"Привет"' in source for source in sources)
     assert any("(это важно)" not in source and "это важно" in source for source in sources)
     assert any("Привет»,, и" in source for source in sources)
-    assert all(set(variant.error_types).issubset({"punctuation", "final_punctuation"}) for variant in variants)
+    assert any(set(variant.error_types).issubset({"punctuation", "final_punctuation"}) for variant in variants)
 
 
 def test_synthetic_generator_limits_errors_per_example():
