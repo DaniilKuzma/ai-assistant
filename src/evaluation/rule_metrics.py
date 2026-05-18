@@ -10,11 +10,10 @@ from typing import Any
 import pandas as pd
 
 from src.rules.coverage_matrix import iter_coverage_entries, load_rules_coverage
+from src.rules.rule_ids import UNKNOWN_RULE_ID, normalize_rule_id
 from src.validation.diff_analyzer import DiffAnalyzer, Edit
 from src.validation.edit_classifier import coarse_error_type
 
-
-UNKNOWN_RULE_ID = "unknown"
 
 RULE_PRECISION_RECALL_COLUMNS = [
     "rule_id",
@@ -316,12 +315,7 @@ def _safe_rate(numerator: int, denominator: int) -> float:
 
 
 def _normalize_rule_id(value: Any) -> str:
-    if _is_missing(value):
-        return UNKNOWN_RULE_ID
-    text = str(value).strip()
-    if not text or text.lower() in {"none", "nan", "null"}:
-        return UNKNOWN_RULE_ID
-    return text
+    return normalize_rule_id(value)
 
 
 def _row_rule_ids(row: dict[str, Any]) -> list[str]:
@@ -372,7 +366,8 @@ def _load_rule_groups(path: str | Path) -> dict[str, str]:
 
     rule_groups: dict[str, str] = {}
     for _section, group, entry in iter_coverage_entries(load_rules_coverage(config_path)):
-        for rule_id in entry.get("rules", []) or []:
+        rule_ids = [*(entry.get("rules", []) or []), *(entry.get("aliases", []) or [])]
+        for rule_id in rule_ids:
             normalized = _normalize_rule_id(rule_id)
             if normalized != UNKNOWN_RULE_ID:
                 rule_groups[normalized] = str(group)

@@ -4,6 +4,12 @@ from pathlib import Path
 import pandas as pd
 
 from src.evaluation.rule_metrics import build_rule_reports, write_rule_reports
+from src.rules.rule_ids import normalize_rule_id
+
+
+def test_legacy_frequent_errors_rule_id_normalizes_to_canonical_id():
+    assert normalize_rule_id("frequent_errors") == "frequent_error_exact"
+    assert normalize_rule_id("frequent_error_exact") == "frequent_error_exact"
 
 
 def test_write_rule_reports_creates_all_csv_files(tmp_path: Path):
@@ -18,7 +24,9 @@ def test_write_rule_reports_creates_all_csv_files(tmp_path: Path):
         "error_by_rule.csv",
         "rule_worse_examples.csv",
     ]:
-        assert (tmp_path / name).exists()
+        path = tmp_path / name
+        assert path.exists()
+        assert path.stat().st_size > 0
 
 
 def test_rule_precision_recall_includes_ne_verb_from_gold_and_prediction(tmp_path: Path):
@@ -156,11 +164,55 @@ def test_real_rules_config_maps_rule_ids_to_report_groups():
                 start=12,
                 end=12,
             ),
+            _row(
+                source="Проект готов но требует проверки.",
+                target="Проект готов, но требует проверки.",
+                rule_id="comma_conjunction",
+                edit_type="punctuation_insert",
+                edit_source="",
+                replacement=",",
+                start=12,
+                end=12,
+            ),
+            _row(
+                source="Документ сохранен, отчет открыт.",
+                target="Документ сохранен; отчет открыт.",
+                rule_id="semicolon",
+                edit_type="punctuation_replace",
+                edit_source=",",
+                replacement=";",
+                start=17,
+                end=18,
+            ),
+            _row(
+                source="Автор назвал это проект.",
+                target="Автор назвал это «проект».",
+                rule_id="quotes_brackets",
+                edit_type="punctuation_insert",
+                edit_source="",
+                replacement="«",
+                start=17,
+                end=17,
+            ),
+            _row(
+                source="Библеотека открыта.",
+                target="Библиотека открыта.",
+                rule_id="dictionary_fuzzy",
+                edit_type="spelling_replace",
+                edit_source="Библеотека",
+                replacement="Библиотека",
+                start=0,
+                end=10,
+            ),
         ],
         [
             _accepted("ne_verb", "split_word", "недумаю", "не думаю", 2, 9, row_id=0),
             _accepted("comma_subordinate", "punctuation_insert", "", ",", 7, 7, row_id=1),
             _accepted("final_punctuation_default", "final_punctuation", "", ".", 12, 12, row_id=2),
+            _accepted("comma_conjunction", "punctuation_insert", "", ",", 12, 12, row_id=3),
+            _accepted("semicolon", "punctuation_replace", ",", ";", 17, 18, row_id=4),
+            _accepted("quotes_brackets", "punctuation_insert", "", "«", 17, 17, row_id=5),
+            _accepted("dictionary_fuzzy", "spelling_replace", "Библеотека", "Библиотека", 0, 10, row_id=6),
         ],
         [],
         rules_config_path=Path("configs/rules.yaml"),
@@ -171,6 +223,87 @@ def test_real_rules_config_maps_rule_ids_to_report_groups():
     assert summary.loc["ne_verb", "group"] == "ne_ni_particles"
     assert summary.loc["comma_subordinate", "group"] == "complex_sentence_subordinate"
     assert summary.loc["final_punctuation_default", "group"] == "sentence_final_default_dot"
+    assert summary.loc["comma_conjunction", "group"] == "homogeneous_commas"
+    assert summary.loc["semicolon", "group"] == "complex_sentence_compound"
+    assert summary.loc["quotes_brackets", "group"] == "quotes_brackets"
+    assert summary.loc["dictionary_fuzzy", "group"] == "typos_letter_operations"
+
+
+def test_legacy_alias_matches_canonical_rule_id_as_per_rule_true_positive(tmp_path: Path):
+    reports = build_rule_reports(
+        [
+            _row(
+                source="Жызнь прекрасна.",
+                target="Жизнь прекрасна.",
+                rule_id="frequent_errors",
+                edit_type="spelling_replace",
+                edit_source="Жызнь",
+                replacement="Жизнь",
+                start=0,
+                end=5,
+            )
+        ],
+        [
+            _accepted(
+                "frequent_error_exact",
+                "spelling_replace",
+                "Жызнь",
+                "Жизнь",
+                0,
+                5,
+                row_id=0,
+            )
+        ],
+        [],
+        rules_config_path=_rules_config(tmp_path),
+    )
+
+    summary = reports["rule_precision_recall"].set_index("rule_id")
+    frequent_error = summary.loc["frequent_error_exact"]
+
+    assert "frequent_errors" not in summary.index
+    assert frequent_error["gold_count"] == 1
+    assert frequent_error["predicted_count"] == 1
+    assert frequent_error["true_positive"] == 1
+    assert frequent_error["false_positive"] == 0
+    assert frequent_error["false_negative"] == 0
+
+
+def test_mismatched_non_alias_rule_id_is_not_per_rule_true_positive(tmp_path: Path):
+    reports = build_rule_reports(
+        [
+            _row(
+                source="Я думаю что готово",
+                target="Я думаю, что готово",
+                rule_id="comma_subordinate",
+                edit_type="punctuation_insert",
+                edit_source="",
+                replacement=",",
+                start=7,
+                end=7,
+            )
+        ],
+        [
+            _accepted(
+                "introductory_comma",
+                "punctuation_insert",
+                "",
+                ",",
+                7,
+                7,
+                row_id=0,
+            )
+        ],
+        [],
+        rules_config_path=_rules_config(tmp_path),
+    )
+
+    summary = reports["rule_precision_recall"].set_index("rule_id")
+
+    assert summary.loc["comma_subordinate", "true_positive"] == 0
+    assert summary.loc["comma_subordinate", "false_negative"] == 1
+    assert summary.loc["introductory_comma", "true_positive"] == 0
+    assert summary.loc["introductory_comma", "false_positive"] == 1
 
 
 def _row_with_ne_verb() -> dict:
@@ -277,7 +410,26 @@ orthography:
     requires: [morphology, model]
     rules: [ne_verb]
     notes: "unit"
-punctuation: {}
+  typical_dictionary_words:
+    title: "Типичные ошибки: словарные слова"
+    status: partial
+    requires: [dictionary, model]
+    rules: [frequent_error_exact]
+    aliases: [frequent_errors]
+    notes: "unit"
+punctuation:
+  complex_sentence_subordinate:
+    title: "Сложноподчиненное предложение"
+    status: model_required
+    requires: [syntax, model]
+    rules: [comma_subordinate]
+    notes: "unit"
+  introductory_words:
+    title: "Вводные слова"
+    status: model_required
+    requires: [syntax, model]
+    rules: [introductory_comma]
+    notes: "unit"
 """.strip()
         + "\n",
         encoding="utf-8",

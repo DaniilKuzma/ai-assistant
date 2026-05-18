@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from src.model.encoder import EncoderLoadConfig, load_encoder
+from src.model.encoder import EncoderLoadConfig, ensure_pytorch_transformers_backend, load_encoder
 from src.model.heads import build_linear_heads
 
 
@@ -136,9 +136,7 @@ class CandidateAwareEditModel:
         )
 
     def _attach_lora(self, encoder: Any, config: EditModelConfig) -> Any:
-        from src.model.encoder import _disable_unused_transformers_backends
-
-        _disable_unused_transformers_backends()
+        ensure_pytorch_transformers_backend()
         from peft import LoraConfig, TaskType, get_peft_model
 
         lora_config = LoraConfig(

@@ -44,17 +44,11 @@ def _cached_streamlit_corrector(config_path: str = str(DEFAULT_CONFIG_PATH)) -> 
 
 
 def main() -> None:
-    st.set_page_config(page_title="Russian Edit Corrector", layout="wide")
-    st.title("Russian Edit Corrector")
+    st.set_page_config(page_title="Система исправления ошибок русского языка", layout="wide")
+    st.title("Система исправления ошибок русского языка")
 
     load_result = _cached_streamlit_corrector()
     corrector = load_result.corrector
-    if load_result.kind == "trained_model":
-        st.caption("Активна обученная edit-based модель.")
-    else:
-        st.warning("Обученная модель не загружена, используется rule fallback.")
-        if load_result.error:
-            st.caption(load_result.error)
 
     tab_text, tab_docx = st.tabs(["Text", "DOCX"])
 

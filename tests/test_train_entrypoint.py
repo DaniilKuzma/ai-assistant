@@ -3,7 +3,7 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
-from src.training.train import _load_evaluation_rows, evaluate_trained_model, train
+from src.training.train import _build_features, _load_evaluation_rows, evaluate_trained_model, train
 
 
 def test_train_entrypoint_prepares_features_and_all_reports(tmp_path: Path):
@@ -65,6 +65,35 @@ def test_train_entrypoint_prepares_features_and_all_reports(tmp_path: Path):
     assert "- checkpoint_metric: combined_score" in training_report
     assert "- checkpoint_metric_value:" in training_report
     assert "- combined_score:" in training_report
+
+
+def test_build_features_uses_dictionary_config(tmp_path: Path):
+    lexicon_path = tmp_path / "russian_lexicon.txt"
+    lexicon_path.write_text("библиотека\n", encoding="utf-8")
+    config = {
+        "model": {
+            "primary_encoder": "ai-forever/ruRoberta-large",
+            "fallback_encoder": "ai-forever/ruRoberta-large",
+            "local_files_only": False,
+            "max_sequence_length": 32,
+            "max_candidates": 8,
+        },
+        "training": {"run_model_training": False, "show_progress": False},
+        "dictionary": {
+            "enabled": True,
+            "lexicon_path": str(lexicon_path),
+            "max_candidates": 2,
+            "min_score": 85,
+        },
+        "labels": {
+            "punctuation": {"NONE": 0, "DOT": 1},
+            "error_types": {"keep": 0, "spelling": 1},
+        },
+    }
+
+    features = _build_features(config, [{"source": "Библеотека открыта.", "target": "Библиотека открыта."}])
+
+    assert "dictionary_fuzzy" in features[0].candidate_rule_ids
 
 
 def test_train_uses_trained_corrector_for_reports_when_model_training_runs(monkeypatch, tmp_path: Path):

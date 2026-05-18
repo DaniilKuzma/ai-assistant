@@ -19,6 +19,7 @@ from src.data.external_sources import load_external_pair_sources, load_hf_jsonl_
 from src.data.synthetic_generator import SyntheticGenerator
 from src.evaluation.reports import write_dataset_report
 from src.rules.orthography import orthography_rules
+from src.rules.rule_ids import normalize_rule_id
 from src.rules.synthetic import (
     DEFAULT_ORTHOGRAPHY_BALANCE,
     DEFAULT_PUNCTUATION_BALANCE,
@@ -40,8 +41,6 @@ DATASET_COLUMNS = [
     "domain",
     "edit_operations",
 ]
-UNKNOWN_RULE_ID = "unknown"
-
 
 @dataclass(frozen=True)
 class DatasetBuildConfig:
@@ -1311,7 +1310,7 @@ def _supported_edits(edits: list[Edit]) -> list[Edit]:
 def _lexical_rule_id(error_type: str) -> str:
     if error_type == "hyphen":
         return "hyphen_whitelist"
-    return "frequent_errors"
+    return "frequent_error_exact"
 
 
 def _orthography_rule_id(group: str, wrong: str, correct: str) -> str:
@@ -1430,12 +1429,7 @@ def _parse_jsonish_list(value: Any) -> list[Any]:
 
 
 def _normalize_rule_id(value: Any) -> str:
-    if _is_missing_value(value):
-        return UNKNOWN_RULE_ID
-    text = str(value).strip()
-    if not text or text.lower() in {"none", "nan", "null"}:
-        return UNKNOWN_RULE_ID
-    return text
+    return normalize_rule_id(value)
 
 
 def _is_missing_value(value: Any) -> bool:

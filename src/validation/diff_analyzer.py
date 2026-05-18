@@ -72,7 +72,7 @@ class DiffAnalyzer:
                         start,
                         start + len(wrong),
                         confidence=0.95,
-                        rule_id="frequent_errors",
+                        rule_id="frequent_error_exact",
                     )
                 )
 
@@ -87,7 +87,7 @@ class DiffAnalyzer:
                         start,
                         start + len(correct),
                         confidence=0.95,
-                        rule_id="frequent_errors",
+                        rule_id="frequent_error_exact",
                     )
                 )
 

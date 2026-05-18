@@ -160,6 +160,56 @@ def test_training_feature_encodes_candidate_replacements():
     assert any(token_id > 0 for token_id in feature.candidate_replacement_ids[replacement_index])
 
 
+def test_training_feature_preserves_ranked_candidate_metadata():
+    tokenizer = DebugTokenizer()
+
+    feature = build_training_feature(
+        "Он учится каждый день.",
+        "Он учится каждый день.",
+        tokenizer=tokenizer,
+        punctuation_label_map={"NONE": 0, "DOT": 1},
+        error_type_label_map={"keep": 0, "spelling": 1},
+        max_length=16,
+        max_candidates=8,
+    )
+    candidate_index = next(
+        index
+        for index, replacement in enumerate(feature.candidate_replacements)
+        if replacement.lower() == "учиться" and feature.candidate_mask[index]
+    )
+
+    assert feature.candidate_rule_ids[candidate_index] == "tsya_soft_insert"
+    assert feature.candidate_modes[candidate_index] == "model_required"
+    assert feature.candidate_requires_model[candidate_index] is True
+    assert feature.candidate_requires_scoring[candidate_index] is True
+
+
+def test_training_feature_pads_candidate_metadata_with_inactive_mask():
+    tokenizer = DebugTokenizer()
+
+    feature = build_training_feature(
+        "Жызнь.",
+        "Жизнь.",
+        tokenizer=tokenizer,
+        punctuation_label_map={"NONE": 0, "DOT": 1},
+        error_type_label_map={"keep": 0, "spelling": 1},
+        max_length=8,
+        max_candidates=6,
+    )
+
+    assert len(feature.candidate_rule_ids) == 6
+    assert len(feature.candidate_modes) == 6
+    assert len(feature.candidate_requires_model) == 6
+    assert len(feature.candidate_requires_scoring) == 6
+    for index, active in enumerate(feature.candidate_mask):
+        if active:
+            continue
+        assert feature.candidate_rule_ids[index] == ""
+        assert feature.candidate_modes[index] == "deterministic"
+        assert feature.candidate_requires_model[index] is False
+        assert feature.candidate_requires_scoring[index] is False
+
+
 def test_clean_training_feature_marks_keep_candidates_positive():
     tokenizer = DebugTokenizer()
 
@@ -203,6 +253,10 @@ def test_batch_collator_returns_tensors_with_candidate_masks():
     assert batch["labels"]["punctuation_confidence_labels"].shape == torch.Size([1, 12])
     assert batch["labels"]["punctuation_error_type_labels"].shape == torch.Size([1, 12])
     assert batch["labels"]["candidate_mask"].sum().item() >= 2
+    assert batch["candidate_rule_ids"] == [feature.candidate_rule_ids]
+    assert batch["candidate_modes"] == [feature.candidate_modes]
+    assert batch["candidate_requires_model"] == [feature.candidate_requires_model]
+    assert batch["candidate_requires_scoring"] == [feature.candidate_requires_scoring]
 
 
 def test_build_features_supports_progress_option():

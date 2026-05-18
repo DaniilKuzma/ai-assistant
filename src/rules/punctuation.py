@@ -24,9 +24,13 @@ PUNCTUATION_LABELS = {
     "(": "BRACKET_OPEN",
     ")": "BRACKET_CLOSE",
 }
-SUBORDINATE_MARKERS = frozenset({"что", "чтобы", "если", "когда"})
-COMPLEX_SUBORDINATE_MARKERS = (("потому", "что"),)
-INTRODUCTORY_WORDS = frozenset({"конечно", "например", "во-первых", "кажется", "возможно"})
+CLOSING_FINAL_WRAPPERS = frozenset("\"'»”)]}")
+SUBORDINATE_MARKERS = frozenset({"что", "чтобы", "если", "когда", "поскольку", "где", "куда", "откуда"})
+COMPLEX_SUBORDINATE_MARKERS = (("потому", "что"), ("так", "как"))
+COMPLEX_SUBORDINATE_CONTINUATIONS = frozenset({"потому", "так"})
+CONJUNCTION_MARKERS = frozenset({"а", "но", "однако", "зато"})
+INTRODUCTORY_WORDS = frozenset({"конечно", "например", "во-первых", "кажется", "возможно", "следовательно"})
+ADDRESS_OPENINGS = frozenset({"коллеги", "иван", "мария"})
 ADDRESS_IMPERATIVE_HINTS = frozenset(
     {
         "добавь",
@@ -41,7 +45,13 @@ ADDRESS_IMPERATIVE_HINTS = frozenset(
         "укажи",
     }
 )
+ADDRESS_HORTATIVE_HINTS = frozenset({"проверим", "исправим", "посмотрим", "отправим", "сделаем", "укажем"})
+REPEATED_HOMOGENEOUS_CONJUNCTIONS = frozenset({"и", "ни"})
+COMPARATIVE_MARKERS = frozenset({"словно", "будто"})
+COMPLEX_COMPARATIVE_MARKERS = (("как", "будто"),)
+GERUND_FALLBACK_SUFFIXES = ("вшись", "в")
 PROTECTED_PUNCTUATION_RE = re.compile(r"(?<![\w])\d+(?:[.,]\d+)?%|(?<![\w])\d+(?:[.,:/-]\d+)*")
+PUNCTUATION_NOISE_RE = re.compile(r"(?:…[.!?…]+|[.!?]+…|\.{2,}|[!?]{2,}|([,;:])\s*\1)")
 
 
 @dataclass(frozen=True)
@@ -59,6 +69,7 @@ class PunctuationGapCandidate:
     label: str
     gap_index: int
     requires: tuple[str, ...]
+    group: str = ""
 
 
 @dataclass(frozen=True)
@@ -90,29 +101,14 @@ class FinalPunctuationRule:
         group="final_punctuation",
         scope="punctuation_gap",
         edit_type="final_punctuation",
-        mode="deterministic",
+        mode="model_required",
         confidence=0.9,
-        requires=("none",),
-        description="Add a final full stop in the lightweight fallback when sentence-final punctuation is absent.",
+        requires=("model",),
+        description="Generate a final full stop candidate for model scoring when sentence-final punctuation is absent.",
     )
 
     def apply(self, text: str) -> tuple[str, tuple[RuleEdit, ...]]:
-        stripped = text.rstrip()
-        if not stripped or stripped[-1] in ".!?…":
-            return text, ()
-        updated = stripped + "."
-        edit = RuleEdit(
-            source="",
-            replacement=".",
-            edit_type="final_punctuation",
-            start=len(stripped),
-            end=len(stripped),
-            confidence=self.spec.confidence,
-            requires_model=False,
-            rule_id=self.spec.id,
-            mode=self.spec.mode,
-        )
-        return updated, (edit,)
+        return text, ()
 
 
 def apply_punctuation_rules(
@@ -145,17 +141,32 @@ def generate_punctuation_candidates(
         _append_punctuation_candidate(candidates, seen, candidate)
     for candidate in _subordinate_comma_candidates(text, words, protected):
         _append_punctuation_candidate(candidates, seen, candidate)
+    for candidate in _conjunction_comma_candidates(text, words, protected):
+        _append_punctuation_candidate(candidates, seen, candidate)
     for candidate in _introductory_comma_candidates(text, words, protected):
         _append_punctuation_candidate(candidates, seen, candidate)
     for candidate in _address_comma_candidates(text, words, protected):
+        _append_punctuation_candidate(candidates, seen, candidate)
+    for candidate in _homogeneous_comma_candidates(text, words, protected):
+        _append_punctuation_candidate(candidates, seen, candidate)
+    for candidate in _detached_adverbial_comma_candidates(text, words, protected):
+        _append_punctuation_candidate(candidates, seen, candidate)
+    for candidate in _comparative_turnover_comma_candidates(text, words, protected):
+        _append_punctuation_candidate(candidates, seen, candidate)
+    for candidate in _subject_predicate_dash_candidates(text, words, protected):
         _append_punctuation_candidate(candidates, seen, candidate)
 
     for rule in PUNCTUATION_RULES:
         if rule.spec.id in {
             "final_punctuation_default",
             "comma_subordinate",
+            "comma_conjunction",
             "introductory_comma",
             "address_comma",
+            "homogeneous_comma",
+            "detached_adverbial_comma",
+            "comparative_turnover_comma",
+            "subject_predicate_dash",
         }:
             continue
         if allowed_modes is not None and rule.spec.mode not in allowed_modes:
@@ -217,7 +228,7 @@ def _final_punctuation_candidates(
 ) -> list[PunctuationGapCandidate]:
     spec = _spec_by_id("final_punctuation_default")
     stripped = text.rstrip()
-    if not stripped or stripped[-1] in ".!?…":
+    if not stripped or _has_sentence_final_punctuation(stripped):
         return []
     position = len(stripped)
     if _position_inside_spans(position, protected):
@@ -237,6 +248,13 @@ def _final_punctuation_candidates(
     ]
 
 
+def _has_sentence_final_punctuation(text: str) -> bool:
+    stripped = text.rstrip()
+    while stripped and stripped[-1] in CLOSING_FINAL_WRAPPERS:
+        stripped = stripped[:-1].rstrip()
+    return bool(stripped and stripped[-1] in ".!?…")
+
+
 def _subordinate_comma_candidates(
     text: str,
     words: list[Token],
@@ -248,6 +266,8 @@ def _subordinate_comma_candidates(
 
     for index, word in enumerate(words):
         if lowered[index] in SUBORDINATE_MARKERS:
+            if index > 0 and lowered[index - 1] in COMPLEX_SUBORDINATE_CONTINUATIONS:
+                continue
             candidate = _comma_before_word(text, words, index, protected, spec)
             if candidate is not None:
                 candidates.append(candidate)
@@ -263,6 +283,26 @@ def _subordinate_comma_candidates(
     return candidates
 
 
+def _conjunction_comma_candidates(
+    text: str,
+    words: list[Token],
+    protected: tuple[tuple[int, int], ...],
+) -> list[PunctuationGapCandidate]:
+    spec = _spec_by_id("comma_conjunction")
+    candidates: list[PunctuationGapCandidate] = []
+    lowered = [word.text.lower() for word in words]
+
+    for index, word in enumerate(words):
+        if lowered[index] not in CONJUNCTION_MARKERS:
+            continue
+        if index <= 0 or index + 1 >= len(words):
+            continue
+        candidate = _comma_before_word(text, words, index, protected, spec)
+        if candidate is not None:
+            candidates.append(candidate)
+    return candidates
+
+
 def _introductory_comma_candidates(
     text: str,
     words: list[Token],
@@ -273,7 +313,7 @@ def _introductory_comma_candidates(
     for index, word in enumerate(words):
         if word.text.lower() not in INTRODUCTORY_WORDS:
             continue
-        if _position_inside_spans(word.end, protected) or _has_punctuation_between(text, word.end, _next_word_start(words, index), ","):
+        if index + 1 >= len(words) or not _is_safe_punctuation_gap(text, word.end, words[index + 1].start, protected):
             continue
         candidates.append(
             _candidate(
@@ -300,21 +340,29 @@ def _address_comma_candidates(
         return []
     if not _looks_like_possible_address_opening(words):
         return []
-    try:
-        from src.nlp.syntax import parse_syntax
-    except Exception:
-        return []
 
-    syntax_tokens = parse_syntax(text)
-    if len(syntax_tokens) < 2:
-        return []
+    syntax_tokens = _parse_syntax_safely(text)
+    if len(syntax_tokens) >= 2:
+        first, second = syntax_tokens[0], syntax_tokens[1]
+        if (
+            first.start == words[0].start
+            and first.end == words[0].end
+            and _looks_like_explicit_address(first, second)
+        ):
+            return _address_candidate_after_first_word(text, words, protected)
 
-    first, second = syntax_tokens[0], syntax_tokens[1]
-    if first.start != words[0].start or first.end != words[0].end:
-        return []
-    if _has_punctuation_between(text, first.end, second.start, ",") or _position_inside_spans(first.end, protected):
-        return []
-    if not _looks_like_explicit_address(first, second):
+    if _looks_like_lexical_address_opening(words):
+        return _address_candidate_after_first_word(text, words, protected)
+
+    return []
+
+
+def _address_candidate_after_first_word(
+    text: str,
+    words: list[Token],
+    protected: tuple[tuple[int, int], ...],
+) -> list[PunctuationGapCandidate]:
+    if len(words) < 2 or not _is_safe_punctuation_gap(text, words[0].end, words[1].start, protected):
         return []
 
     spec = _spec_by_id("address_comma")
@@ -323,8 +371,8 @@ def _address_comma_candidates(
             source="",
             replacement=",",
             edit_type="punctuation_insert",
-            start=first.end,
-            end=first.end,
+            start=words[0].end,
+            end=words[0].end,
             spec=spec,
             action="INSERT",
             label="COMMA",
@@ -333,12 +381,114 @@ def _address_comma_candidates(
     ]
 
 
+def _homogeneous_comma_candidates(
+    text: str,
+    words: list[Token],
+    protected: tuple[tuple[int, int], ...],
+) -> list[PunctuationGapCandidate]:
+    spec = _spec_by_id("homogeneous_comma")
+    candidates: list[PunctuationGapCandidate] = []
+    lowered = [word.text.lower() for word in words]
+    for index in range(2, len(words) - 1):
+        if lowered[index] not in REPEATED_HOMOGENEOUS_CONJUNCTIONS:
+            continue
+        if lowered[index - 2] != lowered[index]:
+            continue
+        candidate = _comma_before_word(text, words, index, protected, spec)
+        if candidate is not None:
+            candidates.append(candidate)
+    return candidates
+
+
+def _detached_adverbial_comma_candidates(
+    text: str,
+    words: list[Token],
+    protected: tuple[tuple[int, int], ...],
+) -> list[PunctuationGapCandidate]:
+    if len(words) < 3 or not _looks_like_sentence_initial_gerund(text, words):
+        return []
+    spec = _spec_by_id("detached_adverbial_comma")
+    return _comma_after_word(text, words, 1, protected, spec)
+
+
+def _comparative_turnover_comma_candidates(
+    text: str,
+    words: list[Token],
+    protected: tuple[tuple[int, int], ...],
+) -> list[PunctuationGapCandidate]:
+    spec = _spec_by_id("comparative_turnover_comma")
+    candidates: list[PunctuationGapCandidate] = []
+    lowered = [word.text.lower() for word in words]
+
+    for index, word in enumerate(words):
+        if lowered[index] in COMPARATIVE_MARKERS:
+            if index + 1 >= len(words):
+                continue
+            candidate = _comma_before_word(text, words, index, protected, spec)
+            if candidate is not None:
+                candidates.append(candidate)
+
+        for marker in COMPLEX_COMPARATIVE_MARKERS:
+            marker_end = index + len(marker)
+            if tuple(lowered[index:marker_end]) != marker:
+                continue
+            if marker_end >= len(words):
+                continue
+            candidate = _comma_before_word(text, words, index, protected, spec)
+            if candidate is not None:
+                candidates.append(candidate)
+    return candidates
+
+
+def _subject_predicate_dash_candidates(
+    text: str,
+    words: list[Token],
+    protected: tuple[tuple[int, int], ...],
+) -> list[PunctuationGapCandidate]:
+    if len(words) < 3:
+        return []
+    lowered = [word.text.lower() for word in words]
+    candidates: list[PunctuationGapCandidate] = []
+    spec = _spec_by_id("subject_predicate_dash")
+    for index, word in enumerate(words):
+        if lowered[index] != "это" or index <= 0 or index + 1 >= len(words):
+            continue
+        if not words[index - 1].text[:1].isupper():
+            continue
+        if not _is_safe_punctuation_gap(text, words[index - 1].end, word.start, protected):
+            continue
+        candidates.append(
+            _candidate(
+                source="",
+                replacement="—",
+                edit_type="punctuation_insert",
+                start=word.start,
+                end=word.start,
+                spec=spec,
+                action="INSERT",
+                label="DASH",
+                gap_index=index - 1,
+            )
+        )
+    return candidates
+
+
 def _looks_like_possible_address_opening(words: list[Token]) -> bool:
     first = words[0].text
     second = words[1].text.lower()
+    if first.lower() in ADDRESS_OPENINGS:
+        return second in ADDRESS_IMPERATIVE_HINTS or second in ADDRESS_HORTATIVE_HINTS
     if not first[:1].isupper() or first.lower() in {"я", "мы", "он", "она", "они", "вы", "ты"}:
         return False
     return second in ADDRESS_IMPERATIVE_HINTS
+
+
+def _looks_like_lexical_address_opening(words: list[Token]) -> bool:
+    if len(words) < 2:
+        return False
+    first = words[0].text.lower()
+    second = words[1].text.lower()
+    return first in ADDRESS_OPENINGS and (second in ADDRESS_IMPERATIVE_HINTS or second in ADDRESS_HORTATIVE_HINTS)
 
 
 def _looks_like_explicit_address(first: object, second: object) -> bool:
@@ -349,6 +499,34 @@ def _looks_like_explicit_address(first: object, second: object) -> bool:
     if first_pos != "PROPN" and first_ner != "PER":
         return False
     return second_pos == "VERB" and str(second_feats.get("Mood", "")) == "Imp"
+
+
+def _looks_like_sentence_initial_gerund(text: str, words: list[Token]) -> bool:
+    if words[0].start != 0:
+        return False
+    syntax_tokens = _parse_syntax_safely(text)
+    if syntax_tokens and _syntax_token_matches_word(syntax_tokens[0], words[0]):
+        feats = getattr(syntax_tokens[0], "feats", {}) or {}
+        if str(feats.get("VerbForm", "")) == "Conv":
+            return True
+
+    first = words[0].text.lower()
+    return len(first) >= 6 and first.endswith(GERUND_FALLBACK_SUFFIXES)
+
+
+def _syntax_token_matches_word(syntax_token: object, word: Token) -> bool:
+    return int(getattr(syntax_token, "start", -1)) == word.start and int(getattr(syntax_token, "end", -1)) == word.end
+
+
+def _parse_syntax_safely(text: str) -> list[object]:
+    try:
+        from src.nlp.syntax import parse_syntax
+    except Exception:
+        return []
+    try:
+        return list(parse_syntax(text))
+    except Exception:
+        return []
 
 
 def _comma_before_word(
@@ -363,9 +541,7 @@ def _comma_before_word(
     previous = words[word_index - 1]
     current = words[word_index]
     position = previous.end
-    if _position_inside_spans(position, protected):
-        return None
-    if _has_punctuation_between(text, previous.end, current.start, ","):
+    if not _is_safe_punctuation_gap(text, previous.end, current.start, protected):
         return None
     return _candidate(
         source="",
@@ -378,6 +554,34 @@ def _comma_before_word(
         label="COMMA",
         gap_index=word_index - 1,
     )
+
+
+def _comma_after_word(
+    text: str,
+    words: list[Token],
+    word_index: int,
+    protected: tuple[tuple[int, int], ...],
+    spec: RuleSpec,
+) -> list[PunctuationGapCandidate]:
+    if word_index < 0 or word_index + 1 >= len(words):
+        return []
+    word = words[word_index]
+    next_word = words[word_index + 1]
+    if not _is_safe_punctuation_gap(text, word.end, next_word.start, protected):
+        return []
+    return [
+        _candidate(
+            source="",
+            replacement=",",
+            edit_type="punctuation_insert",
+            start=word.end,
+            end=word.end,
+            spec=spec,
+            action="INSERT",
+            label="COMMA",
+            gap_index=word_index,
+        )
+    ]
 
 
 def _candidate_from_edit(
@@ -434,6 +638,7 @@ def _candidate(
         label=label,
         gap_index=gap_index,
         requires=spec.requires,
+        group=spec.group,
     )
 
 
@@ -442,7 +647,7 @@ def _append_punctuation_candidate(
     seen: set[tuple[int, int, str, str, str]],
     candidate: PunctuationGapCandidate,
 ) -> None:
-    key = (candidate.start, candidate.end, candidate.replacement, candidate.edit_type, candidate.rule_id)
+    key = (candidate.start, candidate.end, candidate.replacement, candidate.edit_type, candidate.action)
     if key in seen:
         return
     seen.add(key)
@@ -478,8 +683,31 @@ def _protected_spans(text: str) -> tuple[tuple[int, int], ...]:
     return tuple(sorted(set(spans)))
 
 
+def _is_safe_punctuation_gap(
+    text: str,
+    start: int,
+    end: int,
+    protected: tuple[tuple[int, int], ...],
+) -> bool:
+    if start < 0 or end < start:
+        return False
+    if _has_punctuation_noise(text):
+        return False
+    if _gap_touches_spans(start, end, protected):
+        return False
+    if _has_any_punctuation_between(text, start, end):
+        return False
+    return True
+
+
 def _position_inside_spans(position: int, spans: tuple[tuple[int, int], ...]) -> bool:
     return any(start < position < end for start, end in spans)
+
+
+def _gap_touches_spans(start: int, end: int, spans: tuple[tuple[int, int], ...]) -> bool:
+    if start == end:
+        return _position_inside_spans(start, spans)
+    return any(start < span_end and span_start < end for span_start, span_end in spans)
 
 
 def _edit_touches_spans(start: int, end: int, spans: tuple[tuple[int, int], ...]) -> bool:
@@ -492,6 +720,14 @@ def _edit_touches_spans(start: int, end: int, spans: tuple[tuple[int, int], ...]
 
 def _has_punctuation_between(text: str, start: int, end: int, chars: str) -> bool:
     return any(char in chars for char in text[max(0, start) : max(start, end)])
+
+
+def _has_any_punctuation_between(text: str, start: int, end: int) -> bool:
+    return any(char in PUNCTUATION_CHARS for char in text[max(0, start) : max(start, end)])
+
+
+def _has_punctuation_noise(text: str) -> bool:
+    return bool(PUNCTUATION_NOISE_RE.search(text))
 
 
 def _has_existing_punctuation_at(text: str, position: int, replacement: str) -> bool:
@@ -587,6 +823,8 @@ def _edit(source: str, replacement: str, edit_type: str, start: int, end: int, s
         requires_model=spec.mode in {"candidate_only", "model_required"},
         rule_id=spec.id,
         mode=spec.mode,
+        group=spec.group,
+        requires=spec.requires,
     )
 
 
@@ -671,6 +909,19 @@ PUNCTUATION_RULES: tuple[object, ...] = (
         r"\1, что",
         re.IGNORECASE,
     ),
+    FunctionPunctuationRule(
+        RuleSpec(
+            id="comma_conjunction",
+            group="comma_conjunction",
+            scope="punctuation_gap",
+            edit_type="punctuation",
+            mode="model_required",
+            confidence=0.84,
+            requires=("syntax", "model"),
+            description="Generate bounded comma candidates before explicit adversative conjunctions for model scoring.",
+        ),
+        _identity,
+    ),
     RegexPunctuationRule(
         RuleSpec(
             id="introductory_comma",
@@ -696,6 +947,45 @@ PUNCTUATION_RULES: tuple[object, ...] = (
             confidence=0.82,
             requires=("syntax", "model"),
             description="Generate explicit address comma candidates when syntax features are available.",
+        ),
+        _identity,
+    ),
+    FunctionPunctuationRule(
+        RuleSpec(
+            id="homogeneous_comma",
+            group="homogeneous_members",
+            scope="punctuation_gap",
+            edit_type="punctuation",
+            mode="model_required",
+            confidence=0.82,
+            requires=("syntax", "model"),
+            description="Generate bounded comma candidates for repeated conjunction homogeneous-member patterns.",
+        ),
+        _identity,
+    ),
+    FunctionPunctuationRule(
+        RuleSpec(
+            id="detached_adverbial_comma",
+            group="detached_members",
+            scope="punctuation_gap",
+            edit_type="punctuation",
+            mode="model_required",
+            confidence=0.8,
+            requires=("syntax", "model"),
+            description="Generate bounded comma candidates for clear sentence-initial gerundial turnovers.",
+        ),
+        _identity,
+    ),
+    FunctionPunctuationRule(
+        RuleSpec(
+            id="comparative_turnover_comma",
+            group="comparative_turnovers",
+            scope="punctuation_gap",
+            edit_type="punctuation",
+            mode="model_required",
+            confidence=0.8,
+            requires=("syntax", "model"),
+            description="Generate bounded comma candidates for explicit comparative markers excluding bare как.",
         ),
         _identity,
     ),

@@ -28,6 +28,8 @@ class RuleCandidate:
     requires_model: bool
     rule_id: str
     mode: RuleMode = "deterministic"
+    group: str = ""
+    requires: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -49,6 +51,7 @@ class RuleContext:
     tokens: tuple[Any, ...] = ()
     token_index: int = -1
     protected_spans: tuple[tuple[int, int], ...] = ()
+    syntax_tokens: tuple[Any, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -62,6 +65,8 @@ class RuleEdit:
     requires_model: bool
     rule_id: str
     mode: RuleMode = "deterministic"
+    group: str = ""
+    requires: tuple[str, ...] = ()
 
 
 class Rule(Protocol):

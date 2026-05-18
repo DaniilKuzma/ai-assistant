@@ -13,6 +13,15 @@ class ProtectedSpan:
 
 
 PROTECTED_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    ("abbreviation", re.compile(r"\b(?:США|РФ|НББ|ООО|АО|ИП)\b")),
+    (
+        "technical_id",
+        re.compile(
+            r"(?<!\w)(?=[A-Za-zА-Яа-яЁё0-9_]*\d)"
+            r"(?=[A-Za-zА-Яа-яЁё0-9_]*[A-Za-zА-Яа-яЁё])"
+            r"[A-Za-zА-Яа-яЁё]{1,}[A-Za-zА-Яа-яЁё0-9_]*\b"
+        ),
+    ),
     ("url", re.compile(r"https?://[^\s]+|www\.[^\s]+", re.IGNORECASE)),
     ("email", re.compile(r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}")),
     ("date", re.compile(r"\b\d{1,2}[./-]\d{1,2}[./-]\d{2,4}\b")),

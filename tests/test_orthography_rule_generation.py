@@ -65,6 +65,22 @@ def test_candidate_generator_emits_ne_plus_verb_split_candidates_for_hundreds_of
     assert set(cases).issubset(found)
 
 
+def test_ne_verb_candidate_for_naznal_is_model_required():
+    candidates = CandidateGenerator().generate("Он незнал ответа.")
+
+    candidate = next(
+        item
+        for item in candidates
+        if item.source.lower() == "незнал" and item.replacement.lower() == "не знал"
+    )
+
+    assert candidate.rule_id == "ne_verb"
+    assert candidate.group == "ne"
+    assert candidate.mode == "model_required"
+    assert candidate.requires_model is True
+    assert candidate.requires == ("morphology", "syntax", "model")
+
+
 def test_rule_registry_has_unique_ids():
     from src.rules.registry import all_rules
 
@@ -73,6 +89,9 @@ def test_rule_registry_has_unique_ids():
     assert len(ids) == len(set(ids))
     assert "ne_verb" in ids
     assert "tsya_soft_insert" in ids
+    assert "capitalization_sentence_start" in ids
+    assert "capitalization_ner" in ids
+    assert "abbreviation_case_protection" in ids
 
 
 def test_tsya_rules_are_model_required_bidirectional_rules():
@@ -83,6 +102,8 @@ def test_tsya_rules_are_model_required_bidirectional_rules():
 
     assert insert_rule.spec.mode == "model_required"
     assert delete_rule.spec.mode == "model_required"
+    assert insert_rule.spec.requires == ("morphology", "syntax", "model")
+    assert delete_rule.spec.requires == ("morphology", "syntax", "model")
     assert any(candidate.replacement == "учиться" and candidate.requires_model for candidate in insert_rule.generate_candidates("учится"))
     assert any(candidate.replacement == "учится" and candidate.requires_model for candidate in delete_rule.generate_candidates("учиться"))
 

@@ -18,6 +18,13 @@ PUNCTUATION_DEFAULT_THRESHOLD = 0.82
 
 RULE_FAMILY_ALIASES = {
     "dictionary_fuzzy": ("dictionary",),
+    "double_consonant_candidate": ("dictionary",),
+    "keyboard_typo_candidate": ("dictionary",),
+    "swapped_letters_candidate": ("dictionary",),
+    "missing_letter_candidate": ("dictionary",),
+    "extra_letter_candidate": ("dictionary",),
+    "yo_e_candidate": ("dictionary",),
+    "frequent_error_exact": ("dictionary", "frequent_errors"),
     "frequent_dictionary_model_required": ("dictionary",),
     "introductory_comma": ("introductory_word",),
     "subject_predicate_dash": ("dash_subject_predicate",),

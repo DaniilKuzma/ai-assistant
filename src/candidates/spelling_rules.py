@@ -12,7 +12,7 @@ class SpellingCandidateSpec:
     edit_type: str = "spelling"
     confidence: float = 0.95
     requires_model: bool = False
-    rule: str = "frequent_errors"
+    rule: str = "frequent_error_exact"
     mode: RuleMode = "deterministic"
 
 

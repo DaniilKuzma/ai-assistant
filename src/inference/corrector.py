@@ -26,11 +26,25 @@ class Corrector:
     them.
     """
 
-    def __init__(self, max_passes: int = 3, mode: str = "balanced") -> None:
+    def __init__(
+        self,
+        max_passes: int = 3,
+        mode: str = "balanced",
+        candidate_generator: CandidateGenerator | None = None,
+    ) -> None:
         self.max_passes = max_passes
         self.mode = mode
-        self.candidates = CandidateGenerator()
+        self.candidates = candidate_generator or CandidateGenerator()
         self.validator = StrictValidator()
+
+    @classmethod
+    def from_config(cls, config: dict[str, Any]) -> "Corrector":
+        threshold_config = config.get("thresholds", {})
+        return cls(
+            max_passes=int(config.get("decoder", {}).get("max_passes", 3)),
+            mode=str(threshold_config.get("mode", "balanced")),
+            candidate_generator=CandidateGenerator.from_config(config),
+        )
 
     def correct(self, text: str) -> CorrectionResult:
         proposed, trusted_edits = self._decode_with_trusted_edits(text)
@@ -74,6 +88,7 @@ class Corrector:
                 label=candidate.label,
                 gap_index=candidate.gap_index,
                 requires=candidate.requires,
+                group=candidate.group,
             )
             before = proposed
             proposed = apply_candidate(proposed, shifted)

@@ -7,6 +7,7 @@ from typing import Any
 
 import pandas as pd
 
+from src.candidates.candidate_generator import CandidateGenerator
 from src.config.load_config import load_config
 from src.data.dataset_builder import build_synthetic_dataset
 from src.data.dataset_stats import dataset_stats
@@ -52,6 +53,8 @@ def evaluate_trained_model(
             "model_training_disabled": False,
             "model_training_disabled_source": "",
         },
+        candidate_generator=_candidate_recall_generator(evaluation_corrector, config),
+        candidate_recall_max_candidates=_candidate_recall_max_candidates(config),
     )
     write_threshold_precision_recall_plot(
         threshold_sweep(evaluation_result.edit_scores, [0.5, 0.7, 0.8, 0.9, 0.95]),
@@ -119,6 +122,8 @@ def train(config_path: str | Path = "configs/config.yaml") -> dict[str, Any]:
         metric_weights=config.get("metrics", {}).get("combined_score_weights"),
         show_progress=bool(config.get("training", {}).get("show_progress", False)),
         report_metadata=backend_metadata,
+        candidate_generator=_candidate_recall_generator(corrector, config),
+        candidate_recall_max_candidates=_candidate_recall_max_candidates(config),
     )
     evaluation_metrics = evaluation_result.metrics
     checkpoint_metric = str(config.get("training", {}).get("checkpoint_metric", "combined_score"))
@@ -226,7 +231,7 @@ def _limit_key_for_split(split: str) -> str:
 def _build_evaluation_corrector(config: dict[str, Any], model_training_ran: bool):
     if model_training_ran:
         return TrainedModelCorrector.from_config(config)
-    return Corrector()
+    return Corrector.from_config(config)
 
 
 def _select_evaluation_corrector(
@@ -283,6 +288,8 @@ def _report_paths(reports_dir: Path) -> dict[str, str]:
         "rule_precision_recall.csv",
         "error_by_rule.csv",
         "rule_worse_examples.csv",
+        "candidate_recall_by_rule.csv",
+        "gap_label_coverage_by_rule.csv",
         "clean_overcorrection_examples.csv",
         "dirty_worse_examples.csv",
         "accepted_edits.csv",
@@ -291,6 +298,17 @@ def _report_paths(reports_dir: Path) -> dict[str, str]:
         "threshold_precision_recall.png",
     ]
     return {name: str(reports_dir / name) for name in names if (reports_dir / name).exists()}
+
+
+def _candidate_recall_generator(corrector: Any, config: dict[str, Any]) -> CandidateGenerator:
+    generator = getattr(corrector, "candidates", None)
+    if isinstance(generator, CandidateGenerator):
+        return generator
+    return CandidateGenerator.from_config(config)
+
+
+def _candidate_recall_max_candidates(config: dict[str, Any]) -> int:
+    return int(config.get("model", {}).get("max_candidates", 16))
 
 
 def _build_features(config: dict[str, Any], rows: list[dict[str, Any]]):
@@ -306,6 +324,7 @@ def _build_features(config: dict[str, Any], rows: list[dict[str, Any]]):
                 local_files_only=bool(model_config.get("local_files_only", False)),
             )
         )
+    candidate_generator = CandidateGenerator.from_config(config)
     return build_features_from_rows(
         rows,
         tokenizer=tokenizer,
@@ -314,6 +333,7 @@ def _build_features(config: dict[str, Any], rows: list[dict[str, Any]]):
         error_type_label_map=label_config.get("error_types", {}),
         max_length=int(model_config.get("max_sequence_length", 192)),
         max_candidates=int(model_config.get("max_candidates", 32)),
+        candidate_generator=candidate_generator,
         show_progress=bool(training_config.get("show_progress", False)),
     )
 

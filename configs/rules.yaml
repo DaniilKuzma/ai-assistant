@@ -1,14 +1,19 @@
 orthography:
   letter_vowels_not_after_hissing_c:
+    orfogrammka_id: "orfogrammka:1.1.1"
     title: "Правила употребления букв: гласные не после шипящих и ц"
-    status: dictionary_model_required
+    parent_group: hissing_spelling
+    status: partial
     requires:
       - dictionary
       - model
-    rules: []
-    notes: "Орфограммка: а/я, у/ю, о, ё, э/е, и, ы вне позиций после шипящих и ц; широкого правила в реестре нет."
+    rules:
+      - yo_e_candidate
+    notes: "Частично покрыто opt-in кандидатом е/ё через lexicon+model; policy выключена по умолчанию, остальные гласные вне шипящих и ц остаются dictionary_model_required."
   letter_basic_hissing_vowel_patterns:
+    orfogrammka_id: "orfogrammka:1.1.2"
     title: "Правила употребления букв: базовые гласные после шипящих и ц"
+    parent_group: hissing_spelling
     status: implemented
     tags:
       - orthography
@@ -32,14 +37,18 @@ orthography:
       - tests/test_synthetic_generator.py::test_cha_shcha_rule_generates_corruption_and_candidate_with_same_rule_id
     notes: "Покрыты реальные словарно проверяемые кандидаты для жи/ши, ча/ща, чу/щу, ци/цы и о/е после шипящих; восстановление ё не заявляется."
   letter_y:
+    orfogrammka_id: "orfogrammka:1.1.3"
     title: "Правила употребления букв: буква й"
+    parent_group: dictionary_words
     status: planned
     requires:
       - dictionary
     rules: []
-    notes: "Отдельного RuleSpec для буквы й нет."
+    notes: "Отдельного RuleSpec для буквы й нет; нужен словарный или морфемный слой."
   hard_soft_signs:
+    orfogrammka_id: "orfogrammka:1.1.4.1-1.1.4.2"
     title: "Буквы ъ и ь: разделительные знаки и знак мягкости"
+    parent_group: hard_soft_sign
     status: partial
     requires:
       - dictionary
@@ -48,45 +57,67 @@ orthography:
       - missing_hard_sign
     notes: "Покрыт только ъ после приставки перед е/ю/я и замена ошибочного ь на ъ; остальные функции ь не реализованы."
   soft_sign_grammatical_forms:
+    orfogrammka_id: "orfogrammka:1.1.4.3-1.1.4.4"
     title: "Буква ь в грамматических формах"
+    parent_group: hard_soft_sign
     status: model_required
     tags:
       - orthography
       - morphological_rules
     requires:
       - morphology
+      - syntax
       - model
     rules:
       - tsya_soft_delete
       - tsya_soft_insert
-    notes: "Есть кандидаты для -тся/-ться, но выбор требует контекста и модельного скоринга."
+    notes: "Есть кандидаты для -тся/-ться, но выбор требует контекста и модельного скоринга; другие грамматические функции ь не покрыты."
   unstressed_root_vowels:
+    orfogrammka_id: "orfogrammka:1.2.1"
     title: "Написание значимых частей слова: безударные гласные в корнях"
-    status: dictionary_model_required
+    parent_group: checked_unchecked_vowels
+    status: partial
     requires:
       - dictionary
       - model
-    rules: []
-    notes: "Общее правило проверяемых, непроверяемых и трудных корневых гласных не реализовано."
+    rules:
+      - dictionary_fuzzy
+    notes: "Частично покрыто словарным fuzzy/edit-distance кандидатором через lexicon+model; это не морфемное правило проверяемых гласных."
   alternating_roots:
+    orfogrammka_id: "orfogrammka:1.2.2.1"
     title: "Написание отдельных корней: чередующиеся гласные"
+    parent_group: roots
     status: planned
     requires:
       - morphology
       - dictionary
     rules: []
     notes: "Корни с чередованием а/о и и/е требуют отдельного морфемного/словарного слоя."
-  prefix_vowels:
-    title: "Безударные гласные в приставках, включая пре-/при- и раз-/роз-"
+  difficult_root_vowels:
+    orfogrammka_id: "orfogrammka:1.2.2.2"
+    title: "Трудные случаи написания корневых гласных"
+    parent_group: roots
     status: dictionary_model_required
     requires:
-      - morphology
       - dictionary
       - model
     rules: []
-    notes: "Частые ошибки могут встречаться в whitelist, но отдельного RuleSpec для класса нет."
+    notes: "Трудные корневые гласные отражены как словарно-модельная зона; RuleSpec отсутствует."
+  prefix_vowels:
+    orfogrammka_id: "orfogrammka:1.2.3"
+    title: "Безударные гласные в приставках, включая пре-/при- и раз-/роз-"
+    parent_group: prefix_spelling
+    status: partial
+    requires:
+      - dictionary
+      - model
+    rules:
+      - prefix_pre_pri
+    notes: "Частично покрыты bounded candidates для начальных при-/пре-; выбор написания требует словаря и модели, другие приставочные гласные не реализованы."
   suffix_vowels:
+    orfogrammka_id: "orfogrammka:1.2.4"
     title: "Безударные гласные и особенности написания суффиксов"
+    parent_group: suffixes
     status: dictionary_model_required
     requires:
       - morphology
@@ -95,7 +126,9 @@ orthography:
     rules: []
     notes: "Суффиксы -енн/-ян, -ек/-ик, -ыва/-ива и другие подгруппы Орфограммки пока не выделены в правила."
   fleeting_connecting_vowels:
+    orfogrammka_id: "orfogrammka:1.2.5-1.2.6"
     title: "Беглые и соединительные гласные"
+    parent_group: roots
     status: planned
     requires:
       - morphology
@@ -103,7 +136,9 @@ orthography:
     rules: []
     notes: "Нет отдельного кандидатора для беглых и соединительных гласных."
   case_endings:
+    orfogrammka_id: "orfogrammka:1.2.7"
     title: "Безударные гласные в падежных окончаниях"
+    parent_group: endings
     status: dictionary_model_required
     tags:
       - orthography
@@ -117,7 +152,9 @@ orthography:
     rules: []
     notes: "Падежные окончания требуют морфологии, согласования и контекста."
   verb_endings:
+    orfogrammka_id: "orfogrammka:1.2.8"
     title: "Безударные гласные в глагольных формах"
+    parent_group: endings
     status: dictionary_model_required
     requires:
       - morphology
@@ -126,20 +163,26 @@ orthography:
     rules: []
     notes: "Гласные в окончаниях и инфинитиве перед -ть не имеют отдельного RuleSpec."
   ne_ni_particles:
+    orfogrammka_id: "orfogrammka:1.2.9"
     title: "Частицы не и ни"
-    status: candidate_only
+    parent_group: ne_ni
+    status: partial
     tags:
       - orthography
       - context_pairs
       - morphological_rules
     requires:
       - morphology
+      - syntax
       - model
     rules:
       - ne_verb
-    notes: "Реализованы кандидаты для ошибочного слитного написания не с глаголами; ни и сложные контексты не покрыты."
+      - ni_stable_expression
+    notes: "Частично покрыты model_required candidates для не с глаголами и ограниченного набора устойчивых не/ни-конструкций; автоматического исправления нет."
   consonants_prefix_z_s:
+    orfogrammka_id: "orfogrammka:1.3.1.4"
     title: "Правописание согласных: приставки на з-/с-"
+    parent_group: prefix_spelling
     status: implemented
     tags:
       - orthography
@@ -153,40 +196,108 @@ orthography:
       - tests/test_orthography_rule_generation.py::test_candidate_generator_emits_spelling_pattern_candidates_for_hundreds_of_forms
     notes: "Покрыты словарно проверяемые кандидаты для з-/с- перед глухими, звонкими, сонорными и гласными."
   consonants_voiced_devoiced:
+    orfogrammka_id: "orfogrammka:1.3.1.1"
     title: "Правописание согласных: парные глухие и звонкие"
+    parent_group: checked_unchecked_consonants
     status: dictionary_model_required
     requires:
       - dictionary
       - model
     rules: []
-    notes: "Общее правило парных согласных за пределами приставок не реализовано."
+    notes: "Общее правило парных согласных за пределами приставок не реализовано; lexicon-backed candidate layer может находить варианты opportunistically без deterministic auto-correct."
+  consonants_unchecked:
+    orfogrammka_id: "orfogrammka:1.3.1.2"
+    title: "Правописание согласных: непроверяемые согласные"
+    parent_group: checked_unchecked_consonants
+    status: dictionary_model_required
+    requires:
+      - dictionary
+      - model
+    rules: []
+    notes: "Непроверяемые согласные требуют словаря; общий lexicon-backed layer может дать кандидата, но отдельного deterministic RuleSpec нет."
+  consonants_sk_st_zg_zd:
+    orfogrammka_id: "orfogrammka:1.3.1.3"
+    title: "Слова с сочетаниями согласных ск, ст, зг, зд"
+    parent_group: checked_unchecked_consonants
+    status: planned
+    requires:
+      - morphology
+      - dictionary
+    rules: []
+    notes: "Сочетания ск/ст/зг/зд пока не имеют отдельного кандидатора."
   consonants_unpronounced:
+    orfogrammka_id: "orfogrammka:1.3.2"
     title: "Правописание согласных: непроизносимые согласные"
+    parent_group: checked_unchecked_consonants
     status: dictionary_model_required
     requires:
       - dictionary
       - model
     rules: []
-    notes: "Нет отдельного RuleSpec для лестница/сердце-подобных случаев."
+    notes: "Нет отдельного RuleSpec для лестница/сердце-подобных случаев; словарный layer может давать candidates только при поддержке lexicon и scorer."
   consonant_clusters:
+    orfogrammka_id: "orfogrammka:1.3.3"
     title: "Группы согласных на стыке значимых частей слова"
+    parent_group: checked_unchecked_consonants
     status: planned
     requires:
       - morphology
       - dictionary
     rules: []
     notes: "Сочетания тс/дс/тц/дц, тч, сч/зч и другие стыки пока не реализованы."
-  consonants_double:
-    title: "Двойные согласные"
+  consonants_ch_sh_before_n_t:
+    orfogrammka_id: "orfogrammka:1.3.4"
+    title: "Буквы ч и ш перед н и т"
+    parent_group: checked_unchecked_consonants
+    status: dictionary_model_required
+    requires:
+      - dictionary
+      - model
+    rules: []
+    notes: "Ч/ш перед н/т выделены как отдельный словарно-модельный класс; RuleSpec отсутствует."
+  consonants_g_ogo_ego:
+    orfogrammka_id: "orfogrammka:1.3.5"
+    title: "Буква г в окончаниях -ого и -его"
+    parent_group: endings
     status: dictionary_model_required
     requires:
       - morphology
       - dictionary
       - model
     rules: []
-    notes: "Н/нн, двойные согласные в корнях, заимствованиях и сокращениях не выделены в исполняемые правила."
+    notes: "Окончания -ого/-его требуют морфологии и словарной проверки; исполняемого правила нет."
+  consonants_double:
+    orfogrammka_id: "orfogrammka:1.3.6"
+    title: "Двойные согласные"
+    parent_group: double_consonants
+    status: partial
+    requires:
+      - morphology
+      - dictionary
+      - model
+    rules:
+      - double_consonant_candidate
+    notes: "Частично покрыты lexicon-backed candidates для одной/двойной согласной; Н/НН, стыки морфем и сокращения остаются syntax/morphology/model зоной."
+  n_nn_suffixes:
+    orfogrammka_id: "orfogrammka:1.3.6.5-1.3.6.8"
+    title: "Н и НН в суффиксах прилагательных, причастий, существительных и наречий"
+    parent_group: n_nn
+    status: partial
+    requires:
+      - morphology
+      - syntax
+      - dictionary
+      - model
+    rules:
+      - n_nn_adjective
+      - n_nn_participle
+      - n_nn_deverbal_adjective
+      - n_nn_short_form
+    notes: "Частично покрыты dictionary-backed model_required candidates для Н/НН в прилагательных, причастиях, отглагольных прилагательных и кратких формах; синтаксический выбор остается за моделью."
   nonletter_signs:
+    orfogrammka_id: "orfogrammka:2"
     title: "Правила употребления небуквенных знаков: дефис, косая черта, апостроф"
+    parent_group: hyphen_slitno_razdelno
     status: planned
     requires:
       - dictionary
@@ -194,7 +305,9 @@ orthography:
     rules: []
     notes: "Небуквенные знаки как самостоятельный раздел Орфограммки не покрыты отдельными правилами."
   solid_hyphen_separate_nouns:
+    orfogrammka_id: "orfogrammka:3.1"
     title: "Слитное, дефисное и раздельное написание существительных"
+    parent_group: hyphen_slitno_razdelno
     status: syntax_required
     requires:
       - morphology
@@ -203,7 +316,9 @@ orthography:
     rules: []
     notes: "Сложносокращенные слова, пол-, приложения, должности и собственные имена требуют отдельной классификации."
   solid_hyphen_separate_adjectives:
+    orfogrammka_id: "orfogrammka:3.2"
     title: "Слитное, дефисное и раздельное написание прилагательных"
+    parent_group: hyphen_slitno_razdelno
     status: syntax_required
     requires:
       - morphology
@@ -212,7 +327,9 @@ orthography:
     rules: []
     notes: "Дефисные оттенки качества, терминологические и подчинительные основы не реализованы отдельными RuleSpec."
   solid_hyphen_separate_pronouns_adverbs_particles:
+    orfogrammka_id: "orfogrammka:3.4-3.6.4"
     title: "Дефисное написание местоименных слов, наречий и сочетаний с частицами"
+    parent_group: hyphen_slitno_razdelno
     status: candidate_only
     tags:
       - orthography
@@ -227,116 +344,188 @@ orthography:
       - hyphen_whitelist
     notes: "Реализованы кандидаты для -то/-либо/-нибудь, кое-/кой-, наречий по-... и legacy whitelist; применение требует scorer."
   solid_hyphen_separate_service_words:
+    orfogrammka_id: "orfogrammka:3.6.1-3.6.3"
     title: "Служебные слова, союзы, частицы и междометия: слитно или раздельно"
-    status: model_required
+    parent_group: hyphen_slitno_razdelno
+    status: partial
     tags:
       - orthography
       - context_pairs
       - hyphen_solid_separate
     requires:
+      - syntax
       - model
     rules:
-      - context_pair
-    notes: "Есть контекстно-зависимые кандидаты также/так же, тоже/то же, чтобы/что бы, зато/за то, несмотря/не смотря."
+      - context_tak_zhe
+      - context_to_zhe
+      - context_chto_by
+      - context_za_to
+      - context_vsledstvie
+      - context_nesmotrya
+    notes: "Есть model_required candidates также/так же, тоже/то же, чтобы/что бы, зато/за то, вследствие/в следствие, несмотря/не смотря; применения без scorer нет."
   solid_hyphen_separate_ne:
+    orfogrammka_id: "orfogrammka:3.7"
     title: "Написания с отрицанием не"
-    status: syntax_required
+    parent_group: ne_ni
+    status: partial
     requires:
       - morphology
       - syntax
       - model
-    rules: []
-    notes: "Слитное/раздельное не с существительными, прилагательными, причастиями и противопоставлением не реализовано."
+    rules:
+      - ne_adjective
+      - ne_participle
+      - ne_adverb
+    notes: "Частично покрыты model_required candidates для не с прилагательными, причастиями и наречиями; противопоставления и существительные остаются syntax/model зоной."
   solid_hyphen_separate_general:
+    orfogrammka_id: "orfogrammka:3.8-3.11"
     title: "Общие правила слитного и дефисного написания"
-    status: model_required
+    parent_group: hyphen_slitno_razdelno
+    status: candidate_only
     requires:
       - dictionary
       - morphology
       - model
     rules:
       - pol_polu_compounds
-    notes: "Частично реализованы только bounded candidates для пол-/полу-; иноязычные первые части, числительные и повторы остаются planned."
+    notes: "Частично реализованы bounded candidates для пол-/полу-; иноязычные первые части, числительные и повторы остаются planned."
   capitalization_names:
+    orfogrammka_id: "orfogrammka:4.1"
     title: "Прописные и строчные буквы: личные имена и собственные имена"
+    parent_group: capitalization
     status: ner_required
     requires:
       - ner
+      - syntax
       - dictionary
-    rules: []
-    notes: "Имена, псевдонимы, религиозные и мифологические имена требуют NER/словарей."
+      - model
+    rules:
+      - capitalization_ner
+    notes: "Имена, псевдонимы, религиозные и мифологические имена представлены NER-backed candidate rule; применение требует scorer."
   capitalization_geo_org_events:
+    orfogrammka_id: "orfogrammka:4.2-4.9"
     title: "Прописные и строчные буквы: география, организации, документы, события, награды"
+    parent_group: capitalization
     status: ner_required
     requires:
       - ner
+      - syntax
       - dictionary
+      - model
+    rules:
+      - capitalization_ner
+    notes: "Географические, административные, уличные и организационные названия используют общий NER-backed capitalization candidate; применение требует scorer."
+  capitalization_stylistic_pronouns:
+    orfogrammka_id: "orfogrammka:4.11.2"
+    title: "Прописные буквы в особом стилистическом употреблении: Вы, Ваш"
+    parent_group: capitalization
+    status: model_required
+    requires:
+      - syntax
+      - model
     rules: []
-    notes: "Географические, административные, астрономические, исторические и организационные названия не реализованы."
+    notes: "Стилистическое употребление Вы/Ваш требует адресата и жанрового контекста."
   capitalization_sentence_start:
+    orfogrammka_id: "orfogrammka:4.12"
     title: "Прописные буквы после знаков препинания и в начале предложения"
-    status: implemented
+    parent_group: capitalization
+    status: candidate_only
     tags:
       - orthography
       - capitalization
-    requires: []
+    requires:
+      - model
     rules:
-      - sentence_start_case
+      - capitalization_sentence_start
     tests:
       - tests/test_candidate_generator.py::test_candidate_generator_only_sentence_start_case_candidate
-    notes: "Реализован легкий fallback для первого токена текста; внутренние границы предложений остаются будущей работой."
+    notes: "Генерируется bounded candidate только для реального начала предложения; легкий Corrector не применяет capitalization без scorer."
   abbreviations_initial:
+    orfogrammka_id: "orfogrammka:5.1"
     title: "Аббревиатуры и производные от них слова"
-    status: dictionary_model_required
+    parent_group: abbreviations
+    status: candidate_only
     requires:
       - dictionary
       - model
-    rules: []
-    notes: "Инициальные аббревиатуры и производные не представлены отдельным RuleSpec."
+    rules:
+      - abbreviation_case_protection
+    notes: "Инициальные аббревиатуры США, РФ, НББ, ООО, АО, ИП защищены от порчи регистра; lowercase/titlecase forms получают model_required uppercase candidate."
   graphical_abbreviations:
+    orfogrammka_id: "orfogrammka:5.2"
     title: "Графические сокращения и точка после сокращений"
-    status: dictionary_model_required
+    parent_group: abbreviations
+    status: candidate_only
     requires:
       - dictionary
-    rules: []
-    notes: "Общеупотребительные и самостоятельные сокращения требуют словаря сокращений."
+      - model
+    rules:
+      - abbreviation_case_protection
+    notes: "Графические сокращения г., ул., т.д., т.п., см., стр., рис., № и годовые г. protected; правило не добавляет пунктуацию внутрь."
   foreign_words:
+    orfogrammka_id: "orfogrammka:6"
     title: "Правописание иностранных слов"
+    parent_group: borrowed_words
     status: dictionary_model_required
     requires:
       - dictionary
       - model
     rules: []
-    notes: "Английские, латинские и прочие иноязычные слова не нормализуются отдельными правилами."
+    notes: "Иноязычные слова поддерживаются только opportunistic lexicon-backed candidates без deterministic auto-correct; отдельного словаря заимствований пока нет."
   typos_letter_operations:
-    title: "Опечатки: пропуск, вставка, изменение или перестановка буквы"
-    status: dictionary_model_required
+    orfogrammka_id: "orfogrammka:7.1,7.3,7.4,7.6"
+    title: "Опечатки: пропуск, вставка, изменение, перестановка или повтор буквы"
+    parent_group: typos
+    status: partial
     requires:
       - dictionary
       - model
-    rules: []
-    notes: "Общий edit-distance/словарный исправитель опечаток не добавлен как RuleSpec."
+    rules:
+      - keyboard_typo_candidate
+      - swapped_letters_candidate
+      - missing_letter_candidate
+      - extra_letter_candidate
+    notes: "Частично покрыты bounded lexicon-backed candidates для соседней клавиши, перестановки соседних букв, пропуска и лишней буквы; применение требует scorer."
   typos_space_operations:
+    orfogrammka_id: "orfogrammka:7.2,7.5,7.7,7.8"
     title: "Опечатки: пробелы внутри и между словами"
+    parent_group: typos
     status: dictionary_model_required
     requires:
       - dictionary
       - model
     rules: []
     notes: "Пропуск/вставка пробела, межбуквенные пробелы и ошибочное склеивание слов покрыты только отдельными whitelist-кандидатами в других группах."
+  typos_initials_period:
+    orfogrammka_id: "orfogrammka:7.9"
+    title: "Опечатки: пропуск точки после инициала"
+    parent_group: typos
+    status: ner_required
+    requires:
+      - ner
+      - dictionary
+    rules: []
+    notes: "Инициалы требуют распознавания персональных имен и сокращений; RuleSpec отсутствует."
   typical_dictionary_words:
+    orfogrammka_id: "orfogrammka:8.1"
     title: "Типичные ошибки: словарные слова"
+    parent_group: dictionary_words
     status: partial
     tags:
       - orthography
       - dictionary_errors
     requires:
       - dictionary
+      - model
     rules:
+      - frequent_error_exact
+    aliases:
       - frequent_errors
-    notes: "Реализован ограниченный whitelist частых словарных ошибок; это не полноценная словарная орфография."
+    notes: "Реализован ограниченный exact whitelist частых словарных ошибок; финальное решение принимает модель."
   typical_unsettled_neologisms:
+    orfogrammka_id: "orfogrammka:8.2-8.3"
     title: "Типичные ошибки: неустоявшиеся написания, термины и неологизмы"
+    parent_group: dictionary_words
     status: dictionary_model_required
     requires:
       - dictionary
@@ -344,7 +533,9 @@ orthography:
     rules: []
     notes: "Неустоявшиеся варианты и неизвестные термины требуют обновляемого словаря и модели."
   homophones:
+    orfogrammka_id: "orfogrammka:8.4"
     title: "Типичные ошибки: омофоны"
+    parent_group: dictionary_words
     status: model_required
     requires:
       - syntax
@@ -354,8 +545,10 @@ orthography:
 
 punctuation:
   sentence_boundary_and_middle_punctuation:
+    orfogrammka_id: "orfogrammka:punctuation:1"
     title: "Знаки препинания в конце, в начале, в середине предложения"
-    status: partial
+    parent_group: punctuation_inside_sentence
+    status: model_required
     tags:
       - punctuation
       - complex_punctuation
@@ -365,7 +558,9 @@ punctuation:
     rules: []
     notes: "Крупный раздел Орфограммки; отдельные реализованные подслучаи вынесены ниже."
   sentence_final_default_dot:
+    orfogrammka_id: "orfogrammka:punctuation:1.1"
     title: "Знаки препинания в конце предложения: точка по умолчанию"
+    parent_group: final_punctuation
     status: implemented
     tags:
       - punctuation
@@ -377,7 +572,9 @@ punctuation:
       - tests/test_punctuation_rules.py::test_final_dot_is_available_as_gap_candidate_without_repeated_marks
     notes: "Fallback добавляет финальную точку при отсутствии конечного знака; выбор ?/!/... не реализован этим правилом."
   sentence_inner_end_marks:
+    orfogrammka_id: "orfogrammka:punctuation:1.3.5"
     title: "Знаки конца предложения внутри предложения"
+    parent_group: punctuation_inside_sentence
     status: syntax_required
     requires:
       - syntax
@@ -385,21 +582,27 @@ punctuation:
     rules: []
     notes: "Непонятная точка и похожие случаи требуют синтаксиса и контекста."
   comma_subject_predicate:
+    orfogrammka_id: "orfogrammka:punctuation:1.4"
     title: "Запятая между подлежащим и сказуемым"
+    parent_group: punctuation_inside_sentence
     status: syntax_required
     requires:
       - syntax
     rules: []
     notes: "Нет отдельного правила удаления/запрета такой запятой."
   extra_comma_government:
+    orfogrammka_id: "orfogrammka:punctuation:1.5"
     title: "Лишняя запятая в управлении"
+    parent_group: punctuation_inside_sentence
     status: syntax_required
     requires:
       - syntax
     rules: []
     notes: "Требует синтаксического управления; RuleSpec отсутствует."
   dash_subject_predicate:
+    orfogrammka_id: "orfogrammka:punctuation:2.1"
     title: "Тире между подлежащим и сказуемым"
+    parent_group: subject_predicate_dash
     status: model_required
     requires:
       - syntax
@@ -408,7 +611,9 @@ punctuation:
       - subject_predicate_dash
     notes: "Генерируется bounded candidate для очевидного шаблона перед словом это; применение требует scorer/validator."
   dash_incomplete_sentence:
+    orfogrammka_id: "orfogrammka:punctuation:2.2"
     title: "Тире в неполном предложении"
+    parent_group: colon_dash_semicolon
     status: syntax_required
     requires:
       - syntax
@@ -416,15 +621,30 @@ punctuation:
     rules: []
     notes: "Нет исполняемого правила."
   dash_connection:
+    orfogrammka_id: "orfogrammka:punctuation:2.3"
     title: "Тире в функции соединения"
+    parent_group: colon_dash_semicolon
     status: syntax_required
     requires:
       - syntax
     rules: []
     notes: "Нет исполняемого правила."
+  comma_conjunction:
+    orfogrammka_id: "orfogrammka:punctuation:4.2-4.4,7.1"
+    title: "Запятая при союзах в простом и сложносочиненном предложении"
+    parent_group: comma_conjunction
+    status: model_required
+    requires:
+      - syntax
+      - model
+    rules:
+      - comma_conjunction
+    notes: "Генерируются bounded candidates перед а, но, однако, зато; применение требует scorer/validator."
   homogeneous_commas:
+    orfogrammka_id: "orfogrammka:punctuation:4.1-4.5"
     title: "Однородные члены: запятые при союзах и без союзов"
-    status: syntax_required
+    parent_group: homogeneous_members
+    status: model_required
     tags:
       - punctuation
       - syntactic_rules
@@ -432,10 +652,13 @@ punctuation:
     requires:
       - syntax
       - model
-    rules: []
-    notes: "Синтетические группы comma_conjunction не считаются реализованными RuleSpec и здесь не перечисляются."
+    rules:
+      - homogeneous_comma
+    notes: "Генерируются bounded candidates для повторяющихся союзов; широкие однородные/неоднородные определения не реализованы."
   homogeneous_generalizing_word:
+    orfogrammka_id: "orfogrammka:punctuation:4.7-4.8"
     title: "Однородные члены: обобщающее слово, двоеточие и тире"
+    parent_group: homogeneous_members
     status: model_required
     requires:
       - syntax
@@ -444,7 +667,9 @@ punctuation:
       - enumeration_colon
     notes: "Генерируется bounded candidate двоеточия после простого обобщающего маркера; применение требует scorer/validator."
   homogeneous_definitions:
+    orfogrammka_id: "orfogrammka:punctuation:4.10-4.11,4.14"
     title: "Однородные и неоднородные определения"
+    parent_group: homogeneous_members
     status: syntax_required
     requires:
       - syntax
@@ -452,7 +677,9 @@ punctuation:
     rules: []
     notes: "Определения и причастные обороты требуют синтаксиса."
   detached_definitions:
+    orfogrammka_id: "orfogrammka:punctuation:5.1"
     title: "Обособленные члены: согласованные определения"
+    parent_group: detached_members
     status: syntax_required
     tags:
       - punctuation
@@ -464,7 +691,9 @@ punctuation:
     rules: []
     notes: "Обороты до/после определяемого слова и местоимений не реализованы."
   detached_applications:
+    orfogrammka_id: "orfogrammka:punctuation:5.3"
     title: "Обособленные члены: приложения"
+    parent_group: detached_members
     status: syntax_required
     requires:
       - syntax
@@ -473,15 +702,20 @@ punctuation:
     rules: []
     notes: "Приложения требуют синтаксиса и часто NER."
   detached_adverbials:
+    orfogrammka_id: "orfogrammka:punctuation:5.4"
     title: "Обособленные члены: обстоятельства и деепричастные обороты"
-    status: syntax_required
+    parent_group: detached_members
+    status: model_required
     requires:
       - syntax
       - model
-    rules: []
-    notes: "Деепричастные обороты, одиночные деепричастия и исключения не реализованы."
+    rules:
+      - detached_adverbial_comma
+    notes: "Генерируются bounded candidates только для явных начальных деепричастных оборотов; применение требует scorer/validator."
   detached_limiting_specifying_joining:
+    orfogrammka_id: "orfogrammka:punctuation:5.5-5.6"
     title: "Обособленные члены: ограничительно-выделительные, уточняющие, пояснительные и присоединительные обороты"
+    parent_group: detached_members
     status: syntax_required
     requires:
       - syntax
@@ -489,7 +723,9 @@ punctuation:
     rules: []
     notes: "Нужен синтаксический анализ и контекстная классификация."
   indivisible_combinations:
+    orfogrammka_id: "orfogrammka:punctuation:5.7"
     title: "Неразложимые сочетания"
+    parent_group: detached_members
     status: model_required
     requires:
       - syntax
@@ -498,15 +734,20 @@ punctuation:
     rules: []
     notes: "Устойчивые выражения с союзами, частицами и местоименными словами требуют словаря и модели."
   comparative_turnovers:
+    orfogrammka_id: "orfogrammka:punctuation:5.8"
     title: "Сравнительный оборот"
-    status: syntax_required
+    parent_group: comparative_turnovers
+    status: model_required
     requires:
       - syntax
       - model
-    rules: []
-    notes: "Обороты с как и другими сравнительными союзами не реализованы."
+    rules:
+      - comparative_turnover_comma
+    notes: "Генерируются bounded candidates для словно, будто и как будто; bare как остается без кандидата без сильного синтаксического сигнала."
   introductory_words:
+    orfogrammka_id: "orfogrammka:punctuation:6.1"
     title: "Вводные и вставные конструкции"
+    parent_group: introductory_words
     status: model_required
     tags:
       - punctuation
@@ -518,7 +759,9 @@ punctuation:
       - introductory_comma
     notes: "Генерируются candidates для конечно, например, во-первых, кажется, возможно; омонимия и распространенные конструкции требуют scorer/validator."
   addresses_interjections_particles:
+    orfogrammka_id: "orfogrammka:punctuation:6.2-6.5"
     title: "Обращения, междометия, частицы и утвердительные/отрицательные слова"
+    parent_group: addresses
     status: syntax_required
     requires:
       - syntax
@@ -527,15 +770,20 @@ punctuation:
       - address_comma
     notes: "Есть candidate-only правило для явных обращений по syntax/NER признакам; междометия, частицы и слова да/нет не реализованы."
   complex_sentence_compound:
+    orfogrammka_id: "orfogrammka:punctuation:7.1"
     title: "Сложносочиненное предложение"
+    parent_group: comma_conjunction
     status: syntax_required
     requires:
       - syntax
       - model
-    rules: []
-    notes: "Запятая и точка с запятой между частями ССП не представлены RuleSpec."
+    rules:
+      - semicolon
+    notes: "Точка с запятой между частями ССП описана metadata id для отчетов; отдельного RuleSpec нет."
   complex_sentence_subordinate:
+    orfogrammka_id: "orfogrammka:punctuation:7.2"
     title: "Сложноподчиненное предложение"
+    parent_group: comma_subordinate
     status: model_required
     tags:
       - punctuation
@@ -548,7 +796,9 @@ punctuation:
       - comma_subordinate
     notes: "Генерируются candidates перед что, чтобы, если, когда, потому что; применение требует scorer/validator."
   complex_sentence_asyndetic:
+    orfogrammka_id: "orfogrammka:punctuation:7.3"
     title: "Бессоюзное сложное предложение"
+    parent_group: colon_dash_semicolon
     status: syntax_required
     requires:
       - syntax
@@ -556,7 +806,9 @@ punctuation:
     rules: []
     notes: "Нет отдельного правила для БСП."
   direct_speech_quotes:
+    orfogrammka_id: "orfogrammka:punctuation:8.1-8.2"
     title: "Прямая речь и цитаты"
+    parent_group: direct_speech
     status: model_required
     tags:
       - punctuation
@@ -567,8 +819,23 @@ punctuation:
       - direct_speech_quotes
       - direct_speech_colon
     notes: "Покрыта только простая генерация candidates для кавычек и двоеточия после глаголов речи; применение требует scorer/validator."
+  quotes_brackets:
+    orfogrammka_id: "orfogrammka:punctuation:8.2,9.5"
+    title: "Кавычки и скобки"
+    parent_group: quotes_brackets
+    status: model_required
+    tags:
+      - punctuation
+      - complex_punctuation
+    requires:
+      - model
+    rules:
+      - quotes_brackets
+    notes: "Синтетические кавычки и скобки описаны metadata id для датасетов и отчетов; отдельного RuleSpec нет."
   punctuation_combinations:
+    orfogrammka_id: "orfogrammka:punctuation:9"
     title: "Сочетание знаков препинания"
+    parent_group: punctuation_combinations
     status: partial
     tags:
       - punctuation
@@ -578,7 +845,9 @@ punctuation:
       - punctuation_delete_replace
     notes: "Покрыты очевидные дубли и удаление/замена лишних знаков; полная система сочетаний знаков не реализована."
   complex_mark_interaction:
-    title: "Взаимодействие знаков препинания в сложных конструкциях"
+    orfogrammka_id: "orfogrammka:punctuation:9.3-9.4"
+    title: "Взаимодействие запятой, тире, двоеточия и точки с запятой"
+    parent_group: colon_dash_semicolon
     status: syntax_required
     tags:
       - punctuation
@@ -587,9 +856,11 @@ punctuation:
       - syntax
       - model
     rules: []
-    notes: "Два двоеточия, двоеточие и тире требуют синтаксиса и контекста."
+    notes: "Запятая и тире, многоточие и двоеточие вместо запятой требуют синтаксиса и контекста."
   neural_punctuation:
+    orfogrammka_id: "local:neural_punctuation"
     title: "Нейропунктуация"
+    parent_group: neural_punctuation
     status: model_required
     requires:
       - model

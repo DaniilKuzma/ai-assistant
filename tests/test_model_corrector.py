@@ -37,7 +37,7 @@ def test_trained_model_corrector_does_not_apply_whitelist_candidate_when_model_s
 
     result = corrector.correct("Я незнаю что делать")
 
-    assert result.corrected_text == "Я незнаю что делать."
+    assert result.corrected_text == "Я незнаю что делать"
 
 
 def test_trained_model_corrector_applies_candidate_when_model_score_passes_threshold():
@@ -45,8 +45,25 @@ def test_trained_model_corrector_applies_candidate_when_model_score_passes_thres
 
     result = corrector.correct("Я незнаю что делать")
 
-    assert result.corrected_text == "Я не знаю что делать."
+    assert result.corrected_text == "Я не знаю что делать"
     assert any(edit.edit_type == "split_word" and edit.status == "accepted" for edit in result.edits)
+
+
+def test_trained_model_corrector_applies_final_punctuation_only_when_scorer_accepts_candidate():
+    low_confidence = TrainedModelCorrector(FakeBackend({"." : 0.4}), thresholds={"final_punctuation_threshold": 0.9})
+    high_confidence = TrainedModelCorrector(FakeBackend({"." : 0.99}), thresholds={"final_punctuation_threshold": 0.9})
+
+    low_result = low_confidence.correct("Проект готов")
+    high_result = high_confidence.correct("Проект готов")
+
+    assert low_result.corrected_text == "Проект готов"
+    assert high_result.corrected_text == "Проект готов."
+    assert any(
+        edit.edit_type == "final_punctuation"
+        and edit.status == "accepted"
+        and edit.rule_id == "final_punctuation_default"
+        for edit in high_result.edits
+    )
 
 
 def test_trained_model_corrector_applies_candidate_with_rule_threshold():
@@ -144,6 +161,51 @@ def test_model_selection_treats_zero_length_punctuation_at_same_gap_as_conflicti
     assert len(selected) == 1
     assert selected[0].replacement == ","
     assert selected[0].rule_id == "comma_subordinate"
+
+
+def test_model_selection_preserves_candidate_metadata():
+    candidate = Candidate(
+        "учится",
+        "учиться",
+        "spelling",
+        3,
+        9,
+        confidence=0.9,
+        requires_model=True,
+        rule_id="tsya_soft_insert",
+        mode="model_required",
+    )
+
+    selected = _select_candidates(
+        [ModelCandidatePrediction(candidate, score=0.99, confidence=0.98)],
+        {"tsya_threshold": 0.9},
+    )
+
+    assert len(selected) == 1
+    assert selected[0].rule_id == "tsya_soft_insert"
+    assert selected[0].mode == "model_required"
+    assert selected[0].requires_model is True
+    assert selected[0].requires_scoring is True
+
+
+def test_trained_model_corrector_preserves_accepted_punctuation_rule_id():
+    corrector = TrainedModelCorrector(
+        FakeBackend(
+            {},
+            punctuation=[ModelPunctuationPrediction(1, "COMMA", 0.99, action="INSERT", rule_id="comma_subordinate")],
+        ),
+        thresholds={"punctuation_threshold": 0.9},
+    )
+
+    result = corrector.correct("Я думаю что важно.")
+
+    assert result.corrected_text == "Я думаю, что важно."
+    assert any(
+        edit.edit_type == "punctuation_insert"
+        and edit.status == "accepted"
+        and edit.rule_id == "comma_subordinate"
+        for edit in result.edits
+    )
 
 
 def test_trained_model_corrector_rejects_context_dependent_pair_without_strict_context():

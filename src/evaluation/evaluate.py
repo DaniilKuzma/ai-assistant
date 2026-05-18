@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from src.candidates.candidate_generator import CandidateGenerator
+from src.evaluation.candidate_recall import write_candidate_recall_reports
 from src.evaluation.metrics import compute_metrics, mark_correct_edits
 from src.evaluation.reports import write_edit_logs, write_required_evaluation_reports
 from src.evaluation.rule_metrics import write_rule_reports
@@ -28,6 +30,8 @@ def evaluate_rows(
     metric_weights: dict[str, float] | None = None,
     show_progress: bool = False,
     report_metadata: dict[str, Any] | None = None,
+    candidate_generator: CandidateGenerator | None = None,
+    candidate_recall_max_candidates: int | None = None,
 ) -> dict[str, float]:
     return evaluate_rows_detailed(
         rows,
@@ -36,6 +40,8 @@ def evaluate_rows(
         metric_weights=metric_weights,
         show_progress=show_progress,
         report_metadata=report_metadata,
+        candidate_generator=candidate_generator,
+        candidate_recall_max_candidates=candidate_recall_max_candidates,
     ).metrics
 
 
@@ -47,6 +53,8 @@ def evaluate_rows_detailed(
     metric_weights: dict[str, float] | None = None,
     show_progress: bool = False,
     report_metadata: dict[str, Any] | None = None,
+    candidate_generator: CandidateGenerator | None = None,
+    candidate_recall_max_candidates: int | None = None,
 ) -> EvaluationResult:
     corrector = corrector or Corrector()
     row_list = list(rows)
@@ -101,6 +109,12 @@ def evaluate_rows_detailed(
         write_required_evaluation_reports(evaluated, metrics, output_dir, metadata=report_metadata)
         write_edit_logs(accepted, rejected, output_dir)
         write_rule_reports(evaluated, accepted, rejected, output_dir)
+        write_candidate_recall_reports(
+            evaluated,
+            output_dir,
+            candidate_generator=candidate_generator,
+            max_candidates=candidate_recall_max_candidates,
+        )
     return EvaluationResult(
         metrics=metrics,
         edit_scores=edit_scores

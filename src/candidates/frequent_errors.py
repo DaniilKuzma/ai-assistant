@@ -100,6 +100,8 @@ SPLIT_JOIN_WHITELIST: dict[str, str] = {
 CONTEXT_DEPENDENT_WHITELIST: dict[str, str] = {
     "несмотря на": "не смотря на",
     "не смотря на": "несмотря на",
+    "несмотря": "не смотря",
+    "не смотря": "несмотря",
     "также": "так же",
     "так же": "также",
     "тоже": "то же",
@@ -108,6 +110,8 @@ CONTEXT_DEPENDENT_WHITELIST: dict[str, str] = {
     "что бы": "чтобы",
     "зато": "за то",
     "за то": "зато",
+    "вследствие": "в следствие",
+    "в следствие": "вследствие",
 }
 
 HYphen_NOTE = "Keep name ASCII in public modules; actual table is HYPHEN_WHITELIST."

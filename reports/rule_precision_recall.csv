@@ -1,9 +1,9 @@
 rule_id,group,gold_count,predicted_count,true_positive,false_positive,false_negative,precision,recall,f1
-comma_conjunction,unknown,5,0,0,0,5,0.0,0.0,0.0
+comma_conjunction,homogeneous_commas,5,0,0,0,5,0.0,0.0,0.0
 comma_subordinate,complex_sentence_subordinate,7,0,0,0,7,0.0,0.0,0.0
 enumeration_colon,homogeneous_generalizing_word,1,0,0,0,1,0.0,0.0,0.0
 final_punctuation_default,sentence_final_default_dot,7,8,2,6,5,0.25,0.2857142857142857,0.26666666666666666
-frequent_errors,typical_dictionary_words,28,12,12,0,16,1.0,0.42857142857142855,0.6
+frequent_error_exact,typical_dictionary_words,28,12,12,0,16,1.0,0.42857142857142855,0.6
 hyphen_koe_koy,solid_hyphen_separate_pronouns_adverbs_particles,2,0,0,0,2,0.0,0.0,0.0
 hyphen_particles,solid_hyphen_separate_pronouns_adverbs_particles,4,0,0,0,4,0.0,0.0,0.0
 hyphen_po_adverbs,solid_hyphen_separate_pronouns_adverbs_particles,2,0,0,0,2,0.0,0.0,0.0
@@ -15,8 +15,8 @@ pattern_цы_ци,letter_basic_hissing_vowel_patterns,2,2,2,0,0,1.0,1.0,1.0
 pattern_шо_ше,letter_basic_hissing_vowel_patterns,2,2,2,0,0,1.0,1.0,1.0
 prefix_z_to_s,consonants_prefix_z_s,1,1,1,0,0,1.0,1.0,1.0
 punctuation_delete_replace,punctuation_combinations,14,7,4,3,10,0.5714285714285714,0.2857142857142857,0.38095238095238093
-quotes_brackets,unknown,12,0,0,0,12,0.0,0.0,0.0
-semicolon,unknown,2,0,0,0,2,0.0,0.0,0.0
+quotes_brackets,quotes_brackets,12,0,0,0,12,0.0,0.0,0.0
+semicolon,complex_sentence_compound,2,0,0,0,2,0.0,0.0,0.0
 sentence_start_case,capitalization_sentence_start,0,14,0,14,0,0.0,0.0,0.0
 soft_to_hard_sign,hard_soft_signs,2,2,2,0,0,1.0,1.0,1.0
 subject_predicate_dash,dash_subject_predicate,3,0,0,0,3,0.0,0.0,0.0

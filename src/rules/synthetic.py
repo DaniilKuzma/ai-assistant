@@ -137,7 +137,7 @@ def _lexical_transformations(text: str, protected: tuple[tuple[int, int], ...]) 
                 _match_case(source, dirty),
                 error_type,
                 _lexical_group(error_type),
-                "hyphen_whitelist" if error_type == "hyphen" else "frequent_errors",
+                "hyphen_whitelist" if error_type == "hyphen" else "frequent_error_exact",
             )
         )
     return transformations

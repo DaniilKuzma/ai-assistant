@@ -11,14 +11,19 @@ from src.alignment.punctuation_label_builder import (
 )
 from src.candidates.candidate_generator import Candidate, CandidateGenerator
 from src.candidates.candidate_ranking import rank_candidates_for_budget
+from src.candidates.matching import (
+    candidate_edit_type_for_labels,
+    candidate_matches_edit,
+    candidate_overlaps_edit,
+)
 from src.preprocessing.punctuation_gaps import word_gap_context_token_indices
 from src.preprocessing.tokenizer import Token, tokenize_words
+from src.rules.base import RuleMode
 from src.validation.diff_analyzer import DiffAnalyzer, Edit
 from src.validation.edit_classifier import coarse_error_type
 
 
 MAX_REPLACEMENT_TOKENS = 8
-WORD_EDIT_TYPES = {"spelling_replace", "split_word", "join_words", "hyphen_change", "case_change"}
 PUNCTUATION_EDIT_TYPES = {
     "punctuation_insert",
     "punctuation_delete",
@@ -48,6 +53,10 @@ class TrainingFeature:
     punctuation_confidence_labels: list[float]
     punctuation_error_type_labels: list[int]
     candidate_replacements: list[str]
+    candidate_rule_ids: list[str]
+    candidate_modes: list[RuleMode]
+    candidate_requires_model: list[bool]
+    candidate_requires_scoring: list[bool]
     candidate_replacement_ids: list[list[int]]
     candidate_replacement_mask: list[list[bool]]
 
@@ -115,6 +124,10 @@ def build_training_feature(
     error_labels = [_candidate_error_label(candidate, label, error_type_label_map) for candidate, label in zip(candidates, labels, strict=False)]
     confidence_labels = labels[:]
     replacements = [candidate.replacement for candidate in candidates]
+    rule_ids = [candidate.rule_id for candidate in candidates]
+    modes = [candidate.mode for candidate in candidates]
+    requires_model = [candidate.requires_model for candidate in candidates]
+    requires_scoring = [candidate.requires_scoring for candidate in candidates]
     replacement_encodings = [_encode_replacement(tokenizer, replacement) for replacement in replacements]
     replacement_ids = [encoding["input_ids"] for encoding in replacement_encodings]
     replacement_masks = [[bool(value) for value in encoding["attention_mask"]] for encoding in replacement_encodings]
@@ -125,6 +138,10 @@ def build_training_feature(
     error_labels.extend([-100] * pad_candidates)
     confidence_labels.extend([0.0] * pad_candidates)
     replacements.extend([""] * pad_candidates)
+    rule_ids.extend([""] * pad_candidates)
+    modes.extend(["deterministic"] * pad_candidates)
+    requires_model.extend([False] * pad_candidates)
+    requires_scoring.extend([False] * pad_candidates)
     replacement_ids.extend([[0] * MAX_REPLACEMENT_TOKENS for _ in range(pad_candidates)])
     replacement_masks.extend([[False] * MAX_REPLACEMENT_TOKENS for _ in range(pad_candidates)])
     candidate_mask = [True] * len(candidates) + [False] * pad_candidates
@@ -166,6 +183,10 @@ def build_training_feature(
         punctuation_confidence_labels=punctuation_confidence_labels,
         punctuation_error_type_labels=punctuation_error_type_labels,
         candidate_replacements=replacements,
+        candidate_rule_ids=rule_ids,
+        candidate_modes=modes,
+        candidate_requires_model=requires_model,
+        candidate_requires_scoring=requires_scoring,
         candidate_replacement_ids=replacement_ids,
         candidate_replacement_mask=replacement_masks,
     )
@@ -180,6 +201,10 @@ class EditBatchCollator:
             "attention_mask": torch.tensor([feature.attention_mask for feature in features], dtype=torch.long),
             "candidate_spans": torch.tensor([feature.candidate_spans for feature in features], dtype=torch.long),
             "candidate_mask": torch.tensor([feature.candidate_mask for feature in features], dtype=torch.bool),
+            "candidate_rule_ids": [feature.candidate_rule_ids for feature in features],
+            "candidate_modes": [feature.candidate_modes for feature in features],
+            "candidate_requires_model": [feature.candidate_requires_model for feature in features],
+            "candidate_requires_scoring": [feature.candidate_requires_scoring for feature in features],
             "candidate_replacement_ids": torch.tensor([feature.candidate_replacement_ids for feature in features], dtype=torch.long),
             "candidate_replacement_mask": torch.tensor(
                 [feature.candidate_replacement_mask for feature in features], dtype=torch.bool
@@ -220,6 +245,7 @@ def build_features_from_rows(
     max_length: int,
     max_candidates: int,
     punctuation_action_label_map: dict[str, int] | None = None,
+    candidate_generator: CandidateGenerator | None = None,
     show_progress: bool = False,
 ) -> list[TrainingFeature]:
     row_iterable = _with_progress(rows, enabled=show_progress, description="Building training features")
@@ -233,6 +259,7 @@ def build_features_from_rows(
             error_type_label_map=error_type_label_map,
             max_length=max_length,
             max_candidates=max_candidates,
+            candidate_generator=candidate_generator,
         )
         for row in row_iterable
     ]
@@ -297,42 +324,14 @@ def _candidate_to_token_span(candidate: Candidate, offsets: list[tuple[int, int]
 
 def _candidate_label(candidate: Candidate, alignment_edits: list[Edit]) -> float:
     if candidate.edit_type == "keep":
-        return 0.0 if any(_candidate_overlaps_edit(candidate, edit) for edit in alignment_edits) else 1.0
-    return 1.0 if any(_candidate_matches_edit(candidate, edit) for edit in alignment_edits) else 0.0
-
-
-def _candidate_overlaps_edit(candidate: Candidate, edit: Edit) -> bool:
-    if edit.edit_type not in WORD_EDIT_TYPES or edit.start < 0 or edit.end < 0:
-        return False
-    return candidate.start < edit.end and edit.start < candidate.end
-
-
-def _candidate_matches_edit(candidate: Candidate, edit: Edit) -> bool:
-    expected_type = _candidate_edit_type_for_labels(candidate.edit_type)
-    if expected_type == "split_word" and edit.edit_type == "join_words":
-        expected_type = "join_words"
-    if edit.edit_type != expected_type:
-        return False
-    if edit.edit_type == "case_change":
-        return candidate.start <= edit.start < candidate.end and candidate.replacement.startswith(edit.replacement)
-    if edit.start >= 0 and edit.end >= 0 and (candidate.start != edit.start or candidate.end != edit.end):
-        return False
-    return candidate.replacement.lower() == edit.replacement.lower()
+        return 0.0 if any(candidate_overlaps_edit(candidate, edit) for edit in alignment_edits) else 1.0
+    return 1.0 if any(candidate_matches_edit(candidate, edit) for edit in alignment_edits) else 0.0
 
 
 def _candidate_error_label(candidate: Candidate, label: float, error_type_label_map: dict[str, int]) -> int:
     if label <= 0:
         return error_type_label_map.get("keep", 0)
-    return error_type_label_map.get(coarse_error_type(_candidate_edit_type_for_labels(candidate.edit_type)), 0)
-
-
-def _candidate_edit_type_for_labels(candidate_type: str) -> str:
-    return {
-        "split_join": "split_word",
-        "hyphen": "hyphen_change",
-        "case": "case_change",
-        "spelling": "spelling_replace",
-    }.get(candidate_type, candidate_type)
+    return error_type_label_map.get(coarse_error_type(candidate_edit_type_for_labels(candidate.edit_type)), 0)
 
 
 def _punctuation_labels(

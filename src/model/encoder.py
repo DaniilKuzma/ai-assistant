@@ -5,6 +5,14 @@ import os
 from typing import Any
 
 
+def ensure_pytorch_transformers_backend() -> None:
+    os.environ.setdefault("USE_TF", "0")
+    os.environ.setdefault("TRANSFORMERS_NO_TF", "1")
+    os.environ.setdefault("USE_FLAX", "0")
+
+
+ensure_pytorch_transformers_backend()
+
 PRIMARY_ENCODER = "ai-forever/ruRoberta-large"
 FALLBACK_ENCODER = "ai-forever/ruRoberta-large"
 
@@ -19,7 +27,7 @@ class EncoderLoadConfig:
 
 
 def load_tokenizer(config: EncoderLoadConfig) -> Any:
-    _disable_unused_transformers_backends()
+    ensure_pytorch_transformers_backend()
     from transformers import AutoTokenizer
 
     return AutoTokenizer.from_pretrained(
@@ -32,7 +40,7 @@ def load_tokenizer(config: EncoderLoadConfig) -> Any:
 def load_encoder(config: EncoderLoadConfig) -> Any:
     """Load an encoder-only base model. Seq2Seq classes are intentionally absent."""
 
-    _disable_unused_transformers_backends()
+    ensure_pytorch_transformers_backend()
     from transformers import AutoModel
 
     try:
@@ -53,6 +61,4 @@ def _load_auto_model(auto_model: Any, model_name: str, config: EncoderLoadConfig
 
 
 def _disable_unused_transformers_backends() -> None:
-    os.environ.setdefault("USE_TF", "0")
-    os.environ.setdefault("TRANSFORMERS_NO_TF", "1")
-    os.environ.setdefault("USE_FLAX", "0")
+    ensure_pytorch_transformers_backend()

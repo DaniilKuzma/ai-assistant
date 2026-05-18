@@ -16,6 +16,17 @@ model:
     alpha: 16
     dropout: 0.05
 
+dictionary:
+  enabled: true
+  lexicon_path: data/processed/russian_lexicon.txt
+  max_candidates: 2
+  min_score: 85
+  yo_e:
+    enabled: false
+    mode: model_required
+    require_lexicon_support: true
+    require_model_scoring: true
+
 training:
   mode: full-train
   run_model_training: true

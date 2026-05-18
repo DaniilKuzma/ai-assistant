@@ -4,18 +4,33 @@ from dataclasses import dataclass
 from typing import Any, Iterable
 
 from src.candidates.frequent_errors import (
-    CONTEXT_DEPENDENT_WHITELIST,
     HYPHEN_WHITELIST,
-    SPLIT_JOIN_WHITELIST,
     WRONG_TO_CORRECT,
 )
-from src.candidates.morphology import has_pos, is_known_word, normal_forms
+from src.candidates.morphology import has_pos, is_known_word, normal_forms, parses
 from src.preprocessing.tokenizer import tokenize_words
 from src.rules.base import RuleCandidate, RuleContext, RuleCorruption, RuleEdit, RuleMode, RuleSpec
 
 
 VERB_POSES = frozenset({"VERB", "INFN"})
 TSYA_CONTEXT_POSES = frozenset({"VERB", "INFN"})
+NE_ADJECTIVE_POSES = frozenset({"ADJF", "ADJS"})
+NE_PARTICIPLE_POSES = frozenset({"PRTF", "PRTS"})
+NE_ADVERB_POSES = frozenset({"ADVB"})
+N_NN_ADJECTIVE_POSES = frozenset({"ADJF", "ADJS"})
+N_NN_PARTICIPLE_POSES = frozenset({"PRTF", "PRTS"})
+CONTEXT_REQUIRES = ("syntax", "model")
+NE_REQUIRES = ("morphology", "syntax", "model")
+N_NN_REQUIRES = ("morphology", "syntax", "dictionary", "model")
+PREFIX_PRE_PRI_REQUIRES = ("dictionary", "model")
+NI_STABLE_EXPRESSION_PAIRS = (
+    ("не разу", "ни разу"),
+    ("ни разу", "не разу"),
+    ("не в коем случае", "ни в коем случае"),
+    ("ни в коем случае", "не в коем случае"),
+    ("во что бы то не стало", "во что бы то ни стало"),
+    ("во что бы то ни стало", "во что бы то не стало"),
+)
 NE_JOINED_NORMAL_FORMS = frozenset(
     {
         "ненавидеть",
@@ -106,148 +121,105 @@ KOE_KOY_BASES = HYPHEN_PARTICLE_BASES | frozenset({"там", "тут", "здес
 PO_ADVERB_SUFFIXES = ("ому", "ему", "ски", "цки", "ьи")
 POL_VOWELS = frozenset("аеёиоуыэюя")
 POL_NOUN_POSES = frozenset({"NOUN"})
+SENTENCE_START_PREFIX_CHARS = frozenset(" \t\r\n\"'«„“([{—")
+SENTENCE_START_ABBREVIATIONS = frozenset({"г", "см", "ул", "стр", "рис"})
+SENTENCE_TERMINATORS = frozenset(".!?…")
+INITIAL_ABBREVIATIONS = {
+    "сша": "США",
+    "рф": "РФ",
+    "нбб": "НББ",
+    "ооо": "ООО",
+    "ао": "АО",
+    "ип": "ИП",
+}
+NER_CAPITALIZATION_TYPES = frozenset({"PER", "LOC", "ORG"})
 SCORING_REQUIRED_RULE_IDS = frozenset(
     {
+        "frequent_error_exact",
+        "dictionary_fuzzy",
+        "double_consonant_candidate",
+        "keyboard_typo_candidate",
+        "swapped_letters_candidate",
+        "missing_letter_candidate",
+        "extra_letter_candidate",
+        "yo_e_candidate",
         "ne_verb",
+        "ne_adjective",
+        "ne_participle",
+        "ne_adverb",
+        "ni_stable_expression",
+        "n_nn_adjective",
+        "n_nn_participle",
+        "n_nn_deverbal_adjective",
+        "n_nn_short_form",
+        "prefix_pre_pri",
         "tsya_soft_delete",
         "tsya_soft_insert",
         "context_pair",
+        "context_tak_zhe",
+        "context_to_zhe",
+        "context_chto_by",
+        "context_za_to",
+        "context_vsledstvie",
+        "context_nesmotrya",
         "hyphen_whitelist",
         "hyphen_particles",
         "hyphen_koe_koy",
         "hyphen_po_adverbs",
         "pol_polu_compounds",
+        "capitalization_sentence_start",
+        "capitalization_ner",
+        "abbreviation_case_protection",
     }
 )
 
-DETERMINISTIC_FREQUENT_ERROR_KEYS = frozenset(
-    {
-        "жызнь",
-        "жывой",
-        "жывотное",
-        "машына",
-        "шырина",
-        "чясто",
-        "чяща",
-        "щястье",
-        "чюдо",
-        "чювство",
-        "щюка",
-        "зделать",
-        "зделал",
-        "безполезный",
-        "безплатный",
-        "безпокойный",
-        "безконечный",
-        "безшумный",
-        "бесвкусный",
-        "бесграмотный",
-        "подезд",
-        "подезде",
-        "подезду",
-        "подездом",
-        "обьект",
-        "обявление",
-        "сьезд",
-        "вюга",
-        "цыфра",
-        "цырк",
-        "цытата",
-        "шол",
-        "пришол",
-        "нашол",
-        "произошол",
-        "жолтый",
-        "чорный",
-        "дешовый",
-    }
-)
+
+@dataclass(frozen=True)
+class DictionaryCandidateMetadataRule:
+    rule_id: str
+    group: str
+    description: str
+
+    @property
+    def spec(self) -> RuleSpec:
+        return RuleSpec(
+            id=self.rule_id,
+            group=self.group,
+            scope="token",
+            edit_type="spelling",
+            mode="model_required",
+            confidence=0.0,
+            requires=("dictionary", "model"),
+            description=self.description,
+        )
 
 
 @dataclass(frozen=True)
 class FrequentErrorRule:
     spec: RuleSpec = RuleSpec(
-        id="frequent_errors",
+        id="frequent_error_exact",
         group="dictionary_spelling",
         scope="token",
         edit_type="spelling",
-        mode="deterministic",
-        confidence=0.95,
-        requires=("dictionary",),
-        description="Whitelist fallback for frequent dictionary spelling and split/join errors.",
-    )
-
-    def generate_candidates(self, token: str, context: RuleContext | None = None) -> Iterable[RuleCandidate]:
-        lower = token.lower()
-        if lower not in DETERMINISTIC_FREQUENT_ERROR_KEYS:
-            return []
-        replacement = WRONG_TO_CORRECT.get(lower)
-        if not replacement:
-            return []
-        return [_candidate(self.spec, replacement, requires_model=False)]
-
-    def dirty_to_candidate(self, token: str, context: RuleContext | None = None) -> Iterable[RuleCandidate]:
-        return self.generate_candidates(token, context)
-
-    def generate(self, token: str, context: RuleContext | None = None) -> Iterable[RuleCandidate]:
-        return self.generate_candidates(token, context)
-
-
-@dataclass(frozen=True)
-class FrequentSplitJoinRule:
-    spec: RuleSpec = RuleSpec(
-        id="frequent_split_join",
-        group="split_join",
-        scope="token",
-        edit_type="split_join",
         mode="candidate_only",
         confidence=0.95,
         requires=("dictionary", "model"),
-        description="Whitelist frequent split/join candidates that require scorer confirmation.",
+        description="Exact whitelist fallback for frequent dictionary spelling and split/join errors.",
     )
 
     def generate_candidates(self, token: str, context: RuleContext | None = None) -> Iterable[RuleCandidate]:
         lower = token.lower()
-        replacement = SPLIT_JOIN_WHITELIST.get(lower)
-        if not replacement:
-            return []
-        return [_candidate(self.spec, replacement, requires_model=True)]
-
-    def dirty_to_candidate(self, token: str, context: RuleContext | None = None) -> Iterable[RuleCandidate]:
-        return self.generate_candidates(token, context)
-
-    def generate(self, token: str, context: RuleContext | None = None) -> Iterable[RuleCandidate]:
-        return self.generate_candidates(token, context)
-
-
-@dataclass(frozen=True)
-class FrequentModelRequiredRule:
-    spec: RuleSpec = RuleSpec(
-        id="frequent_dictionary_model_required",
-        group="dictionary_model_required",
-        scope="token",
-        edit_type="spelling",
-        mode="model_required",
-        confidence=0.95,
-        requires=("dictionary", "model"),
-        description="Frequent dictionary repairs that are unsafe to apply without model scoring.",
-    )
-
-    def generate_candidates(self, token: str, context: RuleContext | None = None) -> Iterable[RuleCandidate]:
-        lower = token.lower()
-        if lower in DETERMINISTIC_FREQUENT_ERROR_KEYS or lower in SPLIT_JOIN_WHITELIST:
-            return []
         replacement = WRONG_TO_CORRECT.get(lower)
         if not replacement:
             return []
-        return [_candidate(self.spec, replacement, requires_model=True)]
+        edit_type = "split_join" if " " in replacement else "spelling"
+        return [_candidate(self.spec, replacement, edit_type=edit_type, requires_model=True)]
 
     def dirty_to_candidate(self, token: str, context: RuleContext | None = None) -> Iterable[RuleCandidate]:
         return self.generate_candidates(token, context)
 
     def generate(self, token: str, context: RuleContext | None = None) -> Iterable[RuleCandidate]:
         return self.generate_candidates(token, context)
-
 
 @dataclass(frozen=True)
 class NeVerbRule:
@@ -256,9 +228,9 @@ class NeVerbRule:
         group="ne",
         scope="token",
         edit_type="split_join",
-        mode="candidate_only",
-        confidence=0.97,
-        requires=("morphology",),
+        mode="model_required",
+        confidence=0.35,
+        requires=NE_REQUIRES,
         description="Separate particle 'не' from verbs and infinitives when the joined form is not an exception.",
     )
 
@@ -323,6 +295,149 @@ class NeVerbRule:
         protected: tuple[tuple[int, int], ...] = (),
     ) -> Iterable[RuleCorruption]:
         return self.generate_corruptions(text, tokens, token_index, protected)
+
+
+@dataclass(frozen=True)
+class NePartOfSpeechRule:
+    rule_id: str
+    poses: frozenset[str]
+    description: str
+
+    @property
+    def spec(self) -> RuleSpec:
+        return RuleSpec(
+            id=self.rule_id,
+            group="ne",
+            scope="span",
+            edit_type="split_join",
+            mode="model_required",
+            confidence=0.35,
+            requires=NE_REQUIRES,
+            description=self.description,
+        )
+
+    def generate_span(self, text: str, tokens: tuple[object, ...], token_index: int) -> Iterable[RuleEdit]:
+        word_tokens = _word_tokens(text, tokens if tokens else None)
+        if token_index < 0 or token_index >= len(word_tokens):
+            return []
+
+        token = word_tokens[token_index]
+        word = str(getattr(token, "text", "")).lower()
+        candidates: list[RuleEdit] = []
+
+        if word.startswith("не") and len(word) > 4 and is_known_word(word):
+            base = word[2:]
+            if _has_known_pos(base, self.poses):
+                candidates.append(_span_candidate(self.spec, text, token, token, f"не {base}"))
+
+        if word == "не" and token_index + 1 < len(word_tokens):
+            next_token = word_tokens[token_index + 1]
+            base = str(getattr(next_token, "text", "")).lower()
+            joined = f"не{base}"
+            if _has_known_pos(base, self.poses) and is_known_word(joined):
+                candidates.append(_span_candidate(self.spec, text, token, next_token, joined))
+
+        return candidates
+
+
+@dataclass(frozen=True)
+class NiStableExpressionRule:
+    spec: RuleSpec = RuleSpec(
+        id="ni_stable_expression",
+        group="ne_ni",
+        scope="span",
+        edit_type="split_join",
+        mode="model_required",
+        confidence=0.0,
+        requires=NE_REQUIRES,
+        description="Generate bounded не/ни candidates for stable constructions.",
+    )
+
+    def generate_span(self, text: str, tokens: tuple[object, ...], token_index: int) -> Iterable[RuleEdit]:
+        word_tokens = _word_tokens(text, tokens if tokens else None)
+        candidates: list[RuleEdit] = []
+        for source, replacement in NI_STABLE_EXPRESSION_PAIRS:
+            candidate = _phrase_span_candidate(self.spec, text, word_tokens, token_index, source, replacement)
+            if candidate:
+                candidates.append(candidate)
+        return candidates
+
+
+@dataclass(frozen=True)
+class NnRule:
+    rule_id: str
+    description: str
+
+    @property
+    def spec(self) -> RuleSpec:
+        return RuleSpec(
+            id=self.rule_id,
+            group="n_nn",
+            scope="token",
+            edit_type="spelling",
+            mode="model_required",
+            confidence=0.35,
+            requires=N_NN_REQUIRES,
+            description=self.description,
+        )
+
+    def generate_candidates(self, token: str, context: RuleContext | None = None) -> Iterable[RuleCandidate]:
+        del context
+        word = token.lower()
+        candidates: list[RuleCandidate] = []
+        for replacement in _n_nn_variants(word):
+            if not is_known_word(replacement) or not self._matches(word, replacement):
+                continue
+            candidates.append(_candidate(self.spec, replacement, requires_model=True))
+        return candidates
+
+    def dirty_to_candidate(self, token: str, context: RuleContext | None = None) -> Iterable[RuleCandidate]:
+        return self.generate_candidates(token, context)
+
+    def generate(self, token: str, context: RuleContext | None = None) -> Iterable[RuleCandidate]:
+        return self.generate_candidates(token, context)
+
+    def _matches(self, source: str, replacement: str) -> bool:
+        if self.rule_id == "n_nn_short_form":
+            return _is_short_n_nn_form(replacement)
+        if self.rule_id == "n_nn_participle":
+            return _has_known_pos(replacement, N_NN_PARTICIPLE_POSES) and not _is_short_n_nn_form(replacement)
+        if self.rule_id == "n_nn_deverbal_adjective":
+            return _has_known_pos(source, N_NN_PARTICIPLE_POSES) and _has_known_pos(replacement, N_NN_ADJECTIVE_POSES)
+        if self.rule_id == "n_nn_adjective":
+            return _has_known_pos(replacement, N_NN_ADJECTIVE_POSES) and not _has_known_pos(
+                replacement,
+                N_NN_PARTICIPLE_POSES,
+            )
+        return False
+
+
+@dataclass(frozen=True)
+class PrefixPrePriRule:
+    spec: RuleSpec = RuleSpec(
+        id="prefix_pre_pri",
+        group="prefix_pre_pri",
+        scope="token",
+        edit_type="spelling",
+        mode="model_required",
+        confidence=0.35,
+        requires=PREFIX_PRE_PRI_REQUIRES,
+        description="Generate dictionary-backed candidates for initial при-/пре- alternations.",
+    )
+
+    def generate_candidates(self, token: str, context: RuleContext | None = None) -> Iterable[RuleCandidate]:
+        del context
+        word = token.lower()
+        replacement = _toggle_pre_pri(word)
+        if not replacement or not is_known_word(replacement):
+            return []
+        return [_candidate(self.spec, replacement, requires_model=True)]
+
+    def dirty_to_candidate(self, token: str, context: RuleContext | None = None) -> Iterable[RuleCandidate]:
+        return self.generate_candidates(token, context)
+
+    def generate(self, token: str, context: RuleContext | None = None) -> Iterable[RuleCandidate]:
+        return self.generate_candidates(token, context)
 
 
 @dataclass(frozen=True)
@@ -763,7 +878,7 @@ class TsyaSoftDeleteRule:
         edit_type="spelling",
         mode="model_required",
         confidence=0.9,
-        requires=("morphology",),
+        requires=NE_REQUIRES,
         description="Generate -ться -> -тся candidate for verb forms.",
     )
 
@@ -821,7 +936,7 @@ class TsyaSoftInsertRule:
         edit_type="spelling",
         mode="model_required",
         confidence=0.9,
-        requires=("morphology",),
+        requires=NE_REQUIRES,
         description="Generate -тся -> -ться candidate for verb forms.",
     )
 
@@ -872,44 +987,29 @@ class TsyaSoftInsertRule:
 
 @dataclass(frozen=True)
 class ContextPairRule:
-    spec: RuleSpec = RuleSpec(
-        id="context_pair",
-        group="context_split_join",
-        scope="span",
-        edit_type="split_join",
-        mode="candidate_only",
-        confidence=0.0,
-        requires=("model",),
-        description="Context-dependent split/join whitelist pairs that need model confirmation.",
-    )
+    rule_id: str
+    pairs: tuple[tuple[str, str], ...]
+
+    @property
+    def spec(self) -> RuleSpec:
+        return RuleSpec(
+            id=self.rule_id,
+            group="context_split_join",
+            scope="span",
+            edit_type="split_join",
+            mode="model_required",
+            confidence=0.0,
+            requires=CONTEXT_REQUIRES,
+            description="Context-dependent split/join candidates that need model confirmation.",
+        )
 
     def generate_span(self, text: str, tokens: tuple[object, ...], token_index: int) -> Iterable[RuleEdit]:
         candidates: list[RuleEdit] = []
-        for source, replacement in CONTEXT_DEPENDENT_WHITELIST.items():
-            source_words = source.split()
-            end_index = token_index + len(source_words)
-            if end_index > len(tokens):
-                continue
-            span_words = tokens[token_index:end_index]
-            if [getattr(word, "text", "").lower() for word in span_words] != source_words:
-                continue
-            start = int(getattr(span_words[0], "start"))
-            end = int(getattr(span_words[-1], "end"))
-            if text[start:end].lower().split() != source_words:
-                continue
-            candidates.append(
-                RuleEdit(
-                    source=text[start:end],
-                    replacement=_match_case(text[start:end], replacement),
-                    edit_type=self.spec.edit_type,
-                    start=start,
-                    end=end,
-                    confidence=self.spec.confidence,
-                    requires_model=True,
-                    rule_id=self.spec.id,
-                    mode=self.spec.mode,
-                )
-            )
+        word_tokens = _word_tokens(text, tokens if tokens else None)
+        for source, replacement in self.pairs:
+            candidate = _phrase_span_candidate(self.spec, text, word_tokens, token_index, source, replacement)
+            if candidate:
+                candidates.append(candidate)
         return candidates
 
 
@@ -1230,20 +1330,158 @@ class HyphenWhitelistRule:
 @dataclass(frozen=True)
 class SentenceStartCaseRule:
     spec: RuleSpec = RuleSpec(
-        id="sentence_start_case",
+        id="capitalization_sentence_start",
         group="capitalization",
         scope="token",
         edit_type="case",
-        mode="deterministic",
+        mode="candidate_only",
         confidence=0.9,
-        requires=("none",),
-        description="Uppercase the first token at sentence start in the lightweight fallback.",
+        requires=("model",),
+        description="Generate a bounded uppercase candidate for real sentence starts.",
     )
 
     def generate(self, token: str, context: RuleContext | None = None) -> Iterable[RuleCandidate]:
-        if not context or context.token_index != 0 or not token[:1].islower():
+        if not context or context.token_index < 0:
             return []
-        return [_candidate(self.spec, token[:1].upper() + token[1:], requires_model=False)]
+        token_info = context.tokens[context.token_index] if context.token_index < len(context.tokens) else None
+        if token_info is None:
+            return []
+        start = int(getattr(token_info, "start", -1))
+        end = int(getattr(token_info, "end", -1))
+        if not is_safe_sentence_start_case(context.text, start, end, token, context.protected_spans):
+            return []
+        return [_candidate(self.spec, token[:1].upper() + token[1:], requires_model=True)]
+
+
+@dataclass(frozen=True)
+class CapitalizationNerRule:
+    spec: RuleSpec = RuleSpec(
+        id="capitalization_ner",
+        group="capitalization",
+        scope="token",
+        edit_type="case",
+        mode="model_required",
+        confidence=0.35,
+        requires=("ner", "syntax", "model"),
+        description="Generate NER-backed capitalization candidates for proper names.",
+    )
+
+    def generate(self, token: str, context: RuleContext | None = None) -> Iterable[RuleCandidate]:
+        if not context or context.token_index < 0:
+            return []
+        token_info = context.tokens[context.token_index] if context.token_index < len(context.tokens) else None
+        if token_info is None:
+            return []
+        start = int(getattr(token_info, "start", -1))
+        end = int(getattr(token_info, "end", -1))
+        if not _is_safe_capitalization_source(context.text, start, end, token, context.protected_spans):
+            return []
+        syntax_token = _matching_syntax_token(context.syntax_tokens, start, end)
+        if syntax_token is None or str(getattr(syntax_token, "ner", "") or "") not in NER_CAPITALIZATION_TYPES:
+            return []
+        return [_candidate(self.spec, token[:1].upper() + token[1:], requires_model=True)]
+
+
+@dataclass(frozen=True)
+class AbbreviationCaseProtectionRule:
+    spec: RuleSpec = RuleSpec(
+        id="abbreviation_case_protection",
+        group="abbreviations",
+        scope="token",
+        edit_type="case",
+        mode="model_required",
+        confidence=0.5,
+        requires=("dictionary", "model"),
+        description="Generate case-only candidates for known initial abbreviations without punctuation edits.",
+    )
+
+    def generate(self, token: str, context: RuleContext | None = None) -> Iterable[RuleCandidate]:
+        if not context or context.token_index < 0:
+            return []
+        token_info = context.tokens[context.token_index] if context.token_index < len(context.tokens) else None
+        if token_info is None:
+            return []
+        start = int(getattr(token_info, "start", -1))
+        end = int(getattr(token_info, "end", -1))
+        if _span_overlaps_protected(start, end, context.protected_spans):
+            return []
+        replacement = INITIAL_ABBREVIATIONS.get(token.lower())
+        if not replacement or token == replacement:
+            return []
+        return [_candidate(self.spec, replacement, requires_model=True)]
+
+
+def is_safe_sentence_start_case(
+    text: str,
+    start: int,
+    end: int,
+    token: str,
+    protected_spans: tuple[tuple[int, int], ...] = (),
+) -> bool:
+    if not _is_safe_capitalization_source(text, start, end, token, protected_spans):
+        return False
+
+    previous = _previous_nonspace_index(text, start)
+    if previous is None:
+        return True
+    if text[previous] not in SENTENCE_TERMINATORS:
+        return False
+    if _position_inside_spans(previous, protected_spans):
+        return False
+    return True
+
+
+def _is_safe_capitalization_source(
+    text: str,
+    start: int,
+    end: int,
+    token: str,
+    protected_spans: tuple[tuple[int, int], ...] = (),
+) -> bool:
+    if start < 0 or end < start or end > len(text) or not token[:1].islower():
+        return False
+    if _span_overlaps_protected(start, end, protected_spans):
+        return False
+    if token.isupper() or _looks_like_abbreviation_token(text, start, end, token):
+        return False
+    if token.lower() in INITIAL_ABBREVIATIONS:
+        return False
+    if _looks_like_technical_token(token):
+        return False
+    if start > 0 and (text[start - 1].isdigit() or text[start - 1] == "-"):
+        return False
+    return True
+
+
+def _looks_like_abbreviation_token(text: str, start: int, end: int, token: str) -> bool:
+    del start
+    return token.lower() in SENTENCE_START_ABBREVIATIONS and end < len(text) and text[end : end + 1] == "."
+
+
+def _previous_nonspace_index(text: str, position: int) -> int | None:
+    index = position - 1
+    while index >= 0 and text[index].isspace():
+        index -= 1
+    return index if index >= 0 else None
+
+
+def _position_inside_spans(position: int, spans: tuple[tuple[int, int], ...]) -> bool:
+    return any(start <= position < end for start, end in spans)
+
+
+def _looks_like_technical_token(token: str) -> bool:
+    return any(char.isdigit() for char in token) and any(char.isalpha() for char in token)
+
+
+def _matching_syntax_token(syntax_tokens: tuple[Any, ...], start: int, end: int) -> Any | None:
+    return next(
+        (
+            token
+            for token in syntax_tokens
+            if int(getattr(token, "start", -1)) == start and int(getattr(token, "end", -1)) == end
+        ),
+        None,
+    )
 
 
 def orthography_rules() -> tuple[object, ...]:
@@ -1287,6 +1525,42 @@ def _span_candidate(spec: RuleSpec, text: str, first: Any, last: Any, replacemen
         requires_model=True,
         rule_id=spec.id,
         mode=spec.mode,
+        group=spec.group,
+        requires=spec.requires,
+    )
+
+
+def _phrase_span_candidate(
+    spec: RuleSpec,
+    text: str,
+    tokens: tuple[Any, ...],
+    token_index: int,
+    source: str,
+    replacement: str,
+) -> RuleEdit | None:
+    source_words = source.split()
+    end_index = token_index + len(source_words)
+    if token_index < 0 or end_index > len(tokens):
+        return None
+    span_words = tokens[token_index:end_index]
+    if [str(getattr(word, "text", "")).lower() for word in span_words] != source_words:
+        return None
+    start = int(getattr(span_words[0], "start"))
+    end = int(getattr(span_words[-1], "end"))
+    if text[start:end].lower().split() != source_words:
+        return None
+    return RuleEdit(
+        source=text[start:end],
+        replacement=_match_case(text[start:end], replacement),
+        edit_type=spec.edit_type,
+        start=start,
+        end=end,
+        confidence=spec.confidence,
+        requires_model=True,
+        rule_id=spec.id,
+        mode=spec.mode,
+        group=spec.group,
+        requires=spec.requires,
     )
 
 
@@ -1355,6 +1629,8 @@ def _candidate(
         requires_model=requires_model or candidate_mode in {"candidate_only", "model_required"},
         rule_id=spec.id,
         mode=candidate_mode,
+        group=spec.group,
+        requires=spec.requires,
     )
 
 
@@ -1390,6 +1666,40 @@ def _is_joined_pol_corruption_base(rest: str) -> bool:
     return bool(rest) and rest[0] not in POL_VOWELS and not rest.startswith("л") and is_known_word(rest)
 
 
+def _n_nn_variants(word: str) -> tuple[str, ...]:
+    variants: list[str] = []
+    seen: set[str] = set()
+    for index, char in enumerate(word):
+        if char != "н":
+            continue
+        if word[index : index + 2] == "нн":
+            variant = word[:index] + "н" + word[index + 2 :]
+        elif (index == 0 or word[index - 1] != "н") and (index + 1 == len(word) or word[index + 1] != "н"):
+            variant = word[:index] + "нн" + word[index + 1 :]
+        else:
+            continue
+        if variant != word and variant not in seen:
+            seen.add(variant)
+            variants.append(variant)
+    return tuple(variants)
+
+
+def _has_known_pos(word: str, poses: frozenset[str]) -> bool:
+    return any(getattr(parse, "is_known", False) and getattr(parse.tag, "POS", None) in poses for parse in parses(word))
+
+
+def _is_short_n_nn_form(word: str) -> bool:
+    return _has_known_pos(word, frozenset({"ADJS", "PRTS"}))
+
+
+def _toggle_pre_pri(word: str) -> str:
+    if word.startswith("при") and len(word) > 4:
+        return "пре" + word[3:]
+    if word.startswith("пре") and len(word) > 4:
+        return "при" + word[3:]
+    return ""
+
+
 def _pattern_group(wrong: str, correct: str) -> str:
     if wrong == "цы" or correct == "цы":
         return "ci"
@@ -1405,10 +1715,52 @@ def _match_case(source: str, replacement: str) -> str:
 
 
 ORTHOGRAPHY_RULES: tuple[object, ...] = (
+    DictionaryCandidateMetadataRule(
+        "dictionary_fuzzy",
+        "dictionary_model_required",
+        "Lexicon-backed fuzzy spelling candidates that require model scoring.",
+    ),
+    DictionaryCandidateMetadataRule(
+        "double_consonant_candidate",
+        "double_consonants",
+        "Lexicon-backed one/double consonant candidates that require model scoring.",
+    ),
+    DictionaryCandidateMetadataRule(
+        "keyboard_typo_candidate",
+        "typos",
+        "Lexicon-backed keyboard-neighbor typo candidates that require model scoring.",
+    ),
+    DictionaryCandidateMetadataRule(
+        "swapped_letters_candidate",
+        "typos",
+        "Lexicon-backed adjacent-letter swap candidates that require model scoring.",
+    ),
+    DictionaryCandidateMetadataRule(
+        "missing_letter_candidate",
+        "typos",
+        "Lexicon-backed missing-letter candidates that require model scoring.",
+    ),
+    DictionaryCandidateMetadataRule(
+        "extra_letter_candidate",
+        "typos",
+        "Lexicon-backed extra-letter candidates that require model scoring.",
+    ),
+    DictionaryCandidateMetadataRule(
+        "yo_e_candidate",
+        "dictionary_model_required",
+        "Opt-in lexicon-backed е/ё candidates that require model scoring.",
+    ),
+    NnRule("n_nn_short_form", "Generate model-scored Н/НН candidates for short adjective and participle forms."),
+    NnRule("n_nn_participle", "Generate model-scored Н/НН candidates for participles."),
+    NnRule("n_nn_deverbal_adjective", "Generate model-scored Н/НН candidates for deverbal adjectives."),
+    NnRule("n_nn_adjective", "Generate model-scored Н/НН candidates for adjectives."),
+    PrefixPrePriRule(),
     FrequentErrorRule(),
     NeVerbRule(),
-    FrequentSplitJoinRule(),
-    FrequentModelRequiredRule(),
+    NePartOfSpeechRule("ne_participle", NE_PARTICIPLE_POSES, "Generate не + participle split/join candidates."),
+    NePartOfSpeechRule("ne_adverb", NE_ADVERB_POSES, "Generate не + adverb split/join candidates."),
+    NePartOfSpeechRule("ne_adjective", NE_ADJECTIVE_POSES, "Generate не + adjective split/join candidates."),
+    NiStableExpressionRule(),
     *(SpellingPatternRule(wrong, correct) for wrong, correct in SPELLING_PATTERNS.items()),
     CyExceptionRule(),
     SoftToHardSignRule(),
@@ -1418,11 +1770,26 @@ ORTHOGRAPHY_RULES: tuple[object, ...] = (
     PrefixSToZRule(),
     TsyaSoftDeleteRule(),
     TsyaSoftInsertRule(),
-    ContextPairRule(),
+    ContextPairRule("context_tak_zhe", (("также", "так же"), ("так же", "также"))),
+    ContextPairRule("context_to_zhe", (("тоже", "то же"), ("то же", "тоже"))),
+    ContextPairRule("context_chto_by", (("чтобы", "что бы"), ("что бы", "чтобы"))),
+    ContextPairRule("context_za_to", (("зато", "за то"), ("за то", "зато"))),
+    ContextPairRule("context_vsledstvie", (("вследствие", "в следствие"), ("в следствие", "вследствие"))),
+    ContextPairRule(
+        "context_nesmotrya",
+        (
+            ("несмотря", "не смотря"),
+            ("не смотря", "несмотря"),
+            ("несмотря на", "не смотря на"),
+            ("не смотря на", "несмотря на"),
+        ),
+    ),
     HyphenParticleRule(),
     HyphenKoeKoyRule(),
     HyphenPoAdverbRule(),
     PolPoluCompoundRule(),
     HyphenWhitelistRule(),
+    AbbreviationCaseProtectionRule(),
+    CapitalizationNerRule(),
     SentenceStartCaseRule(),
 )

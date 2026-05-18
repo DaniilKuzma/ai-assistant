@@ -2,6 +2,9 @@ from pathlib import Path
 
 import yaml
 
+from src.candidates.candidate_generator import CandidateGenerator
+from src.config.dictionary import dictionary_provider_from_config, load_dictionary_lexicon
+
 
 def test_main_config_is_full_train_profile_for_450k_dataset():
     config = yaml.safe_load(Path("configs/config.yaml").read_text(encoding="utf-8"))
@@ -16,6 +19,14 @@ def test_main_config_is_full_train_profile_for_450k_dataset():
     assert config["data"]["clean_corpus"]["enabled"] is True
     assert config["data"]["external_local_files_only"] is True
     assert config["data"]["punctuation_hard_negative_clean_ratio"] == 0.0
+    assert config["dictionary"]["enabled"] is True
+    assert config["dictionary"]["lexicon_path"] == "data/processed/russian_lexicon.txt"
+    assert config["dictionary"]["max_candidates"] == 2
+    assert config["dictionary"]["min_score"] == 85
+    assert config["dictionary"]["yo_e"]["enabled"] is False
+    assert config["dictionary"]["yo_e"]["mode"] == "model_required"
+    assert config["dictionary"]["yo_e"]["require_lexicon_support"] is True
+    assert config["dictionary"]["yo_e"]["require_model_scoring"] is True
     assert "synthetic_balance" not in config["data"]
     assert {source["name"] for source in config["data"]["clean_corpus"]["sources"]} >= {
         "leipzig_news",
@@ -101,3 +112,70 @@ def test_threshold_profiles_include_rule_specific_thresholds():
         assert profile["tsya_threshold"] > profile["spelling_threshold"]
         assert profile["ne_participle_threshold"] > profile["spelling_threshold"]
         assert profile["punctuation_delete_threshold"] > profile["punctuation_threshold"]
+
+
+def test_dictionary_config_provider_loads_normalized_cached_lexicon(tmp_path):
+    lexicon_path = tmp_path / "russian_lexicon.txt"
+    lexicon_path.write_text("\nКОРОВА\nмолоко\nкорова\nАпелляция\n", encoding="utf-8")
+
+    first = load_dictionary_lexicon(lexicon_path)
+    second = load_dictionary_lexicon(lexicon_path)
+    provider = dictionary_provider_from_config(
+        {
+            "dictionary": {
+                "enabled": True,
+                "lexicon_path": str(lexicon_path),
+                "max_candidates": 2,
+                "min_score": 85,
+            }
+        }
+    )
+
+    assert first == ("корова", "молоко", "апелляция")
+    assert second is first
+    assert provider is not None
+    assert provider.get_lexicon() == first
+
+
+def test_dictionary_config_provider_feeds_candidate_generator(tmp_path):
+    lexicon_path = tmp_path / "russian_lexicon.txt"
+    lexicon_path.write_text("библиотека\nмолоко\nтерритория\nапелляция\n", encoding="utf-8")
+
+    generator = CandidateGenerator.from_config(
+        {
+            "dictionary": {
+                "enabled": True,
+                "lexicon_path": str(lexicon_path),
+                "max_candidates": 2,
+                "min_score": 85,
+            }
+        }
+    )
+    candidates = generator.generate("Библеотека рядом.")
+
+    assert any(candidate.replacement == "Библиотека" and candidate.rule_id == "dictionary_fuzzy" for candidate in candidates)
+
+
+def test_dictionary_config_provider_passes_opt_in_yo_e_policy_to_candidate_generator(tmp_path):
+    lexicon_path = tmp_path / "russian_lexicon.txt"
+    lexicon_path.write_text("елка\nёлка\n", encoding="utf-8")
+
+    generator = CandidateGenerator.from_config(
+        {
+            "dictionary": {
+                "enabled": True,
+                "lexicon_path": str(lexicon_path),
+                "max_candidates": 2,
+                "min_score": 85,
+                "yo_e": {
+                    "enabled": True,
+                    "mode": "model_required",
+                    "require_lexicon_support": True,
+                    "require_model_scoring": True,
+                },
+            }
+        }
+    )
+    candidates = generator.generate("Елка рядом.")
+
+    assert any(candidate.replacement == "Ёлка" and candidate.rule_id == "yo_e_candidate" for candidate in candidates)

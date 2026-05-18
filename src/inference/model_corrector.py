@@ -8,12 +8,13 @@ from src.candidates.candidate_generator import Candidate, CandidateGenerator
 from src.candidates.candidate_ranking import rank_candidates_for_budget
 from src.config.thresholds import threshold_for_candidate, threshold_for_punctuation_prediction
 from src.inference.corrector import CorrectionResult
-from src.inference.edit_realizer import apply_candidate, ensure_final_punctuation
+from src.inference.edit_realizer import apply_candidate
 from src.inference.postprocess import normalize_spacing
 from src.model.edit_model import CandidateAwareEditModel, EditModelConfig
-from src.model.encoder import EncoderLoadConfig, load_encoder, load_tokenizer
+from src.model.encoder import EncoderLoadConfig, ensure_pytorch_transformers_backend, load_encoder, load_tokenizer
 from src.preprocessing.punctuation_gaps import word_gap_context_token_indices
 from src.preprocessing.tokenizer import tokenize_words
+from src.validation.diff_analyzer import DiffAnalyzer
 from src.validation.strict_validator import StrictValidator
 
 
@@ -58,11 +59,12 @@ class TrainedModelCorrector:
         *,
         thresholds: dict[str, float] | None = None,
         max_passes: int = 3,
+        candidate_generator: CandidateGenerator | None = None,
     ) -> None:
         self.backend = backend
         self.thresholds = thresholds or {}
         self.max_passes = max_passes
-        self.candidates = CandidateGenerator()
+        self.candidates = candidate_generator or CandidateGenerator()
         self.validator = StrictValidator(
             context_pair_threshold=float(self.thresholds.get("context_pair_threshold", 0.98)),
             tsya_threshold=float(
@@ -79,7 +81,12 @@ class TrainedModelCorrector:
         mode = threshold_config.get("mode", "balanced")
         thresholds = threshold_config.get(mode, {})
         backend = TorchCandidateModelBackend.from_config(config)
-        return cls(backend, thresholds=thresholds, max_passes=int(config.get("decoder", {}).get("max_passes", 3)))
+        return cls(
+            backend,
+            thresholds=thresholds,
+            max_passes=int(config.get("decoder", {}).get("max_passes", 3)),
+            candidate_generator=CandidateGenerator.from_config(config),
+        )
 
     def correct(self, text: str) -> CorrectionResult:
         proposed, trusted_edits = self._decode_with_trusted_edits(text)
@@ -106,9 +113,12 @@ class TrainedModelCorrector:
         candidates = self.candidates.generate(text)
         selected = _select_candidates(self.backend.score_candidates(text, candidates), self.thresholds)
         proposed = _apply_candidates(text, selected)
-        proposed = _apply_punctuation_predictions(proposed, self.backend.predict_punctuation(proposed), self.thresholds)
-        proposed = ensure_final_punctuation(proposed, ".")
-        return normalize_spacing(proposed), selected
+        proposed, punctuation_edits = _apply_punctuation_predictions(
+            proposed,
+            self.backend.predict_punctuation(proposed),
+            self.thresholds,
+        )
+        return normalize_spacing(proposed), [*selected, *punctuation_edits]
 
 
 class TorchCandidateModelBackend:
@@ -135,9 +145,6 @@ class TorchCandidateModelBackend:
 
     @classmethod
     def from_config(cls, config: dict[str, Any]) -> "TorchCandidateModelBackend":
-        import torch
-        from peft import PeftModel
-
         model_config = config.get("model", {})
         paths = config.get("paths", {})
         adapter_dir = Path(paths.get("adapter_output_dir", "models/adapters/latest"))
@@ -146,6 +153,10 @@ class TorchCandidateModelBackend:
             raise FileNotFoundError(f"Trained adapter directory not found: {adapter_dir}")
         if not heads_path.exists():
             raise FileNotFoundError(f"Trained heads checkpoint not found: {heads_path}")
+
+        ensure_pytorch_transformers_backend()
+        import torch
+        from peft import PeftModel
 
         encoder_load_config = EncoderLoadConfig(
             model_name=model_config.get("primary_encoder", "ai-forever/ruRoberta-large"),
@@ -300,6 +311,7 @@ def _select_candidates(
                 label=candidate.label,
                 gap_index=candidate.gap_index,
                 requires=candidate.requires,
+                group=candidate.group,
             )
         )
         occupied.append((candidate.start, candidate.end))
@@ -334,6 +346,7 @@ def _apply_candidates(text: str, candidates: list[Candidate]) -> str:
             label=candidate.label,
             gap_index=candidate.gap_index,
             requires=candidate.requires,
+            group=candidate.group,
         )
         before = proposed
         proposed = apply_candidate(proposed, shifted)
@@ -345,15 +358,18 @@ def _apply_punctuation_predictions(
     text: str,
     predictions: list[ModelPunctuationPrediction],
     thresholds: dict[str, float],
-) -> str:
+) -> tuple[str, list[Candidate]]:
     proposed = text
+    trusted_edits: list[Candidate] = []
     for prediction in predictions:
         if prediction.confidence < threshold_for_punctuation_prediction(prediction, thresholds):
             continue
         if prediction.action in {"KEEP_NONE", "KEEP_EXISTING"}:
             continue
+        before = proposed
         if prediction.action == "DELETE":
             proposed = _delete_punctuation_after_word(proposed, prediction.gap_index)
+            trusted_edits.extend(_trusted_punctuation_candidates(before, proposed, prediction))
             continue
         if prediction.label == "NONE":
             continue
@@ -373,7 +389,43 @@ def _apply_punctuation_predictions(
             "BRACKET_CLOSE",
         }:
             proposed = _insert_punctuation_after_word(proposed, prediction.gap_index, _punctuation_mark(prediction.label))
-    return proposed
+        trusted_edits.extend(_trusted_punctuation_candidates(before, proposed, prediction))
+    return proposed, trusted_edits
+
+
+def _trusted_punctuation_candidates(
+    source: str,
+    target: str,
+    prediction: ModelPunctuationPrediction,
+) -> list[Candidate]:
+    if source == target:
+        return []
+    return [
+        Candidate(
+            source=edit.source,
+            replacement=edit.replacement,
+            edit_type=edit.edit_type,
+            start=edit.start,
+            end=edit.end,
+            confidence=prediction.confidence,
+            requires_model=True,
+            rule_id=prediction.rule_id,
+            mode="model_required",
+            action=prediction.action,
+            label=prediction.label,
+            gap_index=prediction.gap_index,
+            requires=("model",),
+            group="punctuation",
+        )
+        for edit in DiffAnalyzer().analyze(source, target)
+        if edit.edit_type
+        in {
+            "punctuation_insert",
+            "punctuation_delete",
+            "punctuation_replace",
+            "final_punctuation",
+        }
+    ]
 
 
 def _encode(tokenizer: Any, text: str, max_length: int) -> dict[str, Any]:
@@ -506,6 +558,8 @@ def _insert_punctuation_after_word(text: str, word_index: int, mark: str) -> str
     if punct_position is not None and text[punct_position] in ",.!?:;—…":
         if text[punct_position] == mark:
             return text
+        if mark in {"»", ")"} and text[punct_position] in ".!?…":
+            return text[:punct_position] + mark + text[punct_position:]
         return text[:punct_position] + mark + text[punct_position + 1 :]
     if punct_position is not None and text[punct_position] == mark:
         return text

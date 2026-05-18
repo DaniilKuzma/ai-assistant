@@ -46,6 +46,8 @@ def test_evaluate_rows_writes_required_reports(tmp_path: Path):
         "rule_precision_recall.csv",
         "error_by_rule.csv",
         "rule_worse_examples.csv",
+        "candidate_recall_by_rule.csv",
+        "gap_label_coverage_by_rule.csv",
         "clean_overcorrection_examples.csv",
         "dirty_worse_examples.csv",
         "accepted_edits.csv",
@@ -54,6 +56,10 @@ def test_evaluate_rows_writes_required_reports(tmp_path: Path):
         assert (tmp_path / name).exists()
     assert not pd.read_csv(tmp_path / "accepted_edits.csv").empty
     assert list(pd.read_csv(tmp_path / "dirty_worse_examples.csv").columns)
+    rule_summary = pd.read_csv(tmp_path / "rule_precision_recall.csv").set_index("rule_id")
+    assert "frequent_errors" not in rule_summary.index
+    assert rule_summary.loc["frequent_error_exact", "group"] == "typical_dictionary_words"
+    assert rule_summary.loc["frequent_error_exact", "true_positive"] == 1
     summary = pd.read_csv(tmp_path / "evaluation_summary.csv")
     for column in ["combined_score", "real_exact_match", "synthetic_exact_match", "clean_exact_match"]:
         assert column in summary.columns

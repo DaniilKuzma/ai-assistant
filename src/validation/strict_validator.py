@@ -7,7 +7,7 @@ from typing import Any
 from src.candidates.frequent_errors import CONTEXT_DEPENDENT_WHITELIST, WRONG_TO_CORRECT
 from src.preprocessing.protected_spans import ProtectedSpan, find_protected_spans
 from src.preprocessing.tokenizer import tokenize_words
-from src.rules.orthography import SCORING_REQUIRED_RULE_IDS
+from src.rules.orthography import SCORING_REQUIRED_RULE_IDS, is_safe_sentence_start_case
 from src.validation.diff_analyzer import DiffAnalyzer, Edit
 from src.validation.edit_classifier import is_allowed_edit_type
 
@@ -85,6 +85,8 @@ class StrictValidator:
                     validated.append(edit.with_status("accepted", "trusted high-confidence context pair"))
                 else:
                     validated.append(edit.with_status("rejected", "context-dependent pair requires trusted model confidence"))
+            elif edit.edit_type == "final_punctuation":
+                validated.append(edit.with_status("rejected", "requires_trusted_candidate"))
             elif _is_scoring_required_rule_edit(edit):
                 validated.append(edit.with_status("rejected", "requires_trusted_candidate"))
             elif is_allowed_edit_type(edit.edit_type):
@@ -98,11 +100,12 @@ class StrictValidator:
 PERCENT_RE = re.compile(r"(?<![\w])\d+(?:[.,]\d+)?%")
 NUMBER_RE = re.compile(r"(?<![\w])\d+(?:[.,:/-]\d+)*")
 DECIMAL_RE = re.compile(r"(?<![\w])\d+[.,]\d+(?![\w])")
+INITIAL_ABBREVIATION_RE = re.compile(r"\b(?:США|РФ|НББ|ООО|АО|ИП)\b")
 ABBREVIATION_RE = re.compile(
     r"(?:\b\d{4}\s+[гГ]\.|\b(?:см|т\.д|т\.п|ул|стр|рис|г)\.|№\s*\d+)",
     re.IGNORECASE,
 )
-PUNCTUATION_NOISE_RE = re.compile(r"(?:…[.!?…]+|[.!?]+…|\.{2,}|[!?]{2,})")
+PUNCTUATION_NOISE_RE = re.compile(r"(?:…[.!?…]+|[.!?]+…|\.{2,}|[!?]{2,}|([,;:])\s*\1)")
 
 
 def _guard_rejection_reason(
@@ -112,16 +115,25 @@ def _guard_rejection_reason(
     protected: list[ProtectedSpan],
     trusted_tsya_keys: set[tuple[int, int, str, str]],
 ) -> str:
-    if _is_tsya_pair(edit.source.lower(), edit.replacement.lower()):
-        if _is_dangerous_tsya_edit(source, edit) or not _is_trusted_tsya_edit(edit, trusted_tsya_keys):
-            return "dangerous_tsya"
-    elif _is_dangerous_tsya_edit(source, edit):
-        return "dangerous_tsya"
+    if _breaks_protected_span(edit, protected, kinds={"url", "email"}):
+        return "protected_span"
     number_reason = _breaks_number_or_percent(source, target, edit)
     if number_reason:
         return number_reason
     if _breaks_abbreviation(source, target, edit):
         return "breaks_abbreviation"
+    if _breaks_protected_span(edit, protected, kinds={"technical_id"}):
+        return "protected_span"
+    case_reason = _case_rejection_reason(source, edit, protected)
+    if case_reason:
+        return case_reason
+    if _is_tsya_pair(edit.source.lower(), edit.replacement.lower()):
+        if _is_dangerous_tsya_edit(source, edit):
+            return "dangerous_tsya"
+        if not _is_trusted_tsya_edit(edit, trusted_tsya_keys):
+            return "requires_trusted_candidate"
+    elif _is_dangerous_tsya_edit(source, edit):
+        return "dangerous_tsya"
     if _breaks_protected_span(edit, protected):
         return "protected_span"
     if _creates_repeated_punctuation_noise(source, target, edit):
@@ -135,8 +147,25 @@ def _touches_protected(edit: Edit, protected: list[ProtectedSpan]) -> bool:
     return any(edit.start < span.end and span.start < edit.end for span in protected)
 
 
-def _breaks_protected_span(edit: Edit, protected: list[ProtectedSpan]) -> bool:
-    return any(_edit_touches_span(edit, span.start, span.end) for span in protected)
+def _breaks_protected_span(edit: Edit, protected: list[ProtectedSpan], *, kinds: set[str] | None = None) -> bool:
+    return any(
+        (kinds is None or span.kind in kinds) and _edit_touches_span(edit, span.start, span.end)
+        for span in protected
+    )
+
+
+def _case_rejection_reason(source: str, edit: Edit, protected: list[ProtectedSpan]) -> str:
+    if edit.edit_type != "case_change":
+        return ""
+    if edit.rule_id in {"capitalization_ner", "abbreviation_case_protection"}:
+        return ""
+    token = _word_token_covering(source, edit.start)
+    if token is None:
+        return "outside_sentence_start_case"
+    protected_spans = tuple((span.start, span.end) for span in protected)
+    if is_safe_sentence_start_case(source, token.start, token.end, token.text, protected_spans):
+        return ""
+    return "outside_sentence_start_case"
 
 
 def _breaks_number_or_percent(source: str, target: str, edit: Edit) -> str:
@@ -158,7 +187,8 @@ def _breaks_decimal_number(source: str, target: str, edit: Edit) -> bool:
 
 def _breaks_abbreviation(source: str, target: str, edit: Edit) -> bool:
     del target
-    return any(_edit_touches_span(edit, start, end, include_insert_end=True) for start, end in _regex_spans(ABBREVIATION_RE, source))
+    spans = [*_regex_spans(INITIAL_ABBREVIATION_RE, source), *_regex_spans(ABBREVIATION_RE, source)]
+    return any(_edit_touches_span(edit, start, end, include_insert_end=True) for start, end in spans)
 
 
 def _creates_repeated_punctuation_noise(source: str, target: str, edit: Edit) -> bool:
@@ -169,7 +199,7 @@ def _creates_repeated_punctuation_noise(source: str, target: str, edit: Edit) ->
 def _is_dangerous_tsya_edit(source_text: str, edit: Edit) -> bool:
     source = edit.source.lower()
     replacement = edit.replacement.lower()
-    if WRONG_TO_CORRECT.get(source) == replacement and edit.rule_id == "frequent_errors":
+    if WRONG_TO_CORRECT.get(source) == replacement and edit.rule_id == "frequent_error_exact":
         return False
     if not _is_tsya_pair(source, replacement):
         return False
@@ -436,6 +466,15 @@ def _next_word_after(text: str, position: int) -> str:
         if word.start >= position:
             return word.text.lower()
     return ""
+
+
+def _word_token_covering(text: str, position: int) -> Any | None:
+    if position < 0:
+        return None
+    for word in tokenize_words(text):
+        if word.start <= position < word.end:
+            return word
+    return None
 
 
 def _looks_like_infinitive(word: str) -> bool:

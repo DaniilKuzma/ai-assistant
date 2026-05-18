@@ -12,6 +12,8 @@ REQUIRED_REPORTS = [
     "training_report.md",
     "evaluation_summary.csv",
     "error_by_type.csv",
+    "candidate_recall_by_rule.csv",
+    "gap_label_coverage_by_rule.csv",
     "accepted_edits.csv",
     "rejected_edits.csv",
 ]
