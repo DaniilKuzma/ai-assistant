@@ -28,31 +28,36 @@ class _SyntaxPipeline:
     morph_vocab: Any
     morph_tagger: Any
     syntax_parser: Any
-    ner_tagger: Any
+    ner_tagger: Any | None
     doc_factory: Any
 
 
 @lru_cache(maxsize=1)
-def syntax_pipeline() -> _SyntaxPipeline:
-    from natasha import (
-        Doc,
-        MorphVocab,
-        NewsEmbedding,
-        NewsMorphTagger,
-        NewsNERTagger,
-        NewsSyntaxParser,
-        Segmenter,
-    )
+def syntax_pipeline() -> _SyntaxPipeline | None:
+    try:
+        from natasha import (
+            Doc,
+            MorphVocab,
+            NewsEmbedding,
+            NewsMorphTagger,
+            NewsNERTagger,
+            NewsSyntaxParser,
+            Segmenter,
+        )
 
-    embedding = NewsEmbedding()
-    return _SyntaxPipeline(
-        segmenter=Segmenter(),
-        morph_vocab=MorphVocab(),
-        morph_tagger=NewsMorphTagger(embedding),
-        syntax_parser=NewsSyntaxParser(embedding),
-        ner_tagger=NewsNERTagger(embedding),
-        doc_factory=Doc,
-    )
+        embedding = NewsEmbedding()
+        ner_tagger = _optional_ner_tagger(NewsNERTagger, embedding)
+        return _SyntaxPipeline(
+            segmenter=Segmenter(),
+            morph_vocab=MorphVocab(),
+            morph_tagger=NewsMorphTagger(embedding),
+            syntax_parser=NewsSyntaxParser(embedding),
+            ner_tagger=ner_tagger,
+            doc_factory=Doc,
+        )
+    except Exception as exc:  # pragma: no cover - depends on optional NLP stack.
+        logger.warning("Natasha syntax pipeline unavailable: %s: %s", type(exc).__name__, exc)
+        return None
 
 
 def parse_syntax(text: str) -> list[SyntaxToken]:
@@ -61,6 +66,8 @@ def parse_syntax(text: str) -> list[SyntaxToken]:
 
     try:
         pipeline = syntax_pipeline()
+        if pipeline is None:
+            return []
         doc = pipeline.doc_factory(text)
         doc.segment(pipeline.segmenter)
         doc.tag_morph(pipeline.morph_tagger)
@@ -73,12 +80,22 @@ def parse_syntax(text: str) -> list[SyntaxToken]:
         return []
 
 
+def _optional_ner_tagger(ner_tagger_factory: Any, embedding: Any) -> Any | None:
+    try:
+        return ner_tagger_factory(embedding)
+    except Exception:  # pragma: no cover - NER resources are optional.
+        logger.debug("Natasha NER tagger unavailable", exc_info=True)
+        return None
+
+
 def _lemmatize_tokens(doc: Any, morph_vocab: Any) -> None:
     for token in getattr(doc, "tokens", ()):
         token.lemmatize(morph_vocab)
 
 
 def _tag_ner(doc: Any, pipeline: _SyntaxPipeline) -> dict[str, str]:
+    if pipeline.ner_tagger is None:
+        return {}
     try:
         doc.tag_ner(pipeline.ner_tagger)
         return _ner_by_token_id(doc)

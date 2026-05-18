@@ -12,6 +12,7 @@ tqdm
 pyyaml
 pymorphy3
 natasha>=1.6.0,<2.0
+setuptools>=68.2.2
 rapidfuzz
 razdel
 streamlit
