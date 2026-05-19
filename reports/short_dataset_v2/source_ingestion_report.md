@@ -1,14 +1,13 @@
 # Source Ingestion Report
 
-- accepted_clean_sentences: 0
+- accepted_clean_sentences: 101119
 - min_clean_sentences: 150000
-- dominance_violations: empty_clean_pool
+- dominance_violations: 
 
-| source | status | mode | path | seen | accepted | reason | license/status |
-|---|---|---|---|---:|---:|---|---|
-| lenta_news | skipped | skipped | data/external/lenta-ru-news.csv.bz2 | 0 | 0 | missing_local_path | open_source_dataset |
-| nerus_news | skipped | skipped | data/external/nerus_lenta.conllu.gz | 0 | 0 | missing_local_path | open_source_dataset |
-| taiga_news | skipped | skipped | data/external/taiga/news/ | 0 | 0 | missing_local_path | open_source_dataset |
-| opencorpora | skipped | skipped | data/external/opencorpora/ | 0 | 0 | missing_local_path | open_source_dataset |
-| ruwiki | skipped | skipped | data/external/ruwiki/ | 0 | 0 | missing_local_path | CC-BY-SA |
-| ud_russian_taiga | skipped | skipped | data/external/UD_Russian-Taiga/ | 0 | 0 | missing_local_path | open_source_dataset |
+| source | status | mode | path | url/hf | bytes | seen | accepted | rejected | reason | license/status | used |
+|---|---|---|---|---|---:|---:|---:|---:|---|---|---|
+| lenta_news | loaded | local | data/external/lenta-ru-news.csv.bz2 | https://github.com/yutkin/Lenta.Ru-News-Dataset/releases/download/v1.1/lenta-ru-news.csv.bz2 | 346031300 | 151402 | 150000 | 1402 |  | Public Lenta.ru news dataset; verify before production use. | True |
+| nerus_news | skipped | skipped_size_limit | data/external/nerus_lenta.conllu.gz | https://storage.yandexcloud.net/natasha-nerus/data/nerus_lenta.conllu.gz | 0 | 0 | 0 | 0 | content_length_exceeds_limit | Nerus Lenta annotated corpus; verify before production use. | False |
+| opencorpora | loaded | cached | data/external/opencorpora/annot.opcorpora.xml.zip | http://opencorpora.org/files/export/annot/annot.opcorpora.xml.zip | 55265626 | 60963 | 50000 | 10963 |  | OpenCorpora annotated corpus; verify terms before production use. | True |
+| ruwiki | skipped | skipped | data/external/ruwiki/ruwiki-latest-pages-articles.xml.bz2 | https://dumps.wikimedia.org/ruwiki/latest/ruwiki-latest-pages-articles.xml.bz2 | 0 | 0 | 0 | 0 | disabled | Optional. Huge. Enable only if needed. | False |
+| taiga_news_wiki | skipped | skipped | data/external/taiga/ |  | 0 | 0 | 0 | 0 | disabled | Optional/local-preferred. Do not use fiction/social/poetry/subtitles. | False |

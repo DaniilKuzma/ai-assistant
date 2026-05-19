@@ -12,7 +12,7 @@ def test_short_dataset_v2_builds_from_open_clean_sources_without_meta_templates(
     clean_path.write_text("\n".join(_clean_sentences(120)) + "\n", encoding="utf-8")
     real_path = tmp_path / "real.jsonl"
     real_path.write_text(
-        '{"source": "Жызнь прекрасна.", "correction": "Жизнь прекрасна.", "domain": "unit"}\n',
+        '{"source": "Жызнь в городе стала заметно спокойнее.", "correction": "Жизнь в городе стала заметно спокойнее.", "domain": "unit"}\n',
         encoding="utf-8",
     )
 
@@ -25,15 +25,30 @@ def test_short_dataset_v2_builds_from_open_clean_sources_without_meta_templates(
     config["data"]["val_examples"] = 10
     config["data"]["test_examples"] = 10
     config["data"]["short_dataset_v2"]["source_type_targets"] = {
-        "synthetic_augmented": 48,
+        "synthetic_augmented_from_open_clean": 48,
         "real_error_pair": 1,
-        "clean_identity": 15,
-        "hard_negative": 16,
+        "clean_identity_from_open_clean": 15,
+        "hard_negative_from_open_clean": 16,
     }
     config["data"]["short_dataset_v2"]["split_source_type_targets"] = {
-        "train": {"synthetic_augmented": 36, "real_error_pair": 1, "clean_identity": 11, "hard_negative": 12},
-        "val": {"synthetic_augmented": 6, "real_error_pair": 0, "clean_identity": 2, "hard_negative": 2},
-        "test": {"synthetic_augmented": 6, "real_error_pair": 0, "clean_identity": 2, "hard_negative": 2},
+        "train": {
+            "synthetic_augmented_from_open_clean": 36,
+            "real_error_pair": 1,
+            "clean_identity_from_open_clean": 11,
+            "hard_negative_from_open_clean": 12,
+        },
+        "val": {
+            "synthetic_augmented_from_open_clean": 6,
+            "real_error_pair": 0,
+            "clean_identity_from_open_clean": 2,
+            "hard_negative_from_open_clean": 2,
+        },
+        "test": {
+            "synthetic_augmented_from_open_clean": 6,
+            "real_error_pair": 0,
+            "clean_identity_from_open_clean": 2,
+            "hard_negative_from_open_clean": 2,
+        },
     }
     config["data"]["short_dataset_v2"]["min_clean_pool_for_ready"] = 40
     config["data"]["short_dataset_v2"]["pool"]["min_clean_sentences"] = 40
@@ -74,13 +89,20 @@ def test_short_dataset_v2_builds_from_open_clean_sources_without_meta_templates(
 
     assert result["total"] == 80
     assert frame["split"].value_counts().to_dict() == {"train": 60, "val": 10, "test": 10}
-    assert set(frame["source_type"]) == {"synthetic_augmented", "real_error_pair", "clean_identity", "hard_negative"}
+    assert set(frame["source_type"]) == {
+        "synthetic_augmented_from_open_clean",
+        "real_error_pair",
+        "clean_identity_from_open_clean",
+        "hard_negative_from_open_clean",
+    }
     assert not frame["source"].str.contains("правило|серии|семейство|context-pairs", case=False, regex=True).any()
     assert not frame["target"].str.contains("правило|серии|семейство|context-pairs", case=False, regex=True).any()
     assert manifest["verdict"] == "READY_FOR_SHORT_TRAINING_DATASET_V2"
-    assert manifest["composition"]["synthetic_augmented"] == 48
+    assert manifest["composition"]["synthetic_augmented_from_open_clean"] == 48
     assert manifest["composition"]["real_error_pair"] == 1
     assert manifest["clean_source_counts"]["unit_news"] >= 40
+    assert manifest["unknown_count"] == manifest["rule_id_counts"].get("unknown", 0)
+    assert "real_pair_shortage_reason" in manifest
 
 
 def _clean_sentences(count: int) -> list[str]:

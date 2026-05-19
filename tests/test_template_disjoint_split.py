@@ -40,3 +40,21 @@ def test_template_disjoint_split_keeps_same_template_in_one_split():
 
     assert {row["split"] for row in rows} == {"train", "val", "test"}
     assert all(len(splits) == 1 for splits in by_template.values())
+
+
+def test_template_disjoint_split_rejects_oversized_template_unit():
+    rows = [
+        {
+            "source": f"Эксперты сообщили, что отчет {index} готов.",
+            "target": f"Эксперты сообщили, что отчет {index} готов.",
+            "source_type": "clean_identity_from_open_clean",
+            "error_type": "clean_identity",
+            "rule_id": "clean_identity",
+        }
+        for index in range(6)
+    ]
+
+    import pytest
+
+    with pytest.raises(ValueError, match="template-disjoint split cannot fit"):
+        assign_template_disjoint_splits(rows, {"train": 3, "val": 2, "test": 1}, seed=7)

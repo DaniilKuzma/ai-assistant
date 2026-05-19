@@ -5,3 +5,9 @@ __pycache__/
 .idea/
 *.egg-info/
 .ipynb_checkpoints/
+data/external/
+data/external/**
+data/processed/clean_sentence_pool*.csv.gz
+data/processed/real_error_pairs_validated*.csv.gz
+data/processed/**/clean_sentence_pool*.csv.gz
+data/processed/**/real_error_pairs_validated*.csv.gz

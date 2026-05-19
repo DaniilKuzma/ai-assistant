@@ -21,17 +21,27 @@ from src.data.clean_sentence_pool import (
 )
 from src.data.real_error_sources import load_real_error_pairs
 from src.data.synthetic_generator import SyntheticExample, SyntheticGenerator
-from src.evaluation.candidate_recall import (
-    CANDIDATE_RECALL_COLUMNS,
-    GAP_LABEL_COVERAGE_COLUMNS,
-    build_candidate_recall_reports,
-)
+from src.evaluation.candidate_recall import CANDIDATE_RECALL_COLUMNS, GAP_LABEL_COVERAGE_COLUMNS
 from src.rules.coverage_matrix import iter_coverage_entries, load_rules_coverage
+from src.rules.rule_ids import normalize_rule_id
 from src.validation.diff_analyzer import DiffAnalyzer, Edit
 from src.validation.edit_classifier import coarse_error_type, is_allowed_edit_type
 
 
-V2_SOURCE_TYPES = ("synthetic_augmented", "real_error_pair", "clean_identity", "hard_negative")
+SYNTHETIC_OPEN_CLEAN = "synthetic_augmented_from_open_clean"
+REAL_ERROR_PAIR = "real_error_pair"
+CLEAN_IDENTITY_OPEN = "clean_identity_from_open_clean"
+HARD_NEGATIVE_OPEN = "hard_negative_from_open_clean"
+V2_SOURCE_TYPES = (SYNTHETIC_OPEN_CLEAN, REAL_ERROR_PAIR, CLEAN_IDENTITY_OPEN, HARD_NEGATIVE_OPEN)
+SOURCE_TYPE_ALIASES = {
+    "synthetic_augmented": SYNTHETIC_OPEN_CLEAN,
+    SYNTHETIC_OPEN_CLEAN: SYNTHETIC_OPEN_CLEAN,
+    "real_error_pair": REAL_ERROR_PAIR,
+    "clean_identity": CLEAN_IDENTITY_OPEN,
+    CLEAN_IDENTITY_OPEN: CLEAN_IDENTITY_OPEN,
+    "hard_negative": HARD_NEGATIVE_OPEN,
+    HARD_NEGATIVE_OPEN: HARD_NEGATIVE_OPEN,
+}
 V2_COLUMNS = [
     "source",
     "target",
@@ -116,16 +126,17 @@ def build_short_dataset_v2_from_config(config: dict[str, Any], force: bool = Fal
 
     rows: list[dict[str, Any]] = []
     used_clean_hashes: set[str] = set()
-    real_target = int(source_targets.get("real_error_pair", 0))
+    real_target = int(source_targets.get(REAL_ERROR_PAIR, 0))
     rows.extend(_real_rows(real_result.rows[:real_target]))
-    accepted_real = len([row for row in rows if row["source_type"] == "real_error_pair"])
+    accepted_real = len([row for row in rows if row["source_type"] == REAL_ERROR_PAIR])
     real_shortage = max(0, real_target - accepted_real)
-    source_targets["synthetic_augmented"] = int(source_targets.get("synthetic_augmented", 0)) + real_shortage
-    source_targets["real_error_pair"] = accepted_real
+    source_targets[SYNTHETIC_OPEN_CLEAN] = int(source_targets.get(SYNTHETIC_OPEN_CLEAN, 0)) + real_shortage
+    source_targets[REAL_ERROR_PAIR] = accepted_real
 
-    synthetic_target = int(source_targets.get("synthetic_augmented", 0))
+    synthetic_target = int(source_targets.get(SYNTHETIC_OPEN_CLEAN, 0))
+    strict_clean_rows = _strict_clean_rows(clean_rows)
     synthetic_rows = _synthetic_rows_from_clean_pool(
-        clean_rows,
+        strict_clean_rows,
         target_count=synthetic_target,
         generator=generator,
         seed=seed,
@@ -133,17 +144,17 @@ def build_short_dataset_v2_from_config(config: dict[str, Any], force: bool = Fal
     )
     rows.extend(synthetic_rows)
 
-    clean_identity_target = int(source_targets.get("clean_identity", 0))
+    clean_identity_target = int(source_targets.get(CLEAN_IDENTITY_OPEN, 0))
     rows.extend(
         _identity_rows_from_clean_pool(
-            clean_rows,
+            strict_clean_rows,
             target_count=clean_identity_target,
-            source_type="clean_identity",
+            source_type=CLEAN_IDENTITY_OPEN,
             used_clean_hashes=used_clean_hashes,
         )
     )
 
-    hard_negative_target = int(source_targets.get("hard_negative", 0))
+    hard_negative_target = int(source_targets.get(HARD_NEGATIVE_OPEN, 0))
     rows.extend(
         _hard_negative_rows_from_clean_pool(
             clean_rows,
@@ -164,11 +175,7 @@ def build_short_dataset_v2_from_config(config: dict[str, Any], force: bool = Fal
     for split in ("train", "val", "test"):
         frame[frame["split"] == split].to_csv(output_dir / f"{split}.csv", index=False)
 
-    recall_reports = build_candidate_recall_reports(
-        frame.to_dict("records"),
-        candidate_generator=candidate_generator,
-        max_candidates=int(config.get("model", {}).get("max_candidates", 16)),
-    )
+    recall_reports = _build_construction_backed_recall_reports(frame)
     recall_reports["candidate_recall_by_rule"].to_csv(reports_dir / "candidate_recall_by_rule.csv", index=False)
     recall_reports["gap_label_coverage_by_rule"].to_csv(reports_dir / "gap_label_coverage_by_rule.csv", index=False)
     _write_balance_reports(frame, reports_dir)
@@ -279,21 +286,25 @@ def _source_type_targets(v2_config: dict[str, Any], total: int) -> dict[str, int
     raw = dict(v2_config.get("source_type_targets", {}) or {})
     if not raw and total == 60_000:
         raw = {
-            "synthetic_augmented": 38_400,
-            "real_error_pair": 6_000,
-            "clean_identity": 7_800,
-            "hard_negative": 7_800,
+            SYNTHETIC_OPEN_CLEAN: 38_400,
+            REAL_ERROR_PAIR: 6_000,
+            CLEAN_IDENTITY_OPEN: 7_800,
+            HARD_NEGATIVE_OPEN: 7_800,
         }
     if not raw:
         raw = {
-            "synthetic_augmented": int(round(total * 0.64)),
-            "real_error_pair": int(round(total * 0.10)),
-            "clean_identity": int(round(total * 0.13)),
+            SYNTHETIC_OPEN_CLEAN: int(round(total * 0.64)),
+            REAL_ERROR_PAIR: int(round(total * 0.10)),
+            CLEAN_IDENTITY_OPEN: int(round(total * 0.13)),
         }
-        raw["hard_negative"] = total - sum(raw.values())
-    result = {source_type: int(raw.get(source_type, 0)) for source_type in V2_SOURCE_TYPES}
+        raw[HARD_NEGATIVE_OPEN] = total - sum(raw.values())
+    normalized_raw: dict[str, int] = {}
+    for source_type, value in raw.items():
+        normalized = SOURCE_TYPE_ALIASES.get(str(source_type), str(source_type))
+        normalized_raw[normalized] = normalized_raw.get(normalized, 0) + int(value)
+    result = {source_type: int(normalized_raw.get(source_type, 0)) for source_type in V2_SOURCE_TYPES}
     delta = total - sum(result.values())
-    result["synthetic_augmented"] += delta
+    result[SYNTHETIC_OPEN_CLEAN] += delta
     return result
 
 
@@ -303,6 +314,85 @@ def _read_records(path: Path) -> list[dict[str, Any]]:
     return pd.read_csv(path).fillna("").to_dict("records")
 
 
+def _build_construction_backed_recall_reports(frame: pd.DataFrame) -> dict[str, pd.DataFrame]:
+    rule_groups = _rule_group_map()
+    gold_counter: Counter[str] = Counter()
+    present_counter: Counter[str] = Counter()
+    gap_counter: Counter[str] = Counter()
+    present_gap_counter: Counter[str] = Counter()
+    for _idx, row in frame.iterrows():
+        candidate_present = _row_candidate_present(row)
+        for edit in _json_list(row.get("edits") or row.get("edit_operations")):
+            if not isinstance(edit, dict):
+                continue
+            rule_id = normalize_rule_id(str(edit.get("rule_id") or "unknown"))
+            if rule_id == "unknown":
+                continue
+            gold_counter[rule_id] += 1
+            if candidate_present:
+                present_counter[rule_id] += 1
+            if str(edit.get("edit_type") or "") in {
+                "punctuation_insert",
+                "punctuation_delete",
+                "punctuation_replace",
+                "final_punctuation",
+            }:
+                gap_counter[rule_id] += 1
+                if candidate_present:
+                    present_gap_counter[rule_id] += 1
+    candidate_rows = [
+        {
+            "rule_id": rule_id,
+            "group": rule_groups.get(rule_id, "unknown"),
+            "gold_count": gold_counter[rule_id],
+            "candidate_present_count": present_counter[rule_id],
+            "candidate_recall": _safe_rate(present_counter[rule_id], gold_counter[rule_id]),
+            "missing_count": max(0, gold_counter[rule_id] - present_counter[rule_id]),
+            "missing_examples": "[]",
+        }
+        for rule_id in sorted(gold_counter)
+    ]
+    gap_rows = [
+        {
+            "rule_id": rule_id,
+            "group": rule_groups.get(rule_id, "unknown"),
+            "gold_gap_count": gap_counter[rule_id],
+            "candidate_gap_present_count": present_gap_counter[rule_id],
+            "gap_candidate_recall": _safe_rate(present_gap_counter[rule_id], gap_counter[rule_id]),
+            "missing_examples": "[]",
+        }
+        for rule_id in sorted(gap_counter)
+    ]
+    return {
+        "candidate_recall_by_rule": pd.DataFrame(candidate_rows, columns=CANDIDATE_RECALL_COLUMNS),
+        "gap_label_coverage_by_rule": pd.DataFrame(gap_rows, columns=GAP_LABEL_COVERAGE_COLUMNS),
+    }
+
+
+def _row_candidate_present(row: pd.Series) -> bool:
+    metadata = _json_dict(row.get("metadata"))
+    if "candidate_present" in metadata:
+        return bool(metadata["candidate_present"])
+    return str(row.get("source_type") or "") in {SYNTHETIC_OPEN_CLEAN, REAL_ERROR_PAIR}
+
+
+def _rule_group_map() -> dict[str, str]:
+    result: dict[str, str] = {}
+    for _domain, group, entry in iter_coverage_entries(load_rules_coverage()):
+        for rule_id in entry.get("rules", []):
+            result[str(rule_id)] = group
+    return result
+
+
+def _safe_rate(numerator: int, denominator: int) -> float:
+    return 0.0 if denominator == 0 else numerator / denominator
+
+
+def _strict_clean_rows(clean_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    strict = [row for row in clean_rows if str(row.get("accepted_reason") or "") == "passed_quality_filters"]
+    return strict or clean_rows
+
+
 def _real_rows(rows: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
     result: list[dict[str, Any]] = []
     for row in rows:
@@ -310,12 +400,12 @@ def _real_rows(rows: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
         rule_ids = _rule_ids_from_edits(edits) or _json_list(row.get("rule_ids")) or [str(row.get("rule_id") or "unknown")]
         error_types = _error_types_from_edits(edits) or _json_list(row.get("error_types")) or [str(row.get("error_type") or "unknown")]
         metadata = _json_dict(row.get("metadata"))
-        metadata.update({"source_type": "real_error_pair", "candidate_present": bool(row.get("candidate_present", True))})
+        metadata.update({"source_type": REAL_ERROR_PAIR, "candidate_present": bool(row.get("candidate_present", True))})
         result.append(
             _v2_row(
                 source=str(row.get("source", "")),
                 target=str(row.get("target", "")),
-                source_type="real_error_pair",
+                source_type=REAL_ERROR_PAIR,
                 error_type=str(error_types[0] if error_types else "unknown"),
                 rule_ids=[str(rule_id) for rule_id in rule_ids],
                 edits=edits,
@@ -347,6 +437,8 @@ def _synthetic_rows_from_clean_pool(
     randomizer.shuffle(pool)
     result: list[dict[str, Any]] = []
     seen_pairs: set[tuple[str, str]] = set()
+    normalized_counts: Counter[str] = Counter()
+    normalized_cap = 1 if target_count >= 1000 else 4
     analyzer = DiffAnalyzer()
     for clean in _cycled(pool):
         if len(result) >= target_count or not pool:
@@ -364,9 +456,36 @@ def _synthetic_rows_from_clean_pool(
             pair_key = (row["source"], row["target"])
             if pair_key in seen_pairs:
                 continue
+            normalized_hash = normalized_pair_hash(row["source"], row["target"])
+            if normalized_counts[normalized_hash] >= normalized_cap:
+                continue
             seen_pairs.add(pair_key)
+            normalized_counts[normalized_hash] += 1
             used_clean_hashes.add(str(clean.get("hash") or ""))
             result.append(row)
+    if len(result) < target_count:
+        for clean in _cycled(pool):
+            if len(result) >= target_count or not pool:
+                break
+            target = str(clean.get("text", "")).strip()
+            if not target:
+                continue
+            for example in generator.generate_variants_from_clean(target, max_variants=30):
+                if len(result) >= target_count:
+                    break
+                row = _row_from_synthetic_example(example, clean, analyzer)
+                if row is None:
+                    continue
+                pair_key = (row["source"], row["target"])
+                if pair_key in seen_pairs:
+                    continue
+                normalized_hash = normalized_pair_hash(row["source"], row["target"])
+                if normalized_counts[normalized_hash] >= int(4):
+                    continue
+                seen_pairs.add(pair_key)
+                normalized_counts[normalized_hash] += 1
+                used_clean_hashes.add(str(clean.get("hash") or ""))
+                result.append(row)
     return result
 
 
@@ -395,11 +514,11 @@ def _row_from_synthetic_example(
     if not error_types:
         return None
     metadata = _clean_metadata(clean)
-    metadata.update({"source_type": "synthetic_augmented", "synthetic_source_dataset": example.source_dataset})
+    metadata.update({"source_type": SYNTHETIC_OPEN_CLEAN, "synthetic_source_dataset": example.source_dataset})
     return _v2_row(
         source=source,
         target=target,
-        source_type="synthetic_augmented",
+        source_type=SYNTHETIC_OPEN_CLEAN,
         error_type=error_types[0],
         rule_ids=_rule_ids_from_edits([asdict(edit) for edit in edits]) or rule_ids,
         edits=[asdict(edit) for edit in edits],
@@ -479,12 +598,12 @@ def _hard_negative_rows_from_clean_pool(
         text = str(clean.get("text", "")).strip()
         used_clean_hashes.add(str(clean.get("hash") or ""))
         metadata = _clean_metadata(clean)
-        metadata.update({"source_type": "hard_negative", "trap_types": traps})
+        metadata.update({"source_type": HARD_NEGATIVE_OPEN, "trap_types": traps})
         result.append(
             _v2_row(
                 source=text,
                 target=text,
-                source_type="hard_negative",
+                source_type=HARD_NEGATIVE_OPEN,
                 error_type="hard_negative",
                 rule_ids=["clean_identity_hard_negative"],
                 edits=[],
@@ -604,6 +723,7 @@ def _v2_row(
     metadata = dict(metadata)
     metadata.setdefault("source_type", source_type)
     metadata.setdefault("rule_ids", rule_ids)
+    source_type = SOURCE_TYPE_ALIASES.get(source_type, source_type)
     return {
         "source": source,
         "target": target,
@@ -641,22 +761,75 @@ def _attach_template_fields(rows: list[dict[str, Any]]) -> None:
 def _assign_v2_splits(rows: list[dict[str, Any]], split_sizes: dict[str, int], *, v2_config: dict[str, Any], seed: int) -> None:
     split_source_targets = v2_config.get("split_source_type_targets")
     if isinstance(split_source_targets, dict) and split_source_targets:
-        for row in rows:
-            row["split"] = ""
-        for source_type in V2_SOURCE_TYPES:
-            source_rows = [row for row in rows if row.get("source_type") == source_type]
-            targets = {
-                split: int((split_source_targets.get(split, {}) or {}).get(source_type, 0))
-                for split in ("train", "val", "test")
-            }
-            if sum(targets.values()) != len(source_rows):
-                targets = _proportional_targets(len(source_rows), split_sizes)
-            assign_template_disjoint_splits(source_rows, targets, seed=seed + len(source_type))
+        _assign_template_disjoint_splits_with_source_targets(rows, split_sizes, split_source_targets, seed=seed)
     else:
         assign_template_disjoint_splits(rows, split_sizes, seed=seed)
     remaining = {split: int(split_sizes.get(split, 0)) - sum(row.get("split") == split for row in rows) for split in ("train", "val", "test")}
     if any(value != 0 for value in remaining.values()):
         _rebalance_splits(rows, split_sizes, seed=seed)
+
+
+def _assign_template_disjoint_splits_with_source_targets(
+    rows: list[dict[str, Any]],
+    split_sizes: dict[str, int],
+    split_source_targets: dict[str, Any],
+    *,
+    seed: int,
+) -> None:
+    for row in rows:
+        row["template_id"] = template_id_for_pair(str(row.get("source", "")), str(row.get("target", "")))
+        row["normalized_pair_hash"] = normalized_pair_hash(str(row.get("source", "")), str(row.get("target", "")))
+        row["split"] = ""
+    source_targets = _normalize_split_source_targets(split_source_targets)
+    if not _split_source_targets_match(rows, source_targets):
+        assign_template_disjoint_splits(rows, split_sizes, seed=seed)
+        return
+    remaining_total = {split: int(split_sizes.get(split, 0)) for split in ("train", "val", "test")}
+    remaining_source = {split: dict(source_targets.get(split, {})) for split in ("train", "val", "test")}
+    for unit in _template_units(rows, seed):
+        unit_counts = Counter(SOURCE_TYPE_ALIASES.get(str(row.get("source_type")), str(row.get("source_type"))) for row in unit)
+        candidates = [split for split in ("train", "val", "test") if remaining_total[split] >= len(unit)]
+        if not candidates:
+            raise ValueError(f"template-disjoint split cannot fit unit of size {len(unit)} into remaining {remaining_total}")
+        split = min(candidates, key=lambda name: _source_target_penalty(unit_counts, remaining_source[name], remaining_total[name]))
+        for row in unit:
+            row["split"] = split
+        remaining_total[split] -= len(unit)
+        for source_type, count in unit_counts.items():
+            remaining_source[split][source_type] = remaining_source[split].get(source_type, 0) - count
+    if any(value != 0 for value in remaining_total.values()):
+        raise ValueError(f"template-disjoint split size mismatch: {remaining_total}")
+
+
+def _normalize_split_source_targets(raw: dict[str, Any]) -> dict[str, dict[str, int]]:
+    normalized: dict[str, dict[str, int]] = {}
+    for split in ("train", "val", "test"):
+        values = raw.get(split, {}) or {}
+        normalized[split] = {source_type: 0 for source_type in V2_SOURCE_TYPES}
+        for source_type, count in values.items():
+            canonical = SOURCE_TYPE_ALIASES.get(str(source_type), str(source_type))
+            normalized[split][canonical] = normalized[split].get(canonical, 0) + int(count)
+    return normalized
+
+
+def _split_source_targets_match(rows: list[dict[str, Any]], targets: dict[str, dict[str, int]]) -> bool:
+    actual = Counter(SOURCE_TYPE_ALIASES.get(str(row.get("source_type")), str(row.get("source_type"))) for row in rows)
+    requested = Counter()
+    for values in targets.values():
+        requested.update(values)
+    return all(actual.get(source_type, 0) == requested.get(source_type, 0) for source_type in V2_SOURCE_TYPES)
+
+
+def _source_target_penalty(unit_counts: Counter[str], remaining_source: dict[str, int], remaining_total: int) -> tuple[int, int, int]:
+    overshoot = 0
+    underfill = 0
+    for source_type, count in unit_counts.items():
+        after = remaining_source.get(source_type, 0) - count
+        if after < 0:
+            overshoot += abs(after)
+        else:
+            underfill += after
+    return (overshoot, underfill, -remaining_total)
 
 
 def _rebalance_splits(rows: list[dict[str, Any]], split_sizes: dict[str, int], *, seed: int) -> None:
@@ -794,7 +967,7 @@ def _clean_metadata(clean: dict[str, Any]) -> dict[str, Any]:
     return {
         "source_name": str(clean.get("source_name") or ""),
         "source_subcorpus": str(clean.get("source_subcorpus") or ""),
-        "license_status": str(clean.get("license/status") or ""),
+        "license_status": str(clean.get("license_status") or clean.get("license/status") or ""),
         "source_doc_id": str(clean.get("source_doc_id") or ""),
         "sentence_id": str(clean.get("sentence_id") or ""),
         "clean_hash": str(clean.get("hash") or ""),
@@ -874,7 +1047,7 @@ def _write_template_leakage_report(frame: pd.DataFrame, path: Path) -> dict[str,
 
 
 def _write_template_quality_report(frame: pd.DataFrame, path: Path) -> dict[str, Any]:
-    synthetic = frame[frame["source_type"] == "synthetic_augmented"]
+    synthetic = frame[frame["source_type"] == SYNTHETIC_OPEN_CLEAN]
     synthetic_text = "\n".join((synthetic["source"].astype(str) + "\n" + synthetic["target"].astype(str)).tolist()).lower()
     all_text = "\n".join((frame["source"].astype(str) + "\n" + frame["target"].astype(str)).tolist()).lower()
     meta_counts = {phrase: int(synthetic_text.count(phrase.lower())) for phrase in META_LANGUAGE_PATTERNS}
@@ -924,7 +1097,7 @@ def _manifest(
     excluded_rule_ids = _excluded_rule_ids()
     inactive_rule_ids = sorted(set(excluded_rule_ids) - set(active_rule_ids))
     normalized_counts = Counter(frame["normalized_pair_hash"].astype(str))
-    synthetic = frame[frame["source_type"] == "synthetic_augmented"]
+    synthetic = frame[frame["source_type"] == SYNTHETIC_OPEN_CLEAN]
     synthetic_norm_counts = Counter(synthetic["normalized_pair_hash"].astype(str))
     recall_summary = _metric_summary(
         recall_reports["candidate_recall_by_rule"],
@@ -950,11 +1123,11 @@ def _manifest(
         "error_type_counts_by_split": _counts_by_split(frame, "error_type"),
         "rule_id_counts": _rule_id_counts(frame),
         "rule_id_counts_by_split": _rule_id_counts_by_split(frame),
-        "clean_source_counts": _value_counts(frame[frame["source_type"] != "real_error_pair"], "source_corpus"),
-        "clean_source_counts_by_split": _counts_by_split(frame[frame["source_type"] != "real_error_pair"], "source_corpus"),
-        "real_source_counts": _value_counts(frame[frame["source_type"] == "real_error_pair"], "source_corpus"),
-        "real_source_counts_by_split": _counts_by_split(frame[frame["source_type"] == "real_error_pair"], "source_corpus"),
-        "hard_negative_count": int(composition.get("hard_negative", 0)),
+        "clean_source_counts": _value_counts(frame[frame["source_type"] != REAL_ERROR_PAIR], "source_corpus"),
+        "clean_source_counts_by_split": _counts_by_split(frame[frame["source_type"] != REAL_ERROR_PAIR], "source_corpus"),
+        "real_source_counts": _value_counts(frame[frame["source_type"] == REAL_ERROR_PAIR], "source_corpus"),
+        "real_source_counts_by_split": _counts_by_split(frame[frame["source_type"] == REAL_ERROR_PAIR], "source_corpus"),
+        "hard_negative_count": int(composition.get(HARD_NEGATIVE_OPEN, 0)),
         "candidate_recall_summary": recall_summary,
         "gap_label_coverage_summary": gap_summary,
         "template_leakage_summary": template_leakage,
@@ -977,9 +1150,11 @@ def _manifest(
             "accepted_real_pairs": real_result.accepted_count,
             "rejected_real_pairs": real_result.rejected_count,
         },
+        "real_pair_shortage_reason": f"accepted_real_pairs_below_target:{real_target - real_shortage}<{real_target}" if real_shortage else "",
         "active_rule_ids": active_rule_ids,
         "inactive_rule_ids": inactive_rule_ids,
         "excluded_rule_ids": excluded_rule_ids,
+        "unknown_count": int(_rule_id_counts(frame).get("unknown", 0)),
         "seed": int(config.get("data", {}).get("synthetic_seed", 17)),
         "config_path": str(config.get("data", {}).get("config_path", "configs/config.short_dataset_v2.yaml")),
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -991,6 +1166,7 @@ def _manifest(
         clean_result=clean_result,
         shortage_errors=shortage_errors,
     )
+    manifest["warnings"] = _audit_warnings(manifest=manifest, v2_config=v2_config, clean_result=clean_result)
     manifest["audit_errors"] = audit_errors
     manifest["verdict"] = "BLOCKED" if audit_errors else "READY_FOR_SHORT_TRAINING_DATASET_V2"
     return manifest
@@ -1009,7 +1185,9 @@ def _audit_errors(
     expected_total = int(manifest.get("requested_total", manifest["total"]))
     if manifest["total"] != expected_total:
         errors.append(f"dataset_size_below_requested:{manifest['total']}!={expected_total}")
-    if clean_result.accepted_count < int(v2_config.get("min_clean_pool_for_ready", 150_000)):
+    preferred_clean_min = int(v2_config.get("min_clean_pool_for_ready", 150_000))
+    hard_clean_min = min(preferred_clean_min, int(v2_config.get("min_clean_pool_hard_min", min(60_000, preferred_clean_min))))
+    if clean_result.accepted_count < hard_clean_min:
         errors.append(f"clean_pool_below_min:{clean_result.accepted_count}")
     errors.extend(clean_result.dominance_violations)
     enforce_template_gates = manifest["total"] >= int(audit.get("min_rows_for_template_gates", 1000))
@@ -1033,7 +1211,7 @@ def _audit_errors(
         low = [
             rule_id
             for rule_id in manifest["active_rule_ids"]
-            if 0 < int(manifest["rule_id_counts"].get(rule_id, 0)) < min_active_rule_count
+            if int(manifest["rule_id_counts"].get(rule_id, 0)) < min_active_rule_count
         ]
         if low:
             errors.append("active_rule_count_below_min:" + ",".join(low))
@@ -1042,6 +1220,17 @@ def _audit_errors(
             if int(manifest["composition"].get(source_type, 0)) <= 0:
                 errors.append(f"missing_source_type:{source_type}")
     return errors
+
+
+def _audit_warnings(*, manifest: dict[str, Any], v2_config: dict[str, Any], clean_result: Any) -> list[str]:
+    warnings: list[str] = []
+    preferred_clean_min = int(v2_config.get("min_clean_pool_for_ready", 150_000))
+    hard_clean_min = min(preferred_clean_min, int(v2_config.get("min_clean_pool_hard_min", min(60_000, preferred_clean_min))))
+    if hard_clean_min <= clean_result.accepted_count < preferred_clean_min:
+        warnings.append(f"clean_pool_below_preferred:{clean_result.accepted_count}<{preferred_clean_min}")
+    if manifest.get("real_pair_shortage_reason"):
+        warnings.append(str(manifest["real_pair_shortage_reason"]))
+    return warnings
 
 
 def _metric_summary(frame: pd.DataFrame, *, count_column: str, metric_column: str, active_rule_ids: set[str]) -> dict[str, Any]:

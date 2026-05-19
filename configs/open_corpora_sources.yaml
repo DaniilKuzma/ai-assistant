@@ -1,8 +1,12 @@
-download_policy:
-  mode: local_first
-  allow_downloads_env: RUSSIAN_CORRECTOR_ALLOW_SOURCE_DOWNLOADS
-  cache_dir: data/external
-  max_source_download_mb: 512
+sources:
+  download_policy:
+    mode: local_first_with_controlled_downloads
+    allow_downloads_env: RUSSIAN_CORRECTOR_ALLOW_SOURCE_DOWNLOADS
+    max_total_download_mb: 3500
+    max_source_download_mb: 1200
+    cache_dir: data/external
+    fail_if_insufficient_sources: true
+    never_commit_downloaded_data: true
 
 pool:
   min_clean_sentences: 150000
@@ -12,32 +16,66 @@ pool:
 clean_sources:
   lenta_news:
     enabled: true
-    type: corus_lenta
-    local_path: data/external/lenta-ru-news.csv.bz2
+    type: corus_lenta2
     priority: 1
-    max_sentences: 150000
-    allowed_topics: []
-    forbidden_topics: []
     domain: news
     style: neutral
-    license_status: open_source_dataset
+    local_path: data/external/lenta-ru-news.csv.bz2
+    url: https://github.com/yutkin/Lenta.Ru-News-Dataset/releases/download/v1.1/lenta-ru-news.csv.bz2
+    max_download_mb: 800
+    max_sentences: 150000
+    min_accepted_sentences: 30000
+    license_note: "Public Lenta.ru news dataset; verify before production use."
 
   nerus_news:
     enabled: true
-    type: nerus
-    local_path: data/external/nerus_lenta.conllu.gz
+    type: nerus_conllu
     priority: 1
-    max_sentences: 100000
     domain: news
     style: neutral
-    license_status: open_source_dataset
+    local_path: data/external/nerus_lenta.conllu.gz
+    url: https://storage.yandexcloud.net/natasha-nerus/data/nerus_lenta.conllu.gz
+    max_download_mb: 1200
+    max_sentences: 120000
+    min_accepted_sentences: 30000
+    license_note: "Nerus Lenta annotated corpus; verify before production use."
 
-  taiga_news:
+  opencorpora:
     enabled: true
-    type: taiga
-    local_path: data/external/taiga/news/
+    type: opencorpora_xml
     priority: 2
-    max_sentences: 80000
+    domain: mixed_nonfiction
+    style: neutral
+    local_path: data/external/opencorpora/annot.opcorpora.xml
+    archive_path: data/external/opencorpora/annot.opcorpora.xml.zip
+    url: http://opencorpora.org/files/export/annot/annot.opcorpora.xml.zip
+    max_download_mb: 300
+    max_sentences: 50000
+    min_accepted_sentences: 5000
+    license_note: "OpenCorpora annotated corpus; verify terms before production use."
+
+  ruwiki:
+    enabled: false
+    type: wikipedia_dump
+    priority: 3
+    domain: encyclopedic
+    style: neutral
+    local_path: data/external/ruwiki/ruwiki-latest-pages-articles.xml.bz2
+    url: https://dumps.wikimedia.org/ruwiki/latest/ruwiki-latest-pages-articles.xml.bz2
+    max_download_mb: 2500
+    max_sentences: 50000
+    min_accepted_sentences: 5000
+    license_note: "Optional. Huge. Enable only if needed."
+
+  taiga_news_wiki:
+    enabled: false
+    type: taiga
+    priority: 3
+    domain: news_or_wiki
+    style: neutral
+    local_path: data/external/taiga/
+    max_download_mb: 1500
+    max_sentences: 50000
     allowed_subcorpora:
       - news
       - wiki
@@ -54,46 +92,6 @@ clean_sources:
       - poetry
       - social
       - subtitles
-    domain: news_or_wiki
-    style: neutral
-    license_status: open_source_dataset
-
-  opencorpora:
-    enabled: true
-    type: opencorpora
-    local_path: data/external/opencorpora/
-    priority: 2
-    max_sentences: 50000
-    domain: mixed_nonfiction
-    style: neutral
-    license_status: open_source_dataset
-
-  ruwiki:
-    enabled: true
-    type: wikipedia_dump
-    local_path: data/external/ruwiki/
-    priority: 2
-    max_sentences: 100000
-    domain: encyclopedic
-    style: neutral
-    license_status: CC-BY-SA
-
-  ud_russian_taiga:
-    enabled: true
-    type: ud_conllu
-    local_path: data/external/UD_Russian-Taiga/
-    priority: 3
-    max_sentences: 25000
-    allowed_subcorpora:
-      - news
-      - wiki
-      - GramEval_news
-      - GramEval_wiki
-    forbidden_subcorpora:
-      - social
-      - poetry
-      - fiction
-      - subtitles
-    domain: news_or_wiki
-    style: neutral
-    license_status: open_source_dataset
+      - lj
+      - livejournal
+    license_note: "Optional/local-preferred. Do not use fiction/social/poetry/subtitles."

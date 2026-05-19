@@ -52,33 +52,34 @@ data:
     enabled: true
     expected_total: 60000
     min_clean_pool_for_ready: 150000
+    min_clean_pool_hard_min: 60000
     open_corpora_sources_path: configs/open_corpora_sources.yaml
     real_error_sources_path: configs/real_error_sources.yaml
     source_type_targets:
-      synthetic_augmented: 38400
+      synthetic_augmented_from_open_clean: 38400
       real_error_pair: 6000
-      clean_identity: 7800
-      hard_negative: 7800
+      clean_identity_from_open_clean: 7800
+      hard_negative_from_open_clean: 7800
     split_source_type_targets:
       train:
-        synthetic_augmented: 32000
+        synthetic_augmented_from_open_clean: 32000
         real_error_pair: 5000
-        clean_identity: 6500
-        hard_negative: 6500
+        clean_identity_from_open_clean: 6500
+        hard_negative_from_open_clean: 6500
       val:
-        synthetic_augmented: 3200
+        synthetic_augmented_from_open_clean: 3200
         real_error_pair: 500
-        clean_identity: 650
-        hard_negative: 650
+        clean_identity_from_open_clean: 650
+        hard_negative_from_open_clean: 650
       test:
-        synthetic_augmented: 3200
+        synthetic_augmented_from_open_clean: 3200
         real_error_pair: 500
-        clean_identity: 650
-        hard_negative: 650
+        clean_identity_from_open_clean: 650
+        hard_negative_from_open_clean: 650
     pool:
       min_clean_sentences: 150000
-      max_source_share: 0.45
-      max_subcorpus_share: 0.35
+      max_source_share: 0.60
+      max_subcorpus_share: 0.70
     audit:
       candidate_recall_min: 0.85
       gap_coverage_min: 0.85

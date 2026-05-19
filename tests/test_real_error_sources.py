@@ -1,19 +1,21 @@
 from pathlib import Path
 
+import yaml
+
 from src.candidates.candidate_generator import CandidateGenerator
 from src.data.real_error_sources import load_real_error_pairs, validate_real_error_pair
 
 
 def test_real_pair_validation_requires_minimal_candidate_backed_edit():
     accepted = validate_real_error_pair(
-        "Жызнь прекрасна.",
-        "Жизнь прекрасна.",
+        "Жызнь в городе стала заметно спокойнее.",
+        "Жизнь в городе стала заметно спокойнее.",
         source_dataset="unit",
         candidate_generator=CandidateGenerator(),
     )
     rejected = validate_real_error_pair(
-        "Я люблю дом.",
-        "Мы полностью изменили смысл предложения.",
+        "Я люблю этот старый дом возле широкой реки.",
+        "Мы полностью изменили смысл предложения без сохранения исходной мысли.",
         source_dataset="unit",
         candidate_generator=CandidateGenerator(),
     )
@@ -24,6 +26,38 @@ def test_real_pair_validation_requires_minimal_candidate_backed_edit():
     assert accepted.row["is_real_pair"] is True
     assert rejected.accepted is False
     assert rejected.reason in {"char_edit_distance_too_high", "token_edit_distance_too_high", "unsupported_edit_type"}
+
+
+def test_real_pair_validation_requires_sentence_length_and_rejects_social_noise():
+    too_short = validate_real_error_pair(
+        "Жызнь прекрасна.",
+        "Жизнь прекрасна.",
+        source_dataset="unit",
+        candidate_generator=CandidateGenerator(),
+    )
+    social = validate_real_error_pair(
+        "Я думал, что жызнь прекрасна, чувак, и написал это вечером.",
+        "Я думал, что жизнь прекрасна, чувак, и написал это вечером.",
+        source_dataset="unit",
+        candidate_generator=CandidateGenerator(),
+    )
+
+    assert too_short.accepted is False
+    assert too_short.reason == "too_few_tokens"
+    assert social.accepted is False
+    assert social.reason == "forbidden_domain_noise"
+
+
+def test_real_error_config_uses_controlled_download_schema():
+    config = yaml.safe_load(Path("configs/real_error_sources.yaml").read_text(encoding="utf-8"))
+
+    policy = config["sources"]["download_policy"]
+    assert policy["mode"] == "local_first_with_controlled_downloads"
+    assert policy["allow_downloads_env"] == "RUSSIAN_CORRECTOR_ALLOW_SOURCE_DOWNLOADS"
+    assert policy["fail_if_insufficient_sources"] is False
+    assert config["real_sources"]["spellcheck_benchmark"]["type"] == "huggingface_dataset"
+    assert config["real_sources"]["spellcheck_benchmark"]["hf_id"] == "ai-forever/spellcheck_benchmark"
+    assert config["real_sources"]["spellcheck_punctuation_benchmark"]["cap_share"] == 0.25
 
 
 def test_real_pair_loader_reports_rejections(tmp_path: Path):
@@ -45,7 +79,8 @@ def test_real_pair_loader_reports_rejections(tmp_path: Path):
                     "local_path": str(source_path),
                     "max_examples": 10,
                 }
-            }
+            },
+            "validation": {"min_tokens": 2},
         },
         candidate_generator=CandidateGenerator(),
         output_path=output_path,

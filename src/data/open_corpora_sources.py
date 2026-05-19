@@ -2,14 +2,12 @@ from __future__ import annotations
 
 import bz2
 import csv
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 import gzip
 import json
-import os
 from pathlib import Path
 import re
 from typing import Any, Iterable
-import xml.etree.ElementTree as ElementTree
 import zipfile
 
 import yaml
@@ -21,9 +19,7 @@ from src.data.clean_corpus_sources import (
     parse_ud_conllu_texts,
     split_text_to_sentences,
 )
-
-
-DOWNLOAD_ENV = "RUSSIAN_CORRECTOR_ALLOW_SOURCE_DOWNLOADS"
+from src.data.source_downloads import DownloadBudget, SourceDownloadResult, download_if_allowed
 
 
 @dataclass(frozen=True)
@@ -55,8 +51,9 @@ def load_open_corpora_sentences(config: dict[str, Any] | str | Path) -> OpenCorp
 
     if isinstance(config, str | Path):
         config = load_open_corpora_config(config)
-    policy = dict(config.get("download_policy", {}) or config.get("sources", {}).get("download_policy", {}) or {})
+    policy = _download_policy(config)
     source_specs = _source_specs(config)
+    budget = DownloadBudget()
     records: list[OpenCorpusSentence] = []
     reports: list[dict[str, Any]] = []
 
@@ -66,12 +63,13 @@ def load_open_corpora_sentences(config: dict[str, Any] | str | Path) -> OpenCorp
             continue
         source_type = str(spec.get("type") or "local_text")
         max_sentences = int(spec.get("max_sentences", 100_000))
-        path, mode, reason = _resolve_local_path(spec, policy)
-        if path is None and source_type == "hf_dataset" and not _downloads_allowed(policy):
-            reports.append(_source_report(source_name, spec, status="skipped", reason="downloads_disabled"))
+        download = download_if_allowed(source_name, spec, policy, budget)
+        path = Path(download.path) if download.path else None
+        if not download.used and source_type not in {"hf_dataset", "huggingface_dataset"}:
+            reports.append(_source_report(source_name, spec, status="skipped", reason=download.reason or download.mode, download=download))
             continue
-        if path is None and source_type not in {"hf_dataset"}:
-            reports.append(_source_report(source_name, spec, status="skipped", reason=reason or "missing_local_path"))
+        if source_type in {"hf_dataset", "huggingface_dataset"} and not download.used:
+            reports.append(_source_report(source_name, spec, status="skipped", reason=download.reason or download.mode, download=download))
             continue
 
         source_records: list[OpenCorpusSentence] = []
@@ -99,6 +97,7 @@ def load_open_corpora_sentences(config: dict[str, Any] | str | Path) -> OpenCorp
                             or spec.get("license_status")
                             or spec.get("license/status")
                             or spec.get("license")
+                            or spec.get("license_note")
                             or ""
                         ),
                         source_doc_id=str(metadata.get("source_doc_id") or ""),
@@ -115,8 +114,9 @@ def load_open_corpora_sentences(config: dict[str, Any] | str | Path) -> OpenCorp
                     spec,
                     status="skipped",
                     reason=f"missing_optional_dependency:{exc.name}",
-                    mode=mode,
+                    mode=download.mode,
                     local_path=str(path or spec.get("local_path", "")),
+                    download=download,
                 )
             )
             continue
@@ -127,8 +127,9 @@ def load_open_corpora_sentences(config: dict[str, Any] | str | Path) -> OpenCorp
                     spec,
                     status="skipped",
                     reason=f"loader_error:{exc.__class__.__name__}",
-                    mode=mode,
+                    mode=download.mode,
                     local_path=str(path or spec.get("local_path", "")),
+                    download=download,
                 )
             )
             continue
@@ -140,14 +141,19 @@ def load_open_corpora_sentences(config: dict[str, Any] | str | Path) -> OpenCorp
                 spec,
                 status="loaded",
                 reason="",
-                mode=mode,
+                mode=download.mode,
                 local_path=str(path or spec.get("local_path", "")),
                 total_seen=total_seen,
                 accepted=len(source_records),
+                download=download,
             )
         )
 
     return OpenCorporaLoadResult(records=records, source_reports=reports)
+
+
+def _download_policy(config: dict[str, Any]) -> dict[str, Any]:
+    return dict(config.get("download_policy", {}) or config.get("sources", {}).get("download_policy", {}) or {})
 
 
 def _source_specs(config: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
@@ -163,65 +169,6 @@ def _source_specs(config: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
             result.append((name, dict(spec)))
         return result
     return []
-
-
-def _resolve_local_path(spec: dict[str, Any], policy: dict[str, Any]) -> tuple[Path | None, str, str]:
-    raw_path = spec.get("local_path") or spec.get("path")
-    path = Path(str(raw_path)) if raw_path else None
-    if path and path.exists():
-        return path, "local", ""
-    if not _downloads_allowed(policy):
-        return None, "skipped", "missing_local_path"
-    url = spec.get("url")
-    if not url:
-        return None, "skipped", "missing_local_path"
-    cache_dir = Path(str(policy.get("cache_dir") or "data/external"))
-    output_path = path or cache_dir / _download_filename(str(url))
-    if output_path.exists():
-        return output_path, "cached", ""
-    if _download_url(str(url), output_path, spec=spec, policy=policy):
-        return output_path, "downloaded", ""
-    return None, "skipped", "download_failed_or_size_limit"
-
-
-def _downloads_allowed(policy: dict[str, Any]) -> bool:
-    env_name = str(policy.get("allow_downloads_env") or DOWNLOAD_ENV)
-    return os.environ.get(env_name, "").strip().lower() in {"1", "true", "yes", "on"}
-
-
-def _download_url(url: str, output_path: Path, *, spec: dict[str, Any], policy: dict[str, Any]) -> bool:
-    from urllib.error import URLError
-    from urllib.request import urlopen
-
-    max_source_mb = float(spec.get("max_download_mb") or policy.get("max_source_download_mb") or 0)
-    max_bytes = int(max_source_mb * 1024 * 1024) if max_source_mb > 0 else 0
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        with urlopen(url, timeout=30) as response:
-            header = response.headers.get("Content-Length")
-            if max_bytes and header and int(header) > max_bytes:
-                return False
-            total = 0
-            with output_path.open("wb") as handle:
-                while True:
-                    chunk = response.read(1024 * 1024)
-                    if not chunk:
-                        break
-                    total += len(chunk)
-                    if max_bytes and total > max_bytes:
-                        handle.close()
-                        output_path.unlink(missing_ok=True)
-                        return False
-                    handle.write(chunk)
-    except (OSError, URLError):
-        output_path.unlink(missing_ok=True)
-        return False
-    return output_path.exists() and output_path.stat().st_size > 0
-
-
-def _download_filename(url: str) -> str:
-    value = url.rstrip("/").rsplit("/", 1)[-1]
-    return value or "downloaded_clean_source"
 
 
 def _iter_source_sentences(
@@ -241,16 +188,16 @@ def _iter_source_sentences(
     elif source_type in {"ud_conllu", "conllu"}:
         assert path is not None
         yield from _iter_ud_conllu(path, spec)
-    elif source_type == "corus_lenta":
+    elif source_type in {"corus_lenta", "corus_lenta2"}:
         assert path is not None
         yield from _iter_corus_lenta(path, spec)
-    elif source_type == "nerus":
+    elif source_type in {"nerus", "nerus_conllu"}:
         assert path is not None
         yield from _iter_nerus(path, spec)
     elif source_type == "taiga":
         assert path is not None
         yield from _iter_taiga(path, spec)
-    elif source_type == "opencorpora":
+    elif source_type in {"opencorpora", "opencorpora_xml"}:
         assert path is not None
         yield from _iter_opencorpora(path, spec)
     elif source_type == "wikipedia_dump":
@@ -302,11 +249,15 @@ def _iter_ud_conllu(path: Path, spec: dict[str, Any]) -> Iterable[tuple[str, dic
 
 
 def _iter_corus_lenta(path: Path, spec: dict[str, Any]) -> Iterable[tuple[str, dict[str, Any]]]:
-    from corus import load_lenta, load_lenta2
+    try:
+        from corus import load_lenta, load_lenta2
+    except ModuleNotFoundError:
+        yield from _iter_lenta_csv(path, spec)
+        return
 
     loader = load_lenta2 if str(path).endswith(".bz2") else load_lenta
     for index, record in enumerate(loader(str(path))):
-        text = str(getattr(record, "text", "") or "")
+        text = "\n".join(str(value or "") for value in (getattr(record, "title", ""), getattr(record, "text", ""))).strip()
         for sentence_index, sentence in enumerate(split_text_to_sentences(text)):
             yield sentence, {
                 "source_doc_id": str(getattr(record, "url", "") or index),
@@ -317,19 +268,42 @@ def _iter_corus_lenta(path: Path, spec: dict[str, Any]) -> Iterable[tuple[str, d
             }
 
 
-def _iter_nerus(path: Path, spec: dict[str, Any]) -> Iterable[tuple[str, dict[str, Any]]]:
-    from nerus import load_nerus
+def _iter_lenta_csv(path: Path, spec: dict[str, Any]) -> Iterable[tuple[str, dict[str, Any]]]:
+    with _open_text(path) as handle:
+        reader = csv.DictReader(handle)
+        for index, row in enumerate(reader):
+            doc_id = str(row.get("url") or row.get("id") or index)
+            topic = str(row.get("topic") or spec.get("source_subcorpus") or "lenta")
+            text = "\n".join(str(row.get(field) or "") for field in ("title", "text"))
+            for sentence_index, sentence in enumerate(split_text_to_sentences(text)):
+                yield sentence, {
+                    "source_doc_id": doc_id,
+                    "sentence_id": f"{index}:{sentence_index}",
+                    "source_subcorpus": topic,
+                    "domain": "news",
+                    "style": "neutral",
+                }
 
-    for doc in load_nerus(str(path)):
-        doc_id = str(getattr(doc, "id", ""))
-        for sentence in getattr(doc, "sents", ()):
-            yield str(sentence.text), {
-                "source_doc_id": doc_id,
-                "sentence_id": str(getattr(sentence, "id", "")),
-                "source_subcorpus": "nerus_lenta",
+
+def _iter_nerus(path: Path, spec: dict[str, Any]) -> Iterable[tuple[str, dict[str, Any]]]:
+    with _open_text(path) as handle:
+        current_doc_id = ""
+        sentence_index = 0
+        for line in handle:
+            line = line.rstrip("\n")
+            if line.startswith("# newdoc id = ") or line.startswith("# doc_id = "):
+                current_doc_id = line.split("=", 1)[1].strip()
+            if not line.startswith("# text = "):
+                continue
+            sentence = normalize_sentence(line.removeprefix("# text = "))
+            yield sentence, {
+                "source_doc_id": current_doc_id,
+                "sentence_id": str(sentence_index),
+                "source_subcorpus": str(spec.get("source_subcorpus") or "nerus_lenta"),
                 "domain": "news",
                 "style": "neutral",
             }
+            sentence_index += 1
 
 
 def _iter_taiga(path: Path, spec: dict[str, Any]) -> Iterable[tuple[str, dict[str, Any]]]:
@@ -366,16 +340,18 @@ def _iter_opencorpora(path: Path, spec: dict[str, Any]) -> Iterable[tuple[str, d
 
 
 def _iter_wikipedia(path: Path, spec: dict[str, Any]) -> Iterable[tuple[str, dict[str, Any]]]:
-    for index, line in enumerate(_read_text_lines(path)):
-        text = _strip_wiki_markup(line)
-        for sentence in split_text_to_sentences(text):
-            yield sentence, {"sentence_id": str(index), "source_subcorpus": "ruwiki"}
+    opener = bz2.open if str(path).endswith(".bz2") else open
+    with opener(path, "rt", encoding="utf-8", errors="replace") as handle:
+        for index, line in enumerate(handle):
+            text = _strip_wiki_markup(line)
+            for sentence in split_text_to_sentences(text):
+                yield sentence, {"sentence_id": str(index), "source_subcorpus": "ruwiki"}
 
 
 def _iter_hf_dataset(spec: dict[str, Any]) -> Iterable[tuple[str, dict[str, Any]]]:
     from datasets import load_dataset
 
-    repo = spec["repo"]
+    repo = spec.get("repo") or spec.get("hf_id")
     fields = tuple(spec.get("text_fields") or ("text",))
     for split in spec.get("splits", ("train",)):
         dataset = load_dataset(repo, split=split, streaming=bool(spec.get("streaming", True)))
@@ -444,21 +420,30 @@ def _source_report(
     local_path: str = "",
     total_seen: int = 0,
     accepted: int = 0,
+    download: SourceDownloadResult | None = None,
 ) -> dict[str, Any]:
     path = local_path or str(spec.get("local_path") or spec.get("path") or "")
     size = Path(path).stat().st_size if path and Path(path).exists() else 0
+    if download is not None:
+        path = download.path or path
+        size = download.downloaded_size_bytes or size
     return {
         "source_name": source_name,
         "type": str(spec.get("type") or ""),
         "status": status,
-        "mode": mode,
+        "mode": download.mode if download is not None else mode,
         "reason": reason,
         "local_path": path,
-        "downloaded_size_bytes": size if mode in {"downloaded", "cached", "local"} else 0,
+        "url": str(spec.get("url") or ""),
+        "hf_id": str(spec.get("hf_id") or spec.get("repo") or ""),
+        "downloaded_size_bytes": size if (download.mode if download is not None else mode) in {"downloaded", "cached", "local"} else 0,
         "total_seen": total_seen,
         "accepted": accepted,
+        "rejected": max(0, total_seen - accepted),
         "domain": str(spec.get("domain") or ""),
         "style": str(spec.get("style") or ""),
-        "license_status": str(spec.get("license_status") or spec.get("license/status") or spec.get("license") or ""),
+        "license_status": str(spec.get("license_status") or spec.get("license/status") or spec.get("license") or spec.get("license_note") or ""),
+        "required_domains": ", ".join(download.required_domains) if download is not None else "",
+        "required_commands": " || ".join(download.required_commands) if download is not None else "",
         "used": bool(accepted),
     }

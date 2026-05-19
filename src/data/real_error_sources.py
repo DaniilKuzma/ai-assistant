@@ -5,7 +5,6 @@ from dataclasses import asdict, dataclass
 import csv
 import gzip
 import json
-import os
 from pathlib import Path
 import re
 from typing import Any, Iterable
@@ -17,6 +16,7 @@ from rapidfuzz.distance import Levenshtein
 from src.candidates.candidate_generator import CandidateGenerator
 from src.candidates.matching import candidate_matches_edit
 from src.data.clean_sentence_pool import cyrillic_ratio
+from src.data.source_downloads import DownloadBudget, SourceDownloadResult, download_if_allowed
 from src.preprocessing.protected_spans import find_protected_spans
 from src.validation.diff_analyzer import DiffAnalyzer, Edit
 from src.validation.edit_classifier import coarse_error_type, is_allowed_edit_type
@@ -92,8 +92,8 @@ def validate_real_error_pair(
     domain: str = "real_error_pair",
     max_char_edit_ratio: float = 0.25,
     max_token_edit_ratio: float = 0.30,
-    min_tokens: int = 2,
-    max_tokens: int = 40,
+    min_tokens: int = 5,
+    max_tokens: int = 45,
 ) -> RealPairValidation:
     source = _normalize_text(source)
     target = _normalize_text(target)
@@ -155,7 +155,8 @@ def load_real_error_pairs(
         config = load_real_error_config(config)
     source_specs = _source_specs(config)
     validation_config = dict(config.get("validation", {}) or {})
-    policy = dict(config.get("download_policy", {}) or {})
+    policy = _download_policy(config)
+    budget = DownloadBudget()
     generator = candidate_generator or CandidateGenerator()
     rows: list[dict[str, Any]] = []
     rejected_rows: list[dict[str, Any]] = []
@@ -166,12 +167,14 @@ def load_real_error_pairs(
         if spec.get("enabled") is False:
             source_reports.append(_source_report(source_name, spec, status="skipped", reason="disabled"))
             continue
-        path = Path(str(spec.get("local_path") or spec.get("path") or ""))
-        if str(spec.get("type")) == "hf_dataset" and not _downloads_allowed(policy):
-            source_reports.append(_source_report(source_name, spec, status="skipped", reason="downloads_disabled"))
+        source_type = str(spec.get("type") or "local_jsonl")
+        download = download_if_allowed(source_name, spec, policy, budget)
+        path = Path(download.path) if download.path else None
+        if not download.used and source_type not in {"hf_dataset", "huggingface_dataset"}:
+            source_reports.append(_source_report(source_name, spec, status="skipped", reason=download.reason or download.mode, download=download))
             continue
-        if not path.exists() and str(spec.get("type")) != "hf_dataset":
-            source_reports.append(_source_report(source_name, spec, status="skipped", reason="missing_local_path"))
+        if source_type in {"hf_dataset", "huggingface_dataset"} and not download.used:
+            source_reports.append(_source_report(source_name, spec, status="skipped", reason=download.reason or download.mode, download=download))
             continue
         accepted_before = len(rows)
         rejected_before = len(rejected_rows)
@@ -187,10 +190,24 @@ def load_real_error_pairs(
                     domain=str(metadata.get("domain") or spec.get("domain") or "real_error_pair"),
                     max_char_edit_ratio=float(validation_config.get("max_char_edit_ratio", 0.25)),
                     max_token_edit_ratio=float(validation_config.get("max_token_edit_ratio", 0.30)),
-                    min_tokens=int(validation_config.get("min_tokens", 2)),
-                    max_tokens=int(validation_config.get("max_tokens", 40)),
+                    min_tokens=int(validation_config.get("min_tokens", 5)),
+                    max_tokens=int(validation_config.get("max_tokens", 45)),
                 )
-                if validation.accepted and validation.row is not None:
+                allowed_error_types = set(str(item) for item in spec.get("allowed_error_types", []))
+                if validation.accepted and validation.row is not None and allowed_error_types and not set(validation.detected_error_types) <= allowed_error_types:
+                    rejection_counts["disallowed_error_type"] += 1
+                    rejected_rows.append(
+                        {
+                            "source_dataset": source_name,
+                            "source": source,
+                            "target": target,
+                            "reason": "disallowed_error_type",
+                            "edit_summary": validation.edit_summary,
+                            "detected_error_types": json.dumps(validation.detected_error_types, ensure_ascii=False),
+                            "candidate_present": validation.candidate_present,
+                        }
+                    )
+                elif validation.accepted and validation.row is not None:
                     rows.append(validation.row)
                 else:
                     rejection_counts[validation.reason] += 1
@@ -205,10 +222,10 @@ def load_real_error_pairs(
                             "candidate_present": validation.candidate_present,
                         }
                     )
-                if len(rows) - accepted_before >= int(spec.get("max_examples", 10_000)):
+                if len(rows) - accepted_before >= int(spec.get("max_pairs") or spec.get("max_examples") or 10_000):
                     break
         except Exception as exc:
-            source_reports.append(_source_report(source_name, spec, status="skipped", reason=f"loader_error:{exc.__class__.__name__}"))
+            source_reports.append(_source_report(source_name, spec, status="skipped", reason=f"loader_error:{exc.__class__.__name__}", download=download))
             continue
         source_reports.append(
             _source_report(
@@ -219,6 +236,7 @@ def load_real_error_pairs(
                 total_seen=seen,
                 accepted=len(rows) - accepted_before,
                 rejected=len(rejected_rows) - rejected_before,
+                download=download,
             )
         )
 
@@ -244,6 +262,10 @@ def load_real_error_pairs(
     )
 
 
+def _download_policy(config: dict[str, Any]) -> dict[str, Any]:
+    return dict(config.get("download_policy", {}) or config.get("sources", {}).get("download_policy", {}) or {})
+
+
 def _source_specs(config: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
     raw = config.get("real_sources", config.get("sources", []))
     if isinstance(raw, dict):
@@ -255,7 +277,11 @@ def _source_specs(config: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
 
 def _iter_pairs(spec: dict[str, Any], path: Path) -> Iterable[tuple[str, str, dict[str, Any]]]:
     source_type = str(spec.get("type") or "local_jsonl")
+    if source_type == "sage_hf_or_local":
+        source_type = "local_jsonl"
     if source_type in {"local_jsonl", "jsonl"}:
+        if path is None:
+            return
         with _open_text(path) as handle:
             for line in handle:
                 if not line.strip():
@@ -263,20 +289,25 @@ def _iter_pairs(spec: dict[str, Any], path: Path) -> Iterable[tuple[str, str, di
                 item = json.loads(line)
                 yield _first_value(item, SOURCE_COLUMNS), _first_value(item, TARGET_COLUMNS), {"domain": str(item.get("domain") or "")}
     elif source_type in {"local_csv", "csv", "tsv", "table"}:
+        if path is None:
+            return
         delimiter = "\t" if str(path).endswith((".tsv", ".tab")) else ","
         with _open_text(path) as handle:
             reader = csv.DictReader(handle, delimiter=delimiter)
             for item in reader:
                 yield _first_value(item, SOURCE_COLUMNS), _first_value(item, TARGET_COLUMNS), {"domain": str(item.get("domain") or "")}
     elif source_type == "m2":
+        if path is None:
+            return
         from src.data.external_sources import _m2_pairs
 
         for source, target in _m2_pairs(path):
             yield source, target, {"domain": "m2"}
-    elif source_type == "hf_dataset":
+    elif source_type in {"hf_dataset", "huggingface_dataset"}:
         from datasets import load_dataset
 
-        dataset = load_dataset(str(spec["repo"]), name=spec.get("name_in_dataset"), split=spec.get("split", "train"))
+        dataset_id = str(spec.get("hf_id") or spec.get("repo"))
+        dataset = load_dataset(dataset_id, name=spec.get("name_in_dataset"), split=spec.get("split", "train"))
         for item in dataset:
             yield _first_value(item, SOURCE_COLUMNS), _first_value(item, TARGET_COLUMNS), {"domain": str(item.get("domain") or "")}
 
@@ -385,17 +416,27 @@ def _source_report(
     total_seen: int = 0,
     accepted: int = 0,
     rejected: int = 0,
+    download: SourceDownloadResult | None = None,
 ) -> dict[str, Any]:
+    path = str(spec.get("local_path") or spec.get("path") or "")
+    if download is not None and download.path:
+        path = download.path
     return {
         "source_dataset": source_name,
         "type": str(spec.get("type") or ""),
         "status": status,
+        "mode": download.mode if download is not None else ("local" if path and Path(path).exists() else "skipped"),
         "reason": reason,
-        "local_path": str(spec.get("local_path") or spec.get("path") or ""),
+        "local_path": path,
+        "url": str(spec.get("url") or ""),
+        "hf_id": str(spec.get("hf_id") or spec.get("repo") or ""),
+        "downloaded_size_bytes": download.downloaded_size_bytes if download is not None else 0,
         "total_seen": total_seen,
         "accepted": accepted,
         "rejected": rejected,
         "candidate_coverage": 1.0 if accepted else 0.0,
+        "required_domains": ", ".join(download.required_domains) if download is not None else "",
+        "required_commands": " || ".join(download.required_commands) if download is not None else "",
     }
 
 
@@ -403,11 +444,13 @@ def _real_pair_filter_rows(source_reports: list[dict[str, Any]], rejection_count
     return [
         {
             "source_dataset": report["source_dataset"],
+            "mode": report.get("mode", ""),
             "total_seen": report["total_seen"],
             "accepted": report["accepted"],
             "rejected": report["rejected"],
             "rejection_reason_counts": json.dumps(dict(sorted(rejection_counts.items())), ensure_ascii=False),
             "candidate_coverage": report["candidate_coverage"],
+            "reason": report.get("reason", ""),
         }
         for report in source_reports
     ]
@@ -421,17 +464,14 @@ def _write_real_source_report(path: Path, source_reports: list[dict[str, Any]], 
         f"- rejected_pairs: {sum(int(report['rejected']) for report in source_reports)}",
         f"- rejection_reasons: {json.dumps(dict(sorted(rejection_counts.items())), ensure_ascii=False, sort_keys=True)}",
         "",
-        "| source | status | seen | accepted | rejected | reason | candidate_coverage |",
-        "|---|---|---:|---:|---:|---|---:|",
+        "| source | status | mode | path | url/hf | bytes | seen | accepted | rejected | reason | candidate_coverage |",
+        "|---|---|---|---|---|---:|---:|---:|---:|---|---:|",
     ]
     for report in source_reports:
+        source_ref = report.get("url") or report.get("hf_id") or ""
         lines.append(
-            f"| {report['source_dataset']} | {report['status']} | {report['total_seen']} | {report['accepted']} | "
+            f"| {report['source_dataset']} | {report['status']} | {report.get('mode', '')} | {report.get('local_path', '')} | "
+            f"{source_ref} | {report.get('downloaded_size_bytes', 0)} | {report['total_seen']} | {report['accepted']} | "
             f"{report['rejected']} | {report['reason']} | {report['candidate_coverage']:.4f} |"
         )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-
-
-def _downloads_allowed(policy: dict[str, Any]) -> bool:
-    env_name = str(policy.get("allow_downloads_env") or "RUSSIAN_CORRECTOR_ALLOW_SOURCE_DOWNLOADS")
-    return os.environ.get(env_name, "").strip().lower() in {"1", "true", "yes", "on"}

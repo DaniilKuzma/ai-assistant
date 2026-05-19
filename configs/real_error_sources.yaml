@@ -1,61 +1,100 @@
-download_policy:
-  mode: local_first
-  allow_downloads_env: RUSSIAN_CORRECTOR_ALLOW_SOURCE_DOWNLOADS
-  cache_dir: data/external
+sources:
+  download_policy:
+    mode: local_first_with_controlled_downloads
+    allow_downloads_env: RUSSIAN_CORRECTOR_ALLOW_SOURCE_DOWNLOADS
+    max_total_download_mb: 1500
+    max_source_download_mb: 700
+    cache_dir: data/external/real_pairs
+    fail_if_insufficient_sources: false
+    never_commit_downloaded_data: true
 
 validation:
-  min_tokens: 2
-  max_tokens: 40
+  min_tokens: 5
+  max_tokens: 45
   max_char_edit_ratio: 0.25
   max_token_edit_ratio: 0.30
 
 real_sources:
-  ai_forever_spellcheck_benchmark:
+  spellcheck_benchmark:
     enabled: true
-    type: hf_dataset
-    repo: ai-forever/spellcheck_benchmark
-    split: train
-    max_examples: 6000
-    domain: benchmark
+    type: huggingface_dataset
+    hf_id: ai-forever/spellcheck_benchmark
+    priority: 1
+    max_pairs: 20000
+    target_accepted_pairs: 4000
+    allowed_error_types:
+      - spelling
+      - punctuation
+      - split_join
+      - hyphen
+      - case
+      - final_punctuation
+    strict_validation: true
+    cap_share: 0.50
+
+  spellcheck_punctuation_benchmark:
+    enabled: true
+    type: huggingface_dataset
+    hf_id: ai-forever/spellcheck_punctuation_benchmark
+    priority: 1
+    max_pairs: 12000
+    target_accepted_pairs: 2000
+    allowed_error_types:
+      - punctuation
+      - final_punctuation
+      - spelling
+    strict_validation: true
+    cap_share: 0.25
 
   sage_ruspellru:
     enabled: true
-    type: local_jsonl
+    type: sage_hf_or_local
+    dataset_name: RUSpellRU
     local_path: data/external/sage/RUSpellRU.jsonl
-    max_examples: 2000
-    domain: mixed_filtered
+    priority: 2
+    max_pairs: 8000
+    cap_share: 0.15
+    strict_validation: true
+    notes: "May contain social style; filter aggressively."
 
   sage_multidomain_gold:
     enabled: true
-    type: local_jsonl
+    type: sage_hf_or_local
+    dataset_name: MultidomainGold
     local_path: data/external/sage/MultidomainGold.jsonl
-    max_examples: 2500
-    domain: multidomain_filtered
+    priority: 2
+    max_pairs: 8000
+    cap_share: 0.20
+    strict_validation: true
 
   sage_medspellchecker:
     enabled: true
-    type: local_jsonl
+    type: sage_hf_or_local
+    dataset_name: MedSpellChecker
     local_path: data/external/sage/MedSpellChecker.jsonl
-    max_examples: 500
-    domain: medical_filtered_capped
+    priority: 3
+    max_pairs: 3000
+    cap_share: 0.05
+    strict_validation: true
+    notes: "Medical domain capped; remove medical jargon."
 
   sage_github_typo_ru:
     enabled: true
-    type: local_jsonl
+    type: sage_hf_or_local
+    dataset_name: GitHubTypoCorpusRu
     local_path: data/external/sage/GitHubTypoCorpusRu.jsonl
-    max_examples: 500
-    domain: github_filtered_capped
+    priority: 3
+    max_pairs: 3000
+    cap_share: 0.05
+    strict_validation: true
+    notes: "Remove code, paths, identifiers, technical fragments."
 
   rulec_gec:
     enabled: false
-    type: m2
-    local_path: data/external/rulec-gec/RULEC-GEC.m2
-    max_examples: 900
-    domain: learner_filtered_capped
-
-  ru_lang8:
-    enabled: false
-    type: m2
-    local_path: data/external/ru-lang8/ru_lang8.m2
-    max_examples: 900
-    domain: learner_filtered_capped
+    type: m2_local
+    local_path: data/external/rulec_gec/
+    priority: 4
+    max_pairs: 5000
+    cap_share: 0.10
+    strict_validation: true
+    notes: "Optional only if legally available. Keep minimal orthography/punctuation edits only."

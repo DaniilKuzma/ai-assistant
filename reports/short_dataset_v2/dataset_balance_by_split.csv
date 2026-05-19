@@ -1,4 +1,4 @@
-split,total,synthetic_augmented,real_error_pair,clean_identity,hard_negative
-train,0,0,0,0,0
-val,0,0,0,0,0
-test,0,0,0,0,0
+split,total,synthetic_augmented_from_open_clean,real_error_pair,clean_identity_from_open_clean,hard_negative_from_open_clean
+train,50000,34411,0,7795,7794
+val,5000,4994,0,3,3
+test,5000,4995,0,2,3

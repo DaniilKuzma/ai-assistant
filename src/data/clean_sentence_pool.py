@@ -21,7 +21,7 @@ CLEAN_POOL_COLUMNS = [
     "source_subcorpus",
     "domain",
     "style",
-    "license/status",
+    "license_status",
     "tokens_count",
     "chars_count",
     "cyrillic_ratio",
@@ -86,6 +86,15 @@ def is_clean_sentence_acceptable(text: str, source_metadata: dict[str, Any]) -> 
     return clean_sentence_rejection_reason(text, source_metadata) == ""
 
 
+def clean_sentence_acceptance_reason(text: str, source_metadata: dict[str, Any]) -> tuple[bool, str, str]:
+    reason = clean_sentence_rejection_reason(text, source_metadata)
+    if not reason:
+        return True, "passed_quality_filters", ""
+    if reason in {"url_or_email", "numeric_table"} and _looks_like_protected_hard_negative(text):
+        return True, "hard_negative_candidate", ""
+    return False, "", reason
+
+
 def clean_sentence_rejection_reason(text: str, source_metadata: dict[str, Any]) -> str:
     text = normalize_sentence(text)
     lower = text.lower()
@@ -94,7 +103,7 @@ def clean_sentence_rejection_reason(text: str, source_metadata: dict[str, Any]) 
     subcorpus = str(source_metadata.get("source_subcorpus") or source_metadata.get("subcorpus") or "").lower()
     source_name = str(source_metadata.get("source_name") or "").lower()
 
-    if any(marker in value for marker in FORBIDDEN_DOMAINS for value in (domain, style, subcorpus, source_name)):
+    if _has_forbidden_domain_marker(domain, style, subcorpus, source_name):
         return "forbidden_domain_or_style"
     if len(text) < 25:
         return "too_short_chars"
@@ -156,13 +165,15 @@ def build_clean_sentence_pool(
             "style": record.style,
         }
         source_filter_counts[record.source_name]["total_seen"] += 1
-        reason = clean_sentence_rejection_reason(record.text, metadata)
+        accepted, accepted_reason, reason = clean_sentence_acceptance_reason(record.text, metadata)
         normalized = normalize_for_dedup(record.text)
         near_key = normalize_template_text(record.text)
-        if not reason and normalized in seen:
+        if accepted and normalized in seen:
             reason = "duplicate_normalized_text"
-        if enable_near_dedup and not reason and near_key in near_seen:
+            accepted = False
+        if enable_near_dedup and accepted and near_key in near_seen:
             reason = "near_duplicate_normalized_text"
+            accepted = False
         if reason:
             rejection_counts[reason] += 1
             source_filter_counts[record.source_name][f"rejected:{reason}"] += 1
@@ -172,8 +183,10 @@ def build_clean_sentence_pool(
         seen.add(normalized)
         near_seen.add(near_key)
         source_filter_counts[record.source_name]["accepted"] += 1
-        rows.append(_pool_row(record))
+        rows.append(_pool_row(record, accepted_reason=accepted_reason))
 
+    rows, cap_rejections = _enforce_share_caps(rows, max_source_share=max_source_share, max_subcorpus_share=max_subcorpus_share)
+    rejection_counts.update(cap_rejections)
     source_counts = Counter(row["source_name"] for row in rows)
     subcorpus_counts = Counter(row["source_subcorpus"] or row["source_name"] for row in rows)
     dominance_violations = _dominance_violations(
@@ -244,7 +257,7 @@ def _pool_config(config: dict[str, Any] | str | Path) -> dict[str, Any]:
     return dict(config.get("pool", {}) or {})
 
 
-def _pool_row(record: OpenCorpusSentence) -> dict[str, Any]:
+def _pool_row(record: OpenCorpusSentence, *, accepted_reason: str) -> dict[str, Any]:
     text = normalize_sentence(record.text)
     digest = hashlib.sha256(normalize_for_dedup(text).encode("utf-8")).hexdigest()
     tokens = _word_tokens(text)
@@ -254,14 +267,14 @@ def _pool_row(record: OpenCorpusSentence) -> dict[str, Any]:
         "source_subcorpus": record.source_subcorpus,
         "domain": record.domain,
         "style": record.style,
-        "license/status": record.license_status,
+        "license_status": record.license_status,
         "tokens_count": len(tokens),
         "chars_count": len(text),
         "cyrillic_ratio": cyrillic_ratio(text),
         "source_doc_id": record.source_doc_id,
         "sentence_id": record.sentence_id,
         "hash": digest,
-        "accepted_reason": "passed_quality_filters",
+        "accepted_reason": accepted_reason,
     }
 
 
@@ -271,6 +284,82 @@ def _word_tokens(text: str) -> list[str]:
 
 def _contains_emoji(text: str) -> bool:
     return any(ord(char) > 0xFFFF for char in text)
+
+
+def _has_forbidden_domain_marker(*values: str) -> bool:
+    for raw_value in values:
+        value = str(raw_value or "").lower()
+        tokens = {token for token in re.split(r"[^a-zа-яё]+", value) if token}
+        if tokens & FORBIDDEN_DOMAINS:
+            return True
+    return False
+
+
+def _looks_like_protected_hard_negative(text: str) -> bool:
+    lower = text.lower()
+    if re.search(r"https?://|www\.|[\w.+-]+@[\w-]+\.[\w.-]+", text, flags=re.I):
+        return True
+    if re.search(r"\d+(?:[,.]\d+)?\s?%|\d+[,.]\d+|\d+-[а-яё]+", lower):
+        return True
+    if re.search(r"\b(?:США|РФ|НББ|ООО|АО|ИП|г\.|ул\.|т\.д\.|т\.п\.)\b", text):
+        return True
+    return False
+
+
+def _enforce_share_caps(
+    rows: list[dict[str, Any]],
+    *,
+    max_source_share: float,
+    max_subcorpus_share: float,
+) -> tuple[list[dict[str, Any]], Counter[str]]:
+    rows, source_dropped = _cap_by_key(rows, key_name="source_name", max_share=max_source_share)
+    rows, subcorpus_dropped = _cap_by_key(rows, key_name="source_subcorpus", max_share=max_subcorpus_share, fallback_key="source_name")
+    counts: Counter[str] = Counter()
+    if source_dropped:
+        counts["source_share_cap"] = source_dropped
+    if subcorpus_dropped:
+        counts["subcorpus_share_cap"] = subcorpus_dropped
+    return rows, counts
+
+
+def _cap_by_key(
+    rows: list[dict[str, Any]],
+    *,
+    key_name: str,
+    max_share: float,
+    fallback_key: str | None = None,
+) -> tuple[list[dict[str, Any]], int]:
+    if not rows or max_share <= 0 or max_share >= 1:
+        return rows, 0
+    result = list(rows)
+    dropped_total = 0
+    while result:
+        counts = Counter(str(row.get(key_name) or (row.get(fallback_key) if fallback_key else "") or "") for row in result)
+        if len(counts) <= 1:
+            return result, dropped_total
+        key, count = counts.most_common(1)[0]
+        share = count / max(1, len(result))
+        if share <= max_share:
+            return result, dropped_total
+        other_count = len(result) - count
+        allowed = int((max_share * other_count) // max(0.000001, 1.0 - max_share))
+        allowed = max(0, allowed)
+        drop_count = count - allowed
+        if drop_count <= 0:
+            return result, dropped_total
+        kept_for_key = 0
+        next_rows: list[dict[str, Any]] = []
+        for row in result:
+            row_key = str(row.get(key_name) or (row.get(fallback_key) if fallback_key else "") or "")
+            if row_key == key:
+                if kept_for_key < allowed:
+                    next_rows.append(row)
+                    kept_for_key += 1
+                continue
+            next_rows.append(row)
+        dropped_total += len(result) - len(next_rows)
+        result = next_rows
+    return result, dropped_total
 
 
 def _dominance_violations(
@@ -346,13 +435,16 @@ def _write_source_ingestion_report(
         f"- min_clean_sentences: {min_clean_sentences}",
         f"- dominance_violations: {', '.join(dominance_violations) if dominance_violations else ''}",
         "",
-        "| source | status | mode | path | seen | accepted | reason | license/status |",
-        "|---|---|---|---|---:|---:|---|---|",
+        "| source | status | mode | path | url/hf | bytes | seen | accepted | rejected | reason | license/status | used |",
+        "|---|---|---|---|---|---:|---:|---:|---:|---|---|---|",
     ]
     for report in reports:
+        source_ref = report.get("url") or report.get("hf_id") or ""
         lines.append(
-            "| {source_name} | {status} | {mode} | {local_path} | {total_seen} | {accepted} | {reason} | {license_status} |".format(
-                **{key: str(value).replace("|", "\\|") for key, value in report.items()}
+            "| {source_name} | {status} | {mode} | {local_path} | {source_ref} | {downloaded_size_bytes} | "
+            "{total_seen} | {accepted} | {rejected} | {reason} | {license_status} | {used} |".format(
+                source_ref=str(source_ref).replace("|", "\\|"),
+                **{key: str(value).replace("|", "\\|") for key, value in report.items()},
             )
         )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
