@@ -44,7 +44,7 @@ real_sources:
       - final_punctuation
       - spelling
     strict_validation: true
-    cap_share: 0.25
+    cap_share: 0.30
 
   sage_ruspellru:
     enabled: true
@@ -53,7 +53,7 @@ real_sources:
     local_path: data/external/sage/RUSpellRU.jsonl
     priority: 2
     max_pairs: 8000
-    cap_share: 0.15
+    cap_share: 0.30
     strict_validation: true
     notes: "May contain social style; filter aggressively."
 
@@ -64,7 +64,7 @@ real_sources:
     local_path: data/external/sage/MultidomainGold.jsonl
     priority: 2
     max_pairs: 8000
-    cap_share: 0.20
+    cap_share: 0.50
     strict_validation: true
 
   sage_medspellchecker:
@@ -74,7 +74,7 @@ real_sources:
     local_path: data/external/sage/MedSpellChecker.jsonl
     priority: 3
     max_pairs: 3000
-    cap_share: 0.05
+    cap_share: 0.08
     strict_validation: true
     notes: "Medical domain capped; remove medical jargon."
 
@@ -85,7 +85,7 @@ real_sources:
     local_path: data/external/sage/GitHubTypoCorpusRu.jsonl
     priority: 3
     max_pairs: 3000
-    cap_share: 0.05
+    cap_share: 0.08
     strict_validation: true
     notes: "Remove code, paths, identifiers, technical fragments."
 

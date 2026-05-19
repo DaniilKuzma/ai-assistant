@@ -1,10 +1,12 @@
 from pathlib import Path
+import gzip
 
 import pandas as pd
 import yaml
 
 from src.data.clean_sentence_pool import build_clean_sentence_pool, is_clean_sentence_acceptable
 from src.data.open_corpora_sources import load_open_corpora_sentences
+from src.data.sage_sources import verify_nerus_conllu
 from src.data.source_downloads import DownloadBudget, download_if_allowed
 
 
@@ -132,6 +134,26 @@ def test_nerus_conllu_extractor_does_not_require_nerus_package(tmp_path: Path):
         "Эксперты сообщили, что новый индекс вырос после публикации отчета."
     ]
     assert result.source_reports[0]["status"] == "loaded"
+
+
+def test_nerus_gzip_verification_reads_text_comments_and_samples(tmp_path: Path):
+    path = tmp_path / "nerus_lenta.conllu.gz"
+    with gzip.open(path, "wt", encoding="utf-8") as handle:
+        for index in range(3):
+            handle.write(
+                f"# sent_id = {index}\n"
+                f"# text = Эксперты сообщили, что новый индекс вырос после публикации отчета {index}.\n"
+                "1\tЭксперты\t_\t_\t_\t_\t_\t_\t_\t_\n\n"
+            )
+
+    result = verify_nerus_conllu(path, min_size_bytes=1, min_sample_sentences=3)
+
+    assert result.exists is True
+    assert result.gzip_ok is True
+    assert result.text_comment_count == 3
+    assert result.extracted_sample_sentence_count == 3
+    assert result.accepted_sample_count == 3
+    assert result.status == "ready"
 
 
 def test_clean_sentence_filter_rejects_meta_language_and_social_noise():

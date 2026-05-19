@@ -3,7 +3,7 @@ sources:
     mode: local_first_with_controlled_downloads
     allow_downloads_env: RUSSIAN_CORRECTOR_ALLOW_SOURCE_DOWNLOADS
     max_total_download_mb: 3500
-    max_source_download_mb: 1200
+    max_source_download_mb: 2000
     cache_dir: data/external
     fail_if_insufficient_sources: true
     never_commit_downloaded_data: true
@@ -35,7 +35,7 @@ clean_sources:
     style: neutral
     local_path: data/external/nerus_lenta.conllu.gz
     url: https://storage.yandexcloud.net/natasha-nerus/data/nerus_lenta.conllu.gz
-    max_download_mb: 1200
+    max_download_mb: 2000
     max_sentences: 120000
     min_accepted_sentences: 30000
     license_note: "Nerus Lenta annotated corpus; verify before production use."
