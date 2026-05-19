@@ -1,0 +1,8 @@
+source_dataset,total_seen,accepted,rejected,rejection_reason_counts,candidate_coverage
+ai_forever_spellcheck_benchmark,0,0,0,{},0.0
+sage_ruspellru,0,0,0,{},0.0
+sage_multidomain_gold,0,0,0,{},0.0
+sage_medspellchecker,0,0,0,{},0.0
+sage_github_typo_ru,0,0,0,{},0.0
+rulec_gec,0,0,0,{},0.0
+ru_lang8,0,0,0,{},0.0

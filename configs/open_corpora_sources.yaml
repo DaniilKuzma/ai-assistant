@@ -1,0 +1,99 @@
+download_policy:
+  mode: local_first
+  allow_downloads_env: RUSSIAN_CORRECTOR_ALLOW_SOURCE_DOWNLOADS
+  cache_dir: data/external
+  max_source_download_mb: 512
+
+pool:
+  min_clean_sentences: 150000
+  max_source_share: 0.45
+  max_subcorpus_share: 0.35
+
+clean_sources:
+  lenta_news:
+    enabled: true
+    type: corus_lenta
+    local_path: data/external/lenta-ru-news.csv.bz2
+    priority: 1
+    max_sentences: 150000
+    allowed_topics: []
+    forbidden_topics: []
+    domain: news
+    style: neutral
+    license_status: open_source_dataset
+
+  nerus_news:
+    enabled: true
+    type: nerus
+    local_path: data/external/nerus_lenta.conllu.gz
+    priority: 1
+    max_sentences: 100000
+    domain: news
+    style: neutral
+    license_status: open_source_dataset
+
+  taiga_news:
+    enabled: true
+    type: taiga
+    local_path: data/external/taiga/news/
+    priority: 2
+    max_sentences: 80000
+    allowed_subcorpora:
+      - news
+      - wiki
+      - wiki_2017
+      - wiki_2018
+      - wiki_2019
+      - wiki_2020
+      - GramEval_news
+      - GramEval_wiki
+    forbidden_subcorpora:
+      - proza
+      - fiction
+      - stihi
+      - poetry
+      - social
+      - subtitles
+    domain: news_or_wiki
+    style: neutral
+    license_status: open_source_dataset
+
+  opencorpora:
+    enabled: true
+    type: opencorpora
+    local_path: data/external/opencorpora/
+    priority: 2
+    max_sentences: 50000
+    domain: mixed_nonfiction
+    style: neutral
+    license_status: open_source_dataset
+
+  ruwiki:
+    enabled: true
+    type: wikipedia_dump
+    local_path: data/external/ruwiki/
+    priority: 2
+    max_sentences: 100000
+    domain: encyclopedic
+    style: neutral
+    license_status: CC-BY-SA
+
+  ud_russian_taiga:
+    enabled: true
+    type: ud_conllu
+    local_path: data/external/UD_Russian-Taiga/
+    priority: 3
+    max_sentences: 25000
+    allowed_subcorpora:
+      - news
+      - wiki
+      - GramEval_news
+      - GramEval_wiki
+    forbidden_subcorpora:
+      - social
+      - poetry
+      - fiction
+      - subtitles
+    domain: news_or_wiki
+    style: neutral
+    license_status: open_source_dataset

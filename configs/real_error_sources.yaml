@@ -1,0 +1,61 @@
+download_policy:
+  mode: local_first
+  allow_downloads_env: RUSSIAN_CORRECTOR_ALLOW_SOURCE_DOWNLOADS
+  cache_dir: data/external
+
+validation:
+  min_tokens: 2
+  max_tokens: 40
+  max_char_edit_ratio: 0.25
+  max_token_edit_ratio: 0.30
+
+real_sources:
+  ai_forever_spellcheck_benchmark:
+    enabled: true
+    type: hf_dataset
+    repo: ai-forever/spellcheck_benchmark
+    split: train
+    max_examples: 6000
+    domain: benchmark
+
+  sage_ruspellru:
+    enabled: true
+    type: local_jsonl
+    local_path: data/external/sage/RUSpellRU.jsonl
+    max_examples: 2000
+    domain: mixed_filtered
+
+  sage_multidomain_gold:
+    enabled: true
+    type: local_jsonl
+    local_path: data/external/sage/MultidomainGold.jsonl
+    max_examples: 2500
+    domain: multidomain_filtered
+
+  sage_medspellchecker:
+    enabled: true
+    type: local_jsonl
+    local_path: data/external/sage/MedSpellChecker.jsonl
+    max_examples: 500
+    domain: medical_filtered_capped
+
+  sage_github_typo_ru:
+    enabled: true
+    type: local_jsonl
+    local_path: data/external/sage/GitHubTypoCorpusRu.jsonl
+    max_examples: 500
+    domain: github_filtered_capped
+
+  rulec_gec:
+    enabled: false
+    type: m2
+    local_path: data/external/rulec-gec/RULEC-GEC.m2
+    max_examples: 900
+    domain: learner_filtered_capped
+
+  ru_lang8:
+    enabled: false
+    type: m2
+    local_path: data/external/ru-lang8/ru_lang8.m2
+    max_examples: 900
+    domain: learner_filtered_capped

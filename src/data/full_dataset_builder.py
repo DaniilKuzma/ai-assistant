@@ -696,6 +696,10 @@ def write_dataset(
 
 def build_dataset_from_config(config: dict[str, Any], force: bool = False) -> dict[str, Any]:
     data_config = config.get("data", {})
+    if bool((data_config.get("short_dataset_v2") or {}).get("enabled", False)):
+        from src.data.short_dataset_v2 import build_short_dataset_v2_from_config
+
+        return build_short_dataset_v2_from_config(config, force=force)
     output_path = Path(data_config.get("processed_train_path") or "data/processed/correction_dataset.csv.gz")
     manifest_path = Path(data_config.get("manifest_path") or "reports/dataset_manifest.json")
     configured_target_total = int(data_config.get("target_total_examples", 450_000))
