@@ -127,6 +127,17 @@ def test_subordinate_comma_candidate_is_not_duplicated_after_existing_comma():
     ]
 
 
+def test_subordinate_comma_skips_chto_esli_with_correlative_to():
+    text = "Путин заметил, что если доля выросла то это важно."
+    candidates = _punctuation_candidates(CandidateGenerator().generate(text))
+
+    assert not [
+        candidate
+        for candidate in candidates
+        if candidate.rule_id == "comma_subordinate" and candidate.start == len("Путин заметил, что")
+    ]
+
+
 def test_conjunction_comma_candidate_is_not_duplicated_after_existing_comma():
     candidates = CandidateGenerator().generate("Мы пришли, но встреча закончилась.")
 
@@ -200,6 +211,25 @@ def test_detached_adverbial_comma_candidate_for_clear_sentence_initial_turnover(
     assert candidate.gap_index == 1
 
 
+def test_detached_adverbial_comma_includes_prepositional_complement():
+    candidates = CandidateGenerator().generate("Продолжив наступление на правительство Греф потребовал ответа.")
+
+    candidate = _punctuation_candidate(candidates, "detached_adverbial_comma", "COMMA", "INSERT")
+
+    assert candidate.start == candidate.end == len("Продолжив наступление на правительство")
+
+
+def test_detached_adverbial_comma_not_inserted_inside_prepositional_complement():
+    text = "Продолжив наступление на правительство, Греф потребовал ответа."
+    candidates = _punctuation_candidates(CandidateGenerator().generate(text))
+
+    assert not [
+        candidate
+        for candidate in candidates
+        if candidate.rule_id == "detached_adverbial_comma"
+    ]
+
+
 def test_comparative_turnover_comma_candidate_for_bounded_markers():
     candidates = CandidateGenerator().generate("Он замер будто услышал шум.")
 
@@ -234,6 +264,20 @@ def test_subject_predicate_dash_candidate_for_explicit_eto_pattern():
     assert candidate.requires_model is True
     assert candidate.requires == ("syntax", "model")
     assert candidate.gap_index == 0
+
+
+def test_subject_predicate_dash_candidate_supports_multiword_subject_but_not_discourse_marker():
+    positive = CandidateGenerator().generate("Главная задача это проверить пример.")
+    negative = CandidateGenerator().generate("Получается это решение подходит группе альфа.")
+
+    candidate = _punctuation_candidate(positive, "subject_predicate_dash", "DASH", "INSERT")
+
+    assert candidate.start == candidate.end == len("Главная задача ")
+    assert not [
+        item
+        for item in negative
+        if item.rule_id == "subject_predicate_dash" and item.replacement == "—"
+    ]
 
 
 def test_direct_speech_candidates_are_model_required_and_not_auto_applied():

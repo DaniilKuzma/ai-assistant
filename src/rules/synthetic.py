@@ -17,15 +17,11 @@ PUNCTUATION_BALANCE_GROUPS = (
     "address_comma",
     "homogeneous_members",
     "detached_members",
+    "comparative_turnover",
     "colon",
-    "dash",
     "subject_predicate_dash",
     "direct_speech",
-    "semicolon",
-    "quotes_brackets",
     "final_punctuation",
-    "delete_replace",
-    "punctuation_noise",
 )
 DEFAULT_PUNCTUATION_BALANCE = {
     "comma_subordinate": 20_000,
@@ -34,15 +30,11 @@ DEFAULT_PUNCTUATION_BALANCE = {
     "address_comma": 6_000,
     "homogeneous_members": 8_000,
     "detached_members": 8_000,
+    "comparative_turnover": 6_000,
     "colon": 8_000,
-    "dash": 8_000,
     "subject_predicate_dash": 8_000,
     "direct_speech": 8_000,
-    "semicolon": 5_000,
-    "quotes_brackets": 8_000,
     "final_punctuation": 20_000,
-    "delete_replace": 15_000,
-    "punctuation_noise": 10_000,
 }
 ORTHOGRAPHY_BALANCE_GROUPS = (
     "ne_verb",
@@ -72,6 +64,17 @@ DEFAULT_ORTHOGRAPHY_BALANCE = {
     "context_pairs": 5_000,
     "dictionary_fuzzy": 5_000,
 }
+INACTIVE_SYNTHETIC_PUNCTUATION_GROUPS = frozenset(
+    {
+        "comma",
+        "dash",
+        "delete_replace",
+        "punctuation_noise",
+        "quotes_brackets",
+        "semicolon",
+        "unsupported_colon",
+    }
+)
 
 DICTIONARY_FUZZY_SYNTHETIC_ERRORS = {
     "библиотека": "библеотека",
@@ -228,77 +231,26 @@ def _punctuation_transformations(text: str, protected: tuple[tuple[int, int], ..
             continue
         if char in ",:;—":
             group = _punctuation_group(text, index, char)
+            if group in INACTIVE_SYNTHETIC_PUNCTUATION_GROUPS:
+                continue
             transformations.append(
                 SyntheticTransformation(index, index + 1, "", "punctuation", group, _punctuation_rule_id(group))
-            )
-            for replacement in _punctuation_replacements_for(char):
-                transformations.append(
-                    SyntheticTransformation(
-                        index,
-                        index + 1,
-                        replacement,
-                        "punctuation",
-                        "delete_replace",
-                        "punctuation_delete_replace",
-                    )
-                )
-        if char in ",:;":
-            transformations.append(
-                SyntheticTransformation(
-                    index + 1,
-                    index + 1,
-                    char,
-                    "punctuation",
-                    "punctuation_noise",
-                    "punctuation_delete_replace",
-                )
             )
     return transformations
 
 
 def _paired_punctuation_transformations(text: str, protected: tuple[tuple[int, int], ...]) -> list[SyntheticTransformation]:
-    transformations: list[SyntheticTransformation] = []
-    for match in re.finditer(r"«([^»\n]+)»", text):
-        if _span_overlaps_protected(match.start(), match.end(), protected):
-            continue
-        inner = match.group(1)
-        group = "direct_speech" if _looks_like_direct_speech_quote(text, match.start()) else "quotes_brackets"
-        rule_id = "direct_speech_quotes" if group == "direct_speech" else "quote_pair_balance"
-        transformations.append(
-            SyntheticTransformation(match.start(), match.end(), inner, "punctuation", group, rule_id)
-        )
-        transformations.append(
-            SyntheticTransformation(match.start(), match.end(), f'"{inner}"', "punctuation", group, "quote_open" if group == "quotes_brackets" else "direct_speech_quotes")
-        )
-    for match in re.finditer(r"\(([^)\n]+)\)", text):
-        if _span_overlaps_protected(match.start(), match.end(), protected):
-            continue
-        transformations.append(
-            SyntheticTransformation(match.start(), match.end(), match.group(1), "punctuation", "quotes_brackets", "bracket_pair_balance")
-        )
-    return transformations
+    del text, protected
+    return []
 
 
 def _final_punctuation_transformations(text: str) -> list[SyntheticTransformation]:
     stripped = text.rstrip()
-    if not stripped or stripped[-1] not in ".!?…":
+    if not stripped or stripped[-1] != ".":
         return []
     start = len(stripped) - 1
-    current = stripped[-1]
-    replacements = {"?": [".", "!"], "!": [".", "?"], ".": ["?", "!"], "…": ["."]}.get(current, [])
     return [
         SyntheticTransformation(start, start + 1, "", "final_punctuation", "final_punctuation", "final_punctuation_default"),
-        *[
-            SyntheticTransformation(
-                start,
-                start + 1,
-                replacement,
-                "final_punctuation",
-                "final_punctuation",
-                "final_punctuation_default",
-            )
-            for replacement in replacements
-        ],
     ]
 
 
@@ -320,11 +272,15 @@ def _punctuation_group(text: str, index: int, char: str) -> str:
             return "homogeneous_members"
         if re.search(r"^(закончив|сделав|прочитав)\s+[а-яё]+$", before.strip()):
             return "detached_members"
+        if re.match(r"\s*(словно|будто|как\s+будто)\b", following):
+            return "comparative_turnover"
         return "comma"
     if char == ":":
         if re.search(r"\b(сказал|сказала|спросил|ответил)\s*:$", text[: index + 1].lower()):
             return "direct_speech"
-        return "colon"
+        if re.search(r"\b(следующее|следующие)\s*:$", text[: index + 1].lower()):
+            return "colon"
+        return "unsupported_colon"
     if char == "—":
         if re.match(r"\s*это\b", text[index + 1 :].lower()):
             return "subject_predicate_dash"
@@ -342,6 +298,7 @@ def _punctuation_rule_id(group: str) -> str:
         "address_comma": "address_comma",
         "homogeneous_members": "homogeneous_comma",
         "detached_members": "detached_adverbial_comma",
+        "comparative_turnover": "comparative_turnover_comma",
         "colon": "enumeration_colon",
         "dash": "subject_predicate_dash",
         "subject_predicate_dash": "subject_predicate_dash",

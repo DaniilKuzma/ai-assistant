@@ -11,6 +11,9 @@ from src.rules.punctuation import generate_punctuation_candidates
 from src.rules.registry import orthography_rules
 
 
+MAX_DICTIONARY_CHOICES_PER_TOKEN = 50_000
+
+
 class DictionaryProvider(Protocol):
     def get_lexicon(self) -> Sequence[str]:
         ...
@@ -61,6 +64,9 @@ class CandidateGenerator:
         self.dictionary_min_score = float(dictionary_min_score)
         self.dictionary_yo_e_enabled = bool(dictionary_yo_e_enabled)
         self.syntax_provider = syntax_provider or _default_syntax_provider
+        self._dictionary_index_lexicon_id: int | None = None
+        self._dictionary_index: dict[tuple[str, int], tuple[str, ...]] = {}
+        self._dictionary_spec_cache: dict[tuple[int, str], tuple[Any, ...]] = {}
 
     @classmethod
     def from_config(cls, config: dict[str, Any]) -> "CandidateGenerator":
@@ -101,13 +107,7 @@ class CandidateGenerator:
 
             lexicon = self._dictionary_lexicon()
             if lexicon and not _span_overlaps_protected(token.start, token.end, protected_spans):
-                for spec in dictionary_candidate_specs(
-                    token.text,
-                    lexicon,
-                    self.dictionary_limit,
-                    self.dictionary_min_score,
-                    yo_e_enabled=self.dictionary_yo_e_enabled,
-                ):
+                for spec in self._dictionary_specs_for_token(token.text, lexicon):
                     rule_spec = rule_specs.get(spec.rule_id)
                     _append_candidate(
                         candidates,
@@ -202,6 +202,59 @@ class CandidateGenerator:
         if self.dictionary_provider is None:
             return ()
         return self.dictionary_provider.get_lexicon()
+
+    def _dictionary_specs_for_token(self, token: str, lexicon: Sequence[str]) -> tuple[Any, ...]:
+        normalized = token.strip().lower()
+        key = (id(lexicon), normalized)
+        cached = self._dictionary_spec_cache.get(key)
+        if cached is not None:
+            return cached
+        dictionary_choices = lexicon if self.dictionary_yo_e_enabled else self._dictionary_choices_for_token(token, lexicon)
+        specs = tuple(
+            dictionary_candidate_specs(
+                token,
+                dictionary_choices,
+                self.dictionary_limit,
+                self.dictionary_min_score,
+                yo_e_enabled=self.dictionary_yo_e_enabled,
+            )
+        )
+        self._dictionary_spec_cache[key] = specs
+        return specs
+
+    def _dictionary_choices_for_token(self, token: str, lexicon: Sequence[str]) -> Sequence[str]:
+        normalized = token.strip().lower()
+        if len(normalized) < 4:
+            return ()
+        first = normalized[:1]
+        if not first:
+            return ()
+        index = self._dictionary_index_for(lexicon)
+        max_delta = max(2, len(normalized) // 3)
+        choices: list[str] = []
+        for length in range(max(1, len(normalized) - max_delta), len(normalized) + max_delta + 1):
+            choices.extend(index.get((first, length), ()))
+        if len(choices) > MAX_DICTIONARY_CHOICES_PER_TOKEN and len(normalized) >= 2:
+            narrowed = [word for word in choices if len(word) >= 2 and word[1] == normalized[1]]
+            if narrowed:
+                choices = narrowed
+        if len(choices) > MAX_DICTIONARY_CHOICES_PER_TOKEN:
+            return tuple(choices[:MAX_DICTIONARY_CHOICES_PER_TOKEN])
+        return choices
+
+    def _dictionary_index_for(self, lexicon: Sequence[str]) -> dict[tuple[str, int], tuple[str, ...]]:
+        lexicon_id = id(lexicon)
+        if self._dictionary_index_lexicon_id == lexicon_id:
+            return self._dictionary_index
+        buckets: dict[tuple[str, int], list[str]] = {}
+        for item in lexicon:
+            word = str(item).strip().lower()
+            if not word:
+                continue
+            buckets.setdefault((word[:1], len(word)), []).append(word)
+        self._dictionary_index = {key: tuple(values) for key, values in buckets.items()}
+        self._dictionary_index_lexicon_id = lexicon_id
+        return self._dictionary_index
 
     def _syntax_tokens(self, text: str) -> Sequence[Any]:
         try:

@@ -255,6 +255,30 @@ def test_candidate_generator_emits_lowercase_ner_candidate_as_model_required():
     assert candidate.requires == ("ner", "syntax", "model")
 
 
+def test_candidate_generator_requires_propn_for_ner_capitalization_candidate():
+    def syntax_provider(_text):
+        return [
+            SimpleNamespace(text="налоговой", start=18, end=27, ner="ORG", pos="ADJF"),
+            SimpleNamespace(text="службы", start=28, end=34, ner="ORG", pos="NOUN"),
+        ]
+
+    text = "глава федеральной налоговой службы России"
+    candidates = CandidateGenerator(syntax_provider=syntax_provider).generate(text)
+
+    assert not any(candidate.rule_id == "capitalization_ner" for candidate in candidates)
+
+
+def test_candidate_generator_does_not_treat_single_letter_initial_as_conjunction():
+    source = 'Это канал прямой коммуникации", - сказал А.Белоусов.'
+    candidates = CandidateGenerator().generate(source)
+
+    assert not [
+        candidate
+        for candidate in candidates
+        if candidate.rule_id == "comma_conjunction" and candidate.start == source.index("А.Белоусов")
+    ]
+
+
 def test_spelling_rules_cover_required_orthogram_classes():
     for wrong, correct in SPELLING_CASES:
         assert correct in spelling_candidates(wrong)

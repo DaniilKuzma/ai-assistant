@@ -1,5 +1,5 @@
 # Open Tasks And Fragile Areas
-
+НЕАКТАУЛЬНО!!!
 ## Current Blocker
 
 По `reports/pretraining_readiness_report.md` текущий readiness status — `BLOCKED`.

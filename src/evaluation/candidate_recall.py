@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 import json
 from pathlib import Path
+import re
 from typing import Any, Iterable
 
 import pandas as pd
@@ -53,6 +54,8 @@ def build_candidate_recall_reports(
     gold_gap_counter: Counter[str] = Counter()
     present_gap_counter: Counter[str] = Counter()
     missing_gap_examples: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    candidate_match_cache: dict[tuple[str, str, str, str, str], bool] = {}
+    gap_match_cache: dict[tuple[str, str, str, str, str, str], bool] = {}
 
     for row in rows:
         source = str(row.get("source", ""))
@@ -60,24 +63,40 @@ def build_candidate_recall_reports(
         if not gold_edits:
             continue
 
-        candidates = generator.generate(source)
-        if max_candidates is not None:
-            candidates = rank_candidates_for_budget(candidates, int(max_candidates))
+        candidates: list[Any] | None = None
+        candidate_gap_keys: set[tuple[int | None, str, str]] | None = None
+
+        def get_candidates() -> list[Any]:
+            nonlocal candidates
+            if candidates is None:
+                generated = generator.generate(source)
+                candidates = rank_candidates_for_budget(generated, int(max_candidates)) if max_candidates is not None else generated
+            return candidates
+
+        def get_candidate_gap_keys() -> set[tuple[int | None, str, str]]:
+            nonlocal candidate_gap_keys
+            if candidate_gap_keys is None:
+                candidate_gap_keys = {
+                    (candidate.gap_index, candidate.action, candidate.label)
+                    for candidate in get_candidates()
+                    if candidate.gap_index is not None and candidate.action
+                }
+            return candidate_gap_keys
 
         for edit in gold_edits:
             rule_id = normalize_rule_id(edit.rule_id)
             gold_counter[rule_id] += 1
-            if any(candidate_matches_edit(candidate, edit) for candidate in candidates):
+            cache_key = _candidate_match_cache_key(source, rule_id, edit)
+            candidate_present = candidate_match_cache.get(cache_key)
+            if candidate_present is None:
+                candidate_present = any(candidate_matches_edit(candidate, edit) for candidate in get_candidates())
+                candidate_match_cache[cache_key] = candidate_present
+            if candidate_present:
                 present_counter[rule_id] += 1
             else:
                 _append_missing_example(missing_examples[rule_id], row, edit, max_missing_examples)
 
         words = tokenize_words(source)
-        candidate_gap_keys = {
-            (candidate.gap_index, candidate.action, candidate.label)
-            for candidate in candidates
-            if candidate.gap_index is not None and candidate.action
-        }
         for edit in gold_edits:
             if edit.edit_type not in PUNCTUATION_TYPES:
                 continue
@@ -87,7 +106,12 @@ def build_candidate_recall_reports(
                 continue
             rule_id = normalize_rule_id(edit.rule_id)
             gold_gap_counter[rule_id] += 1
-            if (gap_index, action, label) in candidate_gap_keys:
+            gap_cache_key = _gap_match_cache_key(source, rule_id, edit, action, label)
+            gap_present = gap_match_cache.get(gap_cache_key)
+            if gap_present is None:
+                gap_present = (gap_index, action, label) in get_candidate_gap_keys()
+                gap_match_cache[gap_cache_key] = gap_present
+            if gap_present:
                 present_gap_counter[rule_id] += 1
             else:
                 _append_missing_gap_example(
@@ -114,6 +138,33 @@ def build_candidate_recall_reports(
             rule_groups,
         ),
     }
+
+
+def _candidate_match_cache_key(source: str, rule_id: str, edit: Edit) -> tuple[str, str, str, str, str]:
+    return (
+        _normalize_recall_source(source),
+        rule_id,
+        edit.edit_type,
+        edit.source,
+        edit.replacement,
+    )
+
+
+def _gap_match_cache_key(source: str, rule_id: str, edit: Edit, action: str, label: str) -> tuple[str, str, str, str, str, str]:
+    return (
+        _normalize_recall_source(source),
+        rule_id,
+        edit.edit_type,
+        edit.replacement,
+        action,
+        label,
+    )
+
+
+def _normalize_recall_source(source: str) -> str:
+    text = source.lower().strip()
+    text = re.sub(r"\d+", "<NUM>", text)
+    return re.sub(r"\s+", " ", text)
 
 
 def write_candidate_recall_reports(

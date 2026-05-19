@@ -4,26 +4,11 @@ import json
 from src.alignment.punctuation_label_builder import build_punctuation_gap_action_labels, build_punctuation_gap_labels
 from src.data.full_dataset_builder import _build_synthetic_rows_from_clean_corpus, _build_targeted_punctuation_rows
 from src.data.synthetic_generator import SyntheticGenerator
+from src.rules.synthetic import PUNCTUATION_BALANCE_GROUPS
 from src.validation.diff_analyzer import DiffAnalyzer
 
 
-PUNCTUATION_GROUPS = [
-    "comma_subordinate",
-    "comma_conjunction",
-    "introductory",
-    "address_comma",
-    "homogeneous_members",
-    "detached_members",
-    "colon",
-    "dash",
-    "subject_predicate_dash",
-    "direct_speech",
-    "semicolon",
-    "quotes_brackets",
-    "final_punctuation",
-    "delete_replace",
-    "punctuation_noise",
-]
+PUNCTUATION_GROUPS = list(PUNCTUATION_BALANCE_GROUPS)
 
 
 def test_targeted_punctuation_rows_cover_hundreds_for_each_group():
@@ -73,14 +58,10 @@ def test_targeted_punctuation_rows_create_expected_mark_and_action_labels():
     assert marks["COMMA"] >= 20
     assert marks["COLON"] >= 20
     assert marks["DASH"] >= 20
-    assert marks["SEMICOLON"] >= 20
-    assert marks["QUOTE_OPEN"] >= 20
-    assert marks["BRACKET_OPEN"] >= 20
-    assert marks["QUESTION"] >= 5
+    assert marks["DOT"] >= 20
     assert actions["INSERT"] >= 20
-    assert actions["DELETE"] >= 20
-    assert actions["REPLACE"] >= 20
-    assert actions["KEEP_EXISTING"] >= 20
+    assert actions["DELETE"] == 0
+    assert actions["REPLACE"] == 0
 
 
 def test_targeted_punctuation_rows_use_real_rule_ids_for_complex_groups():
@@ -89,10 +70,9 @@ def test_targeted_punctuation_rows_use_real_rule_ids_for_complex_groups():
         "address_comma": {"address_comma"},
         "homogeneous_members": {"homogeneous_comma"},
         "detached_members": {"detached_adverbial_comma"},
+        "comparative_turnover": {"comparative_turnover_comma"},
         "subject_predicate_dash": {"subject_predicate_dash"},
         "direct_speech": {"direct_speech_colon", "direct_speech_quotes", "direct_speech_dash"},
-        "quotes_brackets": {"quote_open", "quote_close", "quote_pair_balance", "bracket_pair_balance"},
-        "punctuation_noise": {"punctuation_delete_replace"},
     }
 
     for group, expected in expected_rule_ids.items():
@@ -154,11 +134,9 @@ def test_open_corpus_punctuation_rows_create_mark_and_action_labels():
 
     assert marks["COMMA"] >= 20
     assert marks["COLON"] >= 5
-    assert marks["SEMICOLON"] >= 5
     assert actions["INSERT"] >= 20
-    assert actions["DELETE"] >= 20
-    assert actions["REPLACE"] >= 20
-    assert actions["KEEP_EXISTING"] >= 20
+    assert actions["DELETE"] == 0
+    assert actions["REPLACE"] == 0
 
 
 def test_synthetic_punctuation_does_not_modify_protected_fragments():

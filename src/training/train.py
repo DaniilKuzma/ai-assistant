@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import os
 from pathlib import Path
 from typing import Any
@@ -77,19 +78,22 @@ def train(config_path: str | Path = "configs/config.yaml") -> dict[str, Any]:
     reports_dir = Path(config.get("paths", {}).get("reports_dir", "reports"))
     reports_dir.mkdir(parents=True, exist_ok=True)
 
-    rows = _load_training_rows(config)
-    write_dataset_report(_full_dataset_stats(config, rows), reports_dir / "dataset_report.md")
-
-    features = _build_features(config, rows)
-    output_dir = config.get("paths", {}).get("adapter_output_dir", "models/adapters/latest")
-
     run_model_training = _run_model_training_enabled(config)
     model_training_disabled_source = _model_training_disabled_source(config)
     model_training_disabled = bool(model_training_disabled_source)
+    rows = _load_training_rows(config)
+    write_dataset_report(_full_dataset_stats(config, rows), reports_dir / "dataset_report.md")
+
+    skip_feature_build = _skip_feature_build_for_no_training(model_training_disabled_source)
+    features = [] if skip_feature_build else _build_features(config, rows)
+    output_dir = config.get("paths", {}).get("adapter_output_dir", "models/adapters/latest")
+
     result: dict[str, Any] = {
-        "status": "features_prepared",
+        "status": "evaluation_prepared" if skip_feature_build else "features_prepared",
         "output_dir": output_dir,
         "feature_count": len(features),
+        "feature_build_skipped": skip_feature_build,
+        "feature_source_count": len(rows),
         "model_training_ran": False,
         "model_training_disabled": model_training_disabled,
         "model_training_disabled_source": model_training_disabled_source,
@@ -139,6 +143,8 @@ def train(config_path: str | Path = "configs/config.yaml") -> dict[str, Any]:
     write_training_report(
         {
             "feature_count": float(len(features)),
+            "feature_build_skipped": skip_feature_build,
+            "feature_source_count": float(len(rows)),
             "evaluation_split": evaluation_split,
             "evaluation_count": float(len(evaluation_rows)),
             "model_training_ran": float(result["model_training_ran"]),
@@ -253,10 +259,12 @@ def _select_evaluation_corrector(
 
     if model_training_disabled_source and _configured_model_artifacts_exist(config):
         try:
-            return TrainedModelCorrector.from_config(config), {
+            evaluation_config = _config_with_threshold_profile(config, "conservative")
+            return TrainedModelCorrector.from_config(evaluation_config), {
                 **metadata,
                 "evaluation_backend": "existing_checkpoint",
                 "checkpoint_load_error": "",
+                "threshold_profile": _threshold_profile(evaluation_config),
             }
         except Exception as exc:
             return _build_evaluation_corrector(config, False), {
@@ -277,6 +285,18 @@ def _configured_model_artifacts_exist(config: dict[str, Any]) -> bool:
     adapter_dir = Path(paths.get("adapter_output_dir", "models/adapters/latest"))
     heads_path = Path(paths.get("heads_output_dir", "models/heads/latest")) / "heads.pt"
     return adapter_dir.exists() and heads_path.exists()
+
+
+def _config_with_threshold_profile(config: dict[str, Any], profile: str) -> dict[str, Any]:
+    cloned = copy.deepcopy(config)
+    threshold_config = cloned.setdefault("thresholds", {})
+    if profile in threshold_config:
+        threshold_config["mode"] = profile
+    return cloned
+
+
+def _threshold_profile(config: dict[str, Any]) -> str:
+    return str(config.get("thresholds", {}).get("mode", "balanced"))
 
 
 def _report_paths(reports_dir: Path) -> dict[str, str]:
@@ -336,6 +356,10 @@ def _build_features(config: dict[str, Any], rows: list[dict[str, Any]]):
         candidate_generator=candidate_generator,
         show_progress=bool(training_config.get("show_progress", False)),
     )
+
+
+def _skip_feature_build_for_no_training(model_training_disabled_source: str) -> bool:
+    return model_training_disabled_source == DISABLE_MODEL_TRAINING_ENV
 
 
 def _run_model_training(config: dict[str, Any], features) -> dict[str, Any]:  # type: ignore[no-untyped-def]

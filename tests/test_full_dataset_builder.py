@@ -3,18 +3,25 @@ from pathlib import Path
 import re
 
 import pandas as pd
+import pytest
 
 import src.data.full_dataset_builder as full_dataset_builder
+from src.candidates.candidate_generator import CandidateGenerator
+from src.candidates.matching import candidate_matches_edit
 from src.data.full_dataset_builder import (
     DatasetBuildConfig,
     ORTHOGRAPHY_BALANCE_GROUPS,
+    PUNCTUATION_BALANCE_GROUPS,
+    SHORT_EXCLUDED_SYNTHETIC_RULE_IDS,
+    _build_targeted_dictionary_typo_rows,
     _build_targeted_orthography_rows,
+    _build_targeted_punctuation_rows,
     _lexical_balance_target,
     build_dataset_rows,
     dataset_composition,
     write_dataset,
 )
-from src.validation.diff_analyzer import DiffAnalyzer
+from src.validation.diff_analyzer import DiffAnalyzer, Edit
 from src.validation.edit_classifier import is_allowed_edit_type
 
 
@@ -95,6 +102,52 @@ def test_build_dataset_from_config_scales_external_rows_and_writes_reports(tmp_p
     assert "- synthetic: 160" in report
     assert len(frame) == 200
     assert set(frame["split"]) == {"train", "val", "test"}
+
+
+def test_short_dataset_config_writes_exact_splits_metadata_and_reports(tmp_path: Path, monkeypatch):
+    external_rows = [_minimal_external_row(index) for index in range(40)]
+
+    def fake_external_rows(_data_config):
+        return external_rows
+
+    monkeypatch.setattr(full_dataset_builder, "_load_external_rows", fake_external_rows)
+    config = _short_build_config(tmp_path)
+
+    result = full_dataset_builder.build_dataset_from_config(config, force=True)
+    frame = pd.read_csv(tmp_path / "data" / "short_dataset" / "correction_dataset.csv.gz")
+    manifest = json.loads((tmp_path / "reports" / "short_dataset" / "dataset_manifest.json").read_text(encoding="utf-8"))
+
+    assert result["total"] == 120
+    assert result["splits"] == {"train": 100, "val": 10, "test": 10}
+    assert frame["split"].value_counts().to_dict() == {"train": 100, "val": 10, "test": 10}
+    assert (tmp_path / "data" / "short_dataset" / "train.csv").exists()
+    assert (tmp_path / "data" / "short_dataset" / "val.csv").exists()
+    assert (tmp_path / "data" / "short_dataset" / "test.csv").exists()
+    assert (tmp_path / "reports" / "short_dataset" / "dataset_balance_by_rule.csv").exists()
+    assert (tmp_path / "reports" / "short_dataset" / "dataset_balance_by_error_type.csv").exists()
+    assert (tmp_path / "reports" / "short_dataset" / "dataset_balance_by_split.csv").exists()
+    assert (tmp_path / "reports" / "short_dataset" / "candidate_recall_by_rule.csv").exists()
+    assert (tmp_path / "reports" / "short_dataset" / "gap_label_coverage_by_rule.csv").exists()
+
+    new_columns = {"source_type", "error_type", "rule_id", "rule_ids", "edits", "metadata", "is_hard_negative"}
+    assert new_columns <= set(frame.columns)
+    assert manifest["split_sizes"] == {"train": 100, "val": 10, "test": 10}
+    assert manifest["composition_by_split"]["val"]["clean"] > 0
+    assert manifest["composition_by_split"]["val"]["synthetic"] > 0
+    assert manifest["composition_by_split"]["val"]["hard_negative"] > 0
+    assert manifest["composition_by_split"]["test"]["clean"] > 0
+    assert manifest["composition_by_split"]["test"]["synthetic"] > 0
+    assert manifest["composition_by_split"]["test"]["hard_negative"] > 0
+    assert manifest["candidate_recall_summary"]["active_min_excluding_unknown"] >= 0.85
+    assert manifest["unknown_count"] == manifest["rule_id_counts"].get("unknown", 0)
+    assert set(manifest["excluded_rule_ids"]) >= SHORT_EXCLUDED_SYNTHETIC_RULE_IDS
+
+
+def test_short_dataset_rejects_conflicting_env_limit(tmp_path: Path, monkeypatch):
+    monkeypatch.setenv("RUSSIAN_CORRECTOR_DATASET_LIMIT", "119")
+
+    with pytest.raises(ValueError, match="exact short dataset"):
+        full_dataset_builder.build_dataset_from_config(_short_build_config(tmp_path), force=True)
 
 
 def test_build_dataset_from_config_uses_deterministic_external_subset(tmp_path: Path, monkeypatch):
@@ -426,6 +479,92 @@ def test_full_dataset_builder_generates_rule_backed_orthography_groups():
         assert all(json.loads(row["edit_operations"]) for row in rows)
 
 
+def test_full_dataset_builder_excludes_unsupported_low_recall_punctuation_targets():
+    inactive = {"quotes_brackets", "semicolon", "delete_replace", "punctuation_noise"}
+
+    assert inactive.isdisjoint(PUNCTUATION_BALANCE_GROUPS)
+    assert SHORT_EXCLUDED_SYNTHETIC_RULE_IDS.isdisjoint(PUNCTUATION_BALANCE_GROUPS)
+
+
+def test_targeted_active_punctuation_rows_have_matching_candidates():
+    analyzer = DiffAnalyzer()
+    generator = CandidateGenerator()
+
+    for group in PUNCTUATION_BALANCE_GROUPS:
+        rows = _build_targeted_punctuation_rows(
+            group,
+            required_count=8,
+            diff_analyzer=analyzer,
+            domain="unit",
+        )
+
+        assert rows
+        for row in rows:
+            candidates = generator.generate(row["source"])
+            edits = [_edit_from_record(record) for record in json.loads(row["edit_operations"])]
+            assert all(any(candidate_matches_edit(candidate, edit) for candidate in candidates) for edit in edits), (
+                group,
+                row["source"],
+                row["target"],
+                row["edit_operations"],
+            )
+
+
+def test_targeted_dictionary_typo_rows_have_matching_candidates_for_each_family():
+    generator = CandidateGenerator(dictionary_lexicon=["грамматика", "молоко", "корова", "библиотека"])
+    analyzer = DiffAnalyzer()
+
+    for rule_id in {
+        "double_consonant_candidate",
+        "keyboard_typo_candidate",
+        "swapped_letters_candidate",
+        "missing_letter_candidate",
+        "extra_letter_candidate",
+    }:
+        rows = _build_targeted_dictionary_typo_rows(
+            rule_id,
+            required_count=6,
+            diff_analyzer=analyzer,
+            domain="unit",
+            candidate_generator=generator,
+        )
+
+        assert len(rows) == 6
+        for row in rows:
+            candidates = generator.generate(row["source"])
+            edits = [_edit_from_record(record) for record in json.loads(row["edit_operations"])]
+            assert all(
+                any(candidate.rule_id == rule_id and candidate_matches_edit(candidate, edit) for candidate in candidates)
+                for edit in edits
+            )
+
+
+def test_final_punctuation_targeting_only_generates_missing_default_dot():
+    analyzer = DiffAnalyzer()
+    rows = _build_targeted_punctuation_rows(
+        "final_punctuation",
+        required_count=8,
+        diff_analyzer=analyzer,
+        domain="unit",
+    )
+
+    edits = [_edit_from_record(record) for row in rows for record in json.loads(row["edit_operations"])]
+
+    assert edits
+    assert all(edit.edit_type == "final_punctuation" and edit.source == "" and edit.replacement == "." for edit in edits)
+
+
+def _edit_from_record(record: dict) -> Edit:
+    return Edit(
+        source=str(record.get("source", "")),
+        replacement=str(record.get("replacement", "")),
+        edit_type=str(record.get("edit_type", "unknown")),
+        start=int(record.get("start", -1)),
+        end=int(record.get("end", -1)),
+        rule_id=str(record.get("rule_id", "")),
+    )
+
+
 def test_full_dataset_builder_keeps_synthetic_rule_ids_in_edit_operations():
     analyzer = DiffAnalyzer()
 
@@ -701,4 +840,56 @@ def _small_build_config(base_path: Path) -> dict[str, object]:
             "debug_clean_texts": _clean_texts(120),
         },
         "paths": {"reports_dir": str(base_path / "reports")},
+    }
+
+
+def _short_build_config(base_path: Path) -> dict[str, object]:
+    return {
+        "dictionary": {
+            "enabled": True,
+            "lexicon_path": "data/processed/russian_lexicon.txt",
+            "max_candidates": 2,
+            "min_score": 85,
+        },
+        "model": {"max_candidates": 16},
+        "data": {
+            "processed_train_path": str(base_path / "data" / "short_dataset" / "correction_dataset.csv.gz"),
+            "manifest_path": str(base_path / "reports" / "short_dataset" / "dataset_manifest.json"),
+            "target_total_examples": 120,
+            "train_examples": 100,
+            "val_examples": 10,
+            "test_examples": 10,
+            "synthetic_seed": 17,
+            "domain": "unit_short",
+            "use_external_sources": True,
+            "max_external_examples": 8,
+            "clean_corpus": {"enabled": False},
+            "debug_clean_texts": _clean_texts(160),
+            "short_dataset": {
+                "enabled": True,
+                "source_type_targets": {
+                    "synthetic": 96,
+                    "real": 8,
+                    "clean": 8,
+                    "hard_negative": 8,
+                },
+                "split_source_type_targets": {
+                    "train": {"synthetic": 82, "real": 6, "clean": 6, "hard_negative": 6},
+                    "val": {"synthetic": 7, "real": 1, "clean": 1, "hard_negative": 1},
+                    "test": {"synthetic": 7, "real": 1, "clean": 1, "hard_negative": 1},
+                },
+                "synthetic_error_type_targets": {
+                    "spelling": 34,
+                    "punctuation": 26,
+                    "final_punctuation": 6,
+                    "split_join": 18,
+                    "hyphen": 12,
+                },
+                "unknown_max_ratio": 0.05,
+                "active_recall_min": 0.85,
+                "active_rule_failure_threshold": 0.80,
+            },
+        },
+        "thresholds": {"mode": "conservative"},
+        "paths": {"reports_dir": str(base_path / "reports" / "short_dataset")},
     }

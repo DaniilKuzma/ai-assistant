@@ -113,10 +113,12 @@ class TrainedModelCorrector:
         candidates = self.candidates.generate(text)
         selected = _select_candidates(self.backend.score_candidates(text, candidates), self.thresholds)
         proposed = _apply_candidates(text, selected)
+        punctuation_candidates = _punctuation_candidates_for_text(self.candidates, proposed)
         proposed, punctuation_edits = _apply_punctuation_predictions(
             proposed,
             self.backend.predict_punctuation(proposed),
             self.thresholds,
+            punctuation_candidates=punctuation_candidates,
         )
         return normalize_spacing(proposed), [*selected, *punctuation_edits]
 
@@ -358,10 +360,24 @@ def _apply_punctuation_predictions(
     text: str,
     predictions: list[ModelPunctuationPrediction],
     thresholds: dict[str, float],
+    *,
+    punctuation_candidates: list[Candidate] | None = None,
 ) -> tuple[str, list[Candidate]]:
     proposed = text
     trusted_edits: list[Candidate] = []
+    candidate_index = _punctuation_candidate_index(punctuation_candidates or [])
     for prediction in predictions:
+        matched_candidate = candidate_index.get((prediction.gap_index, prediction.action, prediction.label))
+        if matched_candidate is None:
+            continue
+        if not prediction.rule_id:
+            prediction = ModelPunctuationPrediction(
+                gap_index=prediction.gap_index,
+                label=prediction.label,
+                confidence=prediction.confidence,
+                action=prediction.action,
+                rule_id=matched_candidate.rule_id,
+            )
         if prediction.confidence < threshold_for_punctuation_prediction(prediction, thresholds):
             continue
         if prediction.action in {"KEEP_NONE", "KEEP_EXISTING"}:
@@ -391,6 +407,32 @@ def _apply_punctuation_predictions(
             proposed = _insert_punctuation_after_word(proposed, prediction.gap_index, _punctuation_mark(prediction.label))
         trusted_edits.extend(_trusted_punctuation_candidates(before, proposed, prediction))
     return proposed, trusted_edits
+
+
+def _punctuation_candidates_for_text(generator: CandidateGenerator, text: str) -> list[Candidate]:
+    return [
+        candidate
+        for candidate in generator.generate(text)
+        if candidate.edit_type
+        in {
+            "punctuation_insert",
+            "punctuation_delete",
+            "punctuation_replace",
+            "final_punctuation",
+        }
+        and candidate.gap_index is not None
+        and candidate.action
+        and candidate.label
+    ]
+
+
+def _punctuation_candidate_index(candidates: list[Candidate]) -> dict[tuple[int, str, str], Candidate]:
+    index: dict[tuple[int, str, str], Candidate] = {}
+    for candidate in candidates:
+        if candidate.gap_index is None:
+            continue
+        index.setdefault((candidate.gap_index, candidate.action, candidate.label), candidate)
+    return index
 
 
 def _trusted_punctuation_candidates(

@@ -75,17 +75,20 @@ def dictionary_candidate_specs(
         return []
 
     normalized = _normalize(word)
-    lexicon_set = _normalized_lexicon_set(lexicon)
-    choices = _candidate_choices(normalized, lexicon)
     results: list[DictionaryCandidateSpec] = []
     seen: set[str] = set()
 
     if yo_e_enabled:
+        lexicon_set = _normalized_lexicon_set(lexicon)
         _extend_limited(results, seen, _yo_e_candidate_specs(normalized, lexicon_set), limit)
         if len(results) >= limit:
             return results[:limit]
 
-    if is_known_word(normalized) or not choices:
+    if is_known_word(normalized):
+        return results
+
+    choices = _candidate_choices(normalized, lexicon)
+    if not choices:
         return results
 
     for generator in (

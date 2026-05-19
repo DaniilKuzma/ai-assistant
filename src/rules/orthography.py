@@ -1523,6 +1523,8 @@ class CapitalizationNerRule:
         syntax_token = _matching_syntax_token(context.syntax_tokens, start, end)
         if syntax_token is None or str(getattr(syntax_token, "ner", "") or "") not in NER_CAPITALIZATION_TYPES:
             return []
+        if str(getattr(syntax_token, "pos", "") or "").upper() != "PROPN":
+            return []
         return [_candidate(self.spec, token[:1].upper() + token[1:], requires_model=True)]
 
 

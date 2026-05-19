@@ -358,6 +358,75 @@ def test_validator_rejects_edits_creating_unbalanced_quotes_or_brackets(source, 
     assert result.apply_accepted() == source
 
 
+@pytest.mark.parametrize(
+    ("source", "target", "trusted", "reason"),
+    [
+        (
+            'В тексте есть "личный кабинет".',
+            "В тексте есть «личный кабинет».",
+            Candidate('"', "«", "punctuation_replace", start=13, end=14, confidence=0.99999, requires_model=True, rule_id="quote_open"),
+            "quote_normalization_requires_policy",
+        ),
+        (
+            "Власти намерены добиваться компенсации.",
+            "Власти намеренны добиваться компенсации.",
+            Candidate(
+                "намерены",
+                "намеренны",
+                "spelling",
+                start=7,
+                end=15,
+                confidence=0.99999,
+                requires_model=True,
+                rule_id="n_nn_short_form",
+            ),
+            "protected_clean_word_form",
+        ),
+        (
+            "Это не случайно важно.",
+            "Это неслучайно важно.",
+            Candidate(
+                "не случайно",
+                "неслучайно",
+                "split_join",
+                start=4,
+                end=15,
+                confidence=0.99999,
+                requires_model=True,
+                rule_id="ne_adverb",
+            ),
+            "unsafe_ne_split_join",
+        ),
+        (
+            "Это небольшой дефицит.",
+            "Это не большой дефицит.",
+            Candidate(
+                "небольшой",
+                "не большой",
+                "split_join",
+                start=4,
+                end=13,
+                confidence=0.99999,
+                requires_model=True,
+                rule_id="ne_adjective",
+            ),
+            "unsafe_ne_split_join",
+        ),
+        (
+            "Получается это решение подходит группе альфа.",
+            "Получается — это решение подходит группе альфа.",
+            Candidate("", "—", "punctuation_insert", start=10, end=10, confidence=0.99999, requires_model=True, rule_id="subject_predicate_dash"),
+            "unsafe_discourse_dash",
+        ),
+    ],
+)
+def test_validator_rejects_observed_clean_overcorrection_edits(source, target, trusted, reason):
+    result = StrictValidator().validate(source, target, trusted_edits=[trusted])
+
+    assert any(edit.status == "rejected" and edit.reason == reason for edit in result.edits)
+    assert result.apply_accepted() == source
+
+
 def test_validator_allows_trusted_edit_that_repairs_quote_balance():
     source = "Он сказал: «Проект готов."
     target = "Он сказал: «Проект готов»."

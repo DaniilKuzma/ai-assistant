@@ -5,9 +5,10 @@ import re
 from typing import Any
 
 from src.candidates.frequent_errors import CONTEXT_DEPENDENT_WHITELIST, WRONG_TO_CORRECT
+from src.candidates.morphology import parses
 from src.preprocessing.protected_spans import ProtectedSpan, find_protected_spans
 from src.preprocessing.tokenizer import tokenize_words
-from src.rules.orthography import SCORING_REQUIRED_RULE_IDS, is_safe_sentence_start_case
+from src.rules.orthography import SCORING_REQUIRED_RULE_IDS, VERB_POSES, is_safe_sentence_start_case
 from src.validation.diff_analyzer import DiffAnalyzer, Edit
 from src.validation.edit_classifier import is_allowed_edit_type
 
@@ -106,6 +107,25 @@ ABBREVIATION_RE = re.compile(
     re.IGNORECASE,
 )
 PUNCTUATION_NOISE_RE = re.compile(r"(?:…[.!?…]+|[.!?]+…|[!?]\.|\.{2,}|[!?]{2,}|([,;:])\s*\1)")
+QUOTE_NORMALIZATION_RULE_IDS = frozenset({"quote_open", "quote_close"})
+N_NN_RULE_IDS = frozenset({"n_nn_adjective", "n_nn_participle", "n_nn_deverbal_adjective", "n_nn_short_form"})
+PROTECTED_N_NN_CLEAN_FORMS = frozenset({("намерены", "намеренны")})
+NE_SPLIT_JOIN_RULE_IDS = frozenset({"ne_verb", "ne_adjective", "ne_adverb", "ne_participle"})
+DIRECT_SPEECH_RULE_IDS = frozenset({"direct_speech_colon", "direct_speech_quotes", "direct_speech_dash"})
+DISCOURSE_DASH_BLOCKERS = frozenset({"получается", "значит"})
+CAPITALIZATION_NER_MIN_CONFIDENCE = 0.999999
+UNSAFE_FUZZY_SPELLING_RULE_IDS = frozenset(
+    {
+        "dictionary_fuzzy",
+        "double_consonant_candidate",
+        "keyboard_typo_candidate",
+        "swapped_letters_candidate",
+        "missing_letter_candidate",
+        "extra_letter_candidate",
+        "prefix_pre_pri",
+    }
+)
+ABBREVIATION_SENTENCE_START_PREFIXES = frozenset({"г", "см", "ул", "стр", "рис", "тыс", "млн", "млрд", "руб", "коп"})
 
 
 def _guard_rejection_reason(
@@ -127,6 +147,28 @@ def _guard_rejection_reason(
     case_reason = _case_rejection_reason(source, edit, protected)
     if case_reason:
         return case_reason
+    if _is_unsafe_sentence_start_capitalization(source, edit):
+        return "abbreviation_sentence_start_capitalization"
+    if _is_low_confidence_ner_capitalization(edit):
+        return "ner_capitalization_requires_confirmed_span"
+    if _is_straight_quote_normalization(edit):
+        return "quote_normalization_requires_policy"
+    if _is_protected_n_nn_clean_form(edit):
+        return "protected_clean_word_form"
+    if _is_unsafe_n_nn_lexical_change(edit):
+        return "unsafe_n_nn_lexical_change"
+    if _is_unsafe_fuzzy_spelling_candidate(edit):
+        return "unsafe_fuzzy_spelling_candidate"
+    if _is_unsafe_ne_split_join(source, edit):
+        return "unsafe_ne_split_join"
+    if _is_unsafe_hyphen_po_adverb(edit):
+        return "unsafe_hyphen_po_adverb"
+    if _is_unsafe_colon_candidate(source, edit):
+        return "unsafe_colon_candidate"
+    if _is_unsafe_direct_speech_punctuation(source, edit):
+        return "weak_direct_speech_pattern"
+    if _is_unsafe_discourse_dash(source, edit):
+        return "unsafe_discourse_dash"
     if _is_tsya_pair(edit.source.lower(), edit.replacement.lower()):
         if _is_dangerous_tsya_edit(source, edit):
             return "dangerous_tsya"
@@ -222,6 +264,154 @@ def _ordered_pair_imbalance(text: str, open_char: str, close_char: str) -> int:
             else:
                 unmatched_close += 1
     return balance + unmatched_close
+
+
+def _is_low_confidence_ner_capitalization(edit: Edit) -> bool:
+    return edit.rule_id == "capitalization_ner" and float(edit.confidence or 0.0) < CAPITALIZATION_NER_MIN_CONFIDENCE
+
+
+def _is_straight_quote_normalization(edit: Edit) -> bool:
+    return edit.source == '"' and edit.replacement in {"«", "»"}
+
+
+def _is_protected_n_nn_clean_form(edit: Edit) -> bool:
+    return (
+        edit.rule_id in N_NN_RULE_IDS
+        and (edit.source.lower(), edit.replacement.lower()) in PROTECTED_N_NN_CLEAN_FORMS
+    )
+
+
+def _is_unsafe_n_nn_lexical_change(edit: Edit) -> bool:
+    return edit.rule_id in N_NN_RULE_IDS
+
+
+def _is_unsafe_fuzzy_spelling_candidate(edit: Edit) -> bool:
+    return edit.rule_id in UNSAFE_FUZZY_SPELLING_RULE_IDS
+
+
+def _is_unsafe_sentence_start_capitalization(source_text: str, edit: Edit) -> bool:
+    if edit.rule_id != "capitalization_sentence_start":
+        return False
+    previous = _previous_nonspace_index(source_text, edit.start)
+    if previous is None or source_text[previous] != ".":
+        return False
+    prefix = source_text[: previous + 1].lower()
+    if re.search(r"(?:^|\s)(?:и\.о|[а-яё])\.\s*$", prefix):
+        return True
+    match = re.search(r"([а-яё]+)\.\s*$", prefix)
+    if match and match.group(1) in ABBREVIATION_SENTENCE_START_PREFIXES:
+        return True
+    return len(edit.source) <= 2
+
+
+def _previous_nonspace_index(text: str, position: int) -> int | None:
+    index = position - 1
+    while index >= 0 and text[index].isspace():
+        index -= 1
+    return index if index >= 0 else None
+
+
+def _is_unsafe_ne_split_join(source_text: str, edit: Edit) -> bool:
+    if edit.rule_id not in NE_SPLIT_JOIN_RULE_IDS:
+        return False
+    source = edit.source.lower()
+    replacement = edit.replacement.lower()
+    if not (source.startswith("не") or source.startswith("не ") or replacement.startswith("не") or replacement.startswith("не ")):
+        return False
+    if edit.rule_id == "ne_verb":
+        return not _looks_like_ne_verb_split(replacement)
+    if (source, replacement) == ("не случайно", "неслучайно"):
+        return True
+    return not _has_ne_contrast_marker(source_text, edit)
+
+
+def _looks_like_ne_verb_split(replacement: str) -> bool:
+    parts = replacement.lower().split()
+    if len(parts) != 2 or parts[0] != "не":
+        return False
+    return _looks_like_finite_verb(parts[1])
+
+
+def _looks_like_finite_verb(word: str) -> bool:
+    known_parses = [parse for parse in parses(word) if getattr(parse, "is_known", False)]
+    if not known_parses:
+        return False
+    max_score = max(float(getattr(parse, "score", 0.0)) for parse in known_parses)
+    verb_scores = [
+        float(getattr(parse, "score", 0.0))
+        for parse in known_parses
+        if getattr(parse.tag, "POS", None) in VERB_POSES
+    ]
+    if not verb_scores:
+        return False
+    best_parse = max(known_parses, key=lambda parse: float(getattr(parse, "score", 0.0)))
+    if getattr(best_parse.tag, "POS", None) in VERB_POSES:
+        return True
+    return max(verb_scores) >= max_score * 0.75
+
+
+def _has_ne_contrast_marker(source_text: str, edit: Edit) -> bool:
+    right_context = source_text[edit.end : edit.end + 48].lower()
+    return bool(re.match(r"\s*,?\s*(а|но)\b", right_context))
+
+
+def _is_unsafe_hyphen_po_adverb(edit: Edit) -> bool:
+    if edit.rule_id != "hyphen_po_adverbs":
+        return False
+    parts = edit.source.lower().split()
+    return len(parts) == 2 and parts[0] == "по" and parts[1].endswith(("ому", "ему"))
+
+
+def _is_unsafe_colon_candidate(source_text: str, edit: Edit) -> bool:
+    if edit.rule_id == "explanation_colon":
+        return True
+    if edit.rule_id != "enumeration_colon":
+        return False
+    suffix = source_text[edit.end : edit.end + 96]
+    return not bool(re.search(r"^\s+[^.!?]{1,64},", suffix))
+
+
+def _is_unsafe_direct_speech_punctuation(source_text: str, edit: Edit) -> bool:
+    return edit.rule_id in DIRECT_SPEECH_RULE_IDS and not _passes_direct_speech_punctuation_guard(source_text, edit)
+
+
+def _passes_direct_speech_punctuation_guard(source_text: str, edit: Edit) -> bool:
+    prefix = source_text[max(0, edit.start - 48) : edit.start].lower()
+    suffix = source_text[edit.end : edit.end + 48].lower()
+    speech_verbs = r"(говорит|написал[аи]?|написали|ответил[аи]?|ответили|сказал[аи]?|сказали|сообщил[аи]?|сообщили|спросил[аи]?|спросили)"
+    if edit.rule_id == "direct_speech_quotes":
+        if any(char in source_text for char in {'"', "«", "»"}):
+            return False
+        return bool(re.search(rf"\b{speech_verbs}\b[^,;:—.!?\n]*$", prefix))
+    if edit.rule_id == "direct_speech_dash":
+        return "»" in prefix and bool(re.search(rf"^\s*{speech_verbs}\b", suffix))
+    if re.search(rf"[,—-]\s*{speech_verbs}\s+[а-яёa-z]\.?\s*$", prefix):
+        return False
+    return bool(re.search(rf"\b{speech_verbs}\b[^,;:—.!?\n]*$", prefix))
+
+
+def _is_unsafe_discourse_dash(source_text: str, edit: Edit) -> bool:
+    if edit.replacement != "—":
+        return False
+    if _has_nearby_dash(source_text, edit.start):
+        return True
+    previous = _previous_word_before(source_text, edit.start)
+    return previous in DISCOURSE_DASH_BLOCKERS
+
+
+def _has_nearby_dash(text: str, position: int) -> bool:
+    window = text[max(0, position - 3) : min(len(text), position + 4)]
+    return any(char in window for char in {"-", "–", "—"})
+
+
+def _previous_word_before(text: str, position: int) -> str:
+    previous = ""
+    for word in tokenize_words(text):
+        if word.end <= position:
+            previous = word.text.lower()
+            continue
+        break
+    return previous
 
 
 def _is_dangerous_tsya_edit(source_text: str, edit: Edit) -> bool:

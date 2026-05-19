@@ -52,6 +52,33 @@ REPEATED_HOMOGENEOUS_CONJUNCTIONS = frozenset({"и", "ни"})
 COMPARATIVE_MARKERS = frozenset({"словно", "будто"})
 COMPLEX_COMPARATIVE_MARKERS = (("как", "будто"),)
 GERUND_FALLBACK_SUFFIXES = ("вшись", "в")
+PREPOSITION_MARKERS = frozenset(
+    {
+        "без",
+        "в",
+        "во",
+        "для",
+        "до",
+        "за",
+        "из",
+        "к",
+        "ко",
+        "между",
+        "на",
+        "над",
+        "о",
+        "об",
+        "от",
+        "по",
+        "под",
+        "при",
+        "про",
+        "с",
+        "со",
+        "у",
+        "через",
+    }
+)
 PROTECTED_PUNCTUATION_RE = re.compile(r"(?<![\w])\d+(?:[.,]\d+)?%|(?<![\w])\d+(?:[.,:/-]\d+)*")
 PUNCTUATION_NOISE_RE = re.compile(r"(?:…[.!?…]+|[.!?]+…|[!?]\.|\.{2,}|[!?]{2,}|([,;:])\s*\1)")
 SPEECH_VERBS = frozenset(
@@ -80,6 +107,7 @@ EXPLANATION_COLON_MARKERS = frozenset({"одно"})
 CONSEQUENCE_DASH_PATTERNS = frozenset({("начался", "дождь")})
 ASYNDETIC_DASH_PATTERNS = frozenset({("солнце", "село")})
 SEMICOLON_PATTERNS = frozenset({("документ", "готов", "отчет", "отправлен")})
+DASH_DISCOURSE_MARKERS = frozenset({"получается", "значит"})
 
 
 @dataclass(frozen=True)
@@ -314,6 +342,8 @@ def _subordinate_comma_candidates(
         if lowered[index] in SUBORDINATE_MARKERS:
             if index > 0 and lowered[index - 1] in COMPLEX_SUBORDINATE_CONTINUATIONS:
                 continue
+            if _is_adjacent_conjunction_with_correlative_to(lowered, index):
+                continue
             candidate = _comma_before_word(text, words, index, protected, spec)
             if candidate is not None:
                 candidates.append(candidate)
@@ -340,6 +370,8 @@ def _conjunction_comma_candidates(
 
     for index, word in enumerate(words):
         if lowered[index] not in CONJUNCTION_MARKERS:
+            continue
+        if lowered[index] == "а" and _looks_like_single_letter_initial(text, word):
             continue
         if index <= 0 or index + 1 >= len(words):
             continue
@@ -454,7 +486,32 @@ def _detached_adverbial_comma_candidates(
     if len(words) < 3 or not _looks_like_sentence_initial_gerund(text, words):
         return []
     spec = _spec_by_id("detached_adverbial_comma")
-    return _comma_after_word(text, words, 1, protected, spec)
+    comma_after_index = _sentence_initial_gerund_phrase_end_index(words)
+    return _comma_after_word(text, words, comma_after_index, protected, spec)
+
+
+def _is_adjacent_conjunction_with_correlative_to(lowered: list[str], index: int) -> bool:
+    return (
+        lowered[index] == "если"
+        and index > 0
+        and lowered[index - 1] == "что"
+        and "то" in lowered[index + 1 :]
+    )
+
+
+def _sentence_initial_gerund_phrase_end_index(words: list[Token]) -> int:
+    end_index = 1
+    if len(words) > 2 and words[2].text.lower() in PREPOSITION_MARKERS:
+        end_index = 2
+        for index in range(3, len(words)):
+            if words[index].text.lower() in {"а", "но", "и", "что", "если", "когда"}:
+                break
+            if words[index].text[:1].isupper():
+                break
+            end_index = index
+            if index - 2 >= 4:
+                break
+    return end_index
 
 
 def _comparative_turnover_comma_candidates(
@@ -499,7 +556,8 @@ def _subject_predicate_dash_candidates(
     for index, word in enumerate(words):
         if lowered[index] != "это" or index <= 0 or index + 1 >= len(words):
             continue
-        if not words[index - 1].text[:1].isupper():
+        subject_start_index = _subject_dash_start_index(words, index)
+        if subject_start_index is None:
             continue
         if not _is_safe_punctuation_gap(text, words[index - 1].end, word.start, protected):
             continue
@@ -517,6 +575,20 @@ def _subject_predicate_dash_candidates(
             )
         )
     return candidates
+
+
+def _subject_dash_start_index(words: list[Token], marker_index: int) -> int | None:
+    first_index = max(0, marker_index - 3)
+    for candidate_index in range(marker_index - 1, first_index - 1, -1):
+        token = words[candidate_index]
+        lowered = token.text.lower()
+        if lowered in DASH_DISCOURSE_MARKERS:
+            return None
+        if not token.text[:1].isupper():
+            continue
+        if all(words[inner_index].text.lower() not in DASH_DISCOURSE_MARKERS for inner_index in range(candidate_index, marker_index)):
+            return candidate_index
+    return None
 
 
 def _direct_speech_candidates(
@@ -614,10 +686,10 @@ def _direct_speech_dash_candidates(
         candidates.append(
             _candidate(
                 source="",
-                replacement=" — ",
+                replacement="—",
                 edit_type="punctuation_insert",
-                start=position,
-                end=position,
+                start=verb_start,
+                end=verb_start,
                 spec=spec,
                 action="INSERT",
                 label="DASH",
@@ -874,6 +946,10 @@ def _looks_like_explicit_address(first: object, second: object) -> bool:
     if first_pos != "PROPN" and first_ner != "PER":
         return False
     return second_pos == "VERB" and str(second_feats.get("Mood", "")) == "Imp"
+
+
+def _looks_like_single_letter_initial(text: str, word: Token) -> bool:
+    return len(word.text) == 1 and word.text[:1].isupper() and text[word.end : word.end + 1] == "."
 
 
 def _looks_like_sentence_initial_gerund(text: str, words: list[Token]) -> bool:

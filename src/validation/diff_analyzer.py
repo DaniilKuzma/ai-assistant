@@ -4,7 +4,7 @@ from dataclasses import dataclass, replace
 import difflib
 import re
 
-from src.candidates.candidate_generator import CandidateGenerator
+from src.candidates.candidate_generator import Candidate, CandidateGenerator
 from src.candidates.frequent_errors import CONTEXT_DEPENDENT_WHITELIST, HYPHEN_WHITELIST, SPLIT_JOIN_WHITELIST, WRONG_TO_CORRECT
 from src.candidates.spelling_rules import spelling_candidate_specs
 from src.preprocessing.tokenizer import PUNCTUATION
@@ -35,7 +35,7 @@ class Edit:
 class DiffAnalyzer:
     """Classify text differences into the strict edit taxonomy."""
 
-    def analyze(self, source: str, target: str) -> list[Edit]:
+    def analyze(self, source: str, target: str, *, candidates: list[Candidate] | None = None) -> list[Edit]:
         edits: list[Edit] = []
         working_source = source
         working_target = target
@@ -46,7 +46,7 @@ class DiffAnalyzer:
             working_source = _strip_final_punctuation(working_source)
             working_target = _strip_final_punctuation(working_target)
 
-        edits.extend(self._known_word_edits(source, target))
+        edits.extend(self._known_word_edits(source, target, candidates=candidates))
         edits.extend(self._case_edits(source, target))
         edits.extend(self._punctuation_edits(working_source, working_target))
 
@@ -55,7 +55,27 @@ class DiffAnalyzer:
 
         return _deduplicate(edits)
 
-    def _known_word_edits(self, source: str, target: str) -> list[Edit]:
+    def punctuation_edits(self, source: str, target: str) -> list[Edit]:
+        edits: list[Edit] = []
+        working_source = source
+        working_target = target
+
+        final_edit = self._final_punctuation_edit(working_source, working_target)
+        if final_edit:
+            edits.append(final_edit)
+            working_source = _strip_final_punctuation(working_source)
+            working_target = _strip_final_punctuation(working_target)
+
+        edits.extend(self._punctuation_edits(working_source, working_target))
+        return _deduplicate(edits)
+
+    def _known_word_edits(
+        self,
+        source: str,
+        target: str,
+        *,
+        candidates: list[Candidate] | None = None,
+    ) -> list[Edit]:
         edits: list[Edit] = []
         source_lower = source.lower()
         target_lower = target.lower()
@@ -107,7 +127,8 @@ class DiffAnalyzer:
                     )
                 )
 
-        for candidate in CandidateGenerator().generate(source):
+        reusable_candidates = candidates if candidates is not None else CandidateGenerator().generate(source)
+        for candidate in reusable_candidates:
             if candidate.edit_type not in {"hyphen", "split_join"}:
                 continue
             if candidate.replacement.lower() not in target_lower:

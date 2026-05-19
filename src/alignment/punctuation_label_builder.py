@@ -51,7 +51,7 @@ def build_punctuation_gap_labels(source: str, target: str) -> list[PunctuationGa
     labels = _labels_from_source_punctuation(source, words)
     mutable = list(labels)
 
-    for edit in DiffAnalyzer().analyze(source, target):
+    for edit in DiffAnalyzer().punctuation_edits(source, target):
         _apply_punctuation_edit_label(mutable, words, edit)
 
     return mutable
@@ -65,7 +65,7 @@ def build_punctuation_gap_action_labels(source: str, target: str) -> list[Punctu
     labels = _action_labels_from_source_punctuation(source, words)
     mutable = list(labels)
 
-    for edit in DiffAnalyzer().analyze(source, target):
+    for edit in DiffAnalyzer().punctuation_edits(source, target):
         _apply_punctuation_action_label(mutable, words, edit)
 
     return mutable

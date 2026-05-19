@@ -67,6 +67,59 @@ def test_train_entrypoint_prepares_features_and_all_reports(tmp_path: Path):
     assert "- combined_score:" in training_report
 
 
+def test_env_disabled_no_training_skips_train_feature_build(monkeypatch, tmp_path: Path):
+    class CountingCorrector:
+        def correct(self, text):
+            from src.inference.corrector import CorrectionResult
+
+            return CorrectionResult(text, text, [])
+
+    def fail_build_features(config, rows):
+        raise AssertionError("feature build should be skipped in env-disabled no-training mode")
+
+    metadata = {
+        "evaluation_backend": "existing_checkpoint",
+        "model_training_disabled": True,
+        "model_training_disabled_source": "RUSSIAN_CORRECTOR_DISABLE_MODEL_TRAINING",
+        "checkpoint_load_error": "",
+        "threshold_profile": "conservative",
+    }
+    monkeypatch.setenv("RUSSIAN_CORRECTOR_DISABLE_MODEL_TRAINING", "1")
+    monkeypatch.setattr("src.training.train._build_features", fail_build_features)
+    monkeypatch.setattr("src.training.train._select_evaluation_corrector", lambda *args, **kwargs: (CountingCorrector(), metadata))
+
+    config = {
+        "model": {"max_sequence_length": 32, "max_candidates": 8},
+        "training": {
+            "run_model_training": True,
+            "max_train_examples": 2,
+            "max_val_examples": 2,
+            "show_progress": False,
+        },
+        "data": {"debug_clean_texts": ["Я не знаю, что делать.", "Чистый текст."]},
+        "labels": {
+            "punctuation": {"NONE": 0, "COMMA": 1, "DOT": 2},
+            "error_types": {"keep": 0, "punctuation": 1},
+        },
+        "thresholds": {"mode": "balanced", "balanced": {"spelling_threshold": 0.85}},
+        "paths": {
+            "adapter_output_dir": str(tmp_path / "models" / "adapters"),
+            "heads_output_dir": str(tmp_path / "models" / "heads"),
+            "reports_dir": str(tmp_path / "reports"),
+        },
+    }
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(yaml.safe_dump(config, allow_unicode=True), encoding="utf-8")
+
+    result = train(config_path)
+
+    assert result["status"] == "evaluation_prepared"
+    assert result["feature_count"] == 0
+    assert result["feature_build_skipped"] is True
+    assert result["feature_source_count"] == 2
+    assert result["threshold_profile"] == "conservative"
+
+
 def test_build_features_uses_dictionary_config(tmp_path: Path):
     lexicon_path = tmp_path / "russian_lexicon.txt"
     lexicon_path.write_text("библиотека\n", encoding="utf-8")
@@ -144,9 +197,12 @@ def test_train_uses_trained_corrector_for_reports_when_model_training_runs(monke
 
 
 def test_no_training_existing_checkpoint_backend_uses_allowed_name(monkeypatch, tmp_path: Path):
+    seen_modes = []
+
     class FakeTrainedCorrector:
         @classmethod
         def from_config(cls, config):
+            seen_modes.append(config["thresholds"]["mode"])
             return cls()
 
     adapter_dir = tmp_path / "models" / "adapters"
@@ -162,13 +218,20 @@ def test_no_training_existing_checkpoint_backend_uses_allowed_name(monkeypatch, 
             "paths": {
                 "adapter_output_dir": str(adapter_dir),
                 "heads_output_dir": str(heads_dir),
-            }
+            },
+            "thresholds": {
+                "mode": "balanced",
+                "balanced": {"spelling_threshold": 0.85},
+                "conservative": {"spelling_threshold": 0.95},
+            },
         },
         model_training_ran=False,
         model_training_disabled_source="RUSSIAN_CORRECTOR_DISABLE_MODEL_TRAINING",
     )
 
+    assert seen_modes == ["conservative"]
     assert metadata["evaluation_backend"] == "existing_checkpoint"
+    assert metadata["threshold_profile"] == "conservative"
     assert metadata["model_training_disabled"] is True
     assert metadata["checkpoint_load_error"] == ""
 

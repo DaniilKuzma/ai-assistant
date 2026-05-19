@@ -77,11 +77,27 @@ def test_threshold_profiles_include_rule_specific_thresholds():
             "default_threshold": 0.90,
             "dictionary_threshold": 0.95,
             "tsya_threshold": 0.995,
-            "ne_adjective_threshold": 0.98,
-            "ne_participle_threshold": 0.99,
+            "ne_adjective_threshold": 0.99995,
+            "ne_participle_threshold": 0.99995,
             "comma_subordinate_threshold": 0.92,
             "introductory_word_threshold": 0.94,
             "dash_subject_predicate_threshold": 0.96,
+            "quote_open_threshold": 0.99999,
+            "quote_close_threshold": 0.99999,
+            "quote_pair_balance_threshold": 0.995,
+            "bracket_pair_balance_threshold": 0.995,
+            "capitalization_ner_threshold": 0.999999,
+            "capitalization_sentence_start_threshold": 0.98,
+            "n_nn_adjective_threshold": 0.995,
+            "n_nn_participle_threshold": 0.999,
+            "n_nn_short_form_threshold": 0.99995,
+            "ne_adverb_threshold": 0.99995,
+            "subject_predicate_dash_threshold": 0.9999,
+            "direct_speech_colon_threshold": 0.995,
+            "direct_speech_quotes_threshold": 0.995,
+            "comma_conjunction_threshold": 0.995,
+            "introductory_comma_threshold": 0.97,
+            "punctuation_delete_replace_threshold": 0.9999,
         },
         "balanced": {
             "default_threshold": 0.85,
@@ -179,3 +195,18 @@ def test_dictionary_config_provider_passes_opt_in_yo_e_policy_to_candidate_gener
     candidates = generator.generate("Елка рядом.")
 
     assert any(candidate.replacement == "Ёлка" and candidate.rule_id == "yo_e_candidate" for candidate in candidates)
+
+
+def test_build_russian_lexicon_script_writes_non_empty_normalized_lexicon(tmp_path):
+    from scripts.build_russian_lexicon import build_lexicon
+
+    output = tmp_path / "russian_lexicon.txt"
+
+    stats = build_lexicon(output, max_entries=250)
+    entries = output.read_text(encoding="utf-8").splitlines()
+
+    assert stats["written"] == len(entries)
+    assert stats["written"] > 100
+    assert entries == sorted(set(entries))
+    assert all(entry == entry.lower() for entry in entries)
+    assert all(entry and all(char == "-" or "а" <= char <= "я" or char == "ё" for char in entry) for entry in entries)

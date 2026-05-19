@@ -208,6 +208,21 @@ def test_trained_model_corrector_preserves_accepted_punctuation_rule_id():
     )
 
 
+def test_trained_model_corrector_ignores_free_punctuation_prediction_without_candidate():
+    corrector = TrainedModelCorrector(
+        FakeBackend(
+            {},
+            punctuation=[ModelPunctuationPrediction(0, "DASH", 0.99999, action="INSERT")],
+        ),
+        thresholds={"punctuation_threshold": 0.9, "dash_threshold": 0.9},
+    )
+
+    result = corrector.correct("Получается это решение подходит группе альфа.")
+
+    assert result.corrected_text == "Получается это решение подходит группе альфа."
+    assert not any(edit.edit_type == "punctuation_insert" and edit.replacement == "—" for edit in result.edits)
+
+
 def test_trained_model_corrector_rejects_context_dependent_pair_without_strict_context():
     corrector = TrainedModelCorrector(FakeBackend({"так же": 0.99}), thresholds={"split_join_threshold": 0.9})
 
@@ -251,14 +266,14 @@ def test_trained_model_corrector_deletes_existing_punctuation_only_with_delete_a
         thresholds={"punctuation_threshold": 0.5, "punctuation_delete_threshold": 0.95},
     )
 
-    assert low_confidence.correct("Я думаю, это важно.").corrected_text == "Я думаю, это важно."
-    result = high_confidence.correct("Я думаю, это важно.")
+    assert low_confidence.correct("Я думаю,, что это важно.").corrected_text == "Я думаю, , что это важно."
+    result = high_confidence.correct("Я думаю,, что это важно.")
 
-    assert result.corrected_text == "Я думаю это важно."
+    assert result.corrected_text == "Я думаю, что это важно."
     assert any(edit.edit_type == "punctuation_delete" and edit.status == "accepted" for edit in result.edits)
 
 
-def test_trained_model_corrector_replaces_existing_punctuation_with_colon():
+def test_trained_model_corrector_ignores_unsupported_free_punctuation_replace():
     corrector = TrainedModelCorrector(
         FakeBackend({}, punctuation=[ModelPunctuationPrediction(1, "COLON", 0.99, action="REPLACE")]),
         thresholds={"punctuation_threshold": 0.9},
@@ -266,8 +281,8 @@ def test_trained_model_corrector_replaces_existing_punctuation_with_colon():
 
     result = corrector.correct("Он сказал, привет.")
 
-    assert result.corrected_text == "Он сказал: привет."
-    assert any(edit.edit_type == "punctuation_replace" and edit.status == "accepted" for edit in result.edits)
+    assert result.corrected_text == "Он сказал, привет."
+    assert not any(edit.edit_type == "punctuation_replace" and edit.status == "accepted" for edit in result.edits)
 
 
 def test_trained_model_corrector_does_not_insert_sentence_final_mark_inside_sentence():
@@ -292,13 +307,14 @@ def test_trained_model_corrector_inserts_dash_with_spacing():
     assert result.corrected_text == "Москва — это столица."
 
 
-def test_trained_model_corrector_supports_simple_quotes_and_brackets():
+def test_trained_model_corrector_supports_candidate_backed_direct_speech_quotes_only():
     corrector = TrainedModelCorrector(
         FakeBackend(
             {},
             punctuation=[
+                ModelPunctuationPrediction(1, "COLON", 0.99, action="INSERT"),
                 ModelPunctuationPrediction(1, "QUOTE_OPEN", 0.99),
-                ModelPunctuationPrediction(2, "QUOTE_CLOSE", 0.99),
+                ModelPunctuationPrediction(3, "QUOTE_CLOSE", 0.99),
                 ModelPunctuationPrediction(3, "BRACKET_OPEN", 0.99),
                 ModelPunctuationPrediction(4, "BRACKET_CLOSE", 0.99),
             ],
@@ -306,9 +322,12 @@ def test_trained_model_corrector_supports_simple_quotes_and_brackets():
         thresholds={"punctuation_threshold": 0.9},
     )
 
-    result = corrector.correct("Он сказал привет это важно.")
+    result = corrector.correct("Он сказал проект готов.")
 
-    assert result.corrected_text == "Он сказал «привет» это (важно)."
+    assert result.corrected_text == "Он сказал: «проект готов»."
+    assert any(edit.rule_id == "direct_speech_colon" and edit.status == "accepted" for edit in result.edits)
+    assert any(edit.rule_id == "direct_speech_quotes" and edit.status == "accepted" for edit in result.edits)
+    assert not any(edit.replacement in {"(", ")"} and edit.status == "accepted" for edit in result.edits)
 
 
 def test_trained_model_corrector_uses_label_specific_punctuation_thresholds():
@@ -317,7 +336,7 @@ def test_trained_model_corrector_uses_label_specific_punctuation_thresholds():
             {},
             punctuation=[
                 ModelPunctuationPrediction(1, "COMMA", 0.86, action="INSERT"),
-                ModelPunctuationPrediction(2, "COLON", 0.86, action="INSERT"),
+                ModelPunctuationPrediction(1, "COLON", 0.86, action="INSERT"),
             ],
         ),
         thresholds={"punctuation_threshold": 0.5, "comma_threshold": 0.9, "colon_threshold": 0.8},
@@ -325,7 +344,7 @@ def test_trained_model_corrector_uses_label_specific_punctuation_thresholds():
 
     result = corrector.correct("Он сказал привет дальше.")
 
-    assert result.corrected_text == "Он сказал привет: дальше."
+    assert result.corrected_text == "Он сказал: привет дальше."
 
 
 def test_trained_model_corrector_uses_rule_specific_punctuation_threshold_before_label():

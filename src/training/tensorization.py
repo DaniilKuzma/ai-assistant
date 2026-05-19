@@ -118,7 +118,7 @@ def build_training_feature(
     offsets = encoded["offset_mapping"]
     candidates = (candidate_generator or CandidateGenerator()).generate(source)
     candidates = rank_candidates_for_budget(candidates, max_candidates)
-    alignment_edits = DiffAnalyzer().analyze(source, target)
+    alignment_edits = DiffAnalyzer().analyze(source, target, candidates=candidates)
     spans = [_candidate_to_token_span(candidate, offsets) for candidate in candidates]
     labels = [_candidate_label(candidate, alignment_edits) for candidate in candidates]
     error_labels = [_candidate_error_label(candidate, label, error_type_label_map) for candidate, label in zip(candidates, labels, strict=False)]
@@ -378,7 +378,7 @@ def _punctuation_confidence_and_error_labels(
     ]
     words = tokenize_words(source)
 
-    for edit in DiffAnalyzer().analyze(source, target):
+    for edit in DiffAnalyzer().punctuation_edits(source, target):
         if edit.edit_type not in PUNCTUATION_EDIT_TYPES:
             continue
         gap_index = _punctuation_edit_gap_index(words, edit)
