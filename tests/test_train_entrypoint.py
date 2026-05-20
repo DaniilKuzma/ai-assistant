@@ -196,7 +196,7 @@ def test_train_uses_trained_corrector_for_reports_when_model_training_runs(monke
     assert used["trained"] is True
 
 
-def test_no_training_existing_checkpoint_backend_uses_allowed_name(monkeypatch, tmp_path: Path):
+def test_no_training_existing_checkpoint_backend_uses_configured_threshold_profile(monkeypatch, tmp_path: Path):
     seen_modes = []
 
     class FakeTrainedCorrector:
@@ -229,9 +229,13 @@ def test_no_training_existing_checkpoint_backend_uses_allowed_name(monkeypatch, 
         model_training_disabled_source="RUSSIAN_CORRECTOR_DISABLE_MODEL_TRAINING",
     )
 
-    assert seen_modes == ["conservative"]
+    assert seen_modes == ["balanced"]
     assert metadata["evaluation_backend"] == "existing_checkpoint"
-    assert metadata["threshold_profile"] == "conservative"
+    assert metadata["threshold_profile"] == "balanced"
+    assert metadata["threshold_profile_used"] == "balanced"
+    assert metadata["threshold_profile_source"] == "config"
+    assert metadata["threshold_mode_from_config"] == "balanced"
+    assert metadata["thresholds_mode_fallback_used"] is False
     assert metadata["model_training_disabled"] is True
     assert metadata["checkpoint_load_error"] == ""
 

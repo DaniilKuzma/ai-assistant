@@ -177,12 +177,13 @@ def train(config_path: str | Path = "configs/config.yaml") -> dict[str, Any]:
             )
         )
 
-    save_training_artifacts(
-        output_dir,
-        config=config,
-        label_mappings=config.get("labels", {}),
-        thresholds=config.get("thresholds", {}),
-    )
+    if result["model_training_ran"]:
+        save_training_artifacts(
+            output_dir,
+            config=config,
+            label_mappings=config.get("labels", {}),
+            thresholds=config.get("thresholds", {}),
+        )
     evaluation_rows = limit_rows_for_evaluation(
         all_evaluation_rows,
         config,
@@ -507,30 +508,40 @@ def _select_evaluation_corrector(
         "model_training_disabled_source": model_training_disabled_source,
     }
     if model_training_ran:
-        return _build_evaluation_corrector(config, True), {
+        evaluation_config, threshold_metadata = _config_with_evaluation_threshold_profile(
+            config,
+            allow_fallback=False,
+        )
+        return _build_evaluation_corrector(evaluation_config, True), {
             **metadata,
+            **threshold_metadata,
             "evaluation_backend": "existing_checkpoint",
             "checkpoint_load_error": "",
         }
 
     if model_training_disabled_source and _configured_model_artifacts_exist(config):
+        evaluation_config, threshold_metadata = _config_with_evaluation_threshold_profile(
+            config,
+            allow_fallback=True,
+        )
         try:
-            evaluation_config = _config_with_threshold_profile(config, "conservative")
             return TrainedModelCorrector.from_config(evaluation_config), {
                 **metadata,
+                **threshold_metadata,
                 "evaluation_backend": "existing_checkpoint",
                 "checkpoint_load_error": "",
-                "threshold_profile": _threshold_profile(evaluation_config),
             }
         except Exception as exc:
             return _build_evaluation_corrector(config, False), {
                 **metadata,
+                **threshold_metadata,
                 "evaluation_backend": "no_model",
                 "checkpoint_load_error": f"{exc.__class__.__name__}: {exc}",
             }
 
     return _build_evaluation_corrector(config, False), {
         **metadata,
+        **_threshold_profile_report_metadata(config),
         "evaluation_backend": "no_model",
         "checkpoint_load_error": "",
     }
@@ -551,8 +562,59 @@ def _config_with_threshold_profile(config: dict[str, Any], profile: str) -> dict
     return cloned
 
 
-def _threshold_profile(config: dict[str, Any]) -> str:
-    return str(config.get("thresholds", {}).get("mode", "balanced"))
+def _config_with_evaluation_threshold_profile(
+    config: dict[str, Any],
+    *,
+    allow_fallback: bool,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    threshold_config = config.get("thresholds", {})
+    mode_from_config = _threshold_mode_from_config(config)
+    if mode_from_config:
+        if mode_from_config not in threshold_config:
+            raise ValueError(
+                "missing_threshold_profile: "
+                f"thresholds.mode={mode_from_config!r} has no matching thresholds.{mode_from_config}"
+            )
+        return copy.deepcopy(config), _threshold_profile_report_metadata(
+            config,
+            profile=mode_from_config,
+            source="config",
+            fallback_used=False,
+        )
+
+    if allow_fallback:
+        for fallback_profile in ("conservative", "default"):
+            if fallback_profile in threshold_config:
+                return _config_with_threshold_profile(config, fallback_profile), _threshold_profile_report_metadata(
+                    config,
+                    profile=fallback_profile,
+                    source=f"fallback:{fallback_profile}",
+                    fallback_used=True,
+                )
+
+    raise ValueError("missing_threshold_profile: thresholds.mode is missing and no fallback profile is available")
+
+
+def _threshold_profile_report_metadata(
+    config: dict[str, Any],
+    *,
+    profile: str | None = None,
+    source: str = "config",
+    fallback_used: bool = False,
+) -> dict[str, Any]:
+    profile_used = profile or _threshold_mode_from_config(config)
+    return {
+        "threshold_profile": profile_used,
+        "threshold_profile_used": profile_used,
+        "threshold_profile_source": source,
+        "threshold_mode_from_config": _threshold_mode_from_config(config),
+        "thresholds_mode_fallback_used": fallback_used,
+    }
+
+
+def _threshold_mode_from_config(config: dict[str, Any]) -> str:
+    value = config.get("thresholds", {}).get("mode", "")
+    return str(value or "").strip()
 
 
 def _active_thresholds(config: dict[str, Any]) -> dict[str, Any]:

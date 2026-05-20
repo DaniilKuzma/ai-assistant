@@ -609,3 +609,99 @@ def test_validator_rejects_mock_model_edits_inside_technical_ids(source, target,
 
     assert any(edit.status == "rejected" and edit.reason == "protected_span" for edit in result.edits)
     assert result.apply_accepted() == source
+
+
+@pytest.mark.parametrize(
+    ("source", "target", "trusted"),
+    [
+        (
+            "Гостелеком работает.",
+            "Ростелеком работает.",
+            Candidate("Гостелеком", "Ростелеком", "spelling", start=0, end=10, confidence=0.999, requires_model=True, rule_id="dictionary_fuzzy"),
+        ),
+        (
+            "Дейли пришла.",
+            "Лейли пришла.",
+            Candidate("Дейли", "Лейли", "spelling", start=0, end=5, confidence=0.999, requires_model=True, rule_id="dictionary_fuzzy"),
+        ),
+        (
+            "УФСБ согласовало документ.",
+            "Фсб согласовало документ.",
+            Candidate("УФСБ", "Фсб", "spelling", start=0, end=4, confidence=0.999, requires_model=True, rule_id="dictionary_fuzzy"),
+        ),
+        (
+            "Он видел авианалет.",
+            "Он видел авиабилет.",
+            Candidate("авианалет", "авиабилет", "spelling", start=9, end=18, confidence=0.999, requires_model=True, rule_id="dictionary_fuzzy"),
+        ),
+        (
+            "Тележурналистка пришла.",
+            "Тележурналиста пришла.",
+            Candidate("Тележурналистка", "Тележурналиста", "spelling", start=0, end=15, confidence=0.999, requires_model=True, rule_id="dictionary_fuzzy"),
+        ),
+        (
+            "По аппеляционным жалобам.",
+            "По апелляционными жалобам.",
+            Candidate("аппеляционным", "апелляционными", "spelling", start=3, end=16, confidence=0.999, requires_model=True, rule_id="dictionary_fuzzy"),
+        ),
+    ],
+)
+def test_validator_rejects_required_risky_lexical_false_positives(source, target, trusted):
+    result = StrictValidator().validate(source, target, trusted_edits=[trusted])
+
+    assert any(edit.status == "rejected" and edit.rule_id == trusted.rule_id for edit in result.edits)
+    assert result.apply_accepted() == source
+
+
+@pytest.mark.parametrize(
+    ("source", "target", "trusted"),
+    [
+        (
+            "Daewoo Motor Co. распродает",
+            "Daewoo Motor Co. Распродает",
+            Candidate("распродает", "Распродает", "case", start=17, end=27, confidence=0.999, requires_model=True, rule_id="capitalization_sentence_start"),
+        ),
+        (
+            "А потом … возможно",
+            "А потом … Возможно",
+            Candidate("возможно", "Возможно", "case", start=10, end=18, confidence=0.999, requires_model=True, rule_id="capitalization_sentence_start"),
+        ),
+    ],
+)
+def test_validator_rejects_required_unsafe_sentence_start_capitalization(source, target, trusted):
+    result = StrictValidator().validate(source, target, trusted_edits=[trusted])
+
+    assert any(
+        edit.status == "rejected"
+        and edit.rule_id == "capitalization_sentence_start"
+        and edit.reason == "abbreviation_sentence_start_capitalization"
+        for edit in result.edits
+    )
+    assert result.apply_accepted() == source
+
+
+@pytest.mark.parametrize(
+    ("source", "target", "trusted"),
+    [
+        (
+            "Я очень рада, что вам мои посты нравятся :)",
+            "Я очень рада, что вам мои посты нравятся :).",
+            Candidate("", ".", "final_punctuation", start=43, end=43, confidence=0.999, requires_model=True, rule_id="final_punctuation_default"),
+        ),
+        (
+            "Слезяться глаза и плачет дождь,",
+            "Слезяться глаза и плачет дождь,.",
+            Candidate("", ".", "final_punctuation", start=31, end=31, confidence=0.999, requires_model=True, rule_id="final_punctuation_default"),
+        ),
+    ],
+)
+def test_validator_rejects_required_unsafe_final_dot_insertions(source, target, trusted):
+    result = StrictValidator().validate(source, target, trusted_edits=[trusted])
+
+    assert any(
+        edit.status == "rejected"
+        and edit.rule_id == "final_punctuation_default"
+        and edit.reason == "unsafe_final_punctuation"
+        for edit in result.edits
+    )
+    assert result.apply_accepted() == source

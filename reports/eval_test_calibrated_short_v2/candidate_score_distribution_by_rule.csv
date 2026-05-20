@@ -1,0 +1,56 @@
+rule_id,edit_type,gold_count,candidate_count,positive_score_mean,positive_score_p10,positive_score_p50,positive_score_p90,negative_score_mean,accepted_count,rejected_by_threshold_count,rejected_by_validator_count,rejected_reason_counts,examples_high_score_rejected,examples_low_score_gold
+address_comma,punctuation_insert,0,98,0.993732,0.991699,0.993652,0.995117,0.0,98,0,0,{},,
+capitalization_sentence_start,case,0,69,0.738607,0.492188,0.812988,0.910645,0.495952,1,67,1,"{""abbreviation_sentence_start_capitalization"": 2, ""threshold"": 67}",то->То score=0.9976,пересмотрела->Пересмотрела score=0.8486 | имэджин->Имэджин score=0.4912 | создание->Создание score=0.9111
+comma_conjunction,punctuation_insert,0,84,0.987122,0.982422,0.98584,0.993164,0.22261,65,84,0,"{""threshold"": 84}",,"->, score=0.9834 | ->, score=0.9883 | ->, score=0.9932"
+comma_subordinate,punctuation_insert,0,193,0.916641,0.904443,0.988281,0.991211,0.071547,122,73,0,"{""threshold"": 73}",,"->, score=0.0163 | ->, score=0.0163 | ->, score=0.0250"
+comparative_turnover_comma,punctuation_insert,0,114,0.804572,0.59082,0.845703,0.981934,0.628611,76,76,0,"{""threshold"": 76}",,"->, score=0.6343 | ->, score=0.6362 | ->, score=0.6362"
+context_chto_by,split_join,119,182,0.541124,0.531738,0.544922,0.557129,0.381503,0,182,0,"{""threshold"": 182}",,что бы->чтобы score=0.2268 | что бы->чтобы score=0.3916 | что бы->чтобы score=0.5112
+context_nesmotrya,split_join,104,173,0.517172,0.230347,0.594727,0.623047,0.476471,0,173,0,"{""threshold"": 173}",,Несмотря->Не смотря score=0.2255 | Несмотря->Не смотря score=0.2394 | Несмотря->Не смотря score=0.2283
+context_pair,split_join,542,0,0.0,0.0,0.0,0.0,0.0,0,0,0,{},,
+context_tak_zhe,split_join,88,140,0.381212,0.339355,0.396484,0.418213,0.313011,0,140,0,"{""threshold"": 140}",,также->так же score=0.3662 | также->так же score=0.3728 | также->так же score=0.4192
+context_to_zhe,split_join,148,156,0.833147,0.808594,0.841309,0.862305,0.384644,0,156,0,"{""threshold"": 156}",,тоже->то же score=0.3718 | тоже->то же score=0.8193 | тоже->то же score=0.8662
+context_vsledstvie,split_join,106,108,0.299819,0.216064,0.243652,0.468506,0.509277,0,108,0,"{""threshold"": 108}",,В следствие->Вследствие score=0.2437 | Вследствие->В следствие score=0.4414 | В следствие->Вследствие score=0.2401
+context_za_to,split_join,149,221,0.406311,0.263672,0.460449,0.480957,0.370012,0,221,0,"{""threshold"": 221}",,За то->Зато score=0.4768 | За то->Зато score=0.4880 | Зато->За то score=0.2600
+cy_exception,spelling,71,71,0.589383,0.570801,0.587402,0.599609,0.0,58,13,0,"{""threshold"": 13}",,цикнуть->цыкнуть score=0.5645 | цикнуть->цыкнуть score=0.5645 | цикнуть->цыкнуть score=0.5708
+detached_adverbial_comma,punctuation_insert,0,91,0.991376,0.988281,0.991699,0.994141,0.108492,83,8,0,"{""threshold"": 8}",,
+dictionary_fuzzy,spelling,248,929,0.67061,0.500488,0.751465,0.807129,0.319587,45,735,130,"{""conflict"": 19, ""morphology_agreement_guard"": 240, ""threshold"": 735, ""unsafe_fuzzy_spelling_candidate"": 20}",рецептик->рецепта score=0.8926 | моделькой->мозельской score=0.9614 | драммеров->драгеров score=0.7534,Всякый->Всякий score=0.4036 | переодически->периодически score=0.4260 | прибывания->пребывания score=0.1953
+direct_speech_colon,punctuation_insert,0,366,0.907595,0.89502,0.908691,0.917969,0.048175,0,366,0,"{""threshold"": 366}",,->: score=0.9053 | ->: score=0.9131 | ->: score=0.9072
+direct_speech_dash,punctuation_insert,0,89,0.672517,0.631348,0.680664,0.705078,0.0,89,89,0,"{""threshold"": 89}",,->— score=0.6455 | ->— score=0.6875 | ->— score=0.7451
+direct_speech_quotes,punctuation_insert,0,708,0.845247,0.825684,0.84668,0.861328,0.093987,0,708,0,"{""threshold"": 708, ""unbalanced_pairs"": 135}",,->« score=0.8418 | ->« score=0.8535 | ->« score=0.8447
+double_consonant_candidate,spelling,61,148,0.512021,0.44856,0.489868,0.598779,0.579208,56,88,3,"{""conflict"": 1, ""morphology_agreement_guard"": 6, ""threshold"": 88}",изза->иза score=0.7134 | Сиэттле->Сиэтле score=0.9980 | Сиэттле->Сиэтле score=0.9980,естествено->естественно score=0.2874 | написаный->написанный score=0.3564 | серебрянные->серебряные score=0.4373
+enumeration_colon,punctuation_insert,0,82,0.983839,0.982422,0.984375,0.98584,0.0,0,0,82,"{""unsafe_colon_candidate"": 164}",->: score=0.9858 | ->: score=0.9834 | ->: score=0.9829,
+explanation_colon,punctuation_insert,0,126,0.984922,0.979492,0.984863,0.990088,0.009163,0,2,124,"{""threshold"": 2, ""unsafe_colon_candidate"": 248}",->: score=0.9858 | ->: score=0.9844 | ->: score=0.9849,
+extra_letter_candidate,spelling,97,291,0.482214,0.454346,0.488525,0.51709,0.270404,0,291,0,"{""threshold"": 291}",,нравяться->нравятся score=0.2322 | хочеться->хочется score=0.3450 | ломаються->ломаются score=0.3777
+final_punctuation_default,final_punctuation,0,47,0.747665,0.365479,0.808105,0.99585,0.439097,13,37,0,"{""threshold"": 37}",,->. score=0.2820 | ->. score=0.8384 | ->. score=0.7305
+frequent_error_exact,spelling,78,3,0.165802,0.120026,0.165802,0.211578,0.611816,0,3,0,"{""requires_trusted_candidate"": 1, ""threshold"": 3}",,сдесь->здесь score=0.1086 | обажаю->обожаю score=0.2230
+frequent_error_exact,split_join,3,3,0.365397,0.300928,0.375732,0.425732,0.0,0,3,0,"{""threshold"": 3}",,вобщем->в общем score=0.2822 | всмысле->в смысле score=0.4382 | вообщем->в общем score=0.3757
+homogeneous_comma,punctuation_insert,0,87,0.986787,0.981445,0.986816,0.990234,0.277417,83,4,0,"{""threshold"": 4}",,
+hyphen_koe_koy,hyphen,151,152,0.483006,0.466309,0.478271,0.501465,0.961426,152,0,0,{},,
+hyphen_particles,hyphen,112,112,0.554753,0.536621,0.54541,0.551758,0.0,112,0,0,{},,
+hyphen_po_adverbs,hyphen,106,120,0.412033,0.404053,0.412354,0.418701,0.712594,44,66,10,"{""threshold"": 66, ""unsafe_hyphen_po_adverb"": 20}",По существующему->По-существующему score=0.9849 | по этому->по-этому score=0.6777 | по всему->по-всему score=0.8838,по русски->по-русски score=0.4109 | по русски->по-русски score=0.4116 | по русски->по-русски score=0.4004
+hyphen_whitelist,hyphen,108,0,0.0,0.0,0.0,0.0,0.0,0,0,0,{},,
+introductory_comma,punctuation_insert,0,70,0.988172,0.98291,0.986816,0.994629,0.165354,67,3,0,"{""threshold"": 3}",,
+keyboard_typo_candidate,spelling,95,226,0.454536,0.312012,0.341797,0.625488,0.368673,0,226,0,"{""threshold"": 226}",,комбанации->комбинации score=0.3508 | молокл->молоко score=0.5947 | грсмматика->грамматика score=0.3254
+missing_hard_sign,spelling,0,13,0.0,0.0,0.0,0.0,0.549072,0,10,3,"{""known_source_lexical_guard"": 6, ""threshold"": 10}",обеденное->объеденное score=0.9707 | ведут->въедут score=0.9478 | ведут->въедут score=0.9478,
+missing_letter_candidate,spelling,95,146,0.511335,0.424414,0.491699,0.678223,0.406578,0,146,0,"{""threshold"": 146}",,болше->больше score=0.3596 | Траспортировка->Транспортировка score=0.6235 | Россиская->Российская score=0.4858
+n_nn_adjective,spelling,0,27,0.0,0.0,0.0,0.0,0.361595,0,27,0,"{""threshold"": 27}",,
+n_nn_deverbal_adjective,spelling,94,94,0.634028,0.603516,0.628906,0.664551,0.0,0,94,0,"{""threshold"": 94}",,раненный->раненый score=0.6284 | раненный->раненый score=0.6270 | раненный->раненый score=0.6460
+n_nn_participle,spelling,0,8,0.0,0.0,0.0,0.0,0.375973,0,8,0,"{""threshold"": 8}",,
+n_nn_short_form,spelling,0,161,0.0,0.0,0.0,0.0,0.359613,0,161,0,"{""threshold"": 161}",,
+ne_adjective,split_join,87,149,0.707104,0.691895,0.70752,0.719727,0.400342,0,149,0,"{""threshold"": 149}",,не понятный->непонятный score=0.7075 | не понятный->непонятный score=0.7148 | не понятный->непонятный score=0.7075
+ne_adverb,split_join,114,169,0.772195,0.669922,0.764648,0.853027,0.19723,0,169,0,"{""threshold"": 169}",,не далеко->недалеко score=0.9736 | не плохо->неплохо score=0.6992 | не долго->недолго score=0.8442
+ne_participle,split_join,113,149,0.786566,0.780273,0.791992,0.806641,0.398137,0,149,0,"{""threshold"": 149}",,незасчитанном->не засчитанном score=0.1378 | не проверенный->непроверенный score=0.7847 | не проверенный->непроверенный score=0.7920
+ne_verb,split_join,7,13,0.11506,0.055286,0.109131,0.191235,0.108683,0,13,0,"{""threshold"": 13}",,нехватает->не хватает score=0.0587 | небыло->не было score=0.0502 | небыло->не было score=0.0752
+ni_stable_expression,split_join,0,120,0.0,0.0,0.0,0.0,0.638186,0,120,0,"{""threshold"": 120}",,
+pattern_жо_же,spelling,0,2,0.0,0.0,0.0,0.0,0.999512,0,0,2,"{""known_source_lexical_guard"": 4}",поджог->поджег score=0.9995 | поджог->поджег score=0.9995,
+pattern_цы_ци,spelling,0,2,0.0,0.0,0.0,0.0,0.984375,0,0,2,"{""known_source_lexical_guard"": 4}",цыган->циган score=0.9844 | цыган->циган score=0.9844,
+pattern_шо_ше,spelling,0,10,0.0,0.0,0.0,0.0,0.814746,0,4,6,"{""known_source_lexical_guard"": 12, ""threshold"": 4}",Большой->Большей score=0.9854 | большое->большее score=0.9863 | большой->большей score=0.9834,
+pol_polu_compounds,hyphen,94,95,0.295362,0.2771,0.298584,0.313477,0.432129,0,95,0,"{""threshold"": 95}",,пол часа->полчаса score=0.1403 | полу финал->полуфинал score=0.2986 | полу финал->полуфинал score=0.2817
+prefix_pre_pri,spelling,3,71,0.544189,0.424658,0.492432,0.684424,0.474192,0,60,11,"{""threshold"": 60, ""unsafe_fuzzy_spelling_candidate"": 22}",прием->преем score=0.9795 | преемником->приемником score=0.9888 | преданы->приданы score=0.9585,преступлю->приступлю score=0.7324 | придел->предел score=0.4077 | придел->предел score=0.4924
+quote_close,punctuation_replace,0,368,0.002199,0.000703,0.001957,0.003791,0.00122,0,368,0,"{""threshold"": 368}",,"""->» score=0.0004 | ""->» score=0.0042 | ""->» score=0.0020"
+quote_open,punctuation_replace,0,368,0.003746,0.000983,0.003885,0.006453,0.002542,0,368,0,"{""threshold"": 368}",,"""->« score=0.0003 | ""->« score=0.0071 | ""->« score=0.0039"
+soft_to_hard_sign,spelling,1,0,0.0,0.0,0.0,0.0,0.0,0,0,0,{},,
+subject_predicate_dash,punctuation_insert,0,79,0.994487,0.993164,0.994629,0.995801,0.047769,69,10,0,"{""threshold"": 10}",,
+swapped_letters_candidate,spelling,119,129,0.775362,0.762207,0.780273,0.789648,0.491846,114,15,0,"{""threshold"": 15}",,недлею->неделю score=0.3457 | коорва->корова score=0.7588 | коорва->корова score=0.7588
+tsya_soft_delete,spelling,1,22,0.638184,0.638184,0.638184,0.638184,0.712309,0,22,0,"{""threshold"": 22}",,нравиться->нравится score=0.6382
+tsya_soft_insert,spelling,2,32,0.228516,0.192383,0.228516,0.264648,0.522302,0,30,2,"{""dangerous_tsya"": 4, ""threshold"": 30}",становится->становиться score=0.9990 | становится->становиться score=0.9990,научится->научиться score=0.1833 | отображатся->отображаться score=0.2737

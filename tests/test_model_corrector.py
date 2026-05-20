@@ -425,6 +425,22 @@ def test_trained_model_corrector_does_not_append_dot_after_ellipsis():
     assert result.corrected_text == "Мы ждали файл…"
 
 
+@pytest.mark.parametrize(
+    "source",
+    [
+        "Я очень рада, что вам мои посты нравятся :)",
+        "Слезяться глаза и плачет дождь,",
+    ],
+)
+def test_trained_model_corrector_does_not_append_final_dot_after_unsafe_tail(source):
+    corrector = TrainedModelCorrector(FakeBackend({".": 0.999}), thresholds={"final_punctuation_threshold": 0.5})
+
+    result = corrector.correct(source)
+
+    assert result.corrected_text == source
+    assert not any(edit.edit_type == "final_punctuation" and edit.status == "accepted" for edit in result.edits)
+
+
 def test_torch_backend_passes_candidate_replacement_tokens_to_model():
     tokenizer = FakeTokenizer()
     module = CapturingModule(max_candidates=3)

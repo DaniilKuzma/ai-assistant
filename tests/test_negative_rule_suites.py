@@ -463,3 +463,45 @@ def test_known_correct_source_word_lexical_spelling_predictions_are_rejected(sou
 
     assert any(edit.status == "rejected" and edit.reason == "known_source_lexical_guard" for edit in result.edits)
     assert result.apply_accepted() == source
+
+
+@pytest.mark.parametrize(
+    ("source", "target", "trusted"),
+    [
+        (
+            "Гостелеком работает.",
+            "Ростелеком работает.",
+            Candidate("Гостелеком", "Ростелеком", "spelling", start=0, end=10, confidence=0.999, requires_model=True, rule_id="dictionary_fuzzy"),
+        ),
+        (
+            "Дейли пришла.",
+            "Лейли пришла.",
+            Candidate("Дейли", "Лейли", "spelling", start=0, end=5, confidence=0.999, requires_model=True, rule_id="dictionary_fuzzy"),
+        ),
+        (
+            "УФСБ согласовало документ.",
+            "Фсб согласовало документ.",
+            Candidate("УФСБ", "Фсб", "spelling", start=0, end=4, confidence=0.999, requires_model=True, rule_id="dictionary_fuzzy"),
+        ),
+        (
+            "Он видел авианалет.",
+            "Он видел авиабилет.",
+            Candidate("авианалет", "авиабилет", "spelling", start=9, end=18, confidence=0.999, requires_model=True, rule_id="dictionary_fuzzy"),
+        ),
+        (
+            "Тележурналистка пришла.",
+            "Тележурналиста пришла.",
+            Candidate("Тележурналистка", "Тележурналиста", "spelling", start=0, end=15, confidence=0.999, requires_model=True, rule_id="dictionary_fuzzy"),
+        ),
+        (
+            "По аппеляционным жалобам.",
+            "По апелляционными жалобам.",
+            Candidate("аппеляционным", "апелляционными", "spelling", start=3, end=16, confidence=0.999, requires_model=True, rule_id="dictionary_fuzzy"),
+        ),
+    ],
+)
+def test_required_risky_lexical_predictions_are_rejected(source, target, trusted):
+    result = StrictValidator().validate(source, target, trusted_edits=[trusted])
+
+    assert any(edit.status == "rejected" and edit.rule_id == trusted.rule_id for edit in result.edits)
+    assert result.apply_accepted() == source

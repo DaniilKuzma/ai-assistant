@@ -101,12 +101,16 @@ class StrictValidator:
 PERCENT_RE = re.compile(r"(?<![\w])\d+(?:[.,]\d+)?%")
 NUMBER_RE = re.compile(r"(?<![\w])\d+(?:[.,:/-]\d+)*")
 DECIMAL_RE = re.compile(r"(?<![\w])\d+[.,]\d+(?![\w])")
-INITIAL_ABBREVIATION_RE = re.compile(r"\b(?:США|РФ|НББ|ООО|АО|ИП)\b")
+INITIAL_ABBREVIATION_RE = re.compile(r"\b(?:УФСБ|РИА|США|РФ|НББ|ООО|АО|ИП)\b")
 ABBREVIATION_RE = re.compile(
     r"(?:\b\d{4}\s+[гГ]\.|\b(?:см|т\.д|т\.п|ул|стр|рис|г)\.|№\s*\d+)",
     re.IGNORECASE,
 )
 PUNCTUATION_NOISE_RE = re.compile(r"(?:…[.!?…]+|[.!?]+…|[!?]\.|\.{2,}|[!?]{2,}|([,;:])\s*\1)")
+UNSAFE_FINAL_DOT_TAIL_RE = re.compile(r"(?::\)|:\(|;\)|[,;:!?…])$")
+LATIN_COMPANY_ABBREVIATION_RE = re.compile(r"\b(?:co|inc|ltd|corp)\.\s*$", re.IGNORECASE)
+LATIN_RE = re.compile(r"[A-Za-z]")
+RUSSIAN_LETTER_RE = re.compile(r"[А-Яа-яЁё]")
 QUOTE_NORMALIZATION_RULE_IDS = frozenset({"quote_open", "quote_close"})
 N_NN_RULE_IDS = frozenset({"n_nn_adjective", "n_nn_participle", "n_nn_deverbal_adjective", "n_nn_short_form"})
 PROTECTED_N_NN_CLEAN_FORMS = frozenset({("намерены", "намеренны")})
@@ -114,6 +118,9 @@ NE_SPLIT_JOIN_RULE_IDS = frozenset({"ne_verb", "ne_adjective", "ne_adverb", "ne_
 DIRECT_SPEECH_RULE_IDS = frozenset({"direct_speech_colon", "direct_speech_quotes", "direct_speech_dash"})
 DISCOURSE_DASH_BLOCKERS = frozenset({"получается", "значит"})
 CAPITALIZATION_NER_MIN_CONFIDENCE = 0.999999
+PROTECTED_ACRONYMS = frozenset({"УФСБ", "РИА", "США", "РФ", "НББ", "ООО", "АО", "ИП"})
+ORG_LIKE_SUFFIXES = ("телеком", "банк", "газ", "нефть", "медиа", "инвест", "строй", "транс")
+MORPH_GUARDED_POSES = frozenset({"NOUN", "ADJF", "ADJS", "PRTF", "PRTS"})
 RISKY_KNOWN_SOURCE_LEXICAL_RULE_IDS = frozenset(
     {
         "missing_hard_sign",
@@ -159,11 +166,14 @@ def _guard_rejection_reason(
         return "ner_capitalization_requires_confirmed_span"
     if _is_straight_quote_normalization(edit):
         return "quote_normalization_requires_policy"
+    final_reason = _final_punctuation_rejection_reason(source, edit)
+    if final_reason:
+        return final_reason
     if _is_protected_n_nn_clean_form(edit):
         return "protected_clean_word_form"
     if _is_unsafe_n_nn_lexical_change(edit):
         return "unsafe_n_nn_lexical_change"
-    lexical_reason = _lexical_spelling_rejection_reason(edit)
+    lexical_reason = _lexical_spelling_rejection_reason(source, edit)
     if lexical_reason:
         return lexical_reason
     if _is_unsafe_ne_split_join(source, edit):
@@ -294,15 +304,25 @@ def _is_unsafe_n_nn_lexical_change(edit: Edit) -> bool:
     return edit.rule_id in N_NN_RULE_IDS
 
 
-def _lexical_spelling_rejection_reason(edit: Edit) -> str:
+def _lexical_spelling_rejection_reason(source_text: str, edit: Edit) -> str:
     if edit.edit_type != "spelling_replace":
         return ""
     if edit.rule_id in ALWAYS_UNSAFE_LEXICAL_RULE_IDS:
         return "unsafe_fuzzy_spelling_candidate"
     if edit.rule_id not in RISKY_KNOWN_SOURCE_LEXICAL_RULE_IDS:
         return ""
+    if _is_protected_acronym_or_all_caps(edit.source):
+        return "protected_lexical_guard"
+    if _is_mixed_latin_token(edit.source) or _is_mixed_latin_token(edit.replacement):
+        return "protected_lexical_guard"
+    if _is_capitalized_proper_like_lexical_change(source_text, edit):
+        return "protected_lexical_guard"
     if _is_known_correct_word(edit.source) and _is_known_correct_word(edit.replacement):
         return "known_source_lexical_guard"
+    if _morphology_incompatible_lexical_replacement(edit.source, edit.replacement):
+        return "morphology_agreement_guard"
+    if edit.rule_id == "dictionary_fuzzy" and _edit_distance(edit.source.lower(), edit.replacement.lower()) > 1:
+        return "unsafe_fuzzy_spelling_candidate"
     return ""
 
 
@@ -312,19 +332,148 @@ def _is_known_correct_word(word: str) -> bool:
     return any(getattr(parse, "is_known", False) for parse in parses(word.lower()))
 
 
+def _is_protected_acronym_or_all_caps(word: str) -> bool:
+    letters = "".join(char for char in word if char.isalpha())
+    if not letters:
+        return False
+    return word in PROTECTED_ACRONYMS or (len(letters) >= 2 and letters.upper() == letters)
+
+
+def _is_mixed_latin_token(word: str) -> bool:
+    return bool(LATIN_RE.search(word) and RUSSIAN_LETTER_RE.search(word))
+
+
+def _is_capitalized_proper_like_lexical_change(source_text: str, edit: Edit) -> bool:
+    if not edit.source[:1].isupper():
+        return False
+    source_lower = edit.source.lower()
+    if source_lower.endswith(ORG_LIKE_SUFFIXES):
+        return True
+    if _is_sentence_initial_common_word_typo(source_text, edit):
+        return False
+    if _source_has_common_morphology(edit.source):
+        return False
+    return edit.replacement[:1].isupper() and _is_known_correct_word(edit.replacement)
+
+
+def _is_sentence_initial_common_word_typo(source_text: str, edit: Edit) -> bool:
+    if edit.start != 0:
+        return False
+    if not _source_has_common_morphology(edit.source):
+        return False
+    return _morphology_compatible_lexical_replacement(edit.source, edit.replacement)
+
+
+def _source_has_common_morphology(word: str) -> bool:
+    return any(getattr(parse.tag, "POS", None) in MORPH_GUARDED_POSES for parse in parses(word.lower()))
+
+
+def _morphology_incompatible_lexical_replacement(source: str, replacement: str) -> bool:
+    source_infos = _morphology_infos(source)
+    replacement_infos = _morphology_infos(replacement)
+    if not source_infos or not replacement_infos:
+        return False
+    return not any(_morphology_infos_compatible(left, right) for left in source_infos for right in replacement_infos)
+
+
+def _morphology_compatible_lexical_replacement(source: str, replacement: str) -> bool:
+    source_infos = _morphology_infos(source)
+    replacement_infos = _morphology_infos(replacement)
+    if not source_infos or not replacement_infos:
+        return False
+    return any(_morphology_infos_compatible(left, right) for left in source_infos for right in replacement_infos)
+
+
+def _morphology_infos(word: str) -> tuple[dict[str, str], ...]:
+    infos: list[dict[str, str]] = []
+    for parse in parses(word.lower()):
+        pos = str(getattr(parse.tag, "POS", "") or "")
+        if pos not in MORPH_GUARDED_POSES:
+            continue
+        infos.append(
+            {
+                "pos": _coarse_morph_pos(pos),
+                "case": str(getattr(parse.tag, "case", "") or ""),
+                "number": str(getattr(parse.tag, "number", "") or ""),
+                "gender": str(getattr(parse.tag, "gender", "") or ""),
+            }
+        )
+    return tuple(infos)
+
+
+def _coarse_morph_pos(pos: str) -> str:
+    if pos in {"ADJF", "ADJS", "PRTF", "PRTS"}:
+        return "ADJ"
+    return pos
+
+
+def _morphology_infos_compatible(left: dict[str, str], right: dict[str, str]) -> bool:
+    if left["pos"] != right["pos"]:
+        return False
+    for feature in ("case", "number"):
+        if left[feature] and right[feature] and left[feature] != right[feature]:
+            return False
+    if left["number"] != "plur" and right["number"] != "plur":
+        if left["gender"] and right["gender"] and left["gender"] != right["gender"]:
+            return False
+    return True
+
+
+def _edit_distance(left: str, right: str) -> int:
+    if left == right:
+        return 0
+    previous = list(range(len(right) + 1))
+    for left_index, left_char in enumerate(left, start=1):
+        current = [left_index]
+        for right_index, right_char in enumerate(right, start=1):
+            current.append(
+                min(
+                    previous[right_index] + 1,
+                    current[right_index - 1] + 1,
+                    previous[right_index - 1] + (left_char != right_char),
+                )
+            )
+        previous = current
+    return previous[-1]
+
+
+def _final_punctuation_rejection_reason(source_text: str, edit: Edit) -> str:
+    if edit.edit_type != "final_punctuation" or edit.replacement != ".":
+        return ""
+    stripped = source_text.rstrip()
+    if not stripped:
+        return ""
+    if UNSAFE_FINAL_DOT_TAIL_RE.search(stripped):
+        return "unsafe_final_punctuation"
+    return ""
+
+
 def _is_unsafe_sentence_start_capitalization(source_text: str, edit: Edit) -> bool:
     if edit.rule_id != "capitalization_sentence_start":
         return False
     previous = _previous_nonspace_index(source_text, edit.start)
+    if previous is not None and source_text[previous] == "…":
+        return True
     if previous is None or source_text[previous] != ".":
         return False
     prefix = source_text[: previous + 1].lower()
+    if LATIN_COMPANY_ABBREVIATION_RE.search(prefix):
+        return True
+    if LATIN_RE.search(prefix[-48:]):
+        return True
+    if _previous_period_touches_protected_abbreviation(source_text, previous):
+        return True
     if re.search(r"(?:^|\s)(?:и\.о|[а-яё])\.\s*$", prefix):
         return True
     match = re.search(r"([а-яё]+)\.\s*$", prefix)
     if match and match.group(1) in ABBREVIATION_SENTENCE_START_PREFIXES:
         return True
     return len(edit.source) <= 2
+
+
+def _previous_period_touches_protected_abbreviation(source_text: str, period_index: int) -> bool:
+    protected = find_protected_spans(source_text)
+    return any(span.kind == "abbreviation" and span.end == period_index + 1 for span in protected)
 
 
 def _previous_nonspace_index(text: str, position: int) -> int | None:

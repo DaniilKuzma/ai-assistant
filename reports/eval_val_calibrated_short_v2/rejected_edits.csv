@@ -1,0 +1,520 @@
+row_id,source,replacement,edit_type,rule_id,status,reason,confidence
+3,гостинная,гостинца,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.80126953125
+7,Обьехав,Объехав,spelling_replace,dictionary_fuzzy,rejected,protected_lexical_guard,0.990234375
+16,,.,final_punctuation,final_punctuation_default,rejected,unsafe_final_punctuation,0.921875
+17,ни,не,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+21,,.,final_punctuation,final_punctuation_default,rejected,unsafe_final_punctuation,0.8505859375
+32,соревнуються,соревнуется,spelling_replace,dictionary_fuzzy,rejected,unsafe_fuzzy_spelling_candidate,0.9599609375
+36,возможно,Возможно,case_change,capitalization_sentence_start,rejected,abbreviation_sentence_start_capitalization,0.99267578125
+46,,.,final_punctuation,final_punctuation_default,rejected,unsafe_final_punctuation,0.8505859375
+58,гостинная,гостинца,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.80126953125
+63,Обьехав,Объехав,spelling_replace,dictionary_fuzzy,rejected,protected_lexical_guard,0.990234375
+72,,.,final_punctuation,final_punctuation_default,rejected,unsafe_final_punctuation,0.921875
+74,соревнуються,соревнуется,spelling_replace,dictionary_fuzzy,rejected,unsafe_fuzzy_spelling_candidate,0.9599609375
+78,возможно,Возможно,case_change,capitalization_sentence_start,rejected,abbreviation_sentence_start_capitalization,0.99267578125
+163,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+164,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+165,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+176,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9755859375
+177,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.97802734375
+178,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.97509765625
+179,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.97216796875
+180,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9775390625
+181,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9765625
+182,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9892578125
+183,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9833984375
+184,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98095703125
+185,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98095703125
+186,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.97900390625
+187,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9833984375
+188,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98193359375
+189,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98486328125
+190,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98388671875
+266,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68798828125
+267,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6884765625
+268,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6796875
+269,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6923828125
+271,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.7001953125
+272,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6875
+273,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6923828125
+274,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68115234375
+275,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68701171875
+276,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68994140625
+278,щюпальце,щупальце,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.75537109375
+279,щюпальце,щупальце,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.73828125
+305,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99755859375
+314,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+319,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+328,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68798828125
+334,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9873046875
+335,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68798828125
+342,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.7001953125
+343,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99853515625
+347,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68994140625
+360,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9814453125
+366,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9833984375
+378,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68701171875
+390,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99853515625
+407,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9765625
+441,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+455,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98486328125
+457,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98388671875
+487,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99755859375
+488,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9775390625
+495,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9755859375
+496,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.986328125
+502,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.97802734375
+503,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9833984375
+506,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6923828125
+516,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.97216796875
+528,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98095703125
+532,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6875
+554,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68017578125
+571,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9873046875
+572,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68798828125
+575,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+579,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99853515625
+584,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68994140625
+596,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9814453125
+602,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+603,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9833984375
+614,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.97509765625
+615,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68701171875
+617,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+628,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9892578125
+637,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68115234375
+648,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+649,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98095703125
+698,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+704,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+717,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99755859375
+718,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9775390625
+727,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99853515625
+728,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9755859375
+729,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.986328125
+732,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6923828125
+739,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9833984375
+757,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6884765625
+759,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98095703125
+798,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68798828125
+802,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68798828125
+804,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+812,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99853515625
+828,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9814453125
+833,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6796875
+842,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+856,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9892578125
+861,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99853515625
+871,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68115234375
+906,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.685546875
+932,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+940,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99755859375
+941,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9775390625
+951,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9833984375
+965,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.97900390625
+967,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6875
+971,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.69140625
+1002,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68798828125
+1009,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9873046875
+1010,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68798828125
+1013,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+1019,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99853515625
+1037,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+1039,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9833984375
+1047,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98193359375
+1058,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9892578125
+1065,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99853515625
+1074,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68115234375
+1087,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9765625
+1097,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+1108,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+1129,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+1137,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98486328125
+1141,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98388671875
+1152,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+1158,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9775390625
+1169,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9775390625
+1175,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99853515625
+1176,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9755859375
+1177,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.986328125
+1178,щюпальце,щупальце,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.73828125
+1179,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6923828125
+1184,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.97802734375
+1203,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6884765625
+1205,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+1207,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.97900390625
+1215,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.69140625
+1229,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68017578125
+1240,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68798828125
+1243,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68798828125
+1253,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.7001953125
+1267,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9814453125
+1270,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+1271,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9833984375
+1272,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6796875
+1290,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68701171875
+1304,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99853515625
+1330,щюпальце,щупальце,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.75537109375
+1372,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98486328125
+1375,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98388671875
+1390,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+1391,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9775390625
+1400,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99755859375
+1410,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.97802734375
+1413,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6923828125
+1432,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6884765625
+1435,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98095703125
+1443,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6875
+1461,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68017578125
+1473,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68798828125
+1480,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9873046875
+1482,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+1491,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.7001953125
+1495,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68994140625
+1505,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9814453125
+1509,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+1510,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9833984375
+1511,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6796875
+1521,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.97509765625
+1522,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68701171875
+1531,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9892578125
+1544,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68115234375
+1558,щюпальце,щупальце,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.75537109375
+1560,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+1574,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+1587,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.685546875
+1598,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+1607,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98486328125
+1624,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9775390625
+1642,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99853515625
+1644,щюпальце,щупальце,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.73828125
+1645,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6923828125
+1651,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6923828125
+1663,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6884765625
+1665,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+1704,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9873046875
+1712,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.7001953125
+1713,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99853515625
+1730,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9833984375
+1732,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6796875
+1742,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+1751,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9892578125
+1765,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68115234375
+1775,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9765625
+1778,щюпальце,щупальце,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.75537109375
+1783,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+1784,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98095703125
+1807,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.685546875
+1813,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+1826,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98388671875
+1838,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+1845,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+1847,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9775390625
+1856,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99755859375
+1857,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9775390625
+1865,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9755859375
+1873,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9833984375
+1890,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6884765625
+1893,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98095703125
+1896,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.97900390625
+1899,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6875
+1906,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.69140625
+1915,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68017578125
+1933,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9873046875
+1942,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.7001953125
+1947,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68994140625
+1968,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+1969,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9833984375
+1971,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6796875
+1979,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.97509765625
+1980,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68701171875
+1981,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+2006,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68115234375
+2020,щюпальце,щупальце,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.75537109375
+2023,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+2050,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.685546875
+2067,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98388671875
+2080,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9775390625
+2088,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99853515625
+2089,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9755859375
+2090,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.986328125
+2092,щюпальце,щупальце,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.73828125
+2093,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6923828125
+2102,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.97802734375
+2103,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9833984375
+2111,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.97216796875
+2120,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6884765625
+2128,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6875
+2133,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.69140625
+2154,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68017578125
+2175,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+2205,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6796875
+2214,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98193359375
+2229,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99853515625
+2252,щюпальце,щупальце,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.75537109375
+2290,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.685546875
+2313,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+2329,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9775390625
+2339,щюпальце,щупальце,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.73828125
+2340,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6923828125
+2352,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.97216796875
+2361,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6884765625
+2364,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+2368,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.97900390625
+2373,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.69140625
+2401,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68798828125
+2409,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+2423,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68994140625
+2436,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+2438,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9833984375
+2441,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6796875
+2449,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98193359375
+2452,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68701171875
+2454,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+2488,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9765625
+2513,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+2536,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98486328125
+2555,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+2564,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99755859375
+2571,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9755859375
+2573,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6923828125
+2577,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9833984375
+2599,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.97900390625
+2603,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.69140625
+2628,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68798828125
+2636,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9873046875
+2660,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9833984375
+2661,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6796875
+2668,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98193359375
+2671,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.97509765625
+2676,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9892578125
+2702,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+2703,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98095703125
+2717,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+2731,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+2739,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98388671875
+2765,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99853515625
+2766,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.986328125
+2768,щюпальце,щупальце,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.73828125
+2769,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6923828125
+2772,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.97802734375
+2773,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9833984375
+2777,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6923828125
+2786,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.97216796875
+2795,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+2796,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98095703125
+2799,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6875
+2824,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68017578125
+2844,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68798828125
+2853,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99853515625
+2858,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68994140625
+2869,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9814453125
+2878,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6796875
+2891,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98193359375
+2903,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9892578125
+2909,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99853515625
+2927,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9765625
+2930,щюпальце,щупальце,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.75537109375
+2934,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+2935,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98095703125
+2944,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+2962,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+2972,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98388671875
+2985,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9775390625
+3000,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99853515625
+3001,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.986328125
+3010,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.97802734375
+3012,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6923828125
+3016,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.97216796875
+3032,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98095703125
+3037,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.97900390625
+3043,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.69140625
+3064,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68017578125
+3085,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9873046875
+3086,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68798828125
+3093,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99853515625
+3106,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9814453125
+3112,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9833984375
+3115,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6796875
+3121,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98193359375
+3124,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.97509765625
+3125,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+3130,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9892578125
+3157,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98095703125
+3170,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+3177,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.685546875
+3183,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+3189,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98388671875
+3200,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+3205,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+3207,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9775390625
+3217,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99755859375
+3218,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9775390625
+3229,щюпальце,щупальце,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.73828125
+3232,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.97802734375
+3234,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6923828125
+3238,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.97216796875
+3281,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68017578125
+3297,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+3305,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.7001953125
+3306,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99853515625
+3311,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68994140625
+3318,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9814453125
+3331,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98193359375
+3334,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.97509765625
+3336,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+3365,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68115234375
+3375,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9765625
+3381,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98095703125
+3399,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.685546875
+3416,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98486328125
+3418,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98388671875
+3433,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+3440,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9775390625
+3445,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99853515625
+3447,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6923828125
+3454,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6923828125
+3469,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98095703125
+3473,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.97900390625
+3476,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6875
+3481,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.69140625
+3495,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68017578125
+3504,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68798828125
+3508,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9873046875
+3514,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.7001953125
+3518,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68994140625
+3533,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9814453125
+3540,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+3541,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9833984375
+3553,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98193359375
+3564,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99853515625
+3570,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.68115234375
+3583,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9765625
+3588,щюпальце,щупальце,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.75537109375
+3592,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+3593,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98095703125
+3617,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.685546875
+3637,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98486328125
+3653,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+3657,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+3659,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9775390625
+3668,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9775390625
+3677,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99853515625
+3678,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.986328125
+3680,щюпальце,щупальце,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.73828125
+3681,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6923828125
+3688,чюжой,чужой,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.6923828125
+3702,стальнаяНа,стальная На,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+3722,информацииполученной,информации полученной,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+3730,аппеляционным,апелляционными,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.98486328125
+3737,УФСБ,Фсб,spelling_replace,extra_letter_candidate,rejected,breaks_abbreviation,0.9677734375
+3762,предположениечто,предположение что,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+3764,агенства,агентств,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.8662109375
+3785,раньше-,раньше -,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+3794,приказа-,приказа -,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+3799,расширяетсяобщественность,расширяется общественность,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+3806,авианалет,авиабилет,spelling_replace,dictionary_fuzzy,rejected,unsafe_fuzzy_spelling_candidate,0.99560546875
+3808,саентологам,сайентолога,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.93310546875
+3826,по Каширскому,по-каширскому,hyphen_change,hyphen_po_adverbs,rejected,unsafe_hyphen_po_adverb,0.984375
+3858,правительствауже,правительствует,spelling_replace,dictionary_fuzzy,rejected,unsafe_fuzzy_spelling_candidate,0.8544921875
+3869,по государственному,по-государственному,hyphen_change,hyphen_po_adverbs,rejected,unsafe_hyphen_po_adverb,0.974609375
+3873,тележурналистка,тележурналиста,spelling_replace,extra_letter_candidate,rejected,morphology_agreement_guard,0.99609375
+3917,За то,зато,join_words,context_pair,rejected,context-dependent pair requires trusted model confidence,0.95
+3917,За то,Зато,join_words,context_za_to,rejected,context-dependent pair requires trusted model confidence,0.0
+3934,работыпо,работы по,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+3947,наказаниядолжно,наказания должно,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+3967,Шредерапрезидента,Шредера президента,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+3967,Клинтонадругих,Клинтона других,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+3971,нефтепродуктовприобретаемых,нефтепродуктов приобретаемых,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+3978,властейприобрел,властей приобрел,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+3987,по всему,по-всему,hyphen_change,hyphen_po_adverbs,rejected,unsafe_hyphen_po_adverb,0.91455078125
+4006,по всему,по-всему,hyphen_change,hyphen_po_adverbs,rejected,unsafe_hyphen_po_adverb,0.84033203125
+4012,Forbesопубликовавший,Forbes опубликовавший,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+4019,экипажаобслуживающего,экипажа обслуживающего,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+4021,по внешнему,по-внешнему,hyphen_change,hyphen_po_adverbs,rejected,unsafe_hyphen_po_adverb,0.904296875
+4027,Большой,Большей,spelling_replace,pattern_шо_ше,rejected,known_source_lexical_guard,0.99267578125
+4037,Дейли,Лейли,spelling_replace,keyboard_typo_candidate,rejected,protected_lexical_guard,0.97607421875
+4045,по возможному,по-возможному,hyphen_change,hyphen_po_adverbs,rejected,unsafe_hyphen_po_adverb,0.53759765625
+4046,по персональному,по-персональному,hyphen_change,hyphen_po_adverbs,rejected,unsafe_hyphen_po_adverb,0.8310546875
+4051,МосквеСанкт-Петербургу,Москве Санкт-Петербургу,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+4070,названная,названая,spelling_replace,n_nn_deverbal_adjective,rejected,unsafe_n_nn_lexical_change,0.99755859375
+4085,кинорежиссердиректор,кинорежиссер директор,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+4116,Ахметский,Ахейский,spelling_replace,dictionary_fuzzy,rejected,unsafe_fuzzy_spelling_candidate,0.87353515625
+4162,по всему,по-всему,hyphen_change,hyphen_po_adverbs,rejected,unsafe_hyphen_po_adverb,0.88818359375
+4167,ведет,въедет,spelling_replace,missing_hard_sign,rejected,known_source_lexical_guard,0.9814453125
+4178,по личному,по-личному,hyphen_change,hyphen_po_adverbs,rejected,unsafe_hyphen_po_adverb,0.96728515625
+4182,цыгане,цигане,spelling_replace,pattern_цы_ци,rejected,known_source_lexical_guard,0.94482421875
+4184,терактыно,теракты но,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+4184,Оджаланомлибо,Оджаланом либо,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+4185,Ахметский,Ахейский,spelling_replace,dictionary_fuzzy,rejected,unsafe_fuzzy_spelling_candidate,0.8955078125
+4191,Гостелеком,Ростелеком,spelling_replace,keyboard_typo_candidate,rejected,protected_lexical_guard,0.97802734375
+4212,зону ps,зонуps,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+4219,распродает,Распродает,case_change,capitalization_sentence_start,rejected,abbreviation_sentence_start_capitalization,0.99169921875
+4233,округамот,округами,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.88037109375
+4239,Шерстюк,Шерстью,spelling_replace,dictionary_fuzzy,rejected,unsafe_fuzzy_spelling_candidate,0.91357421875
+4244,работаютв,работает,spelling_replace,dictionary_fuzzy,rejected,unsafe_fuzzy_spelling_candidate,0.89306640625
+4258,Мушарраф,Мухаррак,spelling_replace,dictionary_fuzzy,rejected,unsafe_fuzzy_spelling_candidate,0.8486328125
+4295,Зато,за то,split_word,context_pair,rejected,context-dependent pair requires trusted model confidence,0.95
+4295,Зато,За то,split_word,context_za_to,rejected,context-dependent pair requires trusted model confidence,0.0
+4296,везде,въезде,spelling_replace,missing_hard_sign,rejected,known_source_lexical_guard,0.998046875
+4311,Шиндлеру,Шиллеру,spelling_replace,dictionary_fuzzy,rejected,unsafe_fuzzy_spelling_candidate,0.83203125
+4312,поджог,поджег,spelling_replace,pattern_жо_же,rejected,known_source_lexical_guard,0.99951171875
+4313,Мушарраф,Мухаррак,spelling_replace,dictionary_fuzzy,rejected,unsafe_fuzzy_spelling_candidate,0.78759765625
+4349,преступностью-,преступностью -,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+4352,стальнаяНа,стальная На,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+4372,информацииполученной,информации полученной,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+4380,аппеляционным,апелляционными,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.98486328125
+4387,УФСБ,Фсб,spelling_replace,extra_letter_candidate,rejected,breaks_abbreviation,0.9677734375
+4412,предположениечто,предположение что,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+4414,агенства,агентств,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.8662109375
+4435,раньше-,раньше -,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+4444,приказа-,приказа -,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+4449,расширяетсяобщественность,расширяется общественность,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+4456,авианалет,авиабилет,spelling_replace,dictionary_fuzzy,rejected,unsafe_fuzzy_spelling_candidate,0.99560546875
+4458,саентологам,сайентолога,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.93310546875
+4476,по Каширскому,по-каширскому,hyphen_change,hyphen_po_adverbs,rejected,unsafe_hyphen_po_adverb,0.984375
+4508,правительствауже,правительствует,spelling_replace,dictionary_fuzzy,rejected,unsafe_fuzzy_spelling_candidate,0.8544921875
+4519,по государственному,по-государственному,hyphen_change,hyphen_po_adverbs,rejected,unsafe_hyphen_po_adverb,0.974609375
+4523,тележурналистка,тележурналиста,spelling_replace,extra_letter_candidate,rejected,morphology_agreement_guard,0.99609375
+4567,За то,зато,join_words,context_pair,rejected,context-dependent pair requires trusted model confidence,0.95
+4567,За то,Зато,join_words,context_za_to,rejected,context-dependent pair requires trusted model confidence,0.0
+4584,работыпо,работы по,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+4597,наказаниядолжно,наказания должно,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+4617,Шредерапрезидента,Шредера президента,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+4617,Клинтонадругих,Клинтона других,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+4621,нефтепродуктовприобретаемых,нефтепродуктов приобретаемых,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+4628,властейприобрел,властей приобрел,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+4637,по всему,по-всему,hyphen_change,hyphen_po_adverbs,rejected,unsafe_hyphen_po_adverb,0.91455078125
+4656,по всему,по-всему,hyphen_change,hyphen_po_adverbs,rejected,unsafe_hyphen_po_adverb,0.84033203125
+4662,Forbesопубликовавший,Forbes опубликовавший,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+4669,экипажаобслуживающего,экипажа обслуживающего,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+4671,по внешнему,по-внешнему,hyphen_change,hyphen_po_adverbs,rejected,unsafe_hyphen_po_adverb,0.904296875
+4677,Большой,Большей,spelling_replace,pattern_шо_ше,rejected,known_source_lexical_guard,0.99267578125
+4687,Дейли,Лейли,spelling_replace,keyboard_typo_candidate,rejected,protected_lexical_guard,0.97607421875
+4695,по возможному,по-возможному,hyphen_change,hyphen_po_adverbs,rejected,unsafe_hyphen_po_adverb,0.53759765625
+4696,по персональному,по-персональному,hyphen_change,hyphen_po_adverbs,rejected,unsafe_hyphen_po_adverb,0.8310546875
+4701,МосквеСанкт-Петербургу,Москве Санкт-Петербургу,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+4720,названная,названая,spelling_replace,n_nn_deverbal_adjective,rejected,unsafe_n_nn_lexical_change,0.99755859375
+4735,кинорежиссердиректор,кинорежиссер директор,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+4766,Ахметский,Ахейский,spelling_replace,dictionary_fuzzy,rejected,unsafe_fuzzy_spelling_candidate,0.87353515625
+4812,по всему,по-всему,hyphen_change,hyphen_po_adverbs,rejected,unsafe_hyphen_po_adverb,0.88818359375
+4817,ведет,въедет,spelling_replace,missing_hard_sign,rejected,known_source_lexical_guard,0.9814453125
+4828,по личному,по-личному,hyphen_change,hyphen_po_adverbs,rejected,unsafe_hyphen_po_adverb,0.96728515625
+4832,цыгане,цигане,spelling_replace,pattern_цы_ци,rejected,known_source_lexical_guard,0.94482421875
+4834,терактыно,теракты но,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+4834,Оджаланомлибо,Оджаланом либо,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+4835,Ахметский,Ахейский,spelling_replace,dictionary_fuzzy,rejected,unsafe_fuzzy_spelling_candidate,0.8955078125
+4841,Гостелеком,Ростелеком,spelling_replace,keyboard_typo_candidate,rejected,protected_lexical_guard,0.97802734375
+4862,зону ps,зонуps,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+4869,распродает,Распродает,case_change,capitalization_sentence_start,rejected,abbreviation_sentence_start_capitalization,0.99169921875
+4883,округамот,округами,spelling_replace,dictionary_fuzzy,rejected,morphology_agreement_guard,0.88037109375
+4889,Шерстюк,Шерстью,spelling_replace,dictionary_fuzzy,rejected,unsafe_fuzzy_spelling_candidate,0.9130859375
+4894,работаютв,работает,spelling_replace,dictionary_fuzzy,rejected,unsafe_fuzzy_spelling_candidate,0.89306640625
+4908,Мушарраф,Мухаррак,spelling_replace,dictionary_fuzzy,rejected,unsafe_fuzzy_spelling_candidate,0.8486328125
+4945,Зато,за то,split_word,context_pair,rejected,context-dependent pair requires trusted model confidence,0.95
+4945,Зато,За то,split_word,context_za_to,rejected,context-dependent pair requires trusted model confidence,0.0
+4946,везде,въезде,spelling_replace,missing_hard_sign,rejected,known_source_lexical_guard,0.998046875
+4961,Шиндлеру,Шиллеру,spelling_replace,dictionary_fuzzy,rejected,unsafe_fuzzy_spelling_candidate,0.83203125
+4962,поджог,поджег,spelling_replace,pattern_жо_же,rejected,known_source_lexical_guard,0.99951171875
+4963,Мушарраф,Мухаррак,spelling_replace,dictionary_fuzzy,rejected,unsafe_fuzzy_spelling_candidate,0.78759765625
+4999,преступностью-,преступностью -,unknown,,rejected,outside strict spelling/punctuation scope,0.0

@@ -82,6 +82,7 @@ PREPOSITION_MARKERS = frozenset(
 )
 PROTECTED_PUNCTUATION_RE = re.compile(r"(?<![\w])\d+(?:[.,]\d+)?%|(?<![\w])\d+(?:[.,:/-]\d+)*")
 PUNCTUATION_NOISE_RE = re.compile(r"(?:…[.!?…]+|[.!?]+…|[!?]\.|\.{2,}|[!?]{2,}|([,;:])\s*\1)")
+UNSAFE_FINAL_DOT_TAIL_RE = re.compile(r"(?::\)|:\(|;\)|[,;:!?…])$")
 SPEECH_VERBS = frozenset(
     {
         "говорит",
@@ -307,6 +308,8 @@ def _final_punctuation_candidates(
     stripped = text.rstrip()
     if not stripped or _has_sentence_final_punctuation(stripped):
         return []
+    if _has_unsafe_final_dot_tail(stripped):
+        return []
     position = len(stripped)
     if _position_inside_spans(position, protected):
         return []
@@ -330,6 +333,10 @@ def _has_sentence_final_punctuation(text: str) -> bool:
     while stripped and stripped[-1] in CLOSING_FINAL_WRAPPERS:
         stripped = stripped[:-1].rstrip()
     return bool(stripped and stripped[-1] in ".!?…")
+
+
+def _has_unsafe_final_dot_tail(text: str) -> bool:
+    return bool(UNSAFE_FINAL_DOT_TAIL_RE.search(text.rstrip()))
 
 
 def _subordinate_comma_candidates(
