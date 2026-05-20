@@ -10,6 +10,7 @@ from src.evaluation.candidate_recall import write_candidate_recall_reports
 from src.evaluation.metrics import compute_metrics, mark_correct_edits
 from src.evaluation.reports import write_edit_logs, write_required_evaluation_reports
 from src.evaluation.rule_metrics import write_rule_reports
+from src.evaluation.score_distribution import write_candidate_score_distribution_by_rule
 from src.inference.corrector import Corrector
 from src.validation.diff_analyzer import DiffAnalyzer
 
@@ -62,10 +63,13 @@ def evaluate_rows_detailed(
     accepted: list[dict] = []
     rejected: list[dict] = []
     edit_scores: list[dict[str, Any]] = []
+    candidate_decisions: list[dict[str, Any]] = []
     analyzer = DiffAnalyzer()
     total_gold_edits = 0
     for row_id, row in enumerate(_with_progress(row_list, enabled=show_progress, description="Evaluating")):
         result = corrector.correct(row["source"])
+        for decision in getattr(corrector, "last_candidate_decisions", []) or []:
+            candidate_decisions.append({**decision, "row_id": row_id})
         prediction = result.corrected_text
         evaluated_row = {**row, "prediction": prediction}
         evaluated.append(evaluated_row)
@@ -109,6 +113,7 @@ def evaluate_rows_detailed(
         write_required_evaluation_reports(evaluated, metrics, output_dir, metadata=report_metadata)
         write_edit_logs(accepted, rejected, output_dir)
         write_rule_reports(evaluated, accepted, rejected, output_dir)
+        write_candidate_score_distribution_by_rule(evaluated, candidate_decisions, accepted, rejected, output_dir)
         write_candidate_recall_reports(
             evaluated,
             output_dir,

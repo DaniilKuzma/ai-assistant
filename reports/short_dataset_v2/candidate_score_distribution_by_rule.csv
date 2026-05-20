@@ -1,0 +1,13 @@
+rule_id,edit_type,gold_count,candidate_count,positive_score_mean,positive_score_p10,positive_score_p50,positive_score_p90,negative_score_mean,accepted_count,rejected_by_threshold_count,rejected_by_validator_count,rejected_reason_counts,examples_high_score_rejected,examples_low_score_gold
+comma_subordinate,punctuation_insert,0,1,0.995532,0.995532,0.995532,0.995532,0.0,1,0,0,{},,
+context_pair,split_join,1,0,0.0,0.0,0.0,0.0,0.0,0,0,0,{},,
+context_za_to,split_join,1,1,0.298809,0.298809,0.298809,0.298809,0.0,0,1,0,"{""threshold"": 1}",,Зато->За то score=0.2988
+dictionary_fuzzy,spelling,1,4,0.998815,0.998815,0.998815,0.998815,0.972785,1,0,0,"{""conflict"": 3}",,
+direct_speech_colon,punctuation_insert,0,2,0.0,0.0,0.0,0.0,0.627668,0,2,0,"{""threshold"": 2}",,
+direct_speech_dash,punctuation_insert,0,1,0.999582,0.999582,0.999582,0.999582,0.0,1,0,0,{},,
+direct_speech_quotes,punctuation_insert,0,4,0.0,0.0,0.0,0.0,0.877504,0,4,0,"{""threshold"": 4}",,
+extra_letter_candidate,spelling,1,1,0.999089,0.999089,0.999089,0.999089,0.0,1,0,0,{},,
+hyphen_particles,hyphen,1,1,0.999881,0.999881,0.999881,0.999881,0.0,1,0,0,{},,
+hyphen_whitelist,hyphen,1,0,0.0,0.0,0.0,0.0,0.0,0,0,0,{},,
+keyboard_typo_candidate,spelling,1,2,0.970694,0.970694,0.970694,0.970694,0.998863,1,0,0,"{""conflict"": 1}",,
+missing_letter_candidate,spelling,1,1,0.999887,0.999887,0.999887,0.999887,0.0,1,0,0,{},,

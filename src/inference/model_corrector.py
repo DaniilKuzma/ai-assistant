@@ -74,6 +74,7 @@ class TrainedModelCorrector:
                 )
             ),
         )
+        self.last_candidate_decisions: list[dict[str, Any]] = []
 
     @classmethod
     def from_config(cls, config: dict[str, Any]) -> "TrainedModelCorrector":
@@ -89,8 +90,10 @@ class TrainedModelCorrector:
         )
 
     def correct(self, text: str) -> CorrectionResult:
+        self.last_candidate_decisions = []
         proposed, trusted_edits = self._decode_with_trusted_edits(text)
         validation = self.validator.validate(text, proposed, trusted_edits=trusted_edits)
+        _annotate_decisions_with_validation(self.last_candidate_decisions, validation.edits)
         corrected = validation.apply_accepted()
         return CorrectionResult(text, corrected, validation.edits)
 
@@ -111,7 +114,8 @@ class TrainedModelCorrector:
 
     def _single_pass_with_candidates(self, text: str) -> tuple[str, list[Candidate]]:
         candidates = self.candidates.generate(text)
-        selected = _select_candidates(self.backend.score_candidates(text, candidates), self.thresholds)
+        selected, decisions = _select_candidates_with_trace(self.backend.score_candidates(text, candidates), self.thresholds)
+        self.last_candidate_decisions.extend(decisions)
         proposed = _apply_candidates(text, selected)
         punctuation_candidates = _punctuation_candidates_for_text(self.candidates, proposed)
         proposed, punctuation_edits = _apply_punctuation_predictions(
@@ -287,16 +291,49 @@ def _select_candidates(
     predictions: list[ModelCandidatePrediction],
     thresholds: dict[str, float],
 ) -> list[Candidate]:
+    return _select_candidates_with_trace(predictions, thresholds)[0]
+
+
+def _select_candidates_with_trace(
+    predictions: list[ModelCandidatePrediction],
+    thresholds: dict[str, float],
+) -> tuple[list[Candidate], list[dict[str, Any]]]:
     selected: list[Candidate] = []
     occupied: list[tuple[int, int]] = []
+    decisions: list[dict[str, Any]] = []
     for prediction in sorted(predictions, key=lambda item: (item.candidate.start, -item.score)):
         candidate = prediction.candidate
         if candidate.edit_type == "keep":
             continue
         rule_id = prediction.rule_id or candidate.rule_id
-        if prediction.score < threshold_for_candidate(candidate, thresholds, rule_id=rule_id):
+        threshold = threshold_for_candidate(candidate, thresholds, rule_id=rule_id)
+        threshold_passed = prediction.score >= threshold
+        conflict = threshold_passed and any(
+            _candidates_conflict(candidate.start, candidate.end, start, end) for start, end in occupied
+        )
+        selected_candidate = threshold_passed and not conflict
+        decisions.append(
+            {
+                "candidate": candidate,
+                "rule_id": rule_id,
+                "edit_type": candidate.edit_type,
+                "source": candidate.source,
+                "replacement": candidate.replacement,
+                "start": candidate.start,
+                "end": candidate.end,
+                "score": float(prediction.score),
+                "confidence": float(prediction.confidence),
+                "threshold": float(threshold),
+                "threshold_passed": bool(threshold_passed),
+                "selected": bool(selected_candidate),
+                "conflict": bool(conflict),
+                "validator_status": "",
+                "validator_reason": "",
+            }
+        )
+        if not threshold_passed:
             continue
-        if any(_candidates_conflict(candidate.start, candidate.end, start, end) for start, end in occupied):
+        if conflict:
             continue
         selected.append(
             Candidate(
@@ -317,7 +354,7 @@ def _select_candidates(
             )
         )
         occupied.append((candidate.start, candidate.end))
-    return selected
+    return selected, decisions
 
 
 def _candidates_conflict(candidate_start: int, candidate_end: int, occupied_start: int, occupied_end: int) -> bool:
@@ -390,6 +427,10 @@ def _apply_punctuation_predictions(
         if prediction.label == "NONE":
             continue
         if prediction.action not in {"INSERT", "REPLACE"}:
+            continue
+        if matched_candidate.rule_id == "direct_speech_dash" and prediction.label == "DASH":
+            proposed = _insert_punctuation_at_position(proposed, matched_candidate.start, _punctuation_mark(prediction.label))
+            trusted_edits.extend(_trusted_punctuation_candidates(before, proposed, prediction))
             continue
         if prediction.label in {"QUOTE_OPEN", "BRACKET_OPEN"}:
             proposed = _insert_punctuation_before_word(proposed, prediction.gap_index + 1, _punctuation_mark(prediction.label))
@@ -468,6 +509,33 @@ def _trusted_punctuation_candidates(
             "final_punctuation",
         }
     ]
+
+
+def _annotate_decisions_with_validation(decisions: list[dict[str, Any]], edits: list[Any]) -> None:
+    for decision in decisions:
+        if not decision.get("selected"):
+            continue
+        candidate = decision.get("candidate")
+        for edit in edits:
+            if _validation_edit_matches_candidate(edit, candidate):
+                decision["validator_status"] = str(getattr(edit, "status", ""))
+                decision["validator_reason"] = str(getattr(edit, "reason", ""))
+                break
+
+
+def _validation_edit_matches_candidate(edit: Any, candidate: Any) -> bool:
+    if candidate is None:
+        return False
+    rule_id = str(getattr(candidate, "rule_id", "") or "")
+    edit_rule_id = str(getattr(edit, "rule_id", "") or "")
+    if rule_id and edit_rule_id and rule_id != edit_rule_id:
+        return False
+    return (
+        str(getattr(edit, "source", "")).lower() == str(getattr(candidate, "source", "")).lower()
+        and str(getattr(edit, "replacement", "")).lower() == str(getattr(candidate, "replacement", "")).lower()
+        and int(getattr(edit, "start", -1)) == int(getattr(candidate, "start", -2))
+        and int(getattr(edit, "end", -1)) == int(getattr(candidate, "end", -2))
+    )
 
 
 def _encode(tokenizer: Any, text: str, max_length: int) -> dict[str, Any]:
@@ -619,6 +687,18 @@ def _insert_punctuation_before_word(text: str, word_index: int, mark: str) -> st
         return text
     if position > 0 and text[position - 1] == mark:
         return text
+    return text[:position] + mark + text[position:]
+
+
+def _insert_punctuation_at_position(text: str, position: int, mark: str) -> str:
+    if not mark or position < 0 or position > len(text):
+        return text
+    if position > 0 and text[position - 1] == mark:
+        return text
+    if position < len(text) and text[position] == mark:
+        return text
+    if mark == "—":
+        return text[:position].rstrip() + " — " + text[position:].lstrip()
     return text[:position] + mark + text[position:]
 
 

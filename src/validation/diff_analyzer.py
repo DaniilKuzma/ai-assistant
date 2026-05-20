@@ -129,16 +129,18 @@ class DiffAnalyzer:
 
         reusable_candidates = candidates if candidates is not None else CandidateGenerator().generate(source)
         for candidate in reusable_candidates:
-            if candidate.edit_type not in {"hyphen", "split_join"}:
+            if candidate.edit_type not in {"hyphen", "split_join", "spelling"}:
                 continue
             if candidate.replacement.lower() not in target_lower:
                 continue
             if not _candidate_matches_word_alignment(source, target, candidate.start, candidate.end, candidate.replacement):
                 continue
-            edit_type = "hyphen_change" if candidate.edit_type == "hyphen" else _split_join_edit_type(
-                candidate.source,
-                candidate.replacement,
-            )
+            if candidate.edit_type == "hyphen":
+                edit_type = "hyphen_change"
+            elif candidate.edit_type == "split_join":
+                edit_type = _split_join_edit_type(candidate.source, candidate.replacement)
+            else:
+                edit_type = "spelling_replace"
             edits.append(
                 Edit(
                     candidate.source,

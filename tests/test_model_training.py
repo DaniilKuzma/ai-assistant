@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import torch
 
 from src.model.edit_model import CandidateAwareEditModel, EditModelConfig
-from src.model.losses import multitask_loss
+from src.model.losses import multitask_loss, multitask_loss_components
 
 
 class FakeEncoder(torch.nn.Module):
@@ -170,3 +170,33 @@ def test_multitask_loss_ignores_padded_candidates():
 
     assert loss.ndim == 0
     assert torch.isfinite(loss)
+
+
+def test_multitask_loss_components_report_word_punctuation_confidence_and_error_type_losses():
+    outputs = {
+        "candidate_scores": torch.tensor([[2.0, -1.0, 20.0]]),
+        "punctuation_logits": torch.randn(1, 4, 3),
+        "punctuation_action_logits": torch.randn(1, 4, 5),
+        "confidence_logits": torch.tensor([[2.0, -1.0, 20.0]]),
+        "error_type_logits": torch.randn(1, 3, 4),
+        "punctuation_confidence_logits": torch.tensor([[2.0, -1.0, 0.0, 20.0]]),
+        "punctuation_error_type_logits": torch.randn(1, 4, 4),
+    }
+    labels = {
+        "candidate_labels": torch.tensor([[1.0, 0.0, 0.0]]),
+        "candidate_mask": torch.tensor([[1, 1, 0]], dtype=torch.bool),
+        "punctuation_labels": torch.tensor([[0, 1, 0, 2]]),
+        "punctuation_action_labels": torch.tensor([[0, 2, 0, 3]]),
+        "punctuation_mask": torch.tensor([[1, 1, 1, 1]], dtype=torch.bool),
+        "confidence_labels": torch.tensor([[1.0, 0.0, 0.0]]),
+        "error_type_labels": torch.tensor([[1, 0, -100]]),
+        "punctuation_confidence_labels": torch.tensor([[1.0, 0.0, 0.0, 0.0]]),
+        "punctuation_error_type_labels": torch.tensor([[2, 0, 0, -100]]),
+    }
+
+    components = multitask_loss_components(outputs, labels, {})
+
+    for key in ["word_loss", "punctuation_loss", "confidence_loss", "error_type_loss"]:
+        assert key in components
+        assert components[key].ndim == 0
+        assert torch.isfinite(components[key])

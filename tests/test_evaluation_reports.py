@@ -6,6 +6,7 @@ import pytest
 from src.evaluation.evaluate import evaluate_rows, evaluate_rows_detailed
 from src.evaluation.threshold_sweep import threshold_sweep
 from src.inference.corrector import CorrectionResult
+from src.inference.model_corrector import ModelCandidatePrediction, TrainedModelCorrector
 from src.validation.diff_analyzer import Edit
 
 
@@ -124,6 +125,46 @@ def test_evaluation_reports_include_rule_id_in_edit_outputs(tmp_path: Path):
     assert result.edit_scores[0]["rule_id"] == "ne_verb"
 
 
+def test_score_distribution_report_written(tmp_path: Path):
+    rows = [
+        {
+            "source": "Я незнаю что делать",
+            "target": "Я не знаю что делать",
+            "error_types": ["split_join"],
+            "source_dataset": "unit",
+            "is_clean": False,
+        }
+    ]
+    corrector = TrainedModelCorrector(
+        TraceableBackend({"не знаю": 0.99}),
+        thresholds={"split_join_threshold": 0.9},
+    )
+
+    evaluate_rows_detailed(rows, corrector=corrector, output_dir=tmp_path)
+
+    report = pd.read_csv(tmp_path / "candidate_score_distribution_by_rule.csv")
+    assert list(report.columns) == [
+        "rule_id",
+        "edit_type",
+        "gold_count",
+        "candidate_count",
+        "positive_score_mean",
+        "positive_score_p10",
+        "positive_score_p50",
+        "positive_score_p90",
+        "negative_score_mean",
+        "accepted_count",
+        "rejected_by_threshold_count",
+        "rejected_by_validator_count",
+        "rejected_reason_counts",
+        "examples_high_score_rejected",
+        "examples_low_score_gold",
+    ]
+    row = report.loc[report["rule_id"] == "frequent_error_exact"].iloc[0]
+    assert row["candidate_count"] > 0
+    assert row["accepted_count"] > 0
+
+
 class PartialCorrector:
     def correct(self, text: str) -> CorrectionResult:
         return CorrectionResult(
@@ -240,3 +281,21 @@ class RuleIdCorrector:
                 )
             ],
         )
+
+
+class TraceableBackend:
+    def __init__(self, scores: dict[str, float]):
+        self.scores = scores
+
+    def score_candidates(self, text: str, candidates: list) -> list[ModelCandidatePrediction]:
+        return [
+            ModelCandidatePrediction(
+                candidate=candidate,
+                score=self.scores.get(candidate.replacement, 0.0),
+                confidence=self.scores.get(candidate.replacement, 0.0),
+            )
+            for candidate in candidates
+        ]
+
+    def predict_punctuation(self, text: str):
+        return []

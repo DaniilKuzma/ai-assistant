@@ -37,7 +37,7 @@ training:
   run_model_training: true
   evaluation_split: val
   checkpoint_metric: combined_score
-  max_train_examples: 60000
+  max_train_examples: 50000
   max_val_examples: 5000
   max_test_examples: 5000
   batch_size: 4

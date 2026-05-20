@@ -427,6 +427,103 @@ def test_validator_rejects_observed_clean_overcorrection_edits(source, target, t
     assert result.apply_accepted() == source
 
 
+@pytest.mark.parametrize(
+    ("source", "target", "trusted"),
+    [
+        (
+            "Он ведет отчет.",
+            "Он въедет отчет.",
+            Candidate("ведет", "въедет", "spelling", start=3, end=8, confidence=0.999, requires_model=True, rule_id="missing_hard_sign"),
+        ),
+        (
+            "Они были везде.",
+            "Они были въезде.",
+            Candidate("везде", "въезде", "spelling", start=9, end=14, confidence=0.999, requires_model=True, rule_id="missing_hard_sign"),
+        ),
+        (
+            "Цыгане пришли.",
+            "Цигане пришли.",
+            Candidate("Цыгане", "Цигане", "spelling", start=0, end=6, confidence=0.999, requires_model=True, rule_id="pattern_цы_ци"),
+        ),
+        (
+            "Большой дом открыт.",
+            "Большей дом открыт.",
+            Candidate("Большой", "Большей", "spelling", start=0, end=7, confidence=0.999, requires_model=True, rule_id="pattern_шо_ше"),
+        ),
+        (
+            "Поджог расследуют.",
+            "Поджег расследуют.",
+            Candidate("Поджог", "Поджег", "spelling", start=0, end=6, confidence=0.999, requires_model=True, rule_id="pattern_жо_же"),
+        ),
+    ],
+)
+def test_known_source_word_guard_rejects_observed_lexical_false_accepts(source, target, trusted):
+    result = StrictValidator().validate(source, target, trusted_edits=[trusted])
+
+    assert any(edit.status == "rejected" and edit.reason == "known_source_lexical_guard" for edit in result.edits)
+    assert result.apply_accepted() == source
+
+
+def test_known_source_word_guard_rejects_vedet_to_vedet_with_hard_sign():
+    source = "Он ведет отчет."
+    target = "Он въедет отчет."
+    trusted = Candidate("ведет", "въедет", "spelling", start=3, end=8, confidence=0.999, requires_model=True, rule_id="missing_hard_sign")
+
+    result = StrictValidator().validate(source, target, trusted_edits=[trusted])
+
+    assert any(edit.status == "rejected" and edit.reason == "known_source_lexical_guard" for edit in result.edits)
+    assert result.apply_accepted() == source
+
+
+def test_known_source_word_guard_rejects_cygane_to_cigane():
+    source = "Цыгане пришли."
+    target = "Цигане пришли."
+    trusted = Candidate("Цыгане", "Цигане", "spelling", start=0, end=6, confidence=0.999, requires_model=True, rule_id="pattern_цы_ци")
+
+    result = StrictValidator().validate(source, target, trusted_edits=[trusted])
+
+    assert any(edit.status == "rejected" and edit.reason == "known_source_lexical_guard" for edit in result.edits)
+    assert result.apply_accepted() == source
+
+
+@pytest.mark.parametrize(
+    ("source", "target", "trusted"),
+    [
+        (
+            "Мы нашли сезд.",
+            "Мы нашли съезд.",
+            Candidate("сезд", "съезд", "spelling", start=9, end=13, confidence=0.999, requires_model=True, rule_id="missing_hard_sign"),
+        ),
+        (
+            "Новый обьект готов.",
+            "Новый объект готов.",
+            Candidate("обьект", "объект", "spelling", start=6, end=12, confidence=0.999, requires_model=True, rule_id="soft_to_hard_sign"),
+        ),
+        (
+            "Закрыт подьезд.",
+            "Закрыт подъезд.",
+            Candidate("подьезд", "подъезд", "spelling", start=7, end=14, confidence=0.999, requires_model=True, rule_id="soft_to_hard_sign"),
+        ),
+    ],
+)
+def test_known_source_word_guard_allows_unknown_hard_sign_repairs(source, target, trusted):
+    result = StrictValidator().validate(source, target, trusted_edits=[trusted])
+
+    assert any(edit.status == "accepted" and edit.rule_id == trusted.rule_id for edit in result.edits)
+    assert result.apply_accepted() == target
+
+
+def test_validator_rejects_direct_speech_dash_inside_closing_quote():
+    source = "«Команда справилась» сказала Мария."
+    target = "«Команда справилась —» сказала Мария."
+    trusted = Candidate("", "—", "punctuation_insert", start=19, end=19, confidence=0.999, requires_model=True, rule_id="direct_speech_dash")
+
+    result = StrictValidator().validate(source, target, trusted_edits=[trusted])
+
+    assert any(edit.status == "rejected" and edit.reason == "direct_speech_dash_inside_quotes" for edit in result.edits)
+    assert result.apply_accepted() == source
+
+
 def test_validator_allows_trusted_edit_that_repairs_quote_balance():
     source = "Он сказал: «Проект готов."
     target = "Он сказал: «Проект готов»."

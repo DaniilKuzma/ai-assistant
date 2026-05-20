@@ -1,5 +1,14 @@
+from pathlib import Path
+
+import pandas as pd
 import torch
 
+from src.candidates.candidate_generator import CandidateGenerator
+from src.training.diagnostics import (
+    training_label_distribution_by_rule_frame,
+    training_positive_counts,
+    write_training_label_distribution_by_rule,
+)
 from src.training.tensorization import DebugTokenizer, EditBatchCollator, build_features_from_rows, build_training_feature
 
 
@@ -274,3 +283,107 @@ def test_build_features_supports_progress_option():
 
     assert len(features) == 1
     assert features[0].source == "Я незнаю что делать"
+
+
+def test_word_candidate_positive_labels_exist():
+    tokenizer = DebugTokenizer()
+    labels = {
+        "punctuation": {"NONE": 0, "COMMA": 1, "DOT": 2},
+        "punctuation_actions": {"KEEP_NONE": 0, "KEEP_EXISTING": 1, "INSERT": 2},
+        "error_types": {"keep": 0, "spelling": 1, "punctuation": 2, "split_join": 3, "hyphen": 4, "final_punctuation": 6},
+    }
+    dictionary_generator = CandidateGenerator(
+        dictionary_lexicon=["молоко", "корова", "библиотека"],
+        dictionary_min_score=85,
+        syntax_provider=lambda _text: (),
+    )
+
+    features = [
+        build_training_feature(
+            "Редактор проверил молокл.",
+            "Редактор проверил молоко.",
+            tokenizer=tokenizer,
+            punctuation_label_map=labels["punctuation"],
+            punctuation_action_label_map=labels["punctuation_actions"],
+            error_type_label_map=labels["error_types"],
+            max_length=24,
+            max_candidates=16,
+            candidate_generator=dictionary_generator,
+        ),
+        build_training_feature(
+            "Кто то пришел",
+            "Кто-то пришел.",
+            tokenizer=tokenizer,
+            punctuation_label_map=labels["punctuation"],
+            punctuation_action_label_map=labels["punctuation_actions"],
+            error_type_label_map=labels["error_types"],
+            max_length=24,
+            max_candidates=16,
+        ),
+        build_training_feature(
+            "Я незнаю что делать",
+            "Я не знаю, что делать.",
+            tokenizer=tokenizer,
+            punctuation_label_map=labels["punctuation"],
+            punctuation_action_label_map=labels["punctuation_actions"],
+            error_type_label_map=labels["error_types"],
+            max_length=24,
+            max_candidates=16,
+        ),
+    ]
+
+    counts = training_positive_counts(features)
+
+    assert counts["spelling_positive_count"] > 0
+    assert counts["hyphen_positive_count"] > 0
+    assert counts["split_join_positive_count"] > 0
+    assert counts["punctuation_positive_count"] > 0
+
+
+def test_training_label_distribution_contains_spelling_hyphen_split_join_positives(tmp_path: Path):
+    tokenizer = DebugTokenizer()
+    labels = {
+        "punctuation": {"NONE": 0, "COMMA": 1, "DOT": 2},
+        "punctuation_actions": {"KEEP_NONE": 0, "KEEP_EXISTING": 1, "INSERT": 2},
+        "error_types": {"keep": 0, "spelling": 1, "punctuation": 2, "split_join": 3, "hyphen": 4, "final_punctuation": 6},
+    }
+    generator = CandidateGenerator(
+        dictionary_lexicon=["молоко", "корова", "библиотека"],
+        dictionary_min_score=85,
+        syntax_provider=lambda _text: (),
+    )
+    features = build_features_from_rows(
+        [
+            {"source": "Редактор проверил молокл.", "target": "Редактор проверил молоко.", "split": "train"},
+            {"source": "Кто то пришел", "target": "Кто-то пришел.", "split": "train"},
+            {"source": "Я незнаю что делать", "target": "Я не знаю, что делать.", "split": "train"},
+        ],
+        tokenizer=tokenizer,
+        punctuation_label_map=labels["punctuation"],
+        punctuation_action_label_map=labels["punctuation_actions"],
+        error_type_label_map=labels["error_types"],
+        max_length=24,
+        max_candidates=16,
+        candidate_generator=generator,
+    )
+
+    output_path = tmp_path / "training_label_distribution_by_rule.csv"
+    write_training_label_distribution_by_rule(features, output_path)
+    frame = training_label_distribution_by_rule_frame(features)
+    written = pd.read_csv(output_path)
+
+    assert list(written.columns) == [
+        "rule_id",
+        "edit_type",
+        "split",
+        "candidate_count",
+        "positive_label_count",
+        "negative_label_count",
+        "positive_rate",
+        "avg_candidate_rank",
+        "examples",
+    ]
+    by_type = frame.groupby("edit_type")["positive_label_count"].sum()
+    assert by_type["spelling"] > 0
+    assert by_type["hyphen"] > 0
+    assert by_type["split_join"] > 0

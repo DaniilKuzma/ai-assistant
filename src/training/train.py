@@ -26,6 +26,7 @@ from src.model.encoder import EncoderLoadConfig, load_tokenizer
 from src.training.save_load import save_training_artifacts
 from src.training.feature_cache import FeatureCacheResult, build_or_load_features
 from src.training.feature_profile import FeatureBuildProfiler
+from src.training.diagnostics import training_positive_counts, write_training_label_distribution_by_rule
 from src.training.tensorization import DebugTokenizer, EditBatchCollator, build_features_from_rows
 from src.training.callbacks import BestMetricTracker
 from src.training.trainer import EditModelTrainer, TrainLoopConfig
@@ -106,11 +107,21 @@ def train(config_path: str | Path = "configs/config.yaml") -> dict[str, Any]:
             "feature_cache_path": "",
             "feature_build_time_sec": 0.0,
             "features_count": 0,
+            "word_candidate_positive_count": 0,
+            "spelling_positive_count": 0,
+            "hyphen_positive_count": 0,
+            "split_join_positive_count": 0,
+            "punctuation_positive_count": 0,
         }
     else:
         feature_run = _build_features_with_metadata(config, rows, split="train")
         features = feature_run.features
         feature_metadata = feature_run.metadata
+        write_training_label_distribution_by_rule(
+            features,
+            reports_dir / "training_label_distribution_by_rule.csv",
+        )
+        feature_metadata.update(training_positive_counts(features))
     output_dir = config.get("paths", {}).get("adapter_output_dir", "models/adapters/latest")
 
     result: dict[str, Any] = {
@@ -177,7 +188,9 @@ def train(config_path: str | Path = "configs/config.yaml") -> dict[str, Any]:
             "model_training_disabled_source": model_training_disabled_source,
             **feature_metadata,
             **_dataset_training_metadata(config),
+            **_training_sanity_metadata(config),
             **backend_metadata,
+            **_training_loss_metadata(result),
             "checkpoint_metric": checkpoint_metric,
             "checkpoint_metric_value": checkpoint_metric_value,
             "is_best_checkpoint": float(is_best_checkpoint),
@@ -254,6 +267,30 @@ def _dataset_training_metadata(config: dict[str, Any]) -> dict[str, Any]:
         except json.JSONDecodeError:
             metadata["manifest_verdict"] = "INVALID_JSON"
     return metadata
+
+
+def _training_sanity_metadata(config: dict[str, Any]) -> dict[str, Any]:
+    training_config = config.get("training", {})
+    batch_size = int(training_config.get("batch_size", 0) or 0)
+    accumulation_steps = int(training_config.get("gradient_accumulation_steps", 0) or 0)
+    warning = ""
+    if batch_size == 64:
+        warning = "batch_size=64 gives few optimizer steps; recommend batch_size=4 and gradient_accumulation_steps=4"
+    return {
+        "batch_size": batch_size,
+        "gradient_accumulation_steps": accumulation_steps,
+        "training_batch_warning": warning,
+    }
+
+
+def _training_loss_metadata(result: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "train_loss": float(result.get("train_loss", 0.0)),
+        "word_loss_value": float(result.get("word_loss_value", 0.0)),
+        "punctuation_loss_value": float(result.get("punctuation_loss_value", 0.0)),
+        "confidence_loss_value": float(result.get("confidence_loss_value", 0.0)),
+        "error_type_loss_value": float(result.get("error_type_loss_value", 0.0)),
+    }
 
 
 def _load_evaluation_rows(config: dict[str, Any], fallback_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -375,6 +412,8 @@ def _report_paths(reports_dir: Path) -> dict[str, str]:
         "feature_build_profile_summary.md",
         "feature_build_candidate_recall_by_rule.csv",
         "feature_build_gap_label_coverage_by_rule.csv",
+        "training_label_distribution_by_rule.csv",
+        "candidate_score_distribution_by_rule.csv",
     ]
     return {name: str(reports_dir / name) for name in names if (reports_dir / name).exists()}
 
@@ -618,7 +657,16 @@ def _run_model_training(config: dict[str, Any], features) -> dict[str, Any]:  # 
     torch.save(module.heads.state_dict(), heads_output_dir / "heads.pt")
     if hasattr(module.encoder, "save_pretrained"):
         module.encoder.save_pretrained(config.get("paths", {}).get("adapter_output_dir", "models/adapters/latest"))
-    return {"status": "trained", "model_training_ran": True, "train_loss": losses[-1] if losses else 0.0}
+    components = trainer.last_epoch_loss_components
+    return {
+        "status": "trained",
+        "model_training_ran": True,
+        "train_loss": losses[-1] if losses else 0.0,
+        "word_loss_value": float(components.get("word_loss", 0.0)),
+        "punctuation_loss_value": float(components.get("punctuation_loss", 0.0)),
+        "confidence_loss_value": float(components.get("confidence_loss", 0.0)),
+        "error_type_loss_value": float(components.get("error_type_loss", 0.0)),
+    }
 
 
 def _run_model_training_enabled(config: dict[str, Any]) -> bool:

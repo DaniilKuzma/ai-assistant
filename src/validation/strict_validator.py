@@ -114,18 +114,24 @@ NE_SPLIT_JOIN_RULE_IDS = frozenset({"ne_verb", "ne_adjective", "ne_adverb", "ne_
 DIRECT_SPEECH_RULE_IDS = frozenset({"direct_speech_colon", "direct_speech_quotes", "direct_speech_dash"})
 DISCOURSE_DASH_BLOCKERS = frozenset({"получается", "значит"})
 CAPITALIZATION_NER_MIN_CONFIDENCE = 0.999999
-UNSAFE_FUZZY_SPELLING_RULE_IDS = frozenset(
+RISKY_KNOWN_SOURCE_LEXICAL_RULE_IDS = frozenset(
     {
+        "missing_hard_sign",
+        "soft_to_hard_sign",
+        "pattern_шо_ше",
+        "pattern_жо_же",
+        "pattern_цы_ци",
         "dictionary_fuzzy",
         "double_consonant_candidate",
         "keyboard_typo_candidate",
         "swapped_letters_candidate",
         "missing_letter_candidate",
         "extra_letter_candidate",
-        "prefix_pre_pri",
     }
 )
+ALWAYS_UNSAFE_LEXICAL_RULE_IDS = frozenset({"prefix_pre_pri"})
 ABBREVIATION_SENTENCE_START_PREFIXES = frozenset({"г", "см", "ул", "стр", "рис", "тыс", "млн", "млрд", "руб", "коп"})
+SPEECH_VERB_PATTERN = r"(говорит|написал[аи]?|написали|ответил[аи]?|ответили|сказал[аи]?|сказали|сообщил[аи]?|сообщили|спросил[аи]?|спросили)"
 
 
 def _guard_rejection_reason(
@@ -157,14 +163,17 @@ def _guard_rejection_reason(
         return "protected_clean_word_form"
     if _is_unsafe_n_nn_lexical_change(edit):
         return "unsafe_n_nn_lexical_change"
-    if _is_unsafe_fuzzy_spelling_candidate(edit):
-        return "unsafe_fuzzy_spelling_candidate"
+    lexical_reason = _lexical_spelling_rejection_reason(edit)
+    if lexical_reason:
+        return lexical_reason
     if _is_unsafe_ne_split_join(source, edit):
         return "unsafe_ne_split_join"
     if _is_unsafe_hyphen_po_adverb(edit):
         return "unsafe_hyphen_po_adverb"
     if _is_unsafe_colon_candidate(source, edit):
         return "unsafe_colon_candidate"
+    if _creates_direct_speech_dash_inside_quotes(target, edit):
+        return "direct_speech_dash_inside_quotes"
     if _is_unsafe_direct_speech_punctuation(source, edit):
         return "weak_direct_speech_pattern"
     if _is_unsafe_discourse_dash(source, edit):
@@ -285,8 +294,22 @@ def _is_unsafe_n_nn_lexical_change(edit: Edit) -> bool:
     return edit.rule_id in N_NN_RULE_IDS
 
 
-def _is_unsafe_fuzzy_spelling_candidate(edit: Edit) -> bool:
-    return edit.rule_id in UNSAFE_FUZZY_SPELLING_RULE_IDS
+def _lexical_spelling_rejection_reason(edit: Edit) -> str:
+    if edit.edit_type != "spelling_replace":
+        return ""
+    if edit.rule_id in ALWAYS_UNSAFE_LEXICAL_RULE_IDS:
+        return "unsafe_fuzzy_spelling_candidate"
+    if edit.rule_id not in RISKY_KNOWN_SOURCE_LEXICAL_RULE_IDS:
+        return ""
+    if _is_known_correct_word(edit.source) and _is_known_correct_word(edit.replacement):
+        return "known_source_lexical_guard"
+    return ""
+
+
+def _is_known_correct_word(word: str) -> bool:
+    if not word or " " in word:
+        return False
+    return any(getattr(parse, "is_known", False) for parse in parses(word.lower()))
 
 
 def _is_unsafe_sentence_start_capitalization(source_text: str, edit: Edit) -> bool:
@@ -378,16 +401,21 @@ def _is_unsafe_direct_speech_punctuation(source_text: str, edit: Edit) -> bool:
 def _passes_direct_speech_punctuation_guard(source_text: str, edit: Edit) -> bool:
     prefix = source_text[max(0, edit.start - 48) : edit.start].lower()
     suffix = source_text[edit.end : edit.end + 48].lower()
-    speech_verbs = r"(говорит|написал[аи]?|написали|ответил[аи]?|ответили|сказал[аи]?|сказали|сообщил[аи]?|сообщили|спросил[аи]?|спросили)"
     if edit.rule_id == "direct_speech_quotes":
         if any(char in source_text for char in {'"', "«", "»"}):
             return False
-        return bool(re.search(rf"\b{speech_verbs}\b[^,;:—.!?\n]*$", prefix))
+        return bool(re.search(rf"\b{SPEECH_VERB_PATTERN}\b[^,;:—.!?\n]*$", prefix))
     if edit.rule_id == "direct_speech_dash":
-        return "»" in prefix and bool(re.search(rf"^\s*{speech_verbs}\b", suffix))
-    if re.search(rf"[,—-]\s*{speech_verbs}\s+[а-яёa-z]\.?\s*$", prefix):
+        return "»" in prefix and bool(re.search(rf"^\s*{SPEECH_VERB_PATTERN}\b", suffix))
+    if re.search(rf"[,—-]\s*{SPEECH_VERB_PATTERN}\s+[а-яёa-z]\.?\s*$", prefix):
         return False
-    return bool(re.search(rf"\b{speech_verbs}\b[^,;:—.!?\n]*$", prefix))
+    return bool(re.search(rf"\b{SPEECH_VERB_PATTERN}\b[^,;:—.!?\n]*$", prefix))
+
+
+def _creates_direct_speech_dash_inside_quotes(target_text: str, edit: Edit) -> bool:
+    if edit.rule_id != "direct_speech_dash" or edit.replacement != "—":
+        return False
+    return bool(re.search(rf"«[^»\n]*—\s*»\s+{SPEECH_VERB_PATTERN}\b", target_text, flags=re.IGNORECASE))
 
 
 def _is_unsafe_discourse_dash(source_text: str, edit: Edit) -> bool:

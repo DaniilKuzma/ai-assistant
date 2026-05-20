@@ -1,0 +1,37 @@
+rule_id,edit_type,split,candidate_count,positive_label_count,negative_label_count,positive_rate,avg_candidate_rank,examples
+capitalization_sentence_start,case,train,14,0,14,0.0,1.5,странно->Странно
+comma_conjunction,punctuation_insert,train,5,1,4,0.2,5.0,"->,"
+comma_subordinate,punctuation_insert,train,9,2,7,0.222222,1.0,"->, | ->, | ->,"
+context_chto_by,split_join,train,3,2,1,0.666667,5.5,чтобы->что бы | что бы->чтобы | что бы->чтобы
+context_nesmotrya,split_join,train,3,3,0,1.0,1.333,Не смотря->Несмотря | Не смотря на->Несмотря на | Несмотря->Не смотря
+context_tak_zhe,split_join,train,3,2,1,0.666667,3.5,также->так же | также->так же
+context_to_zhe,split_join,train,2,2,0,1.0,4.0,тоже->то же | тоже->то же
+context_vsledstvie,split_join,train,2,2,0,1.0,1.5,В следствие->Вследствие | Вследствие->В следствие
+context_za_to,split_join,train,2,2,0,1.0,1.5,За то->Зато | Зато->За то
+dictionary_fuzzy,spelling,train,27,7,20,0.259259,2.714,библеотека->библиотека | библеотека->библиотека | переодически->периодически
+direct_speech_colon,punctuation_insert,train,2,0,2,0.0,1.5,->:
+direct_speech_dash,punctuation_insert,train,2,2,0,1.0,4.5,->— | ->—
+direct_speech_quotes,punctuation_insert,train,4,0,4,0.0,3.0,->«
+double_consonant_candidate,spelling,train,2,2,0,1.0,1.0,граматика->грамматика | територия->территория
+explanation_colon,punctuation_insert,train,2,0,2,0.0,4.0,->:
+extra_letter_candidate,spelling,train,17,6,11,0.352941,1.5,молокл->молол | собакаа->собака | молокоо->молоко
+final_punctuation_default,final_punctuation,train,14,1,13,0.071429,4.0,->.
+homogeneous_comma,punctuation_insert,train,2,0,2,0.0,5.0,"->,"
+hyphen_koe_koy,hyphen,train,2,2,0,1.0,1.0,кое что->кое-что | Кое кто->Кое-кто
+hyphen_particles,hyphen,train,2,2,0,1.0,1.0,как то->как-то | почему то->почему-то
+hyphen_po_adverbs,hyphen,train,3,2,1,0.666667,1.0,по настоящему->по-настоящему | по разному->по-разному
+introductory_comma,punctuation_insert,train,3,0,3,0.0,5.667,"->,"
+keyboard_typo_candidate,spelling,train,8,2,6,0.25,1.0,молокл->молоко | клрова->корова
+missing_letter_candidate,spelling,train,8,4,4,0.5,1.75,млоко->молоко | библотека->библиотека | серцу->сердцу
+n_nn_deverbal_adjective,spelling,train,2,2,0,1.0,7.0,жаренные->жареные | писанному->писаному
+n_nn_participle,spelling,train,2,0,2,0.0,7.0,Ученые->Ученные
+n_nn_short_form,spelling,train,2,0,2,0.0,6.0,машина->машинна
+ne_adjective,split_join,train,4,2,2,0.5,6.5,некоторых->не которых | не маленькое->немаленькое | не плохая->неплохая
+ne_adverb,split_join,train,5,2,3,0.4,6.5,не возможно->невозможно | не правильно->неправильно | не хорошо->нехорошо
+ne_participle,split_join,train,2,2,0,1.0,1.0,не прочитанный->непрочитанный | не подписанный->неподписанный
+pol_polu_compounds,hyphen,train,1,0,1,0.0,1.0,Пол Аллен->Пол-аллен
+quote_close,punctuation_replace,train,2,0,2,0.0,3.5,"""->»"
+quote_open,punctuation_replace,train,2,0,2,0.0,2.5,"""->«"
+subject_predicate_dash,punctuation_insert,train,1,0,1,0.0,2.0,->—
+swapped_letters_candidate,spelling,train,2,2,0,1.0,1.0,коорва->корова | бибилотека->библиотека
+tsya_soft_insert,spelling,train,2,2,0,1.0,1.0,садится->садиться | гордится->гордиться

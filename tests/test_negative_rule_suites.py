@@ -431,3 +431,35 @@ def test_plain_corrector_does_not_apply_new_hyphen_or_context_candidates_without
         result = corrector.correct(source)
 
         assert result.corrected_text == source
+
+
+@pytest.mark.parametrize(
+    ("source", "target", "trusted"),
+    [
+        (
+            "Он ведет отчет.",
+            "Он въедет отчет.",
+            Candidate("ведет", "въедет", "spelling", start=3, end=8, confidence=0.999, requires_model=True, rule_id="missing_hard_sign"),
+        ),
+        (
+            "Цыгане пришли.",
+            "Цигане пришли.",
+            Candidate("Цыгане", "Цигане", "spelling", start=0, end=6, confidence=0.999, requires_model=True, rule_id="pattern_цы_ци"),
+        ),
+        (
+            "Большой дом открыт.",
+            "Большей дом открыт.",
+            Candidate("Большой", "Большей", "spelling", start=0, end=7, confidence=0.999, requires_model=True, rule_id="pattern_шо_ше"),
+        ),
+        (
+            "Поджог расследуют.",
+            "Поджег расследуют.",
+            Candidate("Поджог", "Поджег", "spelling", start=0, end=6, confidence=0.999, requires_model=True, rule_id="pattern_жо_же"),
+        ),
+    ],
+)
+def test_known_correct_source_word_lexical_spelling_predictions_are_rejected(source, target, trusted):
+    result = StrictValidator().validate(source, target, trusted_edits=[trusted])
+
+    assert any(edit.status == "rejected" and edit.reason == "known_source_lexical_guard" for edit in result.edits)
+    assert result.apply_accepted() == source

@@ -301,6 +301,17 @@ def test_direct_speech_candidates_are_model_required_and_not_auto_applied():
     assert result.corrected_text == source
 
 
+def test_direct_speech_dash_candidate_points_after_closing_quote():
+    source = "«Команда справилась» сказала Мария."
+    candidates = CandidateGenerator().generate(source)
+
+    candidate = _punctuation_candidate(candidates, "direct_speech_dash", "DASH", "INSERT")
+
+    assert candidate.start == candidate.end == len("«Команда справилась» ")
+    assert source[candidate.start :].startswith("сказала")
+    assert source[candidate.start - 2 : candidate.start].strip() == "»"
+
+
 def test_valid_direct_speech_quotes_are_not_repaired_or_rebalanced():
     candidates = _punctuation_candidates(CandidateGenerator().generate("Он сказал: «Проект готов»."))
 

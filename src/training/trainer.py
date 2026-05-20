@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from src.model.losses import multitask_loss
+from src.model.losses import multitask_loss_with_components
 
 
 @dataclass(frozen=True)
@@ -21,6 +21,7 @@ class EditModelTrainer:
         self.optimizer = optimizer
         self.config = config
         self.loss_weights = loss_weights
+        self.last_epoch_loss_components: dict[str, float] = {}
 
     def train_epoch(self, dataloader: Any) -> float:
         import torch
@@ -28,6 +29,7 @@ class EditModelTrainer:
         self.model.train()
         total = 0.0
         steps = 0
+        component_totals: dict[str, float] = {}
         amp_enabled = self.config.mixed_precision and torch.cuda.is_available()
         scaler = torch.amp.GradScaler("cuda", enabled=amp_enabled)
         self.optimizer.zero_grad()
@@ -43,7 +45,10 @@ class EditModelTrainer:
             labels = batch.pop("labels")
             with torch.amp.autocast("cuda", enabled=amp_enabled):
                 outputs = self.model(**batch)
-                loss = multitask_loss(outputs, labels, self.loss_weights) / self.config.gradient_accumulation_steps
+                raw_loss, components = multitask_loss_with_components(outputs, labels, self.loss_weights)
+                loss = raw_loss / self.config.gradient_accumulation_steps
+            for key, value in components.items():
+                component_totals[key] = component_totals.get(key, 0.0) + float(value.detach().cpu())
             scaler.scale(loss).backward()
             if step % self.config.gradient_accumulation_steps == 0:
                 scaler.step(self.optimizer)
@@ -57,6 +62,10 @@ class EditModelTrainer:
             scaler.step(self.optimizer)
             scaler.update()
             self.optimizer.zero_grad()
+        self.last_epoch_loss_components = {
+            key: value / max(1, steps)
+            for key, value in component_totals.items()
+        }
         return total / max(1, steps)
 
 

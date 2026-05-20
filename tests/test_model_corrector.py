@@ -330,6 +330,24 @@ def test_trained_model_corrector_supports_candidate_backed_direct_speech_quotes_
     assert not any(edit.replacement in {"(", ")"} and edit.status == "accepted" for edit in result.edits)
 
 
+def test_direct_speech_dash_after_closing_quote():
+    corrector = TrainedModelCorrector(
+        FakeBackend(
+            {},
+            punctuation=[
+                ModelPunctuationPrediction(1, "DASH", 0.99, action="INSERT"),
+            ],
+        ),
+        thresholds={"dash_threshold": 0.9},
+    )
+
+    result = corrector.correct("«Команда справилась» сказала Мария.")
+
+    assert result.corrected_text == "«Команда справилась» — сказала Мария."
+    assert result.corrected_text != "«Команда справилась —» сказала Мария."
+    assert any(edit.rule_id == "direct_speech_dash" and edit.status == "accepted" for edit in result.edits)
+
+
 def test_trained_model_corrector_uses_label_specific_punctuation_thresholds():
     corrector = TrainedModelCorrector(
         FakeBackend(

@@ -14,7 +14,7 @@ from src.rules.registry import all_rules
 from src.training.tensorization import TrainingFeature
 
 
-CACHE_VERSION = 1
+CACHE_VERSION = 2
 
 
 @dataclass(frozen=True)
@@ -34,6 +34,7 @@ class FeatureCacheResult:
         return {
             "feature_cache_enabled": self.enabled,
             "feature_cache_hit": self.hit,
+            "feature_build_skipped": self.enabled and self.hit,
             "feature_cache_path": str(self.path) if self.path else "",
             "feature_build_time_sec": round(self.build_time_sec, 3),
             "features_count": len(self.features),
@@ -138,7 +139,8 @@ def _cache_identity(config: dict[str, Any], rows: list[dict[str, Any]], *, split
     model_config = config.get("model", {})
     data_config = config.get("data", {})
     dictionary_config = config.get("dictionary", {})
-    row_limit = limit if limit is not None else int(training_config.get(_limit_key_for_split(split), len(rows)))
+    configured_limit = limit if limit is not None else int(training_config.get(_limit_key_for_split(split), len(rows)))
+    row_limit = min(int(configured_limit), len(rows))
     dataset_path_value = str(data_config.get("processed_train_path") or "")
     dataset_path = Path(dataset_path_value) if dataset_path_value else None
     return {

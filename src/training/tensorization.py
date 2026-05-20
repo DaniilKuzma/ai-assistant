@@ -37,6 +37,7 @@ PUNCTUATION_EDIT_TYPES = {
 class TrainingFeature:
     source: str
     target: str
+    split: str
     input_ids: list[int]
     attention_mask: list[int]
     offset_mapping: list[tuple[int, int]]
@@ -54,6 +55,8 @@ class TrainingFeature:
     punctuation_confidence_labels: list[float]
     punctuation_error_type_labels: list[int]
     candidate_replacements: list[str]
+    candidate_sources: list[str]
+    candidate_edit_types: list[str]
     candidate_rule_ids: list[str]
     candidate_modes: list[RuleMode]
     candidate_requires_model: list[bool]
@@ -116,6 +119,7 @@ def build_training_feature(
     candidate_generator: CandidateGenerator | None = None,
     profile: dict[str, Any] | None = None,
     dictionary_policy: str = "all",
+    split: str = "train",
 ) -> TrainingFeature:
     total_started = time.perf_counter()
     tokenizer_started = time.perf_counter()
@@ -146,6 +150,8 @@ def build_training_feature(
     error_labels = [_candidate_error_label(candidate, label, error_type_label_map) for candidate, label in zip(candidates, labels, strict=False)]
     confidence_labels = labels[:]
     replacements = [candidate.replacement for candidate in candidates]
+    sources = [candidate.source for candidate in candidates]
+    edit_types = [candidate.edit_type for candidate in candidates]
     rule_ids = [candidate.rule_id for candidate in candidates]
     modes = [candidate.mode for candidate in candidates]
     requires_model = [candidate.requires_model for candidate in candidates]
@@ -166,6 +172,8 @@ def build_training_feature(
     error_labels.extend([-100] * pad_candidates)
     confidence_labels.extend([0.0] * pad_candidates)
     replacements.extend([""] * pad_candidates)
+    sources.extend([""] * pad_candidates)
+    edit_types.extend([""] * pad_candidates)
     rule_ids.extend([""] * pad_candidates)
     modes.extend(["deterministic"] * pad_candidates)
     requires_model.extend([False] * pad_candidates)
@@ -197,6 +205,7 @@ def build_training_feature(
     return TrainingFeature(
         source=source,
         target=target,
+        split=split,
         input_ids=encoded["input_ids"],
         attention_mask=encoded["attention_mask"],
         offset_mapping=offsets,
@@ -214,6 +223,8 @@ def build_training_feature(
         punctuation_confidence_labels=punctuation_confidence_labels,
         punctuation_error_type_labels=punctuation_error_type_labels,
         candidate_replacements=replacements,
+        candidate_sources=sources,
+        candidate_edit_types=edit_types,
         candidate_rule_ids=rule_ids,
         candidate_modes=modes,
         candidate_requires_model=requires_model,
@@ -233,6 +244,7 @@ class EditBatchCollator:
             "candidate_spans": torch.tensor([feature.candidate_spans for feature in features], dtype=torch.long),
             "candidate_mask": torch.tensor([feature.candidate_mask for feature in features], dtype=torch.bool),
             "candidate_rule_ids": [feature.candidate_rule_ids for feature in features],
+            "candidate_edit_types": [feature.candidate_edit_types for feature in features],
             "candidate_modes": [feature.candidate_modes for feature in features],
             "candidate_requires_model": [feature.candidate_requires_model for feature in features],
             "candidate_requires_scoring": [feature.candidate_requires_scoring for feature in features],
@@ -307,6 +319,7 @@ def build_features_from_rows(
             candidate_generator=candidate_generator,
             profile=profile_row,
             dictionary_policy=dictionary_policy,
+            split=str(row.get("split", split)),
         )
         features.append(feature)
         if profile_row is not None:

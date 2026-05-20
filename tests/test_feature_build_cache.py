@@ -3,7 +3,7 @@ from pathlib import Path
 import pandas as pd
 
 from src.candidates.candidate_generator import CandidateGenerator
-from src.training.feature_cache import build_or_load_features
+from src.training.feature_cache import build_or_load_features, feature_cache_path
 from src.training.tensorization import DebugTokenizer, build_training_feature
 
 
@@ -37,6 +37,7 @@ def test_feature_cache_hit_loads_without_rebuilding(tmp_path: Path):
     assert first.hit is False
     assert second.hit is True
     assert second.path == first.path
+    assert second.report_metrics()["feature_build_skipped"] is True
     assert second.features[0].candidate_rule_ids == first.features[0].candidate_rule_ids
 
 
@@ -99,6 +100,19 @@ def test_feature_cache_preserves_candidate_metadata(tmp_path: Path):
     assert len(feature.candidate_modes) == 4
     assert len(feature.candidate_requires_model) == 4
     assert len(feature.candidate_requires_scoring) == 4
+
+
+def test_feature_cache_key_uses_effective_loaded_row_count(tmp_path: Path):
+    config, rows = _cache_config_and_rows(tmp_path)
+    configured_too_high = {
+        **config,
+        "training": {
+            **config["training"],
+            "max_train_examples": 10,
+        },
+    }
+
+    assert feature_cache_path(config, rows, split="train") == feature_cache_path(configured_too_high, rows, split="train")
 
 
 def _cache_config_and_rows(tmp_path: Path):
