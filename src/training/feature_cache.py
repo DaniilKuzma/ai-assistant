@@ -14,7 +14,7 @@ from src.rules.registry import all_rules
 from src.training.tensorization import TrainingFeature
 
 
-CACHE_VERSION = 2
+CACHE_VERSION = 3
 
 
 @dataclass(frozen=True)
@@ -155,7 +155,8 @@ def _cache_identity(config: dict[str, Any], rows: list[dict[str, Any]], *, split
             "primary_encoder": model_config.get("primary_encoder", ""),
             "fallback_encoder": model_config.get("fallback_encoder", ""),
             "local_files_only": bool(model_config.get("local_files_only", False)),
-            "debug_tokenizer": not bool(training_config.get("run_model_training", False)),
+            "kind": _tokenizer_kind(config),
+            "debug_tokenizer": _tokenizer_kind(config) == "debug",
         },
         "labels": config.get("labels", {}),
         "candidate_generator": {
@@ -189,10 +190,17 @@ def _config_hash(config: dict[str, Any]) -> str:
         "model": config.get("model", {}),
         "labels": config.get("labels", {}),
         "dictionary": config.get("dictionary", {}),
+        "evaluation_feature_tokenizer": config.get("evaluation", {}).get("feature_tokenizer", ""),
         "training_feature_build": config.get("training", {}).get("feature_build", {}),
     }
     encoded = json.dumps(relevant, ensure_ascii=False, sort_keys=True, default=str).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
+
+
+def _tokenizer_kind(config: dict[str, Any]) -> str:
+    if str(config.get("evaluation", {}).get("feature_tokenizer", "")).lower() == "model":
+        return "model"
+    return "model" if bool(config.get("training", {}).get("run_model_training", False)) else "debug"
 
 
 def _rules_hash() -> str:

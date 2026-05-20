@@ -113,7 +113,80 @@ def test_pipeline_runs_with_model_training_disabled(tmp_path: Path):
     assert "- model_training_disabled: True" in training_report
     assert "- model_training_disabled_source: RUSSIAN_CORRECTOR_DISABLE_MODEL_TRAINING" in training_report
     assert "- evaluation_backend: no_model" in training_report
+    assert "- eval_batch_size:" in training_report
+    assert "- eval_feature_cache_enabled:" in training_report
 
     summary = pd.read_csv(tmp_path / "reports" / "evaluation_summary.csv")
     assert summary.loc[0, "evaluation_backend"] == "no_model"
     assert bool(summary.loc[0, "model_training_disabled"]) is True
+
+
+def test_full_eval_after_training_uses_full_eval_examples(tmp_path: Path):
+    processed_path = tmp_path / "dataset.csv.gz"
+    pd.DataFrame(
+        [
+            {
+                "source": f"train {index}",
+                "target": f"train {index}",
+                "split": "train",
+                "is_clean": True,
+                "is_synthetic": False,
+                "error_types": "[]",
+                "source_dataset": "unit",
+                "domain": "unit",
+            }
+            for index in range(2)
+        ]
+        + [
+            {
+                "source": f"val {index}",
+                "target": f"val {index}",
+                "split": "val",
+                "is_clean": True,
+                "is_synthetic": False,
+                "error_types": "[]",
+                "source_dataset": "unit",
+                "domain": "unit",
+            }
+            for index in range(4)
+        ]
+    ).to_csv(processed_path, index=False)
+
+    config = {
+        "model": {"max_sequence_length": 16, "max_candidates": 4},
+        "training": {
+            "run_model_training": False,
+            "evaluation_split": "val",
+            "max_train_examples": 2,
+            "max_val_examples": 4,
+            "show_progress": False,
+        },
+        "evaluation": {"full_eval_after_training": True, "full_eval_examples": 2, "batch_size": 32},
+        "data": {"processed_train_path": str(processed_path)},
+        "labels": {
+            "punctuation": {"NONE": 0, "DOT": 1},
+            "error_types": {"keep": 0, "punctuation": 1},
+        },
+        "thresholds": {"mode": "balanced", "balanced": {"spelling_threshold": 0.85}},
+        "paths": {
+            "adapter_output_dir": str(tmp_path / "models" / "adapters"),
+            "heads_output_dir": str(tmp_path / "models" / "heads"),
+            "reports_dir": str(tmp_path / "reports"),
+        },
+    }
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(yaml.safe_dump(config, allow_unicode=True), encoding="utf-8")
+
+    completed = subprocess.run(
+        [sys.executable, "-m", "src.training.train", str(config_path)],
+        cwd=Path.cwd(),
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    report = (tmp_path / "reports" / "training_report.md").read_text(encoding="utf-8")
+    assert "- evaluation_count: 2.0" in report
+    assert "- eval_batch_size: 32" in report

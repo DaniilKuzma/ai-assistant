@@ -3,6 +3,7 @@ import pytest
 import torch
 
 from src.inference.model_corrector import (
+    BatchedFeatureModelScores,
     ModelCandidatePrediction,
     ModelPunctuationPrediction,
     TorchCandidateModelBackend,
@@ -11,6 +12,7 @@ from src.inference.model_corrector import (
     _select_candidates,
 )
 from src.model.heads import build_linear_heads
+from src.training.tensorization import DebugTokenizer, build_training_feature
 
 
 class FakeBackend:
@@ -512,6 +514,38 @@ def test_torch_backend_uses_punctuation_confidence_head_for_prediction_confidenc
     assert predictions[0].action in {"KEEP_NONE", "KEEP_EXISTING", "INSERT", "DELETE", "REPLACE"}
 
 
+def test_torch_backend_scores_training_features_in_batches():
+    feature = build_training_feature(
+        "Я незнаю что делать",
+        "Я не знаю, что делать.",
+        tokenizer=DebugTokenizer(),
+        punctuation_label_map={"NONE": 0, "COMMA": 1, "DOT": 2},
+        punctuation_action_label_map={"KEEP_NONE": 0, "KEEP_EXISTING": 1, "INSERT": 2, "DELETE": 3, "REPLACE": 4},
+        error_type_label_map={"keep": 0, "split_join": 1, "punctuation": 2, "final_punctuation": 3},
+        max_length=12,
+        max_candidates=4,
+    )
+    module = CapturingModule(max_candidates=4, punctuation_label_count=3)
+    backend = TorchCandidateModelBackend(
+        tokenizer=DebugTokenizer(),
+        module=module,
+        device=torch.device("cpu"),
+        punctuation_labels={"NONE": 0, "COMMA": 1, "DOT": 2},
+        punctuation_action_labels={"KEEP_NONE": 0, "KEEP_EXISTING": 1, "INSERT": 2, "DELETE": 3, "REPLACE": 4},
+        max_length=12,
+        max_candidates=4,
+    )
+
+    scores, forward_time = backend.score_features_batched([feature, feature], batch_size=2, mixed_precision=True)
+
+    assert len(scores) == 2
+    assert all(isinstance(item, BatchedFeatureModelScores) for item in scores)
+    assert scores[0].candidate_scores == [0.5, 0.5, 0.5, 0.5]
+    assert len(scores[0].punctuation_label_ids) == 12
+    assert module.last_kwargs["input_ids"].shape == torch.Size([2, 12])
+    assert forward_time >= 0.0
+
+
 def test_legacy_candidate_projection_heads_are_expanded_for_current_model_shape():
     heads = torch.nn.ModuleDict(build_linear_heads(hidden_size=4, punctuation_labels=3, error_types=2))
     legacy_state = heads.state_dict()
@@ -568,11 +602,12 @@ class CapturingModule:
 
     def __call__(self, **kwargs):
         self.last_kwargs = kwargs
+        batch_size = kwargs.get("input_ids", torch.zeros(1, 0)).shape[0]
         gap_count = kwargs.get("punctuation_gap_indices", torch.zeros(1, 0)).shape[1]
         return {
-            "candidate_scores": torch.zeros(1, self.max_candidates),
-            "confidence_logits": torch.zeros(1, self.max_candidates),
-            "punctuation_logits": torch.zeros(1, gap_count, self.punctuation_label_count),
-            "punctuation_action_logits": torch.zeros(1, gap_count, self.punctuation_action_count),
-            "punctuation_confidence_logits": torch.full((1, gap_count), self.punctuation_confidence_logit),
+            "candidate_scores": torch.zeros(batch_size, self.max_candidates),
+            "confidence_logits": torch.zeros(batch_size, self.max_candidates),
+            "punctuation_logits": torch.zeros(batch_size, gap_count, self.punctuation_label_count),
+            "punctuation_action_logits": torch.zeros(batch_size, gap_count, self.punctuation_action_count),
+            "punctuation_confidence_logits": torch.full((batch_size, gap_count), self.punctuation_confidence_logit),
         }

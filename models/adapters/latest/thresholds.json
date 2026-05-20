@@ -1,5 +1,5 @@
 {
-  "mode": "balanced",
+  "mode": "conservative",
   "conservative": {
     "default_threshold": 0.9,
     "spelling_threshold": 0.92,

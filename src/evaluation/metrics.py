@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import Counter
 from collections.abc import Iterable
+from dataclasses import dataclass
 from typing import Any
 
 from src.validation.diff_analyzer import DiffAnalyzer, Edit
@@ -19,33 +20,98 @@ DEFAULT_COMBINED_SCORE_WEIGHTS = {
 }
 
 
+@dataclass(frozen=True)
+class _RowMetricAnalysis:
+    row: dict[str, Any]
+    predicted_edits: list[Edit]
+    gold_edits: list[Edit]
+    true_positive: int
+    false_positive: int
+    false_negative: int
+
+
 def compute_metrics(rows: Iterable[dict], weights: dict[str, float] | None = None) -> dict[str, float]:
     rows = list(rows)
     if not rows:
         metrics = _zero_metrics()
         metrics["combined_score"] = combined_score(metrics, weights)
-        metrics.update(_scoped_metrics(rows, weights))
+        metrics.update(_scoped_metrics_from_analyses([], weights))
         return metrics
 
-    metrics = _base_metrics(rows)
+    analyses = _analyze_rows(rows)
+    metrics = _base_metrics_from_analyses(analyses)
     metrics["combined_score"] = combined_score(metrics, weights)
-    metrics.update(_scoped_metrics(rows, weights))
+    metrics.update(_scoped_metrics_from_analyses(analyses, weights))
     return metrics
 
 
-def _base_metrics(rows: list[dict]) -> dict[str, float]:
+def compute_metrics_from_edits(
+    rows: Iterable[dict],
+    predicted_edits_by_row: list[list[Edit]],
+    gold_edits_by_row: list[list[Edit]],
+    weights: dict[str, float] | None = None,
+) -> dict[str, float]:
+    rows = list(rows)
+    if len(rows) != len(predicted_edits_by_row) or len(rows) != len(gold_edits_by_row):
+        raise ValueError("rows and edit lists must have the same length")
     if not rows:
+        metrics = _zero_metrics()
+        metrics["combined_score"] = combined_score(metrics, weights)
+        metrics.update(_scoped_metrics_from_analyses([], weights))
+        return metrics
+
+    analyses: list[_RowMetricAnalysis] = []
+    for row, predicted_edits, gold_edits in zip(rows, predicted_edits_by_row, gold_edits_by_row, strict=False):
+        counts = _edit_counts(predicted_edits, gold_edits)
+        analyses.append(
+            _RowMetricAnalysis(
+                row=row,
+                predicted_edits=predicted_edits,
+                gold_edits=gold_edits,
+                true_positive=counts["true_positive"],
+                false_positive=counts["false_positive"],
+                false_negative=counts["false_negative"],
+            )
+        )
+    metrics = _base_metrics_from_analyses(analyses)
+    metrics["combined_score"] = combined_score(metrics, weights)
+    metrics.update(_scoped_metrics_from_analyses(analyses, weights))
+    return metrics
+
+
+def _analyze_rows(rows: list[dict[str, Any]]) -> list[_RowMetricAnalysis]:
+    analyzer = DiffAnalyzer()
+    analyses: list[_RowMetricAnalysis] = []
+    for row in rows:
+        predicted_edits = analyzer.analyze(row["source"], row["prediction"])
+        gold_edits = analyzer.analyze(row["source"], row["target"])
+        counts = _edit_counts(predicted_edits, gold_edits)
+        analyses.append(
+            _RowMetricAnalysis(
+                row=row,
+                predicted_edits=predicted_edits,
+                gold_edits=gold_edits,
+                true_positive=counts["true_positive"],
+                false_positive=counts["false_positive"],
+                false_negative=counts["false_negative"],
+            )
+        )
+    return analyses
+
+
+def _base_metrics_from_analyses(analyses: list[_RowMetricAnalysis]) -> dict[str, float]:
+    if not analyses:
         return _zero_metrics()
 
-    exact = sum(_is_exact(row) for row in rows) / len(rows)
-    dirty = [row for row in rows if not row.get("is_clean", False)]
-    clean = [row for row in rows if row.get("is_clean", False)]
+    exact = sum(_is_exact(analysis.row) for analysis in analyses) / len(analyses)
+    dirty = [analysis for analysis in analyses if not analysis.row.get("is_clean", False)]
+    clean = [analysis for analysis in analyses if analysis.row.get("is_clean", False)]
 
-    dirty_improved = _safe_rate(sum(is_dirty_improved_row(row) for row in dirty), len(dirty))
-    dirty_worse = _safe_rate(sum(is_dirty_worse_row(row) for row in dirty), len(dirty))
-    clean_over = _safe_rate(sum(not _is_exact(row) for row in clean), len(clean))
+    dirty_improved = _safe_rate(sum(_is_dirty_improved_analysis(analysis) for analysis in dirty), len(dirty))
+    dirty_worse = _safe_rate(sum(_is_dirty_worse_analysis(analysis) for analysis in dirty), len(dirty))
+    clean_over = _safe_rate(sum(not _is_exact(analysis.row) for analysis in clean), len(clean))
 
-    edit_scores = _edit_scores(rows)
+    edit_scores = _edit_scores_from_analyses(analyses)
     return {
         "exact_match": exact,
         "dirty_improved_rate": dirty_improved,
@@ -60,22 +126,24 @@ def combined_score(metrics: dict[str, float], weights: dict[str, float] | None =
     return sum(metrics.get(name, 0.0) * weight for name, weight in weights.items())
 
 
-def _scoped_metrics(rows: list[dict], weights: dict[str, float] | None) -> dict[str, float]:
+def _scoped_metrics_from_analyses(
+    analyses: list[_RowMetricAnalysis],
+    weights: dict[str, float] | None,
+) -> dict[str, float]:
     scopes = {
-        "real": [row for row in rows if _is_real(row)],
-        "synthetic": [row for row in rows if _is_synthetic(row)],
-        "clean": [row for row in rows if row.get("is_clean", False)],
+        "real": [analysis for analysis in analyses if _is_real(analysis.row)],
+        "synthetic": [analysis for analysis in analyses if _is_synthetic(analysis.row)],
+        "clean": [analysis for analysis in analyses if analysis.row.get("is_clean", False)],
     }
     scoped: dict[str, float] = {}
-    for scope_name, scope_rows in scopes.items():
-        scope_metrics = _base_metrics(scope_rows)
+    for scope_name, scope_analyses in scopes.items():
+        scope_metrics = _base_metrics_from_analyses(scope_analyses)
         scope_metrics["combined_score"] = combined_score(scope_metrics, weights)
         scoped.update({f"{scope_name}_{name}": value for name, value in scope_metrics.items()})
     return scoped
 
 
-def _edit_scores(rows: list[dict]) -> dict[str, float]:
-    analyzer = DiffAnalyzer()
+def _edit_scores_from_analyses(analyses: list[_RowMetricAnalysis]) -> dict[str, float]:
     predicted: Counter[tuple[Any, ...]] = Counter()
     gold: Counter[tuple[Any, ...]] = Counter()
     predicted_spelling: Counter[tuple[Any, ...]] = Counter()
@@ -83,9 +151,9 @@ def _edit_scores(rows: list[dict]) -> dict[str, float]:
     predicted_punct: Counter[tuple[Any, ...]] = Counter()
     gold_punct: Counter[tuple[Any, ...]] = Counter()
 
-    for row_id, row in enumerate(rows):
-        pred_edits = analyzer.analyze(row["source"], row["prediction"])
-        gold_edits = analyzer.analyze(row["source"], row["target"])
+    for row_id, analysis in enumerate(analyses):
+        pred_edits = analysis.predicted_edits
+        gold_edits = analysis.gold_edits
         predicted.update(_edit_keys(pred_edits, row_id=row_id))
         gold.update(_edit_keys(gold_edits, row_id=row_id))
         predicted_spelling.update(
@@ -161,10 +229,30 @@ def is_dirty_worse_row(row: dict[str, Any]) -> bool:
     return _row_edit_counts(row)["false_positive"] > 0
 
 
+def _is_dirty_improved_analysis(analysis: _RowMetricAnalysis) -> bool:
+    row = analysis.row
+    if row.get("is_clean", False) or row["source"] == row["target"]:
+        return False
+    return analysis.true_positive > 0
+
+
+def _is_dirty_worse_analysis(analysis: _RowMetricAnalysis) -> bool:
+    row = analysis.row
+    if row.get("is_clean", False) or row["source"] == row["target"]:
+        return False
+    return analysis.false_positive > 0
+
+
 def _row_edit_counts(row: dict[str, Any]) -> dict[str, int]:
     analyzer = DiffAnalyzer()
-    predicted = Counter(edit_key(edit) for edit in analyzer.analyze(row["source"], row["prediction"]))
-    gold = Counter(edit_key(edit) for edit in analyzer.analyze(row["source"], row["target"]))
+    predicted_edits = analyzer.analyze(row["source"], row["prediction"])
+    gold_edits = analyzer.analyze(row["source"], row["target"])
+    return _edit_counts(predicted_edits, gold_edits)
+
+
+def _edit_counts(predicted_edits: list[Edit], gold_edits: list[Edit]) -> dict[str, int]:
+    predicted = Counter(edit_key(edit) for edit in predicted_edits)
+    gold = Counter(edit_key(edit) for edit in gold_edits)
     true_positive = sum((predicted & gold).values())
     predicted_total = sum(predicted.values())
     gold_total = sum(gold.values())

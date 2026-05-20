@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+import time
 from typing import Any, Protocol
 
 from src.candidates.candidate_generator import Candidate, CandidateGenerator
@@ -40,6 +41,15 @@ class ModelPunctuationPrediction:
     @property
     def word_index(self) -> int:
         return self.gap_index
+
+
+@dataclass(frozen=True)
+class BatchedFeatureModelScores:
+    candidate_scores: list[float]
+    candidate_confidences: list[float]
+    punctuation_label_ids: list[int]
+    punctuation_confidences: list[float]
+    punctuation_action_ids: list[int]
 
 
 class CandidateModelBackend(Protocol):
@@ -286,12 +296,104 @@ class TorchCandidateModelBackend:
             )
         return predictions
 
+    def score_features_batched(
+        self,
+        features: list[Any],
+        *,
+        batch_size: int,
+        mixed_precision: bool = False,
+    ) -> tuple[list[BatchedFeatureModelScores], float]:
+        import torch
+        from torch.utils.data import DataLoader
+
+        from src.training.tensorization import EditBatchCollator
+
+        if not features:
+            return [], 0.0
+        if hasattr(self.module, "eval"):
+            self.module.eval()
+
+        collator = EditBatchCollator()
+
+        def _collate(batch: list[Any]) -> dict[str, Any]:
+            collated = collator.collate(batch)
+            return {
+                "input_ids": collated["input_ids"].to(self.device),
+                "attention_mask": collated["attention_mask"].to(self.device),
+                "candidate_spans": collated["candidate_spans"].to(self.device),
+                "candidate_mask": collated["candidate_mask"].to(self.device),
+                "candidate_replacement_ids": collated["candidate_replacement_ids"].to(self.device),
+                "candidate_replacement_mask": collated["candidate_replacement_mask"].to(self.device),
+                "punctuation_gap_indices": collated["punctuation_gap_indices"].to(self.device),
+                "punctuation_right_gap_indices": collated["punctuation_right_gap_indices"].to(self.device),
+                "punctuation_gap_mask": collated["punctuation_gap_mask"].to(self.device),
+            }
+
+        loader = DataLoader(features, batch_size=max(1, int(batch_size)), shuffle=False, collate_fn=_collate)
+        amp_enabled = bool(mixed_precision) and torch.cuda.is_available() and str(self.device).startswith("cuda")
+        results: list[BatchedFeatureModelScores] = []
+        forward_time = 0.0
+        with torch.inference_mode():
+            for batch in loader:
+                started = time.perf_counter()
+                with torch.amp.autocast("cuda", enabled=amp_enabled):
+                    outputs = self.module(**batch)
+                if torch.cuda.is_available() and str(self.device).startswith("cuda"):
+                    torch.cuda.synchronize(self.device)
+                forward_time += time.perf_counter() - started
+
+                candidate_scores = torch.sigmoid(outputs["candidate_scores"]).detach().cpu()
+                candidate_confidences = torch.sigmoid(outputs["confidence_logits"]).detach().cpu()
+                punctuation_label_ids, punctuation_confidences = _punctuation_label_predictions(outputs)
+                punctuation_action_ids = _punctuation_action_predictions(outputs)
+
+                for batch_index in range(candidate_scores.shape[0]):
+                    results.append(
+                        BatchedFeatureModelScores(
+                            candidate_scores=[float(value) for value in candidate_scores[batch_index].tolist()],
+                            candidate_confidences=[float(value) for value in candidate_confidences[batch_index].tolist()],
+                            punctuation_label_ids=[int(value) for value in punctuation_label_ids[batch_index].tolist()],
+                            punctuation_confidences=[
+                                float(value) for value in punctuation_confidences[batch_index].tolist()
+                            ],
+                            punctuation_action_ids=[int(value) for value in punctuation_action_ids[batch_index].tolist()],
+                        )
+                    )
+        return results, forward_time
+
 
 def _select_candidates(
     predictions: list[ModelCandidatePrediction],
     thresholds: dict[str, float],
 ) -> list[Candidate]:
     return _select_candidates_with_trace(predictions, thresholds)[0]
+
+
+def _punctuation_label_predictions(outputs: dict[str, Any]) -> tuple[Any, Any]:
+    import torch
+
+    logits = outputs["punctuation_logits"]
+    batch_size, gap_count = logits.shape[:2]
+    if logits.shape[-1] == 0:
+        zeros = torch.zeros((batch_size, gap_count), dtype=torch.long)
+        return zeros, zeros.float()
+    probabilities = torch.softmax(logits, dim=-1).detach().cpu()
+    confidences, label_ids = probabilities.max(dim=-1)
+    if "punctuation_confidence_logits" in outputs:
+        confidence_logits = outputs["punctuation_confidence_logits"].detach().cpu()
+        if confidence_logits.shape[:2] == confidences.shape:
+            confidences = torch.sigmoid(confidence_logits)
+    return label_ids, confidences
+
+
+def _punctuation_action_predictions(outputs: dict[str, Any]) -> Any:
+    import torch
+
+    logits = outputs["punctuation_action_logits"]
+    batch_size, gap_count = logits.shape[:2]
+    if logits.shape[-1] == 0:
+        return torch.zeros((batch_size, gap_count), dtype=torch.long)
+    return torch.softmax(logits, dim=-1).detach().cpu().max(dim=-1).indices
 
 
 def _select_candidates_with_trace(

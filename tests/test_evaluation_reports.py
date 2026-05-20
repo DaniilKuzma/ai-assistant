@@ -3,7 +3,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from src.evaluation.evaluate import evaluate_rows, evaluate_rows_detailed
+from src.evaluation.evaluate import EvaluationReportOptions, evaluate_rows, evaluate_rows_detailed
 from src.evaluation.threshold_sweep import threshold_sweep
 from src.inference.corrector import CorrectionResult
 from src.inference.model_corrector import ModelCandidatePrediction, TrainedModelCorrector
@@ -163,6 +163,39 @@ def test_score_distribution_report_written(tmp_path: Path):
     row = report.loc[report["rule_id"] == "frequent_error_exact"].iloc[0]
     assert row["candidate_count"] > 0
     assert row["accepted_count"] > 0
+
+
+def test_detailed_reports_can_be_disabled_for_fast_training_eval(tmp_path: Path):
+    rows = [
+        {
+            "source": "Я недумаю",
+            "target": "Я не думаю",
+            "error_types": ["split_join"],
+            "source_dataset": "unit",
+            "is_clean": False,
+        }
+    ]
+
+    evaluate_rows_detailed(
+        rows,
+        corrector=RuleIdCorrector(),
+        output_dir=tmp_path,
+        report_options=EvaluationReportOptions.for_training_fast_eval(),
+    )
+
+    assert (tmp_path / "evaluation_summary.csv").exists()
+    assert (tmp_path / "error_by_type.csv").exists()
+    for name in [
+        "rule_precision_recall.csv",
+        "error_by_rule.csv",
+        "rule_worse_examples.csv",
+        "accepted_edits.csv",
+        "rejected_edits.csv",
+        "candidate_score_distribution_by_rule.csv",
+        "candidate_recall_by_rule.csv",
+        "gap_label_coverage_by_rule.csv",
+    ]:
+        assert not (tmp_path / name).exists()
 
 
 class PartialCorrector:

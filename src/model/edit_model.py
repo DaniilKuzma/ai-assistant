@@ -152,20 +152,16 @@ class CandidateAwareEditModel:
 def _pool_candidate_spans(hidden, candidate_spans):  # type: ignore[no-untyped-def]
     import torch
 
-    batch_size, candidate_count, _ = candidate_spans.shape
-    hidden_size = hidden.shape[-1]
-    pooled = torch.zeros((batch_size, candidate_count, hidden_size), dtype=hidden.dtype, device=hidden.device)
     sequence_length = hidden.shape[1]
-
-    for batch_index in range(batch_size):
-        for candidate_index in range(candidate_count):
-            start = int(candidate_spans[batch_index, candidate_index, 0].item())
-            end = int(candidate_spans[batch_index, candidate_index, 1].item())
-            start = max(0, min(start, sequence_length - 1))
-            end = max(start + 1, min(end, sequence_length))
-            pooled[batch_index, candidate_index] = hidden[batch_index, start:end].mean(dim=0)
-
-    return pooled
+    starts = candidate_spans[:, :, 0].clamp(min=0, max=max(0, sequence_length - 1))
+    ends = candidate_spans[:, :, 1].clamp(min=0, max=sequence_length)
+    ends = torch.maximum(ends, starts + 1).clamp(max=sequence_length)
+    positions = torch.arange(sequence_length, device=hidden.device).view(1, 1, sequence_length)
+    mask = (positions >= starts.unsqueeze(-1)) & (positions < ends.unsqueeze(-1))
+    weights = mask.to(dtype=hidden.dtype)
+    pooled = torch.einsum("bcs,bsh->bch", weights, hidden)
+    lengths = weights.sum(dim=-1, keepdim=True).clamp_min(1.0)
+    return pooled / lengths
 
 
 def _pool_candidate_replacements(encoder, replacement_ids, replacement_mask, fallback_representations):  # type: ignore[no-untyped-def]

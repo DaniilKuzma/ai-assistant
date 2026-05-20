@@ -1,6 +1,7 @@
 import pytest
 
-from src.evaluation.metrics import compute_metrics, combined_score
+from src.evaluation.metrics import compute_metrics, compute_metrics_from_edits, combined_score
+from src.validation.diff_analyzer import DiffAnalyzer as RealDiffAnalyzer
 
 
 def test_metrics_count_exact_match_and_clean_overcorrection():
@@ -106,3 +107,61 @@ def test_compute_metrics_includes_combined_score_and_dataset_slices():
     assert metrics["real_exact_match"] == 1.0
     assert metrics["synthetic_exact_match"] == 1.0
     assert metrics["clean_clean_overcorrection_rate"] == 0.0
+
+
+def test_compute_metrics_analyzes_each_row_pair_once(monkeypatch):
+    calls = {"count": 0}
+
+    class CountingDiffAnalyzer:
+        def __init__(self):
+            self.inner = RealDiffAnalyzer()
+
+        def analyze(self, *args, **kwargs):
+            calls["count"] += 1
+            return self.inner.analyze(*args, **kwargs)
+
+    rows = [
+        {
+            "source": "Я незнаю что делать",
+            "target": "Я не знаю, что делать.",
+            "prediction": "Я не знаю что делать",
+            "is_clean": False,
+            "is_synthetic": False,
+        },
+        {
+            "source": "Чистый текст.",
+            "target": "Чистый текст.",
+            "prediction": "Чистый текст.",
+            "is_clean": True,
+            "is_synthetic": False,
+        },
+    ]
+    monkeypatch.setattr("src.evaluation.metrics.DiffAnalyzer", CountingDiffAnalyzer)
+
+    compute_metrics(rows)
+
+    assert calls["count"] == len(rows) * 2
+
+
+def test_compute_metrics_from_edits_matches_string_diff_metrics():
+    analyzer = RealDiffAnalyzer()
+    rows = [
+        {
+            "source": "Я незнаю что делать",
+            "target": "Я не знаю, что делать.",
+            "prediction": "Я не знаю что делать",
+            "is_clean": False,
+            "is_synthetic": False,
+        },
+        {
+            "source": "Чистый текст.",
+            "target": "Чистый текст.",
+            "prediction": "Чистый текст.",
+            "is_clean": True,
+            "is_synthetic": False,
+        },
+    ]
+    predicted_edits = [analyzer.analyze(row["source"], row["prediction"]) for row in rows]
+    gold_edits = [analyzer.analyze(row["source"], row["target"]) for row in rows]
+
+    assert compute_metrics_from_edits(rows, predicted_edits, gold_edits) == compute_metrics(rows)

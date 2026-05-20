@@ -23,6 +23,25 @@ class EvaluationResult:
     rejected_edits: list[dict[str, Any]]
 
 
+@dataclass(frozen=True)
+class EvaluationReportOptions:
+    write_required_reports: bool = True
+    write_edit_logs: bool = True
+    write_rule_reports: bool = True
+    write_score_distribution: bool = True
+    write_candidate_recall: bool = True
+
+    @classmethod
+    def for_training_fast_eval(cls) -> "EvaluationReportOptions":
+        return cls(
+            write_required_reports=True,
+            write_edit_logs=False,
+            write_rule_reports=False,
+            write_score_distribution=False,
+            write_candidate_recall=False,
+        )
+
+
 def evaluate_rows(
     rows: Iterable[dict],
     corrector: Corrector | None = None,
@@ -33,6 +52,7 @@ def evaluate_rows(
     report_metadata: dict[str, Any] | None = None,
     candidate_generator: CandidateGenerator | None = None,
     candidate_recall_max_candidates: int | None = None,
+    report_options: EvaluationReportOptions | None = None,
 ) -> dict[str, float]:
     return evaluate_rows_detailed(
         rows,
@@ -43,6 +63,7 @@ def evaluate_rows(
         report_metadata=report_metadata,
         candidate_generator=candidate_generator,
         candidate_recall_max_candidates=candidate_recall_max_candidates,
+        report_options=report_options,
     ).metrics
 
 
@@ -56,6 +77,7 @@ def evaluate_rows_detailed(
     report_metadata: dict[str, Any] | None = None,
     candidate_generator: CandidateGenerator | None = None,
     candidate_recall_max_candidates: int | None = None,
+    report_options: EvaluationReportOptions | None = None,
 ) -> EvaluationResult:
     corrector = corrector or Corrector()
     row_list = list(rows)
@@ -110,15 +132,17 @@ def evaluate_rows_detailed(
         score["total_gold_edits"] = total_gold_edits
     metrics = compute_metrics(evaluated, weights=metric_weights)
     if output_dir is not None:
-        write_required_evaluation_reports(evaluated, metrics, output_dir, metadata=report_metadata)
-        write_edit_logs(accepted, rejected, output_dir)
-        write_rule_reports(evaluated, accepted, rejected, output_dir)
-        write_candidate_score_distribution_by_rule(evaluated, candidate_decisions, accepted, rejected, output_dir)
-        write_candidate_recall_reports(
+        write_evaluation_outputs(
             evaluated,
+            metrics,
             output_dir,
+            accepted=accepted,
+            rejected=rejected,
+            candidate_decisions=candidate_decisions,
+            metadata=report_metadata,
             candidate_generator=candidate_generator,
-            max_candidates=candidate_recall_max_candidates,
+            candidate_recall_max_candidates=candidate_recall_max_candidates,
+            report_options=report_options,
         )
     return EvaluationResult(
         metrics=metrics,
@@ -127,6 +151,37 @@ def evaluate_rows_detailed(
         accepted_edits=accepted,
         rejected_edits=rejected,
     )
+
+
+def write_evaluation_outputs(
+    evaluated: list[dict[str, Any]],
+    metrics: dict[str, float],
+    output_dir: str | Path,
+    *,
+    accepted: list[dict[str, Any]],
+    rejected: list[dict[str, Any]],
+    candidate_decisions: list[dict[str, Any]],
+    metadata: dict[str, Any] | None = None,
+    candidate_generator: CandidateGenerator | None = None,
+    candidate_recall_max_candidates: int | None = None,
+    report_options: EvaluationReportOptions | None = None,
+) -> None:
+    options = report_options or EvaluationReportOptions()
+    if options.write_required_reports:
+        write_required_evaluation_reports(evaluated, metrics, output_dir, metadata=metadata)
+    if options.write_edit_logs:
+        write_edit_logs(accepted, rejected, output_dir)
+    if options.write_rule_reports:
+        write_rule_reports(evaluated, accepted, rejected, output_dir)
+    if options.write_score_distribution:
+        write_candidate_score_distribution_by_rule(evaluated, candidate_decisions, accepted, rejected, output_dir)
+    if options.write_candidate_recall:
+        write_candidate_recall_reports(
+            evaluated,
+            output_dir,
+            candidate_generator=candidate_generator,
+            max_candidates=candidate_recall_max_candidates,
+        )
 
 
 def _with_progress(rows: list[dict], *, enabled: bool, description: str):

@@ -69,6 +69,17 @@ training:
     include_config_hash: true
     compression: false
 
+evaluation:
+  batch_size: 256
+  fast_during_training: true
+  max_eval_examples_per_epoch: 1000
+  full_eval_after_training: true
+  full_eval_examples: 5000
+  write_detailed_reports_during_training: false
+  write_accepted_rejected_during_training: false
+  write_score_distribution_during_training: false
+  write_rule_worse_examples_during_training: false
+
 data:
   synthetic_seed: 13
   processed_train_path: data/processed/short_dataset_v2/correction_dataset.csv.gz

@@ -16,11 +16,23 @@ from src.config.load_config import load_config
 from src.data.dataset_builder import build_synthetic_dataset
 from src.data.dataset_stats import dataset_stats
 from src.evaluation.reports import write_loss_curve, write_threshold_precision_recall_plot, write_training_report
-from src.evaluation.evaluate import evaluate_rows_detailed
+from src.evaluation.evaluate import EvaluationReportOptions, evaluate_rows_detailed
+from src.evaluation.fast_eval import (
+    EvaluationMode,
+    EvaluationProfile,
+    core_training_metrics,
+    evaluate_features_detailed,
+    evaluation_batch_size,
+    evaluation_profile_metadata,
+    evaluation_runtime_config,
+    limit_rows_for_evaluation,
+    training_fast_report_options,
+    write_evaluation_profile_reports,
+)
 from src.evaluation.reports import write_dataset_report
 from src.evaluation.threshold_sweep import threshold_sweep
 from src.inference.corrector import Corrector
-from src.inference.model_corrector import TrainedModelCorrector
+from src.inference.model_corrector import TorchCandidateModelBackend, TrainedModelCorrector
 from src.model.edit_model import CandidateAwareEditModel, EditModelConfig
 from src.model.encoder import EncoderLoadConfig, load_tokenizer
 from src.training.save_load import save_training_artifacts
@@ -56,19 +68,20 @@ def evaluate_trained_model(
     rows = _load_rows_for_split(config, split=split, fallback_rows=[])
     evaluation_corrector = corrector or _build_evaluation_corrector(config, model_training_ran=True)
     print(f"Evaluating {len(rows)} {split} examples with {evaluation_corrector.__class__.__name__}...")
-    evaluation_result = evaluate_rows_detailed(
+    report_metadata = {
+        "evaluation_backend": "stub_scorer" if corrector is not None else "existing_checkpoint",
+        "model_training_disabled": False,
+        "model_training_disabled_source": "",
+    }
+    evaluation_result, eval_metadata = _evaluate_for_training_report(
+        config,
         rows,
+        split=split,
         corrector=evaluation_corrector,
-        output_dir=reports_dir,
-        metric_weights=config.get("metrics", {}).get("combined_score_weights"),
-        show_progress=bool(config.get("training", {}).get("show_progress", False)),
-        report_metadata={
-            "evaluation_backend": "stub_scorer" if corrector is not None else "existing_checkpoint",
-            "model_training_disabled": False,
-            "model_training_disabled_source": "",
-        },
-        candidate_generator=_candidate_recall_generator(evaluation_corrector, config),
-        candidate_recall_max_candidates=_candidate_recall_max_candidates(config),
+        reports_dir=reports_dir,
+        report_metadata=report_metadata,
+        report_options=EvaluationReportOptions(),
+        limit=len(rows),
     )
     write_threshold_precision_recall_plot(
         threshold_sweep(evaluation_result.edit_scores, [0.5, 0.7, 0.8, 0.9, 0.95]),
@@ -80,6 +93,7 @@ def evaluate_trained_model(
         "evaluation_count": len(rows),
         "evaluation_metrics": evaluation_result.metrics,
         "reports_dir": str(reports_dir),
+        **eval_metadata,
         "report_paths": _report_paths(reports_dir),
     }
 
@@ -135,8 +149,33 @@ def train(config_path: str | Path = "configs/config.yaml") -> dict[str, Any]:
         "model_training_disabled_source": model_training_disabled_source,
     }
 
+    evaluation_split = _training_evaluation_split(config)
+    all_evaluation_rows = _load_evaluation_rows(config, rows)
+    fast_eval_feature_run: FeatureBuildRun | None = None
+    fast_eval_rows: list[dict[str, Any]] = []
+    if run_model_training and evaluation_runtime_config(config).fast_during_training:
+        fast_eval_rows = limit_rows_for_evaluation(
+            all_evaluation_rows,
+            config,
+            mode=EvaluationMode.FAST_DURING_TRAINING,
+        )
+        if fast_eval_rows:
+            fast_eval_feature_run = _build_features_with_metadata(
+                _model_eval_feature_config(config),
+                fast_eval_rows,
+                split=evaluation_split,
+                limit=len(fast_eval_rows),
+            )
+
     if run_model_training:
-        result.update(_run_model_training(config, features))
+        result.update(
+            _run_model_training_with_fast_eval(
+                config,
+                features,
+                fast_eval_rows=fast_eval_rows,
+                fast_eval_features=fast_eval_feature_run.features if fast_eval_feature_run is not None else None,
+            )
+        )
 
     save_training_artifacts(
         output_dir,
@@ -144,8 +183,11 @@ def train(config_path: str | Path = "configs/config.yaml") -> dict[str, Any]:
         label_mappings=config.get("labels", {}),
         thresholds=config.get("thresholds", {}),
     )
-    evaluation_split = _training_evaluation_split(config)
-    evaluation_rows = _load_evaluation_rows(config, rows)
+    evaluation_rows = limit_rows_for_evaluation(
+        all_evaluation_rows,
+        config,
+        mode=EvaluationMode.FULL_AFTER_TRAINING,
+    )
     corrector, backend_metadata = _select_evaluation_corrector(
         config,
         model_training_ran=bool(result["model_training_ran"]),
@@ -155,21 +197,22 @@ def train(config_path: str | Path = "configs/config.yaml") -> dict[str, Any]:
         f"Evaluating {len(evaluation_rows)} {evaluation_split} examples "
         f"with {corrector.__class__.__name__} ({backend_metadata['evaluation_backend']})..."
     )
-    evaluation_result = evaluate_rows_detailed(
+    evaluation_result, eval_metadata = _evaluate_for_training_report(
+        config,
         evaluation_rows,
+        split=evaluation_split,
         corrector=corrector,
-        output_dir=reports_dir,
-        metric_weights=config.get("metrics", {}).get("combined_score_weights"),
-        show_progress=bool(config.get("training", {}).get("show_progress", False)),
+        reports_dir=reports_dir,
         report_metadata=backend_metadata,
-        candidate_generator=_candidate_recall_generator(corrector, config),
-        candidate_recall_max_candidates=_candidate_recall_max_candidates(config),
+        report_options=EvaluationReportOptions(),
+        limit=len(evaluation_rows),
     )
     evaluation_metrics = evaluation_result.metrics
     checkpoint_metric = str(config.get("training", {}).get("checkpoint_metric", "combined_score"))
     tracker = BestMetricTracker(checkpoint_metric)
-    is_best_checkpoint = tracker.update(evaluation_metrics)
-    checkpoint_metric_value = float(evaluation_metrics.get(checkpoint_metric, 0.0))
+    checkpoint_source_metrics = result.get("fast_evaluation_metrics") or evaluation_metrics
+    is_best_checkpoint = tracker.update(checkpoint_source_metrics)
+    checkpoint_metric_value = float(checkpoint_source_metrics.get(checkpoint_metric, 0.0))
     losses = [float(result.get("train_loss", 0.0))]
     write_loss_curve(losses, reports_dir / "loss_curves.png")
     write_threshold_precision_recall_plot(
@@ -190,9 +233,11 @@ def train(config_path: str | Path = "configs/config.yaml") -> dict[str, Any]:
             **_dataset_training_metadata(config),
             **_training_sanity_metadata(config),
             **backend_metadata,
+            **eval_metadata,
             **_training_loss_metadata(result),
             "checkpoint_metric": checkpoint_metric,
             "checkpoint_metric_value": checkpoint_metric_value,
+            "checkpoint_metric_source": "fast_eval" if result.get("fast_evaluation_metrics") else "full_eval",
             "is_best_checkpoint": float(is_best_checkpoint),
             **evaluation_metrics,
         },
@@ -204,6 +249,7 @@ def train(config_path: str | Path = "configs/config.yaml") -> dict[str, Any]:
             "evaluation_split": evaluation_split,
             "evaluation_metrics": evaluation_metrics,
             **backend_metadata,
+            **eval_metadata,
             "checkpoint_metric": checkpoint_metric,
             "checkpoint_metric_value": checkpoint_metric_value,
             "is_best_checkpoint": is_best_checkpoint,
@@ -295,6 +341,124 @@ def _training_loss_metadata(result: dict[str, Any]) -> dict[str, Any]:
 
 def _load_evaluation_rows(config: dict[str, Any], fallback_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return _load_rows_for_split(config, split=_training_evaluation_split(config), fallback_rows=fallback_rows)
+
+
+def _evaluate_for_training_report(
+    config: dict[str, Any],
+    evaluation_rows: list[dict[str, Any]],
+    *,
+    split: str,
+    corrector: Any,
+    reports_dir: Path,
+    report_metadata: dict[str, Any],
+    report_options: EvaluationReportOptions,
+    limit: int | None,
+    ) -> tuple[Any, dict[str, Any]]:
+    batch_size = evaluation_batch_size(config)
+    backend = getattr(corrector, "backend", None)
+    if isinstance(corrector, TrainedModelCorrector) and hasattr(backend, "score_features_batched"):
+        feature_config = _model_eval_feature_config(config)
+        feature_run = _build_features_with_metadata(
+            feature_config,
+            evaluation_rows,
+            split=split,
+            limit=limit,
+            tokenizer=getattr(backend, "tokenizer", None),
+        )
+        profiled = evaluate_features_detailed(
+            evaluation_rows,
+            feature_run.features,
+            corrector=corrector,
+            output_dir=reports_dir,
+            metric_weights=config.get("metrics", {}).get("combined_score_weights"),
+            report_metadata=report_metadata,
+            report_options=report_options,
+            batch_size=batch_size,
+            mixed_precision=bool(config.get("training", {}).get("mixed_precision", True)),
+            feature_load_time_sec=float(feature_run.cache_result.build_time_sec),
+            feature_cache_hit=bool(feature_run.cache_result.hit),
+            show_progress=bool(config.get("training", {}).get("show_progress", False)),
+        )
+        write_evaluation_profile_reports(profiled.profile, reports_dir)
+        return profiled.evaluation, {
+            "eval_feature_cache_enabled": bool(feature_run.cache_result.enabled),
+            "eval_feature_cache_hit": bool(feature_run.cache_result.hit),
+            "eval_feature_cache_path": str(feature_run.cache_result.path),
+            "eval_feature_load_time_sec": round(float(feature_run.cache_result.build_time_sec), 3),
+            **evaluation_profile_metadata(profiled.profile),
+        }
+
+    started = time.perf_counter()
+    evaluation_result = evaluate_rows_detailed(
+        evaluation_rows,
+        corrector=corrector,
+        output_dir=reports_dir,
+        metric_weights=config.get("metrics", {}).get("combined_score_weights"),
+        show_progress=bool(config.get("training", {}).get("show_progress", False)),
+        report_metadata=report_metadata,
+        candidate_generator=_candidate_recall_generator(corrector, config),
+        candidate_recall_max_candidates=_candidate_recall_max_candidates(config),
+        report_options=report_options,
+    )
+    elapsed = time.perf_counter() - started
+    profile = _row_evaluation_profile(
+        elapsed,
+        batch_size=batch_size,
+        count=len(evaluation_rows),
+    )
+    write_evaluation_profile_reports(profile, reports_dir)
+    return evaluation_result, {
+        "eval_feature_cache_enabled": False,
+        "eval_feature_cache_hit": False,
+        "eval_feature_cache_path": "",
+        "eval_feature_load_time_sec": 0.0,
+        **evaluation_profile_metadata(profile),
+    }
+
+
+def _model_eval_feature_config(config: dict[str, Any]) -> dict[str, Any]:
+    cloned = copy.deepcopy(config)
+    cloned.setdefault("evaluation", {})["feature_tokenizer"] = "model"
+    return cloned
+
+
+def _row_evaluation_profile(elapsed: float, *, batch_size: int, count: int) -> EvaluationProfile:
+    return EvaluationProfile(
+        total_eval_time_sec=elapsed,
+        feature_load_time_sec=0.0,
+        model_forward_time_sec=0.0,
+        thresholding_time_sec=0.0,
+        validation_time_sec=0.0,
+        edit_realization_time_sec=0.0,
+        metrics_time_sec=0.0,
+        detailed_reports_time_sec=elapsed,
+        rows_per_sec=count / elapsed if elapsed > 0 else 0.0,
+        eval_batch_size=batch_size,
+        gpu_available=_torch_gpu_available(),
+        cuda_device=_torch_cuda_device(),
+        feature_cache_hit=False,
+        number_of_eval_examples=count,
+    )
+
+
+def _torch_gpu_available() -> bool:
+    try:
+        import torch
+
+        return bool(torch.cuda.is_available())
+    except Exception:
+        return False
+
+
+def _torch_cuda_device() -> str:
+    try:
+        import torch
+
+        if not torch.cuda.is_available():
+            return ""
+        return str(torch.cuda.get_device_name(torch.cuda.current_device()))
+    except Exception:
+        return ""
 
 
 def _training_evaluation_split(config: dict[str, Any]) -> str:
@@ -391,6 +555,12 @@ def _threshold_profile(config: dict[str, Any]) -> str:
     return str(config.get("thresholds", {}).get("mode", "balanced"))
 
 
+def _active_thresholds(config: dict[str, Any]) -> dict[str, Any]:
+    threshold_config = config.get("thresholds", {})
+    mode = str(threshold_config.get("mode", "balanced"))
+    return dict(threshold_config.get(mode, {}))
+
+
 def _report_paths(reports_dir: Path) -> dict[str, str]:
     names = [
         "dataset_report.md",
@@ -414,6 +584,8 @@ def _report_paths(reports_dir: Path) -> dict[str, str]:
         "feature_build_gap_label_coverage_by_rule.csv",
         "training_label_distribution_by_rule.csv",
         "candidate_score_distribution_by_rule.csv",
+        "evaluation_profile.csv",
+        "evaluation_profile_summary.md",
     ]
     return {name: str(reports_dir / name) for name in names if (reports_dir / name).exists()}
 
@@ -440,6 +612,7 @@ def _build_features_with_metadata(
     split: str = "train",
     force_cache: bool = False,
     limit: int | None = None,
+    tokenizer: Any | None = None,
 ) -> FeatureBuildRun:
     training_config = config.get("training", {})
     builder_stats: dict[str, Any] = {}
@@ -447,13 +620,13 @@ def _build_features_with_metadata(
     def builder():
         model_config = config.get("model", {})
         label_config = config.get("labels", {})
-        tokenizer = _feature_build_tokenizer(config)
+        feature_tokenizer = tokenizer or _feature_build_tokenizer(config)
         candidate_generator = CandidateGenerator.from_config(config, purpose="training_features")
         profiler = _feature_build_profiler(config, split=split, candidate_generator=candidate_generator)
         dictionary_policy_for_row = _dictionary_policy_for_training_row(config)
         features = build_features_from_rows(
             rows,
-            tokenizer=tokenizer,
+            tokenizer=feature_tokenizer,
             punctuation_label_map=label_config.get("punctuation", {}),
             punctuation_action_label_map=label_config.get("punctuation_actions", {}),
             error_type_label_map=label_config.get("error_types", {}),
@@ -505,7 +678,8 @@ def _build_features_with_metadata(
 def _feature_build_tokenizer(config: dict[str, Any]) -> Any:
     model_config = config.get("model", {})
     tokenizer = DebugTokenizer()
-    if _run_model_training_enabled(config):
+    use_model_tokenizer = str(config.get("evaluation", {}).get("feature_tokenizer", "")).lower() == "model"
+    if _run_model_training_enabled(config) or use_model_tokenizer:
         tokenizer = load_tokenizer(
             EncoderLoadConfig(
                 model_name=model_config.get("primary_encoder", "ai-forever/ruRoberta-large"),
@@ -581,7 +755,33 @@ def _skip_feature_build_for_no_training(model_training_disabled_source: str) -> 
     return model_training_disabled_source == DISABLE_MODEL_TRAINING_ENV
 
 
-def _run_model_training(config: dict[str, Any], features) -> dict[str, Any]:  # type: ignore[no-untyped-def]
+def _run_model_training_with_fast_eval(
+    config: dict[str, Any],
+    features: list[Any],
+    *,
+    fast_eval_rows: list[dict[str, Any]],
+    fast_eval_features: list[Any] | None,
+) -> dict[str, Any]:
+    try:
+        return _run_model_training(
+            config,
+            features,
+            fast_eval_rows=fast_eval_rows,
+            fast_eval_features=fast_eval_features,
+        )
+    except TypeError as exc:
+        if "unexpected keyword" not in str(exc):
+            raise
+        return _run_model_training(config, features)
+
+
+def _run_model_training(
+    config: dict[str, Any],
+    features,
+    *,
+    fast_eval_rows: list[dict[str, Any]] | None = None,
+    fast_eval_features: list[Any] | None = None,
+) -> dict[str, Any]:  # type: ignore[no-untyped-def]
     import torch
     from torch.utils.data import DataLoader
 
@@ -651,7 +851,45 @@ def _run_model_training(config: dict[str, Any], features) -> dict[str, Any]:  # 
         ),
         loss_weights=training_config,
     )
-    losses = [trainer.train_epoch(loader) for _ in range(int(training_config.get("epochs", 1)))]
+    losses: list[float] = []
+    fast_evaluation_metrics: dict[str, float] = {}
+    for epoch_index in range(int(training_config.get("epochs", 1))):
+        losses.append(trainer.train_epoch(loader))
+        if fast_eval_rows and fast_eval_features:
+            fast_corrector = TrainedModelCorrector(
+                TorchCandidateModelBackend(
+                    tokenizer=None,
+                    module=module,
+                    device=device,
+                    punctuation_labels=config.get("labels", {}).get("punctuation", {}),
+                    punctuation_action_labels=config.get("labels", {}).get("punctuation_actions", {}),
+                    max_length=int(model_config.get("max_sequence_length", 128)),
+                    max_candidates=int(model_config.get("max_candidates", 16)),
+                ),
+                thresholds=_active_thresholds(config),
+                max_passes=int(config.get("decoder", {}).get("max_passes", 3)),
+                candidate_generator=CandidateGenerator.from_config(config),
+            )
+            fast_eval = evaluate_features_detailed(
+                fast_eval_rows,
+                fast_eval_features,
+                corrector=fast_corrector,
+                output_dir=None,
+                metric_weights=config.get("metrics", {}).get("combined_score_weights"),
+                report_metadata=None,
+                report_options=training_fast_report_options(config),
+                batch_size=evaluation_batch_size(config),
+                mixed_precision=bool(training_config.get("mixed_precision", True)),
+                feature_load_time_sec=0.0,
+                feature_cache_hit=False,
+                show_progress=bool(training_config.get("show_progress", False)),
+            )
+            fast_evaluation_metrics = core_training_metrics(fast_eval.evaluation.metrics)
+            print(
+                f"Fast eval epoch {epoch_index + 1}: "
+                f"{len(fast_eval_rows)} examples, "
+                f"combined_score={fast_evaluation_metrics.get('combined_score', 0.0):.6f}"
+            )
     heads_output_dir = Path(config.get("paths", {}).get("heads_output_dir", "models/heads/latest"))
     heads_output_dir.mkdir(parents=True, exist_ok=True)
     torch.save(module.heads.state_dict(), heads_output_dir / "heads.pt")
@@ -666,6 +904,7 @@ def _run_model_training(config: dict[str, Any], features) -> dict[str, Any]:  # 
         "punctuation_loss_value": float(components.get("punctuation_loss", 0.0)),
         "confidence_loss_value": float(components.get("confidence_loss", 0.0)),
         "error_type_loss_value": float(components.get("error_type_loss", 0.0)),
+        "fast_evaluation_metrics": fast_evaluation_metrics,
     }
 
 

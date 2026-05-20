@@ -42,6 +42,7 @@ class TrainingFeature:
     attention_mask: list[int]
     offset_mapping: list[tuple[int, int]]
     candidate_spans: list[tuple[int, int]]
+    candidate_char_spans: list[tuple[int, int]]
     candidate_mask: list[bool]
     candidate_labels: list[float]
     candidate_error_type_labels: list[int]
@@ -61,6 +62,11 @@ class TrainingFeature:
     candidate_modes: list[RuleMode]
     candidate_requires_model: list[bool]
     candidate_requires_scoring: list[bool]
+    candidate_actions: list[str]
+    candidate_punctuation_labels: list[str]
+    candidate_gap_indexes: list[int]
+    candidate_requires: list[tuple[str, ...]]
+    candidate_groups: list[str]
     candidate_replacement_ids: list[list[int]]
     candidate_replacement_mask: list[list[bool]]
 
@@ -146,6 +152,7 @@ def build_training_feature(
         profile["diff_alignment_ms"] = _elapsed_ms(diff_started)
     label_started = time.perf_counter()
     spans = [_candidate_to_token_span(candidate, offsets) for candidate in candidates]
+    char_spans = [(candidate.start, candidate.end) for candidate in candidates]
     labels = [_candidate_label(candidate, alignment_edits) for candidate in candidates]
     error_labels = [_candidate_error_label(candidate, label, error_type_label_map) for candidate, label in zip(candidates, labels, strict=False)]
     confidence_labels = labels[:]
@@ -156,6 +163,11 @@ def build_training_feature(
     modes = [candidate.mode for candidate in candidates]
     requires_model = [candidate.requires_model for candidate in candidates]
     requires_scoring = [candidate.requires_scoring for candidate in candidates]
+    actions = [candidate.action or "" for candidate in candidates]
+    punctuation_candidate_labels = [candidate.label or "" for candidate in candidates]
+    gap_indexes = [int(candidate.gap_index) if candidate.gap_index is not None else -1 for candidate in candidates]
+    requires = [tuple(candidate.requires) for candidate in candidates]
+    groups = [candidate.group for candidate in candidates]
     if profile is not None:
         profile["label_build_ms"] = _elapsed_ms(label_started)
     replacement_started = time.perf_counter()
@@ -168,6 +180,7 @@ def build_training_feature(
     label_started = time.perf_counter()
     pad_candidates = max_candidates - len(candidates)
     spans.extend([(0, 0)] * pad_candidates)
+    char_spans.extend([(0, 0)] * pad_candidates)
     labels.extend([0.0] * pad_candidates)
     error_labels.extend([-100] * pad_candidates)
     confidence_labels.extend([0.0] * pad_candidates)
@@ -178,6 +191,11 @@ def build_training_feature(
     modes.extend(["deterministic"] * pad_candidates)
     requires_model.extend([False] * pad_candidates)
     requires_scoring.extend([False] * pad_candidates)
+    actions.extend([""] * pad_candidates)
+    punctuation_candidate_labels.extend([""] * pad_candidates)
+    gap_indexes.extend([-1] * pad_candidates)
+    requires.extend([tuple()] * pad_candidates)
+    groups.extend([""] * pad_candidates)
     replacement_ids.extend([[0] * MAX_REPLACEMENT_TOKENS for _ in range(pad_candidates)])
     replacement_masks.extend([[False] * MAX_REPLACEMENT_TOKENS for _ in range(pad_candidates)])
     candidate_mask = [True] * len(candidates) + [False] * pad_candidates
@@ -210,6 +228,7 @@ def build_training_feature(
         attention_mask=encoded["attention_mask"],
         offset_mapping=offsets,
         candidate_spans=spans,
+        candidate_char_spans=char_spans,
         candidate_mask=candidate_mask,
         candidate_labels=labels,
         candidate_error_type_labels=error_labels,
@@ -229,6 +248,11 @@ def build_training_feature(
         candidate_modes=modes,
         candidate_requires_model=requires_model,
         candidate_requires_scoring=requires_scoring,
+        candidate_actions=actions,
+        candidate_punctuation_labels=punctuation_candidate_labels,
+        candidate_gap_indexes=gap_indexes,
+        candidate_requires=requires,
+        candidate_groups=groups,
         candidate_replacement_ids=replacement_ids,
         candidate_replacement_mask=replacement_masks,
     )
