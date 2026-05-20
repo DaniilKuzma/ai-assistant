@@ -76,6 +76,19 @@ data:
         real_error_pair: 500
         clean_identity_from_open_clean: 650
         hard_negative_from_open_clean: 650
+    active_rule_quota:
+      enabled: true
+      min_total_per_active_rule: 80
+      preferred_total_per_active_rule: 200
+      split_minimums:
+        train: 60
+        val: 10
+        test: 10
+    rule_caps:
+      max_total_per_rule_id: 2500
+      max_train_per_rule_id: 2000
+      max_rule_share_train: 0.10
+      max_error_type_share_train: 0.35
     pool:
       min_clean_sentences: 150000
       max_source_share: 0.60
@@ -83,7 +96,9 @@ data:
     audit:
       candidate_recall_min: 0.85
       gap_coverage_min: 0.85
-      min_active_rule_count: 50
+      min_active_rule_count: 80
+      min_clean_identity_eval_split: 500
+      min_hard_negative_eval_split: 500
       require_all_source_types: true
 
 thresholds:

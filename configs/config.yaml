@@ -35,10 +35,10 @@ training:
   max_train_examples: 250000
   max_val_examples: 10000
   max_test_examples: 10000
-  batch_size: 4
-  gradient_accumulation_steps: 4
-  epochs: 2
-  learning_rate: 0.0001
+  batch_size: 64
+  gradient_accumulation_steps: 1
+  epochs: 1
+  learning_rate: 0.00005
   mixed_precision: true
   show_progress: true
   progress_log_every_steps: 1000
@@ -176,7 +176,7 @@ data:
     - Чистый текст.
 
 thresholds:
-  mode: balanced
+  mode: conservative
   conservative:
     default_threshold: 0.90
     spelling_threshold: 0.92

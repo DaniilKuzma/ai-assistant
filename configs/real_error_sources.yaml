@@ -34,9 +34,11 @@ real_sources:
 
   spellcheck_punctuation_benchmark:
     enabled: true
-    type: huggingface_dataset
+    type: local_jsonl
     hf_id: ai-forever/spellcheck_punctuation_benchmark
+    local_path: data/external/sage/spellcheck_punctuation_benchmark.jsonl
     priority: 1
+    max_raw_pairs: 8000
     max_pairs: 12000
     target_accepted_pairs: 2000
     allowed_error_types:

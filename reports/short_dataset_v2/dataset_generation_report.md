@@ -1,45 +1,54 @@
 # Short Dataset V2 Generation Report
 
-- verdict: BLOCKED
+- verdict: READY_FOR_SHORT_TRAINING_DATASET_V2
 - total: 60000
 - split_sizes: {"test": 5000, "train": 50000, "val": 5000}
-- composition: {"clean_identity_from_open_clean": 7800, "hard_negative_from_open_clean": 7800, "real_error_pair": 0, "synthetic_augmented_from_open_clean": 44400}
-- clean_source_counts: {"lenta_news": 44370, "opencorpora": 15630}
-- real_source_counts: {}
-- real_pair_acceptance_rate: 0.000000
-- candidate_recall_min_mean: 1.000000 / 1.000000
+- composition: {"clean_identity_from_open_clean": 7800, "hard_negative_from_open_clean": 7800, "real_error_pair": 1021, "synthetic_augmented_from_open_clean": 43379}
+- clean_source_counts: {"lenta_news": 55796, "nerus_news": 2203, "opencorpora": 980}
+- real_source_counts: {"sage_github_typo_ru": 35, "sage_medspellchecker": 54, "sage_multidomain_gold": 320, "sage_ruspellru": 306, "spellcheck_punctuation_benchmark": 306}
+- real_pair_acceptance_rate: 1.000000
+- candidate_recall_min_mean: 0.990181 / 0.999309
 - gap_coverage_min_mean: 1.000000 / 1.000000
 - template_leakage: {"test_overlap_with_train_rate": 0.0, "val_overlap_with_train_rate": 0.0}
-- synthetic_normalized_duplicate_rate: 0.000000
-- top_normalized_pair_count: 3
+- synthetic_normalized_duplicate_rate: 0.213329
+- top_normalized_pair_count: 13
 - meta_language_counts: {"context-pairs": 0, "n-nn": 0, "ne-pos": 0, "technical_rule_names": 0, "готовит важный примере": 0, "готовит итоговый примере": 0, "готовит рабочий примере": 0, "готовит точный примере": 0, "правило": 0, "пример 123": 0, "проверяет семейство": 0, "семейство": 0, "серии": 0, "серия": 0}
 - suspicious_template_counts: {"готовит важный примере": 0, "готовит итоговый примере": 0, "готовит рабочий примере": 0, "готовит точный примере": 0, "проверяет семейство": 0}
-- low_count_active_rule_ids: comma_conjunction, comma_subordinate, context_chto_by, hyphen_whitelist, introductory_comma, n_nn_deverbal_adjective
+- active_rule_quota_summary: {"active_rule_count": 37, "excluded_count": 26, "min_total_per_active_rule": 80, "preferred_total_per_active_rule": 200, "underfilled_count": 0}
+- low_count_active_rule_ids: 
+- excluded_active_rule_ids: asyndetic_dash, consequence_dash, final_punctuation_default, frequent_error_exact, hyphen_whitelist, missing_hard_sign, n_nn_adjective, n_nn_participle, n_nn_short_form, ne_verb, pattern_жо_же, pattern_жы_жи, pattern_цы_ци, pattern_чо_че, pattern_чя_ча, pattern_шо_ше, pattern_шы_ши, pattern_що_ще, pattern_щя_ща, prefix_pre_pri, prefix_s_to_z, prefix_z_to_s, sdelat_prefix, soft_to_hard_sign, tsya_soft_delete, tsya_soft_insert
+- rule_caps_applied: final_punctuation_default, n_nn_adjective, n_nn_short_form, pattern_жо_же, pattern_цы_ци, pattern_чо_че, prefix_pre_pri
+- error_type_caps_applied: 
 
-## Top 20 Rule Counts
+## Top 30 Rule Counts
 
-- n_nn_adjective: 14000
 - clean_identity: 7800
 - clean_identity_hard_negative: 7800
-- n_nn_short_form: 5428
-- final_punctuation_default: 4734
-- pattern_чо_че: 4562
-- prefix_pre_pri: 4175
-- pattern_жо_же: 3278
-- pattern_цы_ци: 3144
-- prefix_s_to_z: 2549
-- n_nn_participle: 2413
-- pattern_чя_ча: 2248
-- pattern_шо_ше: 2137
-- prefix_z_to_s: 1955
-- tsya_soft_delete: 1783
-- pattern_що_ще: 1728
-- pattern_жы_жи: 1378
-- pattern_шы_ши: 1277
-- ne_verb: 1052
-- pattern_щя_ща: 796
-
-## Audit Errors
-
-- active_rule_count_below_min:address_comma,comma_conjunction,comma_subordinate,comparative_turnover_comma,context_chto_by,context_nesmotrya,context_tak_zhe,context_to_zhe,context_vsledstvie,context_za_to,cy_exception,detached_adverbial_comma,dictionary_fuzzy,direct_speech_colon,direct_speech_dash,direct_speech_quotes,double_consonant_candidate,enumeration_colon,extra_letter_candidate,homogeneous_comma,hyphen_koe_koy,hyphen_particles,hyphen_po_adverbs,hyphen_whitelist,introductory_comma,keyboard_typo_candidate,missing_letter_candidate,n_nn_deverbal_adjective,ne_adjective,ne_adverb,ne_participle,pol_polu_compounds,subject_predicate_dash,swapped_letters_candidate
-- missing_source_type:real_error_pair
+- n_nn_adjective: 1902
+- address_comma: 1042
+- comma_conjunction: 1042
+- comparative_turnover_comma: 1042
+- context_chto_by: 1042
+- context_nesmotrya: 1042
+- context_tak_zhe: 1042
+- context_to_zhe: 1042
+- context_vsledstvie: 1042
+- context_za_to: 1042
+- cy_exception: 1042
+- detached_adverbial_comma: 1042
+- dictionary_fuzzy: 1042
+- direct_speech_colon: 1042
+- direct_speech_dash: 1042
+- direct_speech_quotes: 1042
+- double_consonant_candidate: 1042
+- enumeration_colon: 1042
+- explanation_colon: 1042
+- extra_letter_candidate: 1042
+- homogeneous_comma: 1042
+- hyphen_koe_koy: 1042
+- hyphen_particles: 1042
+- hyphen_po_adverbs: 1042
+- keyboard_typo_candidate: 1042
+- missing_letter_candidate: 1042
+- n_nn_deverbal_adjective: 1042
+- swapped_letters_candidate: 1042

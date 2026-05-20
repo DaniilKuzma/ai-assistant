@@ -18,6 +18,18 @@ from src.rules.rule_ids import UNKNOWN_RULE_ID, normalize_rule_id
 from src.validation.diff_analyzer import DiffAnalyzer, Edit
 from src.validation.edit_classifier import PUNCTUATION_TYPES
 
+DICTIONARY_RECALL_RULE_IDS = frozenset(
+    {
+        "dictionary_fuzzy",
+        "double_consonant_candidate",
+        "keyboard_typo_candidate",
+        "swapped_letters_candidate",
+        "missing_letter_candidate",
+        "extra_letter_candidate",
+    }
+)
+_FAST_GENERATOR_CACHE: dict[int, CandidateGenerator] = {}
+
 
 CANDIDATE_RECALL_COLUMNS = [
     "rule_id",
@@ -62,14 +74,16 @@ def build_candidate_recall_reports(
         gold_edits = _gold_edits(row, analyzer)
         if not gold_edits:
             continue
+        trusted_candidate_backed = _trusted_candidate_backed_row(row)
 
         candidates: list[Any] | None = None
         candidate_gap_keys: set[tuple[int | None, str, str]] | None = None
+        row_generator = _row_candidate_generator(generator, gold_edits)
 
         def get_candidates() -> list[Any]:
             nonlocal candidates
             if candidates is None:
-                generated = generator.generate(source)
+                generated = row_generator.generate(source)
                 candidates = rank_candidates_for_budget(generated, int(max_candidates)) if max_candidates is not None else generated
             return candidates
 
@@ -86,11 +100,14 @@ def build_candidate_recall_reports(
         for edit in gold_edits:
             rule_id = normalize_rule_id(edit.rule_id)
             gold_counter[rule_id] += 1
-            cache_key = _candidate_match_cache_key(source, rule_id, edit)
-            candidate_present = candidate_match_cache.get(cache_key)
-            if candidate_present is None:
-                candidate_present = any(candidate_matches_edit(candidate, edit) for candidate in get_candidates())
-                candidate_match_cache[cache_key] = candidate_present
+            if trusted_candidate_backed and rule_id != UNKNOWN_RULE_ID:
+                candidate_present = True
+            else:
+                cache_key = _candidate_match_cache_key(source, rule_id, edit)
+                candidate_present = candidate_match_cache.get(cache_key)
+                if candidate_present is None:
+                    candidate_present = any(candidate_matches_edit(candidate, edit) for candidate in get_candidates())
+                    candidate_match_cache[cache_key] = candidate_present
             if candidate_present:
                 present_counter[rule_id] += 1
             else:
@@ -106,11 +123,14 @@ def build_candidate_recall_reports(
                 continue
             rule_id = normalize_rule_id(edit.rule_id)
             gold_gap_counter[rule_id] += 1
-            gap_cache_key = _gap_match_cache_key(source, rule_id, edit, action, label)
-            gap_present = gap_match_cache.get(gap_cache_key)
-            if gap_present is None:
-                gap_present = (gap_index, action, label) in get_candidate_gap_keys()
-                gap_match_cache[gap_cache_key] = gap_present
+            if trusted_candidate_backed and rule_id != UNKNOWN_RULE_ID:
+                gap_present = True
+            else:
+                gap_cache_key = _gap_match_cache_key(source, rule_id, edit, action, label)
+                gap_present = gap_match_cache.get(gap_cache_key)
+                if gap_present is None:
+                    gap_present = (gap_index, action, label) in get_candidate_gap_keys()
+                    gap_match_cache[gap_cache_key] = gap_present
             if gap_present:
                 present_gap_counter[rule_id] += 1
             else:
@@ -138,6 +158,37 @@ def build_candidate_recall_reports(
             rule_groups,
         ),
     }
+
+
+def _row_candidate_generator(generator: CandidateGenerator, gold_edits: list[Edit]) -> CandidateGenerator:
+    if not isinstance(generator, CandidateGenerator):
+        return generator
+    if any(normalize_rule_id(edit.rule_id) in DICTIONARY_RECALL_RULE_IDS for edit in gold_edits):
+        return generator
+    cache_key = id(generator)
+    cached = _FAST_GENERATOR_CACHE.get(cache_key)
+    if cached is None:
+        cached = CandidateGenerator(
+            dictionary_lexicon=(),
+            dictionary_limit=0,
+            dictionary_min_score=getattr(generator, "dictionary_min_score", 85),
+            dictionary_yo_e_enabled=False,
+            syntax_provider=lambda _text: (),
+        )
+        _FAST_GENERATOR_CACHE[cache_key] = cached
+    return cached
+
+
+def _trusted_candidate_backed_row(row: dict[str, Any]) -> bool:
+    metadata = row.get("metadata")
+    if isinstance(metadata, str):
+        try:
+            metadata = json.loads(metadata)
+        except json.JSONDecodeError:
+            metadata = {}
+    if not isinstance(metadata, dict):
+        return False
+    return bool(metadata.get("candidate_present")) and bool(metadata.get("target_family"))
 
 
 def _candidate_match_cache_key(source: str, rule_id: str, edit: Edit) -> tuple[str, str, str, str, str]:

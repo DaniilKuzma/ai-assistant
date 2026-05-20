@@ -418,6 +418,8 @@ def _address_comma_candidates(
         return []
     if not _looks_like_possible_address_opening(words):
         return []
+    if _looks_like_lexical_address_opening(words):
+        return _address_candidate_after_first_word(text, words, protected)
 
     syntax_tokens = _parse_syntax_safely(text)
     if len(syntax_tokens) >= 2:
@@ -428,9 +430,6 @@ def _address_comma_candidates(
             and _looks_like_explicit_address(first, second)
         ):
             return _address_candidate_after_first_word(text, words, protected)
-
-    if _looks_like_lexical_address_opening(words):
-        return _address_candidate_after_first_word(text, words, protected)
 
     return []
 
@@ -955,14 +954,10 @@ def _looks_like_single_letter_initial(text: str, word: Token) -> bool:
 def _looks_like_sentence_initial_gerund(text: str, words: list[Token]) -> bool:
     if words[0].start != 0:
         return False
-    syntax_tokens = _parse_syntax_safely(text)
-    if syntax_tokens and _syntax_token_matches_word(syntax_tokens[0], words[0]):
-        feats = getattr(syntax_tokens[0], "feats", {}) or {}
-        if str(feats.get("VerbForm", "")) == "Conv":
-            return True
-
     first = words[0].text.lower()
-    return len(first) >= 6 and first.endswith(GERUND_FALLBACK_SUFFIXES)
+    if len(first) >= 6 and first.endswith(GERUND_FALLBACK_SUFFIXES):
+        return True
+    return False
 
 
 def _syntax_token_matches_word(syntax_token: object, word: Token) -> bool:
