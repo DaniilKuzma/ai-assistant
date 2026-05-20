@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import argparse
 import copy
+from dataclasses import dataclass
+import json
 import os
 from pathlib import Path
+import time
 from typing import Any
 
 import pandas as pd
@@ -21,12 +24,21 @@ from src.inference.model_corrector import TrainedModelCorrector
 from src.model.edit_model import CandidateAwareEditModel, EditModelConfig
 from src.model.encoder import EncoderLoadConfig, load_tokenizer
 from src.training.save_load import save_training_artifacts
+from src.training.feature_cache import FeatureCacheResult, build_or_load_features
+from src.training.feature_profile import FeatureBuildProfiler
 from src.training.tensorization import DebugTokenizer, EditBatchCollator, build_features_from_rows
 from src.training.callbacks import BestMetricTracker
 from src.training.trainer import EditModelTrainer, TrainLoopConfig
 
 
 DISABLE_MODEL_TRAINING_ENV = "RUSSIAN_CORRECTOR_DISABLE_MODEL_TRAINING"
+
+
+@dataclass(frozen=True)
+class FeatureBuildRun:
+    features: list[Any]
+    cache_result: FeatureCacheResult
+    metadata: dict[str, Any]
 
 
 def evaluate_trained_model(
@@ -85,7 +97,20 @@ def train(config_path: str | Path = "configs/config.yaml") -> dict[str, Any]:
     write_dataset_report(_full_dataset_stats(config, rows), reports_dir / "dataset_report.md")
 
     skip_feature_build = _skip_feature_build_for_no_training(model_training_disabled_source)
-    features = [] if skip_feature_build else _build_features(config, rows)
+    feature_run: FeatureBuildRun | None = None
+    if skip_feature_build:
+        features = []
+        feature_metadata: dict[str, Any] = {
+            "feature_cache_enabled": False,
+            "feature_cache_hit": False,
+            "feature_cache_path": "",
+            "feature_build_time_sec": 0.0,
+            "features_count": 0,
+        }
+    else:
+        feature_run = _build_features_with_metadata(config, rows, split="train")
+        features = feature_run.features
+        feature_metadata = feature_run.metadata
     output_dir = config.get("paths", {}).get("adapter_output_dir", "models/adapters/latest")
 
     result: dict[str, Any] = {
@@ -150,6 +175,8 @@ def train(config_path: str | Path = "configs/config.yaml") -> dict[str, Any]:
             "model_training_ran": float(result["model_training_ran"]),
             "model_training_disabled": model_training_disabled,
             "model_training_disabled_source": model_training_disabled_source,
+            **feature_metadata,
+            **_dataset_training_metadata(config),
             **backend_metadata,
             "checkpoint_metric": checkpoint_metric,
             "checkpoint_metric_value": checkpoint_metric_value,
@@ -167,6 +194,7 @@ def train(config_path: str | Path = "configs/config.yaml") -> dict[str, Any]:
             "checkpoint_metric": checkpoint_metric,
             "checkpoint_metric_value": checkpoint_metric_value,
             "is_best_checkpoint": is_best_checkpoint,
+            **feature_metadata,
             "reports_dir": str(reports_dir),
             "report_paths": _report_paths(reports_dir),
         }
@@ -199,6 +227,33 @@ def _full_dataset_stats(config: dict[str, Any], fallback_rows: list[dict[str, An
     if processed_path and Path(processed_path).exists():
         return dataset_stats(pd.read_csv(processed_path, usecols=["is_clean", "is_synthetic", "split", "error_types"]))
     return dataset_stats(pd.DataFrame(fallback_rows))
+
+
+def _dataset_training_metadata(config: dict[str, Any]) -> dict[str, Any]:
+    data_config = config.get("data", {})
+    dataset_path_value = str(data_config.get("processed_train_path") or "")
+    manifest_path_value = str(data_config.get("manifest_path") or "")
+    dataset_path = Path(dataset_path_value) if dataset_path_value else None
+    manifest_path = Path(manifest_path_value) if manifest_path_value else None
+    metadata: dict[str, Any] = {
+        "dataset_path": dataset_path_value,
+        "manifest_path": manifest_path_value,
+        "manifest_verdict": "",
+        "dataset_rows": 0,
+        "split_counts": {},
+    }
+    if dataset_path is not None and dataset_path.exists():
+        frame = pd.read_csv(dataset_path, usecols=lambda column: column == "split")
+        metadata["dataset_rows"] = int(len(frame))
+        if "split" in frame.columns:
+            metadata["split_counts"] = {str(key): int(value) for key, value in frame["split"].value_counts().sort_index().items()}
+    if manifest_path is not None and manifest_path.exists():
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            metadata["manifest_verdict"] = str(manifest.get("verdict", manifest.get("final_verdict", "")))
+        except json.JSONDecodeError:
+            metadata["manifest_verdict"] = "INVALID_JSON"
+    return metadata
 
 
 def _load_evaluation_rows(config: dict[str, Any], fallback_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -316,6 +371,10 @@ def _report_paths(reports_dir: Path) -> dict[str, str]:
         "rejected_edits.csv",
         "loss_curves.png",
         "threshold_precision_recall.png",
+        "feature_build_profile.csv",
+        "feature_build_profile_summary.md",
+        "feature_build_candidate_recall_by_rule.csv",
+        "feature_build_gap_label_coverage_by_rule.csv",
     ]
     return {name: str(reports_dir / name) for name in names if (reports_dir / name).exists()}
 
@@ -332,9 +391,80 @@ def _candidate_recall_max_candidates(config: dict[str, Any]) -> int:
 
 
 def _build_features(config: dict[str, Any], rows: list[dict[str, Any]]):
+    return _build_features_with_metadata(config, rows, split="train").features
+
+
+def _build_features_with_metadata(
+    config: dict[str, Any],
+    rows: list[dict[str, Any]],
+    *,
+    split: str = "train",
+    force_cache: bool = False,
+    limit: int | None = None,
+) -> FeatureBuildRun:
     training_config = config.get("training", {})
+    builder_stats: dict[str, Any] = {}
+
+    def builder():
+        model_config = config.get("model", {})
+        label_config = config.get("labels", {})
+        tokenizer = _feature_build_tokenizer(config)
+        candidate_generator = CandidateGenerator.from_config(config, purpose="training_features")
+        profiler = _feature_build_profiler(config, split=split, candidate_generator=candidate_generator)
+        dictionary_policy_for_row = _dictionary_policy_for_training_row(config)
+        features = build_features_from_rows(
+            rows,
+            tokenizer=tokenizer,
+            punctuation_label_map=label_config.get("punctuation", {}),
+            punctuation_action_label_map=label_config.get("punctuation_actions", {}),
+            error_type_label_map=label_config.get("error_types", {}),
+            max_length=int(model_config.get("max_sequence_length", 192)),
+            max_candidates=int(model_config.get("max_candidates", 32)),
+            candidate_generator=candidate_generator,
+            show_progress=bool(training_config.get("show_progress", False)),
+            profiler=profiler,
+            split=split,
+            dictionary_policy_for_row=dictionary_policy_for_row,
+        )
+        dictionary_stats = candidate_generator.dictionary_cache_stats()
+        builder_stats.update(
+            {
+                "dictionary_token_cache_hits": dictionary_stats["hits"],
+                "dictionary_token_cache_misses": dictionary_stats["misses"],
+                "dictionary_token_cache_hit_rate": round(float(dictionary_stats["hit_rate"]), 6),
+                "dictionary_lexicon_size": _dictionary_lexicon_size(candidate_generator),
+                "dictionary_max_choices_per_token": candidate_generator.dictionary_max_choices_per_token,
+            }
+        )
+        profiler.write_reports(
+            dictionary_cache_stats=dictionary_stats,
+            feature_cache_stats={"enabled": bool(training_config.get("feature_cache", {}).get("enabled", False)), "hit": False},
+        )
+        return features
+
+    cache_result = build_or_load_features(config, rows, split=split, builder=builder, force=force_cache, limit=limit)
+    if not builder_stats:
+        builder_stats.update(
+            {
+                "dictionary_token_cache_hits": 0,
+                "dictionary_token_cache_misses": 0,
+                "dictionary_token_cache_hit_rate": 0.0,
+                "dictionary_lexicon_size": _dictionary_lexicon_size_from_config(config),
+                "dictionary_max_choices_per_token": int(
+                    config.get("dictionary", {}).get("max_choices_per_token", 50_000)
+                ),
+            }
+        )
+    metadata = {
+        **cache_result.report_metrics(),
+        **builder_stats,
+        "syntax_enabled_for_feature_build": bool((training_config.get("feature_build", {}) or {}).get("enable_syntax", False)),
+    }
+    return FeatureBuildRun(features=cache_result.features, cache_result=cache_result, metadata=metadata)
+
+
+def _feature_build_tokenizer(config: dict[str, Any]) -> Any:
     model_config = config.get("model", {})
-    label_config = config.get("labels", {})
     tokenizer = DebugTokenizer()
     if _run_model_training_enabled(config):
         tokenizer = load_tokenizer(
@@ -344,18 +474,68 @@ def _build_features(config: dict[str, Any], rows: list[dict[str, Any]]):
                 local_files_only=bool(model_config.get("local_files_only", False)),
             )
         )
-    candidate_generator = CandidateGenerator.from_config(config)
-    return build_features_from_rows(
-        rows,
-        tokenizer=tokenizer,
-        punctuation_label_map=label_config.get("punctuation", {}),
-        punctuation_action_label_map=label_config.get("punctuation_actions", {}),
-        error_type_label_map=label_config.get("error_types", {}),
-        max_length=int(model_config.get("max_sequence_length", 192)),
-        max_candidates=int(model_config.get("max_candidates", 32)),
-        candidate_generator=candidate_generator,
-        show_progress=bool(training_config.get("show_progress", False)),
+    return tokenizer
+
+
+def _feature_build_profiler(
+    config: dict[str, Any],
+    *,
+    split: str,
+    candidate_generator: CandidateGenerator,
+) -> FeatureBuildProfiler:
+    feature_build_config = config.get("training", {}).get("feature_build", {}) or {}
+    reports_dir = Path(config.get("paths", {}).get("reports_dir", "reports"))
+    profile_output = feature_build_config.get("profile_output")
+    output_path = Path(profile_output) if profile_output else reports_dir / "feature_build_profile.csv"
+    if not output_path.is_absolute() and profile_output is None:
+        output_path = reports_dir / output_path.name
+    summary_path = output_path.with_name("feature_build_profile_summary.md")
+    return FeatureBuildProfiler(
+        enabled=bool(feature_build_config.get("profile", False)),
+        output_path=output_path,
+        summary_path=summary_path,
+        sample_size=int(feature_build_config.get("profile_sample_size", 2000)),
+        split=split,
+        syntax_enabled=bool(feature_build_config.get("enable_syntax", False)),
+        dictionary_lexicon_size=_dictionary_lexicon_size(candidate_generator) if bool(feature_build_config.get("profile", False)) else 0,
     )
+
+
+def _dictionary_policy_for_training_row(config: dict[str, Any]):
+    feature_build_config = config.get("training", {}).get("feature_build", {}) or {}
+    dictionary_for_clean_rows = bool(feature_build_config.get("dictionary_for_clean_rows", True))
+    dictionary_for_hard_negative_rows = bool(feature_build_config.get("dictionary_for_hard_negative_rows", True))
+
+    def policy(row: dict[str, Any]) -> str:
+        source_type = str(row.get("source_type", ""))
+        if source_type == "clean_identity_from_open_clean" and not dictionary_for_clean_rows:
+            return "unknown_only"
+        if source_type == "hard_negative_from_open_clean" and not dictionary_for_hard_negative_rows:
+            return "unknown_only"
+        return "all"
+
+    return policy
+
+
+def _dictionary_lexicon_size(candidate_generator: CandidateGenerator) -> int:
+    try:
+        return len(candidate_generator._dictionary_lexicon())
+    except Exception:
+        return 0
+
+
+def _dictionary_lexicon_size_from_config(config: dict[str, Any]) -> int:
+    dictionary_config = config.get("dictionary", {})
+    if not bool(dictionary_config.get("enabled", False)):
+        return 0
+    path = Path(dictionary_config.get("lexicon_path") or "")
+    if not path.exists() or not path.is_file():
+        return 0
+    try:
+        with path.open("r", encoding="utf-8") as handle:
+            return sum(1 for line in handle if line.strip())
+    except Exception:
+        return 0
 
 
 def _skip_feature_build_for_no_training(model_training_disabled_source: str) -> bool:

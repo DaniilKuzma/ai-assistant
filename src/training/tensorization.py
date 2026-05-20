@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import re
+import time
 from typing import Any
 
 from src.alignment.punctuation_label_builder import (
@@ -113,12 +114,33 @@ def build_training_feature(
     max_candidates: int,
     punctuation_action_label_map: dict[str, int] | None = None,
     candidate_generator: CandidateGenerator | None = None,
+    profile: dict[str, Any] | None = None,
+    dictionary_policy: str = "all",
 ) -> TrainingFeature:
+    total_started = time.perf_counter()
+    tokenizer_started = time.perf_counter()
     encoded = _encode(tokenizer, source, max_length)
+    if profile is not None:
+        profile["tokenizer_encode_ms"] = _elapsed_ms(tokenizer_started)
     offsets = encoded["offset_mapping"]
-    candidates = (candidate_generator or CandidateGenerator()).generate(source)
+    candidate_profile: dict[str, Any] = {}
+    candidate_started = time.perf_counter()
+    candidates = (candidate_generator or CandidateGenerator()).generate(
+        source,
+        profile=candidate_profile if profile is not None else None,
+        dictionary_policy=dictionary_policy,
+    )
     candidates = rank_candidates_for_budget(candidates, max_candidates)
+    if profile is not None:
+        profile.update(candidate_profile)
+        profile["candidate_generation_ms"] = _elapsed_ms(candidate_started)
+        profile["candidate_count"] = len(candidates)
+        profile["rule_ids"] = "|".join(sorted({candidate.rule_id for candidate in candidates if candidate.rule_id}))
+    diff_started = time.perf_counter()
     alignment_edits = DiffAnalyzer().analyze(source, target, candidates=candidates)
+    if profile is not None:
+        profile["diff_alignment_ms"] = _elapsed_ms(diff_started)
+    label_started = time.perf_counter()
     spans = [_candidate_to_token_span(candidate, offsets) for candidate in candidates]
     labels = [_candidate_label(candidate, alignment_edits) for candidate in candidates]
     error_labels = [_candidate_error_label(candidate, label, error_type_label_map) for candidate, label in zip(candidates, labels, strict=False)]
@@ -128,10 +150,16 @@ def build_training_feature(
     modes = [candidate.mode for candidate in candidates]
     requires_model = [candidate.requires_model for candidate in candidates]
     requires_scoring = [candidate.requires_scoring for candidate in candidates]
+    if profile is not None:
+        profile["label_build_ms"] = _elapsed_ms(label_started)
+    replacement_started = time.perf_counter()
     replacement_encodings = [_encode_replacement(tokenizer, replacement) for replacement in replacements]
     replacement_ids = [encoding["input_ids"] for encoding in replacement_encodings]
     replacement_masks = [[bool(value) for value in encoding["attention_mask"]] for encoding in replacement_encodings]
+    if profile is not None:
+        profile["replacement_encoding_ms"] = _elapsed_ms(replacement_started)
 
+    label_started = time.perf_counter()
     pad_candidates = max_candidates - len(candidates)
     spans.extend([(0, 0)] * pad_candidates)
     labels.extend([0.0] * pad_candidates)
@@ -162,6 +190,9 @@ def build_training_feature(
         max_length,
         punctuation_gap_mask,
     )
+    if profile is not None:
+        profile["label_build_ms"] = profile.get("label_build_ms", 0.0) + _elapsed_ms(label_started)
+        profile["total_ms"] = _elapsed_ms(total_started)
 
     return TrainingFeature(
         source=source,
@@ -247,10 +278,24 @@ def build_features_from_rows(
     punctuation_action_label_map: dict[str, int] | None = None,
     candidate_generator: CandidateGenerator | None = None,
     show_progress: bool = False,
+    profiler: Any | None = None,
+    split: str = "train",
+    dictionary_policy_for_row: Any | None = None,
 ) -> list[TrainingFeature]:
     row_iterable = _with_progress(rows, enabled=show_progress, description="Building training features")
-    return [
-        build_training_feature(
+    features: list[TrainingFeature] = []
+    for row_index, row in enumerate(row_iterable):
+        profile_row: dict[str, Any] | None = None
+        if profiler is not None and profiler.should_profile(row_index):
+            source_text = str(row["source"])
+            profile_row = {
+                "row_index": row_index,
+                "split": str(row.get("split", split)),
+                "source_length_chars": len(source_text),
+                "source_length_tokens": len(tokenize_words(source_text)),
+            }
+        dictionary_policy = dictionary_policy_for_row(row) if dictionary_policy_for_row is not None else "all"
+        feature = build_training_feature(
             row["source"],
             row["target"],
             tokenizer=tokenizer,
@@ -260,9 +305,13 @@ def build_features_from_rows(
             max_length=max_length,
             max_candidates=max_candidates,
             candidate_generator=candidate_generator,
+            profile=profile_row,
+            dictionary_policy=dictionary_policy,
         )
-        for row in row_iterable
-    ]
+        features.append(feature)
+        if profile_row is not None:
+            profiler.record(profile_row)
+    return features
 
 
 def _with_progress(rows: list[dict[str, Any]], *, enabled: bool, description: str) -> Any:
@@ -309,6 +358,10 @@ def _to_list(value: Any) -> list[Any]:
     if hasattr(value, "tolist"):
         return value.tolist()
     return list(value)
+
+
+def _elapsed_ms(started_at: float) -> float:
+    return (time.perf_counter() - started_at) * 1000.0
 
 
 def _candidate_to_token_span(candidate: Candidate, offsets: list[tuple[int, int]]) -> tuple[int, int]:

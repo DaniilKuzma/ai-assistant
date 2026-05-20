@@ -106,6 +106,14 @@ def dictionary_candidate_specs(
     return results[:limit]
 
 
+def normalize_dictionary_token(word: str) -> str:
+    return _normalize(word)
+
+
+def is_dictionary_candidate_token(word: str) -> bool:
+    return _is_valid_source_literal(word)
+
+
 def _fuzzy_candidate_specs(
     word: str,
     choices: Sequence[str],

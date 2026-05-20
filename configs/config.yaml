@@ -21,6 +21,11 @@ dictionary:
   lexicon_path: data/processed/russian_lexicon.txt
   max_candidates: 2
   min_score: 85
+  max_choices_per_token: 5000
+  use_second_letter_index: true
+  token_cache:
+    enabled: true
+    max_size: 200000
   yo_e:
     enabled: false
     mode: model_required
@@ -28,13 +33,13 @@ dictionary:
     require_model_scoring: true
 
 training:
-  mode: full-train
+  mode: short-v2-train
   run_model_training: true
-  evaluation_split: test
+  evaluation_split: val
   checkpoint_metric: combined_score
-  max_train_examples: 250000
-  max_val_examples: 10000
-  max_test_examples: 10000
+  max_train_examples: 60000
+  max_val_examples: 5000
+  max_test_examples: 5000
   batch_size: 64
   gradient_accumulation_steps: 1
   epochs: 1
@@ -51,12 +56,28 @@ training:
   punctuation_action_weights: [0.25, 0.5, 2.0, 3.0, 3.0]
   confidence_loss_weight: 0.3
   error_type_loss_weight: 0.5
+  feature_build:
+    profile: true
+    profile_sample_size: 2000
+    enable_syntax: false
+    dictionary_for_clean_rows: false
+    dictionary_for_hard_negative_rows: false
+  feature_cache:
+    enabled: true
+    cache_dir: data/processed/short_dataset_v2/features_cache
+    include_dataset_hash: true
+    include_config_hash: true
+    compression: false
 
 data:
   synthetic_seed: 13
-  processed_train_path: data/processed/correction_dataset.csv.gz
-  manifest_path: reports/dataset_manifest.json
-  target_total_examples: 450000
+  processed_train_path: data/processed/short_dataset_v2/correction_dataset.csv.gz
+  manifest_path: reports/short_dataset_v2/dataset_manifest.json
+  target_total_examples: 60000
+  total_examples: 60000
+  train_examples: 50000
+  val_examples: 5000
+  test_examples: 5000
   clean_identity_ratio: 0.10
   punctuation_hard_negative_clean_ratio: 0.25
   val_ratio: 0.05
@@ -309,4 +330,4 @@ metrics:
 paths:
   adapter_output_dir: models/adapters/latest
   heads_output_dir: models/heads/latest
-  reports_dir: reports
+  reports_dir: reports/short_dataset_v2

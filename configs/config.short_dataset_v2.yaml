@@ -21,6 +21,11 @@ dictionary:
   lexicon_path: data/processed/russian_lexicon.txt
   max_candidates: 2
   min_score: 85
+  max_choices_per_token: 5000
+  use_second_letter_index: true
+  token_cache:
+    enabled: true
+    max_size: 200000
   yo_e:
     enabled: false
     mode: model_required
@@ -36,6 +41,18 @@ training:
   max_val_examples: 5000
   max_test_examples: 5000
   epochs: 0
+  feature_build:
+    profile: true
+    profile_sample_size: 2000
+    enable_syntax: false
+    dictionary_for_clean_rows: false
+    dictionary_for_hard_negative_rows: false
+  feature_cache:
+    enabled: true
+    cache_dir: data/processed/short_dataset_v2/features_cache
+    include_dataset_hash: true
+    include_config_hash: true
+    compression: false
 
 data:
   config_path: configs/config.short_dataset_v2.yaml

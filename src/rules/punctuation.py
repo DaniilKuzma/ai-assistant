@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import difflib
 import re
+from typing import Callable, Sequence
 
 from src.preprocessing.protected_spans import find_protected_spans
 from src.preprocessing.tokenizer import Token, tokenize_words
@@ -184,6 +185,8 @@ def apply_punctuation_rules(
 def generate_punctuation_candidates(
     text: str,
     allowed_modes: set[RuleMode] | None = None,
+    syntax_tokens: Sequence[object] | None = None,
+    syntax_provider: Callable[[str], Sequence[object]] | None = None,
 ) -> list[PunctuationGapCandidate]:
     words = tokenize_words(text)
     if not words:
@@ -201,7 +204,7 @@ def generate_punctuation_candidates(
         _append_punctuation_candidate(candidates, seen, candidate)
     for candidate in _introductory_comma_candidates(text, words, protected):
         _append_punctuation_candidate(candidates, seen, candidate)
-    for candidate in _address_comma_candidates(text, words, protected):
+    for candidate in _address_comma_candidates(text, words, protected, syntax_tokens, syntax_provider):
         _append_punctuation_candidate(candidates, seen, candidate)
     for candidate in _homogeneous_comma_candidates(text, words, protected):
         _append_punctuation_candidate(candidates, seen, candidate)
@@ -413,6 +416,8 @@ def _address_comma_candidates(
     text: str,
     words: list[Token],
     protected: tuple[tuple[int, int], ...],
+    syntax_tokens: Sequence[object] | None = None,
+    syntax_provider: Callable[[str], Sequence[object]] | None = None,
 ) -> list[PunctuationGapCandidate]:
     if len(words) < 2:
         return []
@@ -421,9 +426,9 @@ def _address_comma_candidates(
     if _looks_like_lexical_address_opening(words):
         return _address_candidate_after_first_word(text, words, protected)
 
-    syntax_tokens = _parse_syntax_safely(text)
-    if len(syntax_tokens) >= 2:
-        first, second = syntax_tokens[0], syntax_tokens[1]
+    parsed_syntax_tokens = tuple(syntax_tokens) if syntax_tokens is not None else tuple(_parse_syntax_safely(text, syntax_provider))
+    if len(parsed_syntax_tokens) >= 2:
+        first, second = parsed_syntax_tokens[0], parsed_syntax_tokens[1]
         if (
             first.start == words[0].start
             and first.end == words[0].end
@@ -964,7 +969,12 @@ def _syntax_token_matches_word(syntax_token: object, word: Token) -> bool:
     return int(getattr(syntax_token, "start", -1)) == word.start and int(getattr(syntax_token, "end", -1)) == word.end
 
 
-def _parse_syntax_safely(text: str) -> list[object]:
+def _parse_syntax_safely(text: str, syntax_provider: Callable[[str], Sequence[object]] | None = None) -> list[object]:
+    if syntax_provider is not None:
+        try:
+            return list(syntax_provider(text))
+        except Exception:
+            return []
     try:
         from src.nlp.syntax import parse_syntax
     except Exception:

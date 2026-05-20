@@ -568,3 +568,34 @@ def test_candidate_generator_skips_dictionary_candidates_for_known_words_and_pro
 
     assert not any(candidate.rule_id == "dictionary_fuzzy" for candidate in candidates)
     assert not any(candidate.rule_id == "yo_e_candidate" for candidate in candidates)
+
+
+def test_candidate_generator_skips_known_word_before_dictionary_choices(monkeypatch):
+    generator = CandidateGenerator(dictionary_lexicon=["корова"], dictionary_min_score=85)
+
+    def fail_choices(_token, _lexicon):
+        raise AssertionError("known words should skip dictionary choices")
+
+    monkeypatch.setattr(generator, "_dictionary_choices_for_token", fail_choices)
+
+    candidates = generator.generate("корова")
+
+    assert not any(candidate.rule_id == "dictionary_fuzzy" for candidate in candidates)
+
+
+def test_candidate_generator_reports_dictionary_token_cache_stats():
+    generator = CandidateGenerator(
+        dictionary_lexicon=["библиотека"],
+        dictionary_min_score=85,
+        dictionary_token_cache_enabled=True,
+        dictionary_token_cache_max_size=10,
+    )
+
+    generator.generate("Библеотека открыта.")
+    first_stats = generator.dictionary_cache_stats()
+    generator.generate("Библеотека открыта.")
+    second_stats = generator.dictionary_cache_stats()
+
+    assert first_stats["misses"] > 0
+    assert second_stats["hits"] > first_stats["hits"]
+    assert 0.0 <= second_stats["hit_rate"] <= 1.0
