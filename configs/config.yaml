@@ -29,6 +29,15 @@ dictionary:
     mode: model_required
     require_lexicon_support: true
     require_model_scoring: true
+nlp:
+  syntax:
+    enabled: true
+    backend: natasha
+    cache_enabled: true
+    cache_max_size: 50000
+    cache_max_text_length: 20000
+    fail_open: true
+    debug_errors: false
 training:
   mode: train
   run_model_training: true

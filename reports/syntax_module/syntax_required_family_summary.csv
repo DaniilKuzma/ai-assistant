@@ -1,0 +1,26 @@
+syntax_family,total_entries,leaf_entries,current_candidate_backed,implement_now_count,bounded_pattern_count,blocked_count,expected_new_candidate_rule_ids,expected_training_eligible_gain,priority
+subordinate_clause_comma,4,4,0,0,4,0,"[""comma_subordinate""]",4,1
+coordinating_conjunction_comma,1,1,0,1,0,0,"[""comma_conjunction""]",1,2
+introductory_words,8,8,0,0,8,0,"[""introductory_comma""]",8,1
+address_comma,0,0,0,0,0,0,[],0,4
+homogeneous_members,6,6,0,0,6,0,"[""homogeneous_comma"", ""enumeration_colon""]",6,1
+detached_adverbial_phrases,8,8,0,0,8,0,"[""detached_adverbial_comma""]",8,1
+detached_participial_phrases,4,4,0,0,4,0,"[""detached_participial_comma""]",4,2
+detached_applications,1,1,0,0,1,0,"[""detached_application_comma""]",1,4
+clarification_members,3,3,0,0,3,0,"[""clarification_comma""]",3,2
+comparative_turnovers,7,7,0,0,5,2,"[""comparative_turnover_comma""]",5,3
+subject_predicate_dash,12,12,0,0,12,0,"[""subject_predicate_dash""]",12,1
+asyndetic_complex_sentence,1,1,0,0,0,1,[],0,4
+consequence_dash,0,0,0,0,0,0,[],0,4
+explanation_colon,0,0,0,0,0,0,[],0,4
+enumeration_colon_dash,1,1,0,0,1,0,"[""enumeration_colon""]",1,2
+semicolon,0,0,0,0,0,0,[],0,4
+direct_speech_syntax,4,4,0,0,4,0,"[""direct_speech_colon"", ""direct_speech_dash"", ""direct_speech_quotes""]",4,2
+quote_bracket_balance,0,0,0,0,0,0,[],0,4
+punctuation_combinations,18,18,0,0,7,11,"[""punctuation_delete_replace""]",7,3
+ne_with_parts_of_speech,15,15,0,0,7,8,"[""ne_adjective"", ""ne_adverb"", ""ne_participle"", ""ne_verb""]",7,3
+ni_stable_and_context,0,0,0,0,0,0,[],0,4
+n_nn_context,0,0,0,0,0,0,[],0,4
+tsya_tsya_context,0,0,0,0,0,0,[],0,4
+context_pairs,22,22,0,0,5,17,"[""context_chto_by"", ""context_nesmotrya"", ""context_tak_zhe"", ""context_to_zhe"", ""context_vsledstvie"", ""context_za_to""]",5,3
+grammatical_endings_context,7,7,0,0,0,7,[],0,4

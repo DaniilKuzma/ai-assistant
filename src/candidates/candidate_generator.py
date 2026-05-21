@@ -94,10 +94,7 @@ class CandidateGenerator:
         dictionary_config = config.get("dictionary", {})
         yo_e_config = dictionary_config.get("yo_e", {})
         token_cache_config = dictionary_config.get("token_cache", {}) or {}
-        feature_build_config = config.get("training", {}).get("feature_build", {}) or {}
-        syntax_provider = None
-        if purpose == "training_features" and not bool(feature_build_config.get("enable_syntax", False)):
-            syntax_provider = lambda _text: ()
+        syntax_provider = _syntax_provider_from_config(config, purpose)
         from src.config.dictionary import dictionary_provider_from_config
 
         return cls(
@@ -462,3 +459,21 @@ def _default_syntax_provider(text: str) -> Sequence[Any]:
     except Exception:
         return ()
     return parse_syntax(text)
+
+
+def _syntax_provider_from_config(config: dict[str, Any], purpose: str) -> Callable[[str], Sequence[Any]] | None:
+    feature_build_config = config.get("training", {}).get("feature_build", {}) or {}
+    if purpose == "training_features" and not bool(feature_build_config.get("enable_syntax", False)):
+        return lambda _text: ()
+
+    syntax_config = (config.get("nlp", {}) or {}).get("syntax", {}) or {}
+    if not bool(syntax_config.get("enabled", True)):
+        return lambda _text: ()
+
+    try:
+        from src.nlp.syntax_analyzer import SyntaxAnalyzer
+    except Exception:
+        return None
+
+    analyzer = SyntaxAnalyzer(config)
+    return lambda text: analyzer.analyze(text).tokens

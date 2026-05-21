@@ -4,7 +4,7 @@ import builtins
 
 import pytest
 
-from src.nlp.syntax import parse_syntax, syntax_pipeline
+from src.nlp.syntax import analyze_syntax, parse_syntax, syntax_pipeline
 
 
 SAMPLE_TEXT = "Проект готов, потому что команда закончила работу."
@@ -75,3 +75,15 @@ def test_parse_syntax_caches_unavailable_pipeline_when_pkg_resources_is_missing(
         assert second.currsize == 1
     finally:
         syntax_pipeline.cache_clear()
+
+
+def test_parse_syntax_uses_canonical_analyzer_tokens():
+    syntax_pipeline.cache_clear()
+    analysis = analyze_syntax(SAMPLE_TEXT)
+    tokens = parse_syntax(SAMPLE_TEXT)
+
+    if analysis.backend == "natasha":
+        assert tokens == analysis.tokens
+        assert all(token.dep_rel == token.rel for token in tokens)
+        assert all(token.ner_type == token.ner for token in tokens)
+        assert all(isinstance(token.is_punctuation, bool) for token in tokens)
