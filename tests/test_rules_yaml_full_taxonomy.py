@@ -6,6 +6,7 @@ from pathlib import Path
 import yaml
 
 from src.rules.registry import rule_by_id
+from src.rules.syntax_synthetic import SUPPORTED_SYNTAX_RULE_IDS
 
 
 RULES_PATH = Path("configs/rules.yaml")
@@ -240,6 +241,34 @@ def test_training_eligible_entries_have_candidate_path_and_valid_decision():
         assert any(_candidate_path_exists(rule_id) for rule_id in rule_ids), f"{section}.{key} lacks candidate path"
         assert dataset["training_eligibility_decision"] in TRAINING_INCLUDE_DECISIONS
         assert entry["entry_type"] != "group"
+
+
+def test_syntax_backed_training_eligible_entries_have_full_audit_support():
+    config = _load_rules()
+    supported = set(SUPPORTED_SYNTAX_RULE_IDS)
+
+    for section, key, entry in _entries(config):
+        implementation = entry["implementation"]
+        dataset = entry["dataset"]
+        rule_ids = set(implementation["rule_ids"])
+        is_syntax_backed = "syntax" in implementation["requires"] or bool(rule_ids & supported)
+        if not is_syntax_backed or not dataset["training_eligible_now"]:
+            continue
+
+        assert dataset["current_candidate_path"] is True, f"{section}.{key} lacks syntax candidate path"
+        assert dataset["current_synthetic_support"] is True, f"{section}.{key} lacks syntax eval support"
+        assert dataset["current_hard_negative_support"] is True, f"{section}.{key} lacks hard-negative support"
+        assert dataset["current_candidate_recall"] is not None, f"{section}.{key} lacks candidate recall"
+        assert float(dataset["current_candidate_recall"]) >= 0.85, f"{section}.{key} recall below syntax gate"
+
+
+def test_ner_required_entries_are_not_counted_in_syntax_module_coverage():
+    summary_path = Path("reports/syntax_module/final_syntax_capability_summary.md")
+    assert summary_path.exists()
+
+    summary = summary_path.read_text(encoding="utf-8")
+    assert "syntax_plus_NER_blocked_count:" in summary
+    assert "NER-required entries excluded from syntax coverage denominator" in summary
 
 
 def test_model_required_and_candidate_only_rules_can_be_training_eligible():

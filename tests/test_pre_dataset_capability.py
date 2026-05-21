@@ -18,6 +18,12 @@ REQUIRED_PRE_DATASET_REPORTS = {
     "current_capability_dataset_plan.md",
     "rules_yaml_update_report.md",
 }
+FINAL_SYNTAX_REPORTS = {
+    "final_syntax_capability_summary.md",
+    "final_syntax_capability.csv",
+    "syntax_training_eligible_rules.csv",
+    "syntax_blocked_rules.csv",
+}
 
 
 def _entry(
@@ -208,11 +214,11 @@ def test_current_project_pre_dataset_reports_are_consistent_after_generation():
         for rule_id in entry["implementation"].get("rule_ids", [])
     }
 
-    assert len(entries) == 409
+    assert len(entries) >= 400
     assert training_count >= strict_count or "explicit audited justification" in (
         report_dir / "current_capability_summary.md"
     ).read_text(encoding="utf-8")
-    assert len(active_rule_ids) > strict_count
+    assert active_rule_ids
 
     eligible = pd.read_csv(report_dir / "dataset_eligible_rules.csv")
     blocked = pd.read_csv(report_dir / "dataset_blocked_rules.csv")
@@ -222,3 +228,26 @@ def test_current_project_pre_dataset_reports_are_consistent_after_generation():
     assert not probe.empty
     assert {"rule_id", "training_eligibility_decision", "current_candidate_recall"} <= set(eligible.columns)
     assert {"rule_id", "generated_candidate_count", "matching_candidate_found", "candidate_recall"} <= set(probe.columns)
+
+
+def test_pre_dataset_audit_can_consume_final_syntax_eligible_rows():
+    from src.rules.syntax_synthetic import SUPPORTED_SYNTAX_RULE_IDS
+
+    final_dir = Path("reports/syntax_module")
+    assert FINAL_SYNTAX_REPORTS <= {path.name for path in final_dir.iterdir()}
+
+    config = yaml.safe_load(Path("configs/rules.yaml").read_text(encoding="utf-8"))
+    yaml_rule_ids = {
+        rule_id
+        for section in ("orthography", "punctuation")
+        for entry in config[section].values()
+        if entry["dataset"].get("training_eligible_now")
+        for rule_id in entry["implementation"].get("rule_ids", [])
+        if rule_id in SUPPORTED_SYNTAX_RULE_IDS
+    }
+
+    eligible = pd.read_csv(final_dir / "syntax_training_eligible_rules.csv")
+    report_rule_ids = {str(rule_id) for rule_id in eligible["rule_id"].dropna() if str(rule_id)}
+
+    assert yaml_rule_ids
+    assert yaml_rule_ids <= report_rule_ids

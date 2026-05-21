@@ -2799,7 +2799,7 @@ orthography:
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
-      training_eligibility_reason: grammatical_endings_context requires dictionary-backed lexical and morphology support
+      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -2841,7 +2841,7 @@ orthography:
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
-      training_eligibility_reason: requires dictionary-backed candidate path
+      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -2883,7 +2883,7 @@ orthography:
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
-      training_eligibility_reason: grammatical_endings_context requires dictionary-backed lexical and morphology support
+      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -2925,7 +2925,7 @@ orthography:
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
-      training_eligibility_reason: grammatical_endings_context requires dictionary-backed lexical and morphology support
+      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -2967,7 +2967,7 @@ orthography:
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
-      training_eligibility_reason: requires dictionary-backed candidate path
+      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -3009,7 +3009,7 @@ orthography:
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
-      training_eligibility_reason: requires dictionary-backed candidate path
+      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -6047,7 +6047,7 @@ orthography:
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
-      training_eligibility_reason: requires dictionary-backed candidate path
+      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -6408,7 +6408,7 @@ orthography:
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
-      training_eligibility_reason: requires dictionary-backed candidate path
+      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -6450,7 +6450,7 @@ orthography:
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
-      training_eligibility_reason: requires dictionary-backed candidate path
+      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -6492,7 +6492,7 @@ orthography:
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
-      training_eligibility_reason: requires dictionary-backed candidate path
+      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -6527,13 +6527,13 @@ orthography:
       notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_dictionary
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
+      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -6568,13 +6568,13 @@ orthography:
       notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_dictionary
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
+      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -6609,13 +6609,13 @@ orthography:
       notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_dictionary
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
+      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -6650,13 +6650,13 @@ orthography:
       notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_dictionary
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
+      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -6729,13 +6729,13 @@ orthography:
       notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_dictionary
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
+      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -6770,13 +6770,13 @@ orthography:
       notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_dictionary
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
+      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -6811,13 +6811,13 @@ orthography:
       notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_dictionary
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
+      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -6852,13 +6852,13 @@ orthography:
       notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_dictionary
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
+      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -6893,13 +6893,13 @@ orthography:
       notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_dictionary
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
+      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -6972,13 +6972,13 @@ orthography:
       notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_dictionary
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
+      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -7307,13 +7307,13 @@ orthography:
       notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_dictionary
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
+      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -7386,13 +7386,13 @@ orthography:
       notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_dictionary
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
+      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -7427,13 +7427,13 @@ orthography:
       notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_dictionary
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
+      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -7751,13 +7751,13 @@ orthography:
       notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_dictionary
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
+      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -7877,13 +7877,13 @@ orthography:
       notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_semantic_model
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_reason: semantic disambiguation is required before safe syntax candidate generation
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -7919,13 +7919,13 @@ orthography:
       notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_semantic_model
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_reason: semantic disambiguation is required before safe syntax candidate generation
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -8178,13 +8178,13 @@ orthography:
       notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_dictionary
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
+      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -8219,13 +8219,13 @@ orthography:
       notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_dictionary
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
+      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -8260,13 +8260,13 @@ orthography:
       notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_semantic_model
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_reason: semantic disambiguation is required before safe syntax candidate generation
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -8301,13 +8301,13 @@ orthography:
       notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_semantic_model
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_reason: semantic disambiguation is required before safe syntax candidate generation
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -8342,13 +8342,13 @@ orthography:
       notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_dictionary
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
+      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -9028,10 +9028,10 @@ orthography:
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_NER
-      training_eligibility_reason: requires NER/protected-span candidate path
+      training_eligibility_reason: NER/gazetteer support is required and excluded from syntax-module coverage
       current_candidate_path: false
       current_synthetic_support: false
-      current_hard_negative_support: true
+      current_hard_negative_support: false
       current_validator_support: false
       current_candidate_recall: null
       current_gap_coverage: 0.0
@@ -9374,7 +9374,7 @@ orthography:
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_NER
-      training_eligibility_reason: requires NER/protected-span candidate path
+      training_eligibility_reason: NER/gazetteer support is required and excluded from syntax-module coverage
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -9415,7 +9415,7 @@ orthography:
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_NER
-      training_eligibility_reason: requires NER/protected-span candidate path
+      training_eligibility_reason: NER/gazetteer support is required and excluded from syntax-module coverage
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -9456,7 +9456,7 @@ orthography:
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_NER
-      training_eligibility_reason: requires NER/protected-span candidate path
+      training_eligibility_reason: NER/gazetteer support is required and excluded from syntax-module coverage
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -9497,7 +9497,7 @@ orthography:
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_NER
-      training_eligibility_reason: requires NER/protected-span candidate path
+      training_eligibility_reason: NER/gazetteer support is required and excluded from syntax-module coverage
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -9538,7 +9538,7 @@ orthography:
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_NER
-      training_eligibility_reason: requires NER/protected-span candidate path
+      training_eligibility_reason: NER/gazetteer support is required and excluded from syntax-module coverage
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -10145,7 +10145,7 @@ orthography:
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_NER
-      training_eligibility_reason: requires NER/protected-span candidate path
+      training_eligibility_reason: NER/gazetteer support is required and excluded from syntax-module coverage
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -10186,7 +10186,7 @@ orthography:
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_NER
-      training_eligibility_reason: requires NER/protected-span candidate path
+      training_eligibility_reason: NER/gazetteer support is required and excluded from syntax-module coverage
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -10266,7 +10266,7 @@ orthography:
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_NER
-      training_eligibility_reason: requires NER/protected-span candidate path
+      training_eligibility_reason: NER/gazetteer support is required and excluded from syntax-module coverage
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -10306,7 +10306,7 @@ orthography:
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_NER
-      training_eligibility_reason: requires NER/protected-span candidate path
+      training_eligibility_reason: NER/gazetteer support is required and excluded from syntax-module coverage
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -10346,7 +10346,7 @@ orthography:
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_NER
-      training_eligibility_reason: requires NER/protected-span candidate path
+      training_eligibility_reason: NER/gazetteer support is required and excluded from syntax-module coverage
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -10417,13 +10417,13 @@ orthography:
       notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: unsafe
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_reason: hard-negative or policy risk blocks training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -11315,7 +11315,7 @@ orthography:
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_NER
-      training_eligibility_reason: requires NER/protected-span candidate path
+      training_eligibility_reason: NER/gazetteer support is required and excluded from syntax-module coverage
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -13751,13 +13751,13 @@ punctuation:
       notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_dictionary
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: stable punctuation combination requires semantic support before candidate generation
+      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
+      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -13791,13 +13791,13 @@ punctuation:
       notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_dictionary
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: stable punctuation combination requires semantic support before candidate generation
+      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
+      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -13831,13 +13831,13 @@ punctuation:
       notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_dictionary
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
+      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -13871,13 +13871,13 @@ punctuation:
       notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_dictionary
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: stable punctuation combination requires semantic support before candidate generation
+      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
+      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -13911,13 +13911,13 @@ punctuation:
       notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_dictionary
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: stable punctuation combination requires semantic support before candidate generation
+      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
+      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -13951,13 +13951,13 @@ punctuation:
       notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_dictionary
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: bare comparative как patterns remain blocked by unsafe role/identity ambiguity
+      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
+      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -13991,13 +13991,13 @@ punctuation:
       notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_dictionary
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
+      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -14031,13 +14031,13 @@ punctuation:
       notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_dictionary
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
+      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -14071,13 +14071,13 @@ punctuation:
       notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_dictionary
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
+      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -14111,13 +14111,13 @@ punctuation:
       notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_dictionary
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: stable punctuation combination requires semantic support before candidate generation
+      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
+      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -14355,13 +14355,13 @@ punctuation:
       notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_semantic_model
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: bare comparative как patterns remain blocked by unsafe role/identity ambiguity
+      training_eligibility_reason: semantic disambiguation is required before safe syntax candidate generation
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -14395,13 +14395,13 @@ punctuation:
       notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_semantic_model
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: bare comparative как patterns remain blocked by unsafe role/identity ambiguity
+      training_eligibility_reason: semantic disambiguation is required before safe syntax candidate generation
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -16106,13 +16106,13 @@ punctuation:
       notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: no_candidate_path
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_METADATA_ONLY
-      training_eligibility_reason: footnote formatting is layout metadata outside the correction candidate path
+      training_eligibility_reason: no bounded syntax candidate path is available
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
