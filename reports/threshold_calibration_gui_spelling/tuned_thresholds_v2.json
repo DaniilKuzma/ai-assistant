@@ -1,0 +1,16 @@
+{
+  "capitalization_sentence_start_threshold": 0.98,
+  "dictionary_fuzzy_threshold": 0.95,
+  "double_consonant_candidate_threshold": 0.45,
+  "extra_letter_candidate_threshold": 0.95,
+  "frequent_error_exact_threshold": 0.18,
+  "hyphen_koe_koy_threshold": 0.45,
+  "hyphen_particles_threshold": 0.5,
+  "hyphen_po_adverbs_threshold": 0.4,
+  "hyphen_threshold": 0.82,
+  "keyboard_typo_candidate_threshold": 0.95,
+  "missing_letter_candidate_threshold": 0.95,
+  "n_nn_deverbal_adjective_threshold": 0.62,
+  "split_join_threshold": 0.95,
+  "swapped_letters_candidate_threshold": 0.84
+}

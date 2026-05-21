@@ -33,15 +33,15 @@ dictionary:
     require_model_scoring: true
 
 training:
-  mode: short-v2-train
+  mode: short-v3-train
   run_model_training: true
   evaluation_split: val
   checkpoint_metric: combined_score
-  max_train_examples: 50000
-  max_val_examples: 5000
-  max_test_examples: 5000
-  batch_size: 4
-  gradient_accumulation_steps: 4
+  max_train_examples: 80000
+  max_val_examples: 10000
+  max_test_examples: 10000
+  batch_size: 128
+  gradient_accumulation_steps: 1
   epochs: 1
   learning_rate: 0.00005
   mixed_precision: true
@@ -64,7 +64,7 @@ training:
     dictionary_for_hard_negative_rows: false
   feature_cache:
     enabled: true
-    cache_dir: data/processed/short_dataset_v2/features_cache
+    cache_dir: data/processed/short_dataset_v3/features_cache
     include_dataset_hash: true
     include_config_hash: true
     compression: false
@@ -82,13 +82,13 @@ evaluation:
 
 data:
   synthetic_seed: 13
-  processed_train_path: data/processed/short_dataset_v2/correction_dataset.csv.gz
-  manifest_path: reports/short_dataset_v2/dataset_manifest.json
-  target_total_examples: 60000
-  total_examples: 60000
-  train_examples: 50000
-  val_examples: 5000
-  test_examples: 5000
+  processed_train_path: data/processed/short_dataset_v3/correction_dataset.csv.gz
+  manifest_path: reports/short_dataset_v3/dataset_manifest.json
+  target_total_examples: 100000
+  total_examples: 100000
+  train_examples: 80000
+  val_examples: 10000
+  test_examples: 10000
   clean_identity_ratio: 0.10
   punctuation_hard_negative_clean_ratio: 0.25
   val_ratio: 0.05
@@ -387,4 +387,4 @@ metrics:
 paths:
   adapter_output_dir: models/adapters/latest
   heads_output_dir: models/heads/latest
-  reports_dir: reports/short_dataset_v2
+  reports_dir: reports/short_dataset_v3

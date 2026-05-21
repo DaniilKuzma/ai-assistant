@@ -1,7 +1,7 @@
 import pytest
 
 from src.candidates.candidate_generator import CandidateGenerator
-from src.data.synthetic_generator import SyntheticGenerator
+from src.data.synthetic_generator import SyntheticGenerator, TargetedBackfillGenerator
 from src.rules.registry import rule_by_id
 from src.rules.synthetic import synthetic_transformations
 
@@ -168,6 +168,29 @@ def test_dictionary_fuzzy_synthetic_corruption_can_be_repaired_by_dictionary_can
 
     assert "Библеотека" in dirty
     assert any(candidate.replacement == "Библиотека" and candidate.rule_id == "dictionary_fuzzy" for candidate in candidates)
+
+
+def test_targeted_backfill_has_enough_unique_v3_underfilled_rule_examples():
+    generator = TargetedBackfillGenerator(CandidateGenerator(), seed=23)
+
+    expected_minimums = {
+        "context_tak_zhe": 300,
+        "context_to_zhe": 300,
+        "context_vsledstvie": 300,
+        "context_za_to": 300,
+        "context_nesmotrya": 300,
+        "ni_stable_expression": 300,
+        "explanation_colon": 300,
+        "direct_speech_dash": 500,
+        "n_nn_deverbal_adjective": 300,
+    }
+
+    counts = {
+        rule_id: len(generator.generate_for_rule(rule_id, minimum, seen_pairs=set()).examples)
+        for rule_id, minimum in expected_minimums.items()
+    }
+
+    assert counts == expected_minimums
 
 
 @pytest.mark.parametrize(

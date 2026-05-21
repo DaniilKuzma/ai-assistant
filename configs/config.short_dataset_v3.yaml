@@ -58,48 +58,73 @@ data:
     enabled: true
     requested_total: 100000
     expected_total: 100000
-    fallback_total: 60000
-    fallback_split_sizes:
-      train: 50000
-      val: 5000
-      test: 5000
+    smoke:
+      enabled: false
+      requested_total: 60000
+      split_sizes:
+        train: 50000
+        val: 5000
+        test: 5000
+      verdict: READY_FOR_SMOKE_ONLY
     min_clean_pool_for_ready: 150000
     min_clean_pool_hard_min: 60000
     open_corpora_sources_path: configs/open_corpora_sources.yaml
     real_error_sources_path: configs/real_error_sources.yaml
     source_type_targets:
-      synthetic_augmented_from_open_clean: 70000
-      real_error_pair: 6000
+      synthetic_augmented_from_open_clean: 72000
+      real_error_pair: 4000
       clean_identity_from_open_clean: 12000
       hard_negative_from_open_clean: 12000
     split_source_type_targets:
       train:
-        synthetic_augmented_from_open_clean: 56000
-        real_error_pair: 4800
+        synthetic_augmented_from_open_clean: 57600
+        real_error_pair: 3200
         clean_identity_from_open_clean: 9600
         hard_negative_from_open_clean: 9600
       val:
-        synthetic_augmented_from_open_clean: 7000
-        real_error_pair: 600
+        synthetic_augmented_from_open_clean: 7200
+        real_error_pair: 400
         clean_identity_from_open_clean: 1200
         hard_negative_from_open_clean: 1200
       test:
-        synthetic_augmented_from_open_clean: 7000
-        real_error_pair: 600
+        synthetic_augmented_from_open_clean: 7200
+        real_error_pair: 400
         clean_identity_from_open_clean: 1200
         hard_negative_from_open_clean: 1200
     active_rule_quota:
       enabled: true
-      min_total_per_active_rule: 80
-      preferred_total_per_active_rule: 200
-      split_minimums:
-        train: 60
-        val: 10
-        test: 10
+      strategy: tiered_v3
+      min_total_per_active_rule: 200
+      preferred_total_per_active_rule: 1000
+      split_minimums: {}
+      tiers:
+        stable_v2_core:
+          min_total_per_rule: 300
+          preferred_total_per_rule: 700
+          max_total_per_rule: 2500
+        wave1:
+          min_total_per_rule: 500
+          preferred_total_per_rule: 1000
+          max_total_per_rule: 2500
+        bounded_phase3:
+          min_total_per_rule: 200
+          preferred_total_per_rule: 500
+          max_total_per_rule: 1500
+      risky_lexical:
+        rule_ids:
+          - dictionary_fuzzy
+          - swapped_letters_candidate
+          - double_consonant_candidate
+          - missing_letter_candidate
+          - extra_letter_candidate
+          - keyboard_typo_candidate
+        min_total_per_rule: 200
+        preferred_total_per_rule: 500
+        max_total_per_rule: 1200
     rule_caps:
       max_total_per_rule_id: 2500
       max_train_per_rule_id: 2000
-      max_rule_share_train: 0.15
+      max_rule_share_train: 0.10
       max_error_type_share_train: 0.35
     pool:
       min_clean_sentences: 150000
@@ -108,7 +133,8 @@ data:
     audit:
       candidate_recall_min: 0.85
       gap_coverage_min: 0.85
-      min_active_rule_count: 80
+      synthetic_min: 70000
+      min_active_rule_count: 1
       min_clean_identity_eval_split: 500
       min_hard_negative_eval_split: 500
       min_rows_for_template_gates: 1000

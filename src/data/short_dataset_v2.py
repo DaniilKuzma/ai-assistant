@@ -246,6 +246,7 @@ def build_short_dataset_v2_from_config(config: dict[str, Any], force: bool = Fal
         error_cap_counts=error_cap_counts,
         max_rule_total=int(cap_config["generation_rule_cap"]),
         max_error_total=int(cap_config["generation_error_type_cap"]),
+        rule_max_totals=cap_config.get("rule_max_totals", {}),
     )
     rows.extend(synthetic_rows)
     synthetic_remaining = max(0, synthetic_target - len([row for row in rows if row["source_type"] == SYNTHETIC_OPEN_CLEAN]))
@@ -540,6 +541,15 @@ def _rule_cap_config(v2_config: dict[str, Any], split_sizes: dict[str, int]) -> 
     max_total = int(raw.get("max_total_per_rule_id", 2500))
     max_train = int(raw.get("max_train_per_rule_id", 2000))
     max_error_share = float(raw.get("max_error_type_share_train", 0.35))
+    rule_max_totals = {
+        str(rule_id): int(value)
+        for rule_id, value in dict(raw.get("rule_max_totals", {}) or {}).items()
+        if int(value) > 0
+    }
+    quota_by_rule = dict((v2_config.get("active_rule_quota", {}) or {}).get("rule_quotas", {}) or {})
+    for rule_id, quota in quota_by_rule.items():
+        if isinstance(quota, dict) and int(quota.get("max_total", 0) or 0) > 0:
+            rule_max_totals[str(rule_id)] = int(quota["max_total"])
     return {
         "max_total_per_rule_id": max_total,
         "max_train_per_rule_id": max_train,
@@ -547,6 +557,7 @@ def _rule_cap_config(v2_config: dict[str, Any], split_sizes: dict[str, int]) -> 
         "max_error_type_share_train": max_error_share,
         "generation_rule_cap": min(max_total, max_train),
         "generation_error_type_cap": max(1, int(split_sizes.get("train", 0) * max_error_share)),
+        "rule_max_totals": rule_max_totals,
     }
 
 
@@ -806,11 +817,17 @@ def _build_active_rule_quota_rows(
     rule_cap_counts = Counter(current_counts)
     error_cap_counts = Counter(_error_counts_from_rows(existing_rows))
     budget_left = max(0, int(synthetic_budget))
+    quota_by_rule = dict(quota_config.get("rule_quotas", {}) or {})
 
     for rule_id in active_rule_ids:
         current = int(current_counts.get(rule_id, 0))
-        rule_preferred = _preferred_total_for_rule(rule_id, min_total=min_total, preferred=preferred)
-        needed = max(0, rule_preferred - current)
+        rule_min, rule_preferred, rule_max = _quota_values_for_rule(
+            rule_id,
+            min_total=min_total,
+            preferred=preferred,
+            quota_by_rule=quota_by_rule,
+        )
+        needed = max(0, min(rule_preferred, rule_max) - current)
         generated_count = 0
         action = "ok"
         reason = ""
@@ -826,8 +843,9 @@ def _build_active_rule_quota_rows(
                     row,
                     rule_cap_counts,
                     error_cap_counts,
-                    max_rule_total=int(cap_config["generation_rule_cap"]),
+                    max_rule_total=min(int(cap_config["generation_rule_cap"]), rule_max),
                     max_error_total=int(cap_config["generation_error_type_cap"]),
+                    rule_max_totals=cap_config.get("rule_max_totals", {}),
                 ):
                     continue
                 _increment_row_caps(row, rule_cap_counts, error_cap_counts)
@@ -838,7 +856,7 @@ def _build_active_rule_quota_rows(
             reason = result.excluded_reason
             current_counts.update(_rule_counts_from_rows(analyzer_rows[-generated_count:]))
         final_count = int(current_counts.get(rule_id, 0))
-        if final_count < min_total or (needed > 0 and generated_count == 0 and reason):
+        if final_count < rule_min or (needed > 0 and generated_count == 0 and reason):
             excluded_rows.append(
                 {
                     "rule_id": rule_id,
@@ -855,7 +873,7 @@ def _build_active_rule_quota_rows(
             {
                 "rule_id": rule_id,
                 "status": "active" if rule_id in active_result else "excluded",
-                "target_min_total": min_total,
+                "target_min_total": rule_min,
                 "preferred_total": rule_preferred,
                 "final_total": final_count,
                 "train_count": 0,
@@ -876,6 +894,22 @@ def _build_active_rule_quota_rows(
         "rule_caps_applied": [],
         "error_type_caps_applied": [],
     }
+
+
+def _quota_values_for_rule(
+    rule_id: str,
+    *,
+    min_total: int,
+    preferred: int,
+    quota_by_rule: dict[str, Any],
+) -> tuple[int, int, int]:
+    raw = quota_by_rule.get(rule_id, {}) if isinstance(quota_by_rule, dict) else {}
+    if isinstance(raw, dict) and raw:
+        rule_min = int(raw.get("min_total", raw.get("quota_min", min_total)) or min_total)
+        rule_preferred = int(raw.get("preferred_total", raw.get("quota_preferred", preferred)) or preferred)
+        rule_max = int(raw.get("max_total", raw.get("quota_max", max(rule_preferred, rule_min))) or max(rule_preferred, rule_min))
+        return rule_min, max(rule_min, rule_preferred), max(rule_min, rule_max)
+    return min_total, _preferred_total_for_rule(rule_id, min_total=min_total, preferred=preferred), max(preferred, min_total)
 
 
 def _preferred_total_for_rule(rule_id: str, *, min_total: int, preferred: int) -> int:
@@ -924,10 +958,13 @@ def _fill_remaining_with_targeted_rows(
     attempts = 0
     duplicate_cap = int(cap_config.get("targeted_duplicate_cap", 20))
     ordered_rules = sorted(example_pools, key=lambda item: rule_cap_counts.get(item, 0))
+    rule_attempts = Counter()
     while len(rows) < target_count and attempts < max(target_count * 8, 1000):
-        rule_id = min(ordered_rules, key=lambda item: rule_cap_counts.get(item, 0))
+        ordered_rules = sorted(ordered_rules, key=lambda item: rule_cap_counts.get(item, 0))
+        rule_id = _targeted_fill_rule_for_attempt(ordered_rules, rule_cap_counts, attempt_index=attempts)
         pool = example_pools[rule_id]
-        example = pool[attempts % len(pool)]
+        example = pool[rule_attempts[rule_id] % len(pool)]
+        rule_attempts[rule_id] += 1
         row = _row_from_targeted_example(example, clean_cycle[(len(rows) + len(existing_rows)) % len(clean_cycle)])
         pair_key = (row["source"], row["target"])
         normalized_hash = normalized_pair_hash(row["source"], row["target"])
@@ -940,6 +977,7 @@ def _fill_remaining_with_targeted_rows(
             error_cap_counts,
             max_rule_total=int(cap_config["generation_rule_cap"]),
             max_error_total=int(cap_config["generation_error_type_cap"]),
+            rule_max_totals=cap_config.get("rule_max_totals", {}),
         ):
             attempts += 1
             continue
@@ -949,6 +987,12 @@ def _fill_remaining_with_targeted_rows(
         rows.append(row)
         attempts += 1
     return rows, {"rejected_templates": rejected}
+
+
+def _targeted_fill_rule_for_attempt(ordered_rules: list[str], rule_counts: dict[str, int] | Counter[str], *, attempt_index: int) -> str:
+    if not ordered_rules:
+        return ""
+    return ordered_rules[int(attempt_index) % len(ordered_rules)]
 
 
 def _row_from_targeted_example(example: TargetedBackfillExample, clean: dict[str, Any]) -> dict[str, Any]:
@@ -1013,6 +1057,7 @@ def _synthetic_rows_from_clean_pool(
     error_cap_counts: Counter[str] | None = None,
     max_rule_total: int | None = None,
     max_error_total: int | None = None,
+    rule_max_totals: dict[str, int] | None = None,
 ) -> list[dict[str, Any]]:
     randomizer = random.Random(seed)
     pool = list(clean_rows)
@@ -1038,7 +1083,14 @@ def _synthetic_rows_from_clean_pool(
             row = _row_from_synthetic_example(example, clean, analyzer)
             if row is None:
                 continue
-            if _row_exceeds_caps(row, rule_cap_counts, error_cap_counts, max_rule_total=max_rule_total, max_error_total=max_error_total):
+            if _row_exceeds_caps(
+                row,
+                rule_cap_counts,
+                error_cap_counts,
+                max_rule_total=max_rule_total,
+                max_error_total=max_error_total,
+                rule_max_totals=rule_max_totals,
+            ):
                 continue
             pair_key = (row["source"], row["target"])
             if pair_key in seen_pairs:
@@ -1065,7 +1117,14 @@ def _synthetic_rows_from_clean_pool(
                 row = _row_from_synthetic_example(example, clean, analyzer)
                 if row is None:
                     continue
-                if _row_exceeds_caps(row, rule_cap_counts, error_cap_counts, max_rule_total=max_rule_total, max_error_total=max_error_total):
+                if _row_exceeds_caps(
+                    row,
+                    rule_cap_counts,
+                    error_cap_counts,
+                    max_rule_total=max_rule_total,
+                    max_error_total=max_error_total,
+                    rule_max_totals=rule_max_totals,
+                ):
                     continue
                 pair_key = (row["source"], row["target"])
                 if pair_key in seen_pairs:
@@ -1685,12 +1744,15 @@ def _row_exceeds_caps(
     *,
     max_rule_total: int | None,
     max_error_total: int | None,
+    rule_max_totals: dict[str, int] | None = None,
 ) -> bool:
+    rule_max_totals = rule_max_totals or {}
     if max_rule_total:
         for rule_id in _json_list(row.get("rule_ids")):
             if str(rule_id) in {"clean_identity", "clean_identity_hard_negative", "unknown", "unknown_real_validated"}:
                 continue
-            if rule_counts.get(str(rule_id), 0) >= max_rule_total:
+            limit = int(rule_max_totals.get(str(rule_id), max_rule_total))
+            if rule_counts.get(str(rule_id), 0) >= limit:
                 return True
     if max_error_total:
         error_type = str(row.get("error_type") or "")
@@ -1715,6 +1777,12 @@ def _rule_counts_from_rows(rows: list[dict[str, Any]]) -> dict[str, int]:
 
 def _error_counts_from_rows(rows: list[dict[str, Any]]) -> dict[str, int]:
     return dict(Counter(str(row.get("error_type") or "unknown") for row in rows))
+
+
+def _quota_row_min(row: Any, default: int) -> int:
+    if isinstance(row, dict):
+        return int(row.get("target_min_total", row.get("min_total", default)) or default)
+    return int(default)
 
 
 def _finalize_quota_state(
@@ -1757,7 +1825,8 @@ def _finalize_quota_state(
         row["train_count"] = int(split_counts.get("train", {}).get(rule_id, 0))
         row["val_count"] = int(split_counts.get("val", {}).get(rule_id, 0))
         row["test_count"] = int(split_counts.get("test", {}).get(rule_id, 0))
-        if row["final_total"] < min_total and rule_id not in excluded:
+        row_min_total = int(row.get("target_min_total", min_total) or min_total)
+        if row["final_total"] < row_min_total and rule_id not in excluded:
             row["status"] = "underfilled"
             row["action"] = "underfilled"
             row["reason"] = row.get("reason") or "below_minimum_after_split"
@@ -1774,14 +1843,15 @@ def _finalize_quota_state(
     low_active = sorted(
         rule_id
         for rule_id in active_rule_ids
-        if int(rule_counts.get(rule_id, 0)) < min_total
+        if int(rule_counts.get(rule_id, 0)) < _quota_row_min(quota_by_rule.get(rule_id, {}), min_total)
         or any(int(split_counts.get(split, {}).get(rule_id, 0)) < threshold for split, threshold in split_minimums.items())
     )
+    rule_max_totals = dict(cap_config.get("rule_max_totals", {}) or {})
     capped_rules = sorted(
         rule_id
         for rule_id, count in rule_counts.items()
         if rule_id not in {"clean_identity", "clean_identity_hard_negative", "unknown", "unknown_real_validated"}
-        and int(count) >= int(cap_config["generation_rule_cap"])
+        and int(count) >= int(rule_max_totals.get(rule_id, cap_config["generation_rule_cap"]))
     )
     train_errors = _value_counts(frame[frame["split"] == "train"], "error_type")
     capped_errors = sorted(
