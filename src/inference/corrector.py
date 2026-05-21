@@ -109,6 +109,4 @@ class Corrector:
 def _can_apply_without_model(candidate: Candidate) -> bool:
     if candidate.edit_type == "keep":
         return False
-    if not candidate.requires_scoring:
-        return True
-    return candidate.edit_type == "case" and candidate.rule_id == "capitalization_sentence_start"
+    return not candidate.requires_scoring

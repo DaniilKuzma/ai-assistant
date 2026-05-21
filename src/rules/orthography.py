@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 from typing import Any, Iterable
 
 from src.candidates.frequent_errors import (
@@ -122,8 +123,10 @@ PO_ADVERB_SUFFIXES = ("ому", "ему", "ски", "цки", "ьи")
 POL_VOWELS = frozenset("аеёиоуыэюя")
 POL_NOUN_POSES = frozenset({"NOUN"})
 SENTENCE_START_PREFIX_CHARS = frozenset(" \t\r\n\"'«„“([{—")
-SENTENCE_START_ABBREVIATIONS = frozenset({"г", "см", "ул", "стр", "рис"})
-SENTENCE_TERMINATORS = frozenset(".!?…")
+SENTENCE_START_ABBREVIATIONS = frozenset({"г", "см", "ул", "стр", "рис", "тыс", "млн", "млрд", "руб", "коп"})
+SENTENCE_TERMINATORS = frozenset(".!?")
+LATIN_COMPANY_ABBREVIATION_RE = re.compile(r"\b(?:co|inc|ltd|corp)\.\s*$", re.IGNORECASE)
+RUSSIAN_GRAPHIC_ABBREVIATION_RE = re.compile(r"(?:\b(?:г|см|ул|стр|рис|тыс|млн|млрд|руб|коп)\.|(?:т\.д|т\.п|и\.о)\.)\s*$", re.IGNORECASE)
 INITIAL_ABBREVIATIONS = {
     "сша": "США",
     "рф": "РФ",
@@ -1573,6 +1576,9 @@ def is_safe_sentence_start_case(
     if text[previous] not in SENTENCE_TERMINATORS:
         return False
     if _position_inside_spans(previous, protected_spans):
+        return False
+    prefix = text[max(0, previous - 48) : previous + 1]
+    if LATIN_COMPANY_ABBREVIATION_RE.search(prefix) or RUSSIAN_GRAPHIC_ABBREVIATION_RE.search(prefix):
         return False
     return True
 

@@ -1,0 +1,12 @@
+rule_id,matrix_group,activation_decision,dataset_count,candidate_recall,current_f1
+address_comma,addresses_interjections_particles,INCLUDE,593,1.0,1.0
+comma_conjunction,homogeneous_commas,INCLUDE,593,1.0,0.924731182795699
+comma_subordinate,complex_sentence_subordinate,INCLUDE,593,1.0,1.0
+comparative_turnover_comma,comparative_turnovers,INCLUDE,593,1.0,1.0
+detached_adverbial_comma,detached_adverbials,INCLUDE,593,1.0,1.0
+direct_speech_dash,direct_speech_quotes,INCLUDE,593,1.0,1.0
+homogeneous_comma,homogeneous_commas,INCLUDE,593,1.0,0.99009900990099
+hyphen_koe_koy,solid_hyphen_separate_pronouns_adverbs_particles,INCLUDE,593,1.0,0.8190476190476191
+hyphen_particles,solid_hyphen_separate_pronouns_adverbs_particles,INCLUDE,593,1.0,0.761904761904762
+introductory_comma,introductory_words,INCLUDE,593,1.0,0.979591836734694
+subject_predicate_dash,dash_subject_predicate,INCLUDE,593,1.0,0.7816091954022989

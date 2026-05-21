@@ -81,7 +81,9 @@ PREPOSITION_MARKERS = frozenset(
     }
 )
 PROTECTED_PUNCTUATION_RE = re.compile(r"(?<![\w])\d+(?:[.,]\d+)?%|(?<![\w])\d+(?:[.,:/-]\d+)*")
-PUNCTUATION_NOISE_RE = re.compile(r"(?:…[.!?…]+|[.!?]+…|[!?]\.|\.{2,}|[!?]{2,}|([,;:])\s*\1)")
+PUNCTUATION_NOISE_RE = re.compile(
+    r"(?:…[.!?…]+|[.!?]+…|[!?]\.|(?<!\.)\.\.(?!\.)|\.{4,}|[!?]{2,}|([,;:])\s*\1)"
+)
 UNSAFE_FINAL_DOT_TAIL_RE = re.compile(r"(?::\)|:\(|;\)|[,;:!?…])$")
 SPEECH_VERBS = frozenset(
     {
@@ -266,6 +268,10 @@ def punctuation_rules() -> tuple[object, ...]:
 
 def _remove_obvious_extra_punctuation(text: str) -> str:
     text = re.sub(r"([,;:])\s*\1+", r"\1", text)
+    text = re.sub(r"(?<!\.)\.\.(?!\.)", ".", text)
+    text = re.sub(r"\.{4,}", "...", text)
+    text = re.sub(r"!!\?+", "!", text)
+    text = re.sub(r"\?\?!+", "?", text)
     text = re.sub(r",\s*([.!?…])", r"\1", text)
     text = re.sub(r"([«(])\s*([,;:])\s*", r"\1", text)
     text = re.sub(r"\s*([,;:])\s*([»)])", r"\2", text)
@@ -719,7 +725,6 @@ def _quote_bracket_balance_candidates(
         return []
 
     candidates: list[PunctuationGapCandidate] = []
-    candidates.extend(_straight_quote_candidates(text, words, protected))
     close_position = _sentence_content_end(text)
     if not _safe_punctuation_insert_position(text, close_position, protected):
         return candidates
@@ -741,6 +746,23 @@ def _quote_bracket_balance_candidates(
             )
         )
 
+    quote_open_position = _quote_open_insert_position(text, words, protected)
+    if quote_open_position is not None and text.count("»") == text.count("«") + 1:
+        spec = _spec_by_id("quote_pair_balance")
+        candidates.append(
+            _candidate(
+                source="",
+                replacement="«",
+                edit_type="punctuation_insert",
+                start=quote_open_position,
+                end=quote_open_position,
+                spec=spec,
+                action="INSERT",
+                label="QUOTE_OPEN",
+                gap_index=_gap_index_for_position(words, quote_open_position),
+            )
+        )
+
     if text.count("(") == text.count(")") + 1 and not _has_unclosed_pair_suffix(text, ")", close_position):
         spec = _spec_by_id("bracket_pair_balance")
         candidates.append(
@@ -754,6 +776,23 @@ def _quote_bracket_balance_candidates(
                 action="INSERT",
                 label="BRACKET_CLOSE",
                 gap_index=gap_index,
+            )
+        )
+
+    bracket_open_position = _bracket_open_insert_position(text, words, ")", protected)
+    if bracket_open_position is not None and text.count(")") == text.count("(") + 1:
+        spec = _spec_by_id("bracket_pair_balance")
+        candidates.append(
+            _candidate(
+                source="",
+                replacement="(",
+                edit_type="punctuation_insert",
+                start=bracket_open_position,
+                end=bracket_open_position,
+                spec=spec,
+                action="INSERT",
+                label="BRACKET_OPEN",
+                gap_index=_gap_index_for_position(words, bracket_open_position),
             )
         )
 
@@ -772,6 +811,22 @@ def _quote_bracket_balance_candidates(
                 gap_index=gap_index,
             )
         )
+    square_open_position = _bracket_open_insert_position(text, words, "]", protected)
+    if square_open_position is not None and text.count("]") == text.count("[") + 1:
+        spec = _spec_by_id("bracket_pair_balance")
+        candidates.append(
+            _candidate(
+                source="",
+                replacement="[",
+                edit_type="punctuation_insert",
+                start=square_open_position,
+                end=square_open_position,
+                spec=spec,
+                action="INSERT",
+                label="BRACKET_OPEN",
+                gap_index=_gap_index_for_position(words, square_open_position),
+            )
+        )
     return candidates
 
 
@@ -780,47 +835,8 @@ def _straight_quote_candidates(
     words: list[Token],
     protected: tuple[tuple[int, int], ...],
 ) -> list[PunctuationGapCandidate]:
-    quote_positions = [index for index, char in enumerate(text) if char == '"']
-    if len(quote_positions) < 2 or len(quote_positions) % 2:
-        return []
-
-    open_spec = _spec_by_id("quote_open")
-    close_spec = _spec_by_id("quote_close")
-    candidates: list[PunctuationGapCandidate] = []
-    for pair_index in range(0, len(quote_positions), 2):
-        open_position = quote_positions[pair_index]
-        close_position = quote_positions[pair_index + 1]
-        if _edit_touches_spans(open_position, open_position + 1, protected):
-            continue
-        if _edit_touches_spans(close_position, close_position + 1, protected):
-            continue
-        candidates.append(
-            _candidate(
-                source='"',
-                replacement="«",
-                edit_type="punctuation_replace",
-                start=open_position,
-                end=open_position + 1,
-                spec=open_spec,
-                action="REPLACE",
-                label="QUOTE_OPEN",
-                gap_index=_gap_index_for_position(words, open_position),
-            )
-        )
-        candidates.append(
-            _candidate(
-                source='"',
-                replacement="»",
-                edit_type="punctuation_replace",
-                start=close_position,
-                end=close_position + 1,
-                spec=close_spec,
-                action="REPLACE",
-                label="QUOTE_CLOSE",
-                gap_index=_gap_index_for_position(words, close_position),
-            )
-        )
-    return candidates
+    del text, words, protected
+    return []
 
 
 def _colon_dash_semicolon_candidates(
@@ -1217,6 +1233,64 @@ def _has_unclosed_pair_suffix(text: str, close_char: str, position: int) -> bool
     return position < len(text) and text[position] == close_char
 
 
+def _quote_open_insert_position(
+    text: str,
+    words: list[Token],
+    protected: tuple[tuple[int, int], ...],
+) -> int | None:
+    close_position = text.find("»")
+    if close_position < 0:
+        return None
+    prefix = text[:close_position]
+    colon_position = max(prefix.rfind(":"), prefix.rfind("—"))
+    if colon_position >= 0 and close_position - colon_position <= 120:
+        position = colon_position + 1
+        while position < close_position and text[position].isspace():
+            position += 1
+        if _safe_opening_pair_position(text, position, close_position, protected):
+            return position
+    first_word = next((word for word in words if word.start < close_position), None)
+    if first_word and close_position - first_word.start <= 120:
+        if _safe_opening_pair_position(text, first_word.start, close_position, protected):
+            return first_word.start
+    return None
+
+
+def _bracket_open_insert_position(
+    text: str,
+    words: list[Token],
+    close_char: str,
+    protected: tuple[tuple[int, int], ...],
+) -> int | None:
+    close_position = text.find(close_char)
+    if close_position < 0:
+        return None
+    word = next((word for word in reversed(words) if word.end <= close_position), None)
+    if word is None:
+        return None
+    if close_position - word.start > 80:
+        return None
+    if not _safe_opening_pair_position(text, word.start, close_position, protected):
+        return None
+    return word.start
+
+
+def _safe_opening_pair_position(
+    text: str,
+    position: int,
+    close_position: int,
+    protected: tuple[tuple[int, int], ...],
+) -> bool:
+    if position < 0 or position >= close_position:
+        return False
+    if _position_inside_spans(position, protected):
+        return False
+    if text[position] in PUNCTUATION_CHARS:
+        return False
+    segment = text[position:close_position]
+    return bool(segment.strip()) and "\n" not in segment
+
+
 def _has_punctuation_between(text: str, start: int, end: int, chars: str) -> bool:
     return any(char in chars for char in text[max(0, start) : max(start, end)])
 
@@ -1334,10 +1408,10 @@ PUNCTUATION_RULES: tuple[object, ...] = (
             group="delete_replace",
             scope="punctuation_gap",
             edit_type="punctuation",
-            mode="deterministic",
+            mode="candidate_only",
             confidence=0.85,
-            requires=("none",),
-            description="Remove obvious duplicate punctuation and punctuation inside paired marks.",
+            requires=("model",),
+            description="Generate bounded candidates for obvious duplicate punctuation and punctuation noise cleanup.",
         ),
         _remove_obvious_extra_punctuation,
     ),

@@ -268,7 +268,7 @@ def test_trained_model_corrector_deletes_existing_punctuation_only_with_delete_a
         thresholds={"punctuation_threshold": 0.5, "punctuation_delete_threshold": 0.95},
     )
 
-    assert low_confidence.correct("Я думаю,, что это важно.").corrected_text == "Я думаю, , что это важно."
+    assert low_confidence.correct("Я думаю,, что это важно.").corrected_text == "Я думаю,, что это важно."
     result = high_confidence.correct("Я думаю,, что это важно.")
 
     assert result.corrected_text == "Я думаю, что это важно."

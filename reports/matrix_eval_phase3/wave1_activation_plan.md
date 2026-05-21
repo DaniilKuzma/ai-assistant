@@ -1,0 +1,82 @@
+# Wave 1 Activation Plan
+
+This phase2 plan is for `short_dataset_v3`; it does not mutate production thresholds or checkpoints.
+
+## Include
+
+- address_comma
+- comma_conjunction
+- comma_subordinate
+- comparative_turnover_comma
+- detached_adverbial_comma
+- direct_speech_dash
+- homogeneous_comma
+- hyphen_koe_koy
+- hyphen_particles
+- introductory_comma
+- subject_predicate_dash
+
+## Exclude
+
+- abbreviation_case_protection
+- asyndetic_dash
+- bracket_pair_balance
+- capitalization_ner
+- capitalization_sentence_start
+- consequence_dash
+- context_chto_by
+- context_nesmotrya
+- context_tak_zhe
+- context_to_zhe
+- context_vsledstvie
+- context_za_to
+- cy_exception
+- dictionary_fuzzy
+- direct_speech_colon
+- direct_speech_quotes
+- double_consonant_candidate
+- enumeration_colon
+- explanation_colon
+- extra_letter_candidate
+- final_punctuation_default
+- frequent_error_exact
+- hyphen_po_adverbs
+- hyphen_whitelist
+- keyboard_typo_candidate
+- missing_hard_sign
+- missing_letter_candidate
+- n_nn_adjective
+- n_nn_deverbal_adjective
+- n_nn_participle
+- n_nn_short_form
+- ne_adjective
+- ne_adverb
+- ne_participle
+- ne_verb
+- ni_stable_expression
+- pattern_жо_же
+- pattern_жы_жи
+- pattern_цы_ци
+- pattern_чо_че
+- pattern_чю_чу
+- pattern_чя_ча
+- pattern_шо_ше
+- pattern_шы_ши
+- pattern_що_ще
+- pattern_щю_щу
+- pattern_щя_ща
+- pol_polu_compounds
+- prefix_pre_pri
+- prefix_s_to_z
+- prefix_z_to_s
+- punctuation_delete_replace
+- quote_close
+- quote_open
+- quote_pair_balance
+- sdelat_prefix
+- semicolon
+- soft_to_hard_sign
+- swapped_letters_candidate
+- tsya_soft_delete
+- tsya_soft_insert
+- yo_e_candidate

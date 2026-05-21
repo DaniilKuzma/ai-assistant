@@ -957,14 +957,15 @@ punctuation:
     orfogrammka_id: "orfogrammka:punctuation:9"
     title: "Сочетание знаков препинания"
     parent_group: punctuation_combinations
-    status: partial
+    status: candidate_only
     tags:
       - punctuation
       - punctuation_combinations
-    requires: []
+    requires:
+      - model
     rules:
       - punctuation_delete_replace
-    notes: "Покрыты очевидные дубли и validator guards для многоточия, повторов !/?, точки после ?/!/…; полная система сочетаний знаков не реализована."
+    notes: "Генерируются bounded candidate-only edits для очевидных дублей и пунктуационного шума; plain fallback не применяет правило без scorer/model."
   complex_mark_interaction:
     orfogrammka_id: "orfogrammka:punctuation:9.3-9.4"
     title: "Взаимодействие запятой, тире, двоеточия и точки с запятой"

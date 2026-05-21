@@ -339,21 +339,14 @@ def test_quote_and_bracket_balance_candidates_are_model_required_only_for_one_si
         assert candidate.requires == ("model",)
 
 
-def test_straight_quote_candidates_use_explicit_quote_open_and_close_rule_ids():
+def test_straight_quote_candidates_do_not_broadly_normalize_balanced_quotes():
     candidates = CandidateGenerator().generate('Он сказал "Проект готов".')
 
-    quote_open = _punctuation_candidate(candidates, "quote_open", "QUOTE_OPEN", "REPLACE")
-    quote_close = _punctuation_candidate(candidates, "quote_close", "QUOTE_CLOSE", "REPLACE")
-
-    assert quote_open.source == '"'
-    assert quote_open.replacement == "«"
-    assert quote_close.source == '"'
-    assert quote_close.replacement == "»"
-    for candidate in (quote_open, quote_close):
-        assert candidate.mode == "model_required"
-        assert candidate.requires_model is True
-        assert candidate.requires_scoring is True
-        assert candidate.requires == ("model",)
+    assert not [
+        candidate
+        for candidate in _punctuation_candidates(candidates)
+        if candidate.rule_id in {"quote_open", "quote_close"}
+    ]
 
 
 def test_colon_dash_semicolon_candidates_are_model_required():

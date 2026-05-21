@@ -1,0 +1,23 @@
+group,rule_id,priority,required_module,risk,candidate_implementation_idea,synthetic_eval_idea,hard_negative_idea,suitable_for_next_diploma_iteration
+Syntax-heavy,asyndetic_dash,1,syntax_provider,high,"bounded syntax-backed dash candidate between clauses only","minimal clause-pair probes with candidate match","clean clauses where dash is stylistic only",yes
+Syntax-heavy,consequence_dash,1,syntax_provider,high,"detect explicit consequence markers and clause boundaries","marker-backed consequence probes","causal-looking sentences with comma/period preferred",yes
+Syntax-heavy,semicolon,2,syntax_provider,medium,"semicolon candidate only between parallel long clauses","parallel-clause probes","short enumerations where comma is enough",yes
+Syntax-heavy,detached_applications,2,syntax_provider,high,"syntax/NER-backed detached apposition comma/dash candidates","NER apposition probes","names with titles that should not detach",no
+Syntax-heavy,matrix-only syntax groups,3,syntax_provider,high,"inventory unresolved syntax-only groups before implementation","matrix probes per group","clean formal text by group",no
+Dictionary-heavy,difficult_root_vowels,1,dictionary_lexicon,medium,"lexicon-backed replacement candidates with frequency guard","minimal pairs from dictionary whitelist","valid rare words and named entities",yes
+Dictionary-heavy,suffix_vowels,2,dictionary_morphology,medium,"bounded suffix candidates using morphology and lexicon","suffix family probes","valid suffix variants in context",yes
+Dictionary-heavy,verb_endings,2,morphology,high,"morphology-backed verb ending candidates only with agreement evidence","verb ending probes by person/number","quoted text and names ending similarly",yes
+Dictionary-heavy,consonants_unchecked,3,dictionary_lexicon,medium,"lexicon-backed consonant candidate only with exact known correction","minimal consonant probes","valid dictionary words with same edit distance",yes
+Dictionary-heavy,foreign_words,3,dictionary_lexicon,medium,"curated foreign-word lexicon candidates only","curated loanword probes","brand/product names and transliterations",no
+NER-heavy,capitalization_ner,1,ner_provider,high,"case candidate only for confirmed NER spans","confirmed PER/LOC/ORG probes","sentence-start lowercase not NER",yes
+NER-heavy,detached_applications,2,ner_provider,high,"combine NER span and syntax apposition boundary","title/name apposition probes","organization names without apposition",no
+NER-heavy,typos_initials_period,2,ner_provider,medium,"period insertion/deletion only for confirmed initials","initials probes","abbreviations and list markers",yes
+CandidateGenerator missing,quote_open,3,punctuation,medium,"keep inactive unless separate one-sided quote rule is needed beyond quote_pair_balance","missing quote pair probes","balanced straight quotes",no
+CandidateGenerator missing,quote_close,3,punctuation,medium,"keep inactive unless separate one-sided quote rule is needed beyond quote_pair_balance","missing quote pair probes","balanced straight quotes",no
+CandidateGenerator missing,yo_e_candidate,2,dictionary,medium,"enable only behind dictionary.yo_e.enabled with lexicon support","yo/e dictionary probes","words where both forms are valid",yes
+CandidateGenerator missing,neural_punctuation,4,modeling,high,"keep metadata-only; no broad neural punctuation generator","none until scoped","clean punctuation hard negatives",no
+Validator,abbreviation_case_protection,1,strict_validator,medium,"reject unsupported uppercase abbreviation false positives","known abbreviation positives","unknown lowercase abbreviations",yes
+Validator,capitalization_sentence_start,1,strict_validator,medium,"tighten candidate trust/validator alignment for safe sentence starts","safe start probes plus abbreviation blockers","Co., г., т.д., ellipsis-middle contexts",yes
+Validator,dictionary_fuzzy,1,strict_validator,medium,"add bounded lexical guards for false positives while preserving positives","dictionary fuzzy positives","valid rare words and NER spans",yes
+Validator,final_punctuation_default,1,strict_validator,low,"block final dot in unsafe tails without hurting clean sentence endings","final punctuation probes","emoji, abbreviations, list fragments",yes
+Validator,keyboard_typo_candidate,1,strict_validator,medium,"guard keyboard typo candidates with dictionary/protected span checks","keyboard typo positives","valid technical IDs and names",yes

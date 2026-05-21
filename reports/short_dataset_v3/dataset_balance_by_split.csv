@@ -1,0 +1,4 @@
+split,total,synthetic_augmented_from_open_clean,real_error_pair,clean_identity_from_open_clean,hard_negative_from_open_clean
+train,40572,25572,3000,6000,6000
+val,4057,2557,300,600,600
+test,4058,2558,300,600,600

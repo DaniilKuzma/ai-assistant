@@ -106,7 +106,9 @@ ABBREVIATION_RE = re.compile(
     r"(?:\b\d{4}\s+[гГ]\.|\b(?:см|т\.д|т\.п|ул|стр|рис|г)\.|№\s*\d+)",
     re.IGNORECASE,
 )
-PUNCTUATION_NOISE_RE = re.compile(r"(?:…[.!?…]+|[.!?]+…|[!?]\.|\.{2,}|[!?]{2,}|([,;:])\s*\1)")
+PUNCTUATION_NOISE_RE = re.compile(
+    r"(?:…[.!?…]+|[.!?]+…|[!?]\.|(?<!\.)\.\.(?!\.)|\.{4,}|[!?]{2,}|([,;:])\s*\1)"
+)
 UNSAFE_FINAL_DOT_TAIL_RE = re.compile(r"(?::\)|:\(|;\)|[,;:!?…])$")
 LATIN_COMPANY_ABBREVIATION_RE = re.compile(r"\b(?:co|inc|ltd|corp)\.\s*$", re.IGNORECASE)
 LATIN_RE = re.compile(r"[A-Za-z]")
@@ -171,11 +173,11 @@ def _guard_rejection_reason(
         return "breaks_abbreviation"
     if _breaks_protected_span(edit, protected, kinds={"technical_id"}):
         return "protected_span"
+    if _is_unsafe_sentence_start_capitalization(source, edit):
+        return "abbreviation_sentence_start_capitalization"
     case_reason = _case_rejection_reason(source, edit, protected)
     if case_reason:
         return case_reason
-    if _is_unsafe_sentence_start_capitalization(source, edit):
-        return "abbreviation_sentence_start_capitalization"
     if _is_low_confidence_ner_capitalization(edit):
         return "ner_capitalization_requires_confirmed_span"
     if _is_straight_quote_normalization(edit):

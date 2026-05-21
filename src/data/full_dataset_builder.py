@@ -696,6 +696,10 @@ def write_dataset(
 
 def build_dataset_from_config(config: dict[str, Any], force: bool = False) -> dict[str, Any]:
     data_config = config.get("data", {})
+    if bool((data_config.get("short_dataset_v3") or {}).get("enabled", False)):
+        from src.data.short_dataset_v3 import build_short_dataset_v3_from_config
+
+        return build_short_dataset_v3_from_config(config, force=force)
     if bool((data_config.get("short_dataset_v2") or {}).get("enabled", False)):
         from src.data.short_dataset_v2 import build_short_dataset_v2_from_config
 
