@@ -22,13 +22,16 @@ CLEAN_POOL_COLUMNS = [
     "domain",
     "style",
     "license_status",
-    "tokens_count",
-    "chars_count",
+    "token_count",
+    "char_count",
     "cyrillic_ratio",
     "source_doc_id",
     "sentence_id",
     "hash",
+    "normalized_text_hash",
     "accepted_reason",
+    "rejected_reason",
+    "raw_source_path",
 ]
 
 META_LANGUAGE_PATTERNS = (
@@ -82,20 +85,36 @@ class CleanSentencePoolResult:
     shortage_reason: str = ""
 
 
-def is_clean_sentence_acceptable(text: str, source_metadata: dict[str, Any]) -> bool:
-    return clean_sentence_rejection_reason(text, source_metadata) == ""
+@dataclass(frozen=True)
+class CleanSentenceDecision:
+    accepted: bool
+    reasons: list[str]
+
+    def __bool__(self) -> bool:
+        return self.accepted
+
+
+def is_clean_sentence_acceptable(text: str, source_metadata: dict[str, Any]) -> CleanSentenceDecision:
+    reasons = clean_sentence_rejection_reasons(text, source_metadata)
+    return CleanSentenceDecision(accepted=not reasons, reasons=reasons)
 
 
 def clean_sentence_acceptance_reason(text: str, source_metadata: dict[str, Any]) -> tuple[bool, str, str]:
-    reason = clean_sentence_rejection_reason(text, source_metadata)
-    if not reason:
+    reasons = clean_sentence_rejection_reasons(text, source_metadata)
+    if not reasons:
         return True, "passed_quality_filters", ""
-    if reason in {"url_or_email", "numeric_table"} and _looks_like_protected_hard_negative(text):
+    if len(reasons) == 1 and reasons[0] in {"url_or_email", "numeric_table"} and _looks_like_protected_hard_negative(text):
         return True, "hard_negative_candidate", ""
+    reason = reasons[0]
     return False, "", reason
 
 
 def clean_sentence_rejection_reason(text: str, source_metadata: dict[str, Any]) -> str:
+    reasons = clean_sentence_rejection_reasons(text, source_metadata)
+    return reasons[0] if reasons else ""
+
+
+def clean_sentence_rejection_reasons(text: str, source_metadata: dict[str, Any]) -> list[str]:
     text = normalize_sentence(text)
     lower = text.lower()
     domain = str(source_metadata.get("domain") or "").lower()
@@ -103,38 +122,47 @@ def clean_sentence_rejection_reason(text: str, source_metadata: dict[str, Any]) 
     subcorpus = str(source_metadata.get("source_subcorpus") or source_metadata.get("subcorpus") or "").lower()
     source_name = str(source_metadata.get("source_name") or "").lower()
 
+    reasons: list[str] = []
     if _has_forbidden_domain_marker(domain, style, subcorpus, source_name):
-        return "forbidden_domain_or_style"
+        reasons.append("forbidden_domain_or_style")
     if len(text) < 25:
-        return "too_short_chars"
+        reasons.append("too_short_chars")
     if len(text) > 220:
-        return "too_long_chars"
+        reasons.append("too_long_chars")
     tokens = _word_tokens(text)
     if len(tokens) < 6:
-        return "too_few_tokens"
+        reasons.append("too_few_tokens")
     if len(tokens) > 35:
-        return "too_many_tokens"
+        reasons.append("too_many_tokens")
     if cyrillic_ratio(text) < 0.75:
-        return "low_cyrillic_ratio"
+        reasons.append("low_cyrillic_ratio")
     if re.search(r"<[^>]+>|\{\{|}}|\[\[|]]|#{1,6}\s|[`{}]|={2,}", text):
-        return "markup"
+        reasons.append("markup")
     if re.search(r"https?://|www\.|[\w.+-]+@[\w-]+\.[\w.-]+", text, flags=re.I):
-        return "url_or_email"
+        reasons.append("url_or_email")
     if re.search(r"#[\wа-яё]+|@\w+", text, flags=re.I):
-        return "social_marker"
+        reasons.append("social_marker")
     if _contains_emoji(text):
-        return "emoji"
+        reasons.append("emoji")
     if re.search(r"\b(src|tests?|docs?|github|commit|pull request|http|api)/[\w./-]+", lower):
-        return "code_or_github_path"
+        reasons.append("code_or_github_path")
+    if re.search(r"\b(?:def|class|import|return|var|let|const)\b|[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z0-9_]{1,8}", text):
+        reasons.append("code_snippet")
+    if re.search(r"(?:[A-Za-z]:\\|/[\w.-]+/[\w./-]+)", text):
+        reasons.append("file_path")
     if len(re.findall(r"\d+(?:[,.]\d+)?", text)) >= 6:
-        return "numeric_table"
-    if text.startswith(("-", "—", "–")) and source_name in {"fiction", "proza"}:
-        return "dialogue_or_fiction_line"
+        reasons.append("numeric_table")
+    if text.startswith(("-", "—", "–")):
+        reasons.append("dialogue_or_fiction_line")
+    if re.search(r"^\s*\d{1,2}:\d{2}(?::\d{2})?\s", text):
+        reasons.append("subtitles_format")
     if any(marker in lower for marker in OBSCENE_OR_SLANG_MARKERS):
-        return "obscene_or_slang"
+        reasons.append("obscene_or_slang")
     if any(pattern in lower for pattern in META_LANGUAGE_PATTERNS):
-        return "synthetic_meta_language"
-    return ""
+        reasons.append("synthetic_meta_language")
+    if re.search(r"[!?.,;:]{2,}|\.{3,}", text):
+        reasons.append("broken_punctuation_artifact")
+    return list(dict.fromkeys(reasons))
 
 
 def build_clean_sentence_pool(
@@ -155,6 +183,8 @@ def build_clean_sentence_pool(
     near_seen: set[str] = set()
     rejection_counts: Counter[str] = Counter()
     sample_rejections: dict[str, list[str]] = defaultdict(list)
+    sample_accepted: dict[str, list[str]] = defaultdict(list)
+    sample_rejected_by_source: dict[str, list[str]] = defaultdict(list)
     source_filter_counts: dict[str, Counter[str]] = defaultdict(Counter)
 
     for record in load_result.records:
@@ -179,10 +209,14 @@ def build_clean_sentence_pool(
             source_filter_counts[record.source_name][f"rejected:{reason}"] += 1
             if len(sample_rejections[reason]) < 5:
                 sample_rejections[reason].append(record.text)
+            if len(sample_rejected_by_source[record.source_name]) < 5:
+                sample_rejected_by_source[record.source_name].append(record.text)
             continue
         seen.add(normalized)
         near_seen.add(near_key)
         source_filter_counts[record.source_name]["accepted"] += 1
+        if len(sample_accepted[record.source_name]) < 5:
+            sample_accepted[record.source_name].append(record.text)
         rows.append(_pool_row(record, accepted_reason=accepted_reason))
 
     rows, cap_rejections = _enforce_share_caps(rows, max_source_share=max_source_share, max_subcorpus_share=max_subcorpus_share)
@@ -203,7 +237,19 @@ def build_clean_sentence_pool(
 
     report_dir = Path(reports_dir or "reports")
     report_dir.mkdir(parents=True, exist_ok=True)
-    _write_clean_filter_report(report_dir / "clean_source_filter_report.csv", source_filter_counts, sample_rejections)
+    _write_clean_filter_report(
+        report_dir / "clean_source_filter_report.csv",
+        source_filter_counts,
+        sample_accepted,
+        sample_rejected_by_source,
+    )
+    _write_clean_filter_markdown_report(
+        report_dir / "clean_source_filter_report.md",
+        source_filter_counts,
+        sample_accepted,
+        sample_rejected_by_source,
+        rejection_counts,
+    )
     _write_source_ingestion_report(
         report_dir / "source_ingestion_report.md",
         load_result.source_reports,
@@ -259,7 +305,8 @@ def _pool_config(config: dict[str, Any] | str | Path) -> dict[str, Any]:
 
 def _pool_row(record: OpenCorpusSentence, *, accepted_reason: str) -> dict[str, Any]:
     text = normalize_sentence(record.text)
-    digest = hashlib.sha256(normalize_for_dedup(text).encode("utf-8")).hexdigest()
+    normalized = normalize_for_dedup(text)
+    digest = hashlib.sha256(normalized.encode("utf-8")).hexdigest()
     tokens = _word_tokens(text)
     return {
         "text": text,
@@ -268,13 +315,16 @@ def _pool_row(record: OpenCorpusSentence, *, accepted_reason: str) -> dict[str, 
         "domain": record.domain,
         "style": record.style,
         "license_status": record.license_status,
-        "tokens_count": len(tokens),
-        "chars_count": len(text),
+        "token_count": len(tokens),
+        "char_count": len(text),
         "cyrillic_ratio": cyrillic_ratio(text),
         "source_doc_id": record.source_doc_id,
         "sentence_id": record.sentence_id,
         "hash": digest,
+        "normalized_text_hash": digest,
         "accepted_reason": accepted_reason,
+        "rejected_reason": "",
+        "raw_source_path": getattr(record, "raw_source_path", ""),
     }
 
 
@@ -385,16 +435,14 @@ def _dominance_violations(
 def _write_clean_filter_report(
     path: Path,
     source_filter_counts: dict[str, Counter[str]],
-    sample_rejections: dict[str, list[str]],
+    sample_accepted: dict[str, list[str]],
+    sample_rejected_by_source: dict[str, list[str]],
 ) -> None:
     rows: list[dict[str, Any]] = []
-    global_reasons = Counter()
-    for counter in source_filter_counts.values():
-        for key, count in counter.items():
-            if key.startswith("rejected:"):
-                global_reasons[key.removeprefix("rejected:")] += count
     for source_name, counter in sorted(source_filter_counts.items()):
         rejected = sum(count for key, count in counter.items() if key.startswith("rejected:"))
+        total_seen = int(counter.get("total_seen", 0))
+        accepted = int(counter.get("accepted", 0))
         reasons = {
             key.removeprefix("rejected:"): count
             for key, count in sorted(counter.items())
@@ -403,21 +451,66 @@ def _write_clean_filter_report(
         rows.append(
             {
                 "source_name": source_name,
-                "total_seen": int(counter.get("total_seen", 0)),
-                "accepted": int(counter.get("accepted", 0)),
+                "total_seen": total_seen,
+                "accepted": accepted,
                 "rejected": int(rejected),
+                "acceptance_rate": accepted / total_seen if total_seen else 0.0,
                 "rejection_reason_counts": json.dumps(reasons, ensure_ascii=False, sort_keys=True),
-                "sample_rejections": json.dumps(
-                    {reason: sample_rejections.get(reason, []) for reason in reasons},
-                    ensure_ascii=False,
-                    sort_keys=True,
-                ),
+                "sample_accepted": json.dumps(sample_accepted.get(source_name, []), ensure_ascii=False),
+                "sample_rejected": json.dumps(sample_rejected_by_source.get(source_name, []), ensure_ascii=False),
             }
         )
     pd.DataFrame(
         rows,
-        columns=["source_name", "total_seen", "accepted", "rejected", "rejection_reason_counts", "sample_rejections"],
+        columns=[
+            "source_name",
+            "total_seen",
+            "accepted",
+            "rejected",
+            "acceptance_rate",
+            "rejection_reason_counts",
+            "sample_accepted",
+            "sample_rejected",
+        ],
     ).to_csv(path, index=False)
+
+
+def _write_clean_filter_markdown_report(
+    path: Path,
+    source_filter_counts: dict[str, Counter[str]],
+    sample_accepted: dict[str, list[str]],
+    sample_rejected_by_source: dict[str, list[str]],
+    rejection_counts: Counter[str],
+) -> None:
+    total_seen = sum(counter.get("total_seen", 0) for counter in source_filter_counts.values())
+    accepted = sum(counter.get("accepted", 0) for counter in source_filter_counts.values())
+    lines = [
+        "# Clean Source Filter Report",
+        "",
+        f"- total_seen: {int(total_seen)}",
+        f"- accepted: {int(accepted)}",
+        f"- rejected: {int(total_seen - accepted)}",
+        f"- rejection_reason_counts: {json.dumps(dict(sorted(rejection_counts.items())), ensure_ascii=False, sort_keys=True)}",
+        "",
+        "| source | seen | accepted | rejected | acceptance_rate | sample_accepted | sample_rejected |",
+        "|---|---:|---:|---:|---:|---|---|",
+    ]
+    for source_name, counter in sorted(source_filter_counts.items()):
+        seen = int(counter.get("total_seen", 0))
+        accepted_count = int(counter.get("accepted", 0))
+        rejected_count = sum(count for key, count in counter.items() if key.startswith("rejected:"))
+        lines.append(
+            "| {source} | {seen} | {accepted} | {rejected} | {rate:.4f} | {sample_a} | {sample_r} |".format(
+                source=source_name,
+                seen=seen,
+                accepted=accepted_count,
+                rejected=rejected_count,
+                rate=accepted_count / seen if seen else 0.0,
+                sample_a="<br>".join(sample_accepted.get(source_name, [])).replace("|", "\\|"),
+                sample_r="<br>".join(sample_rejected_by_source.get(source_name, [])).replace("|", "\\|"),
+            )
+        )
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def _write_source_ingestion_report(

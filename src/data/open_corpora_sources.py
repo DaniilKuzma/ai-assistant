@@ -32,6 +32,7 @@ class OpenCorpusSentence:
     license_status: str = ""
     source_doc_id: str = ""
     sentence_id: str = ""
+    raw_source_path: str = ""
     metadata: dict[str, Any] | None = None
 
 
@@ -62,6 +63,9 @@ def load_open_corpora_sentences(config: dict[str, Any] | str | Path) -> OpenCorp
             reports.append(_source_report(source_name, spec, status="skipped", reason="disabled"))
             continue
         source_type = str(spec.get("type") or "local_text")
+        if source_type == "python_loader":
+            reports.append(_source_report(source_name, spec, status="skipped", reason="utility_loader_not_source"))
+            continue
         max_sentences = int(spec.get("max_sentences", 100_000))
         download = download_if_allowed(source_name, spec, policy, budget)
         path = Path(download.path) if download.path else None
@@ -102,6 +106,7 @@ def load_open_corpora_sentences(config: dict[str, Any] | str | Path) -> OpenCorp
                         ),
                         source_doc_id=str(metadata.get("source_doc_id") or ""),
                         sentence_id=str(metadata.get("sentence_id") or f"{len(source_records)}"),
+                        raw_source_path=str(metadata.get("raw_source_path") or path or spec.get("local_path") or ""),
                         metadata={key: value for key, value in metadata.items() if key not in {"text"}},
                     )
                 )
@@ -188,7 +193,7 @@ def _iter_source_sentences(
     elif source_type in {"ud_conllu", "conllu"}:
         assert path is not None
         yield from _iter_ud_conllu(path, spec)
-    elif source_type in {"corus_lenta", "corus_lenta2"}:
+    elif source_type in {"corus_lenta", "corus_lenta2", "lenta_news"}:
         assert path is not None
         yield from _iter_corus_lenta(path, spec)
     elif source_type in {"nerus", "nerus_conllu"}:
@@ -210,7 +215,7 @@ def _iter_source_sentences(
 def _iter_local_text(path: Path, spec: dict[str, Any]) -> Iterable[tuple[str, dict[str, Any]]]:
     for line_index, line in enumerate(_read_text_lines(path)):
         for sentence in split_text_to_sentences(line):
-            yield sentence, {"sentence_id": str(line_index)}
+            yield sentence, {"sentence_id": str(line_index), "raw_source_path": str(path)}
 
 
 def _iter_local_jsonl(path: Path, spec: dict[str, Any]) -> Iterable[tuple[str, dict[str, Any]]]:
@@ -228,6 +233,7 @@ def _iter_local_jsonl(path: Path, spec: dict[str, Any]) -> Iterable[tuple[str, d
                     yield sentence, {
                         "source_doc_id": str(item.get("id") or item.get("doc_id") or line_index),
                         "source_subcorpus": str(item.get("source_subcorpus") or item.get("subcorpus") or ""),
+                        "raw_source_path": str(path),
                     }
 
 
@@ -239,13 +245,17 @@ def _iter_local_table(path: Path, spec: dict[str, Any]) -> Iterable[tuple[str, d
         for row_index, row in enumerate(reader):
             value = next((row.get(field) for field in fields if row.get(field)), "")
             for sentence in split_text_to_sentences(str(value)):
-                yield sentence, {"source_doc_id": str(row.get("id") or row_index)}
+                yield sentence, {"source_doc_id": str(row.get("id") or row_index), "raw_source_path": str(path)}
 
 
 def _iter_ud_conllu(path: Path, spec: dict[str, Any]) -> Iterable[tuple[str, dict[str, Any]]]:
     content = "\n".join(_read_text_lines(path))
     for index, sentence in enumerate(parse_ud_conllu_texts(content)):
-        yield sentence, {"sentence_id": str(index), "source_subcorpus": str(spec.get("source_subcorpus") or "ud")}
+        yield sentence, {
+            "sentence_id": str(index),
+            "source_subcorpus": str(spec.get("source_subcorpus") or "ud"),
+            "raw_source_path": str(path),
+        }
 
 
 def _iter_corus_lenta(path: Path, spec: dict[str, Any]) -> Iterable[tuple[str, dict[str, Any]]]:
@@ -265,6 +275,7 @@ def _iter_corus_lenta(path: Path, spec: dict[str, Any]) -> Iterable[tuple[str, d
                 "source_subcorpus": str(getattr(record, "topic", "") or spec.get("source_subcorpus") or "lenta"),
                 "domain": "news",
                 "style": "neutral",
+                "raw_source_path": str(path),
             }
 
 
@@ -279,10 +290,11 @@ def _iter_lenta_csv(path: Path, spec: dict[str, Any]) -> Iterable[tuple[str, dic
                 yield sentence, {
                     "source_doc_id": doc_id,
                     "sentence_id": f"{index}:{sentence_index}",
-                    "source_subcorpus": topic,
-                    "domain": "news",
-                    "style": "neutral",
-                }
+                "source_subcorpus": topic,
+                "domain": "news",
+                "style": "neutral",
+                "raw_source_path": str(path),
+            }
 
 
 def _iter_nerus(path: Path, spec: dict[str, Any]) -> Iterable[tuple[str, dict[str, Any]]]:
@@ -302,6 +314,7 @@ def _iter_nerus(path: Path, spec: dict[str, Any]) -> Iterable[tuple[str, dict[st
                 "source_subcorpus": str(spec.get("source_subcorpus") or "nerus_lenta"),
                 "domain": "news",
                 "style": "neutral",
+                "raw_source_path": str(path),
             }
             sentence_index += 1
 
@@ -318,7 +331,10 @@ def _iter_taiga(path: Path, spec: dict[str, Any]) -> Iterable[tuple[str, dict[st
             continue
         file_spec = dict(spec)
         file_spec["source_subcorpus"] = subcorpus
-        yield from _iter_local_text(file_path, file_spec)
+        for sentence, metadata in _iter_local_text(file_path, file_spec):
+            metadata["source_subcorpus"] = subcorpus
+            metadata["raw_source_path"] = str(file_path)
+            yield sentence, metadata
 
 
 def _iter_opencorpora(path: Path, spec: dict[str, Any]) -> Iterable[tuple[str, dict[str, Any]]]:
@@ -329,14 +345,22 @@ def _iter_opencorpora(path: Path, spec: dict[str, Any]) -> Iterable[tuple[str, d
                     continue
                 with archive.open(name) as xml_file:
                     for index, sentence in enumerate(_iter_opencorpora_xml_sentences(xml_file)):
-                        yield sentence, {"sentence_id": str(index), "source_subcorpus": "opencorpora"}
+                        yield sentence, {
+                            "sentence_id": str(index),
+                            "source_subcorpus": "opencorpora",
+                            "raw_source_path": f"{path}:{name}",
+                        }
         return
     for file_path in _iter_files(path):
         if not str(file_path).endswith(".xml"):
             continue
         with file_path.open("rb") as xml_file:
             for index, sentence in enumerate(_iter_opencorpora_xml_sentences(xml_file)):
-                yield sentence, {"sentence_id": str(index), "source_subcorpus": "opencorpora"}
+                yield sentence, {
+                    "sentence_id": str(index),
+                    "source_subcorpus": "opencorpora",
+                    "raw_source_path": str(file_path),
+                }
 
 
 def _iter_wikipedia(path: Path, spec: dict[str, Any]) -> Iterable[tuple[str, dict[str, Any]]]:
@@ -345,7 +369,7 @@ def _iter_wikipedia(path: Path, spec: dict[str, Any]) -> Iterable[tuple[str, dic
         for index, line in enumerate(handle):
             text = _strip_wiki_markup(line)
             for sentence in split_text_to_sentences(text):
-                yield sentence, {"sentence_id": str(index), "source_subcorpus": "ruwiki"}
+                yield sentence, {"sentence_id": str(index), "source_subcorpus": "ruwiki", "raw_source_path": str(path)}
 
 
 def _iter_hf_dataset(spec: dict[str, Any]) -> Iterable[tuple[str, dict[str, Any]]]:
@@ -364,6 +388,7 @@ def _iter_hf_dataset(spec: dict[str, Any]) -> Iterable[tuple[str, dict[str, Any]
                     yield sentence, {
                         "source_doc_id": str(row.get("id") or row_index),
                         "source_subcorpus": str(split),
+                        "raw_source_path": str(repo),
                     }
 
 

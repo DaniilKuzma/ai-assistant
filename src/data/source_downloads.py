@@ -32,6 +32,7 @@ class DownloadPolicy:
     cache_dir: str = "data/external"
     fail_if_insufficient_sources: bool = False
     never_commit_downloaded_data: bool = True
+    write_reports: bool = True
 
     @classmethod
     def from_config(cls, config: dict[str, Any] | None) -> "DownloadPolicy":
@@ -44,6 +45,7 @@ class DownloadPolicy:
             cache_dir=str(raw.get("cache_dir") or "data/external"),
             fail_if_insufficient_sources=bool(raw.get("fail_if_insufficient_sources", False)),
             never_commit_downloaded_data=bool(raw.get("never_commit_downloaded_data", True)),
+            write_reports=bool(raw.get("write_reports", True)),
         )
 
     @property
@@ -114,15 +116,31 @@ def download_if_allowed(
             "configured_source_limit_exceeds_policy",
             spec,
             policy,
-            path=local_path or archive_path,
+            path=archive_path or local_path,
         )
         budget.source_results.append(result)
         return result
 
+    if hf_id and not url:
+        cache_path = _hf_cache_hint_path(hf_id, policy)
+        if cache_path is not None:
+            result = SourceDownloadResult(
+                source_name=source_name,
+                mode="cached",
+                path=str(cache_path),
+                hf_id=hf_id,
+                reason="huggingface_dataset_resolved_from_local_cache",
+                downloaded_size_bytes=_directory_size(cache_path) if cache_path.is_dir() else cache_path.stat().st_size,
+                license_note=license_note,
+                used=True,
+            )
+            budget.source_results.append(result)
+            return result
+
     if not policy.downloads_allowed:
         reason = "downloads_disabled" if url or hf_id else "missing_local_path"
         mode = "skipped_downloads_disabled" if url or hf_id else "missing_local_path"
-        result = _skipped(source_name, mode, reason, spec, policy, path=local_path or archive_path)
+        result = _skipped(source_name, mode, reason, spec, policy, path=archive_path or local_path)
         budget.source_results.append(result)
         return result
 
@@ -135,7 +153,7 @@ def download_if_allowed(
     if hf_id and not url:
         result = SourceDownloadResult(
             source_name=source_name,
-            mode="cached" if _hf_cache_hint_exists(hf_id) else "downloaded",
+            mode="downloaded",
             path="",
             hf_id=hf_id,
             reason="huggingface_dataset_resolved_by_datasets_cache",
@@ -250,12 +268,20 @@ def _skipped(
 
 
 def _required_commands(path: Path | None, url: str, hf_id: str, policy: DownloadPolicy) -> tuple[str, ...]:
-    prefix = f"export {policy.allow_downloads_env}=1"
+    prefix = f"$env:{policy.allow_downloads_env}='1'"
     if url:
         output = str(path or Path(policy.cache_dir) / _download_filename(url))
-        return (f"{prefix} && mkdir -p {Path(output).parent} && curl -L --fail --retry 4 -o {output} {url}",)
+        parent = str(Path(output).parent)
+        return (
+            f"{prefix}; New-Item -ItemType Directory -Force -Path '{parent}' | Out-Null; "
+            f"curl.exe -L --fail --retry 4 -o '{output}' '{url}'",
+        )
     if hf_id:
-        return (f"{prefix} && .venv/bin/python - <<'PY'\nfrom datasets import load_dataset\nload_dataset('{hf_id}')\nPY",)
+        local_dir = str(Path(policy.cache_dir) / "hf" / hf_id.replace("/", "__"))
+        return (
+            f"{prefix}; @'\nfrom huggingface_hub import snapshot_download\n"
+            f"snapshot_download(repo_id='{hf_id}', repo_type='dataset', local_dir=r'{local_dir}')\n'@ | python -",
+        )
     return ()
 
 
@@ -311,8 +337,31 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _hf_cache_hint_exists(hf_id: str) -> bool:
+def _hf_cache_hint_path(hf_id: str, policy: DownloadPolicy) -> Path | None:
+    external_snapshot = Path(policy.cache_dir) / "hf" / hf_id.replace("/", "__")
+    if _path_has_files(external_snapshot):
+        return external_snapshot
     cache_root = Path(os.environ.get("HF_HOME", Path.home() / ".cache" / "huggingface")) / "datasets"
     safe = hf_id.replace("/", "___")
     legacy = hf_id.replace("/", "--")
-    return any((cache_root / name).exists() for name in (safe, legacy))
+    for name in (safe, legacy):
+        path = cache_root / name
+        if _path_has_files(path):
+            return path
+    hub_root = Path(os.environ.get("HF_HOME", Path.home() / ".cache" / "huggingface")) / "hub"
+    hub_path = hub_root / f"datasets--{hf_id.replace('/', '--')}"
+    if _path_has_files(hub_path):
+        return hub_path
+    return None
+
+
+def _hf_cache_hint_exists(hf_id: str) -> bool:
+    return _hf_cache_hint_path(hf_id, DownloadPolicy()) is not None
+
+
+def _path_has_files(path: Path) -> bool:
+    if path.is_file():
+        return path.stat().st_size > 0
+    if path.is_dir():
+        return any(item.is_file() and item.stat().st_size > 0 for item in path.rglob("*"))
+    return False

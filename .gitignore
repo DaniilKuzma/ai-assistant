@@ -9,6 +9,9 @@ data/external/
 data/external/**
 data/processed/clean_sentence_pool*.csv.gz
 data/processed/real_error_pairs_validated*.csv.gz
+data/processed/real_error_pairs_rejected*.csv.gz
+data/processed/source_ingestion_manifest.json
+data/processed/source_cache/
 data/processed/**/clean_sentence_pool*.csv.gz
 data/processed/**/real_error_pairs_validated*.csv.gz
 *.py[cod]
@@ -18,4 +21,5 @@ models/current/
 reports/cleanup/*.tmp
 *.bak
 *.tmp
+*.part
 *-pycharm-support-libs/

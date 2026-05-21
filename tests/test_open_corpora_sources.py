@@ -86,7 +86,7 @@ def test_download_if_allowed_respects_env_flag_and_local_first(tmp_path: Path, m
     assert local.mode == "local"
     assert local.used is True
     assert missing.mode == "skipped_downloads_disabled"
-    assert "UNIT_ALLOW_DOWNLOADS=1" in missing.required_commands[0]
+    assert "$env:UNIT_ALLOW_DOWNLOADS='1'" in missing.required_commands[0]
     assert oversize.mode == "skipped_size_limit"
 
 
@@ -96,11 +96,16 @@ def test_open_corpora_config_uses_controlled_download_schema():
     policy = config["sources"]["download_policy"]
     assert policy["mode"] == "local_first_with_controlled_downloads"
     assert policy["allow_downloads_env"] == "RUSSIAN_CORRECTOR_ALLOW_SOURCE_DOWNLOADS"
-    assert policy["fail_if_insufficient_sources"] is True
-    assert config["clean_sources"]["lenta_news"]["type"] == "corus_lenta2"
+    assert policy["fail_if_insufficient_sources"] is False
+    assert policy["write_reports"] is True
+    assert config["clean_sources"]["lenta_news"]["type"] == "lenta_news"
     assert config["clean_sources"]["nerus_news"]["type"] == "nerus_conllu"
     assert config["clean_sources"]["opencorpora"]["archive_path"].endswith(".zip")
-    assert config["clean_sources"]["taiga_news_wiki"]["enabled"] is False
+    assert config["clean_sources"]["taiga_news_wiki"]["enabled"] is True
+    assert "proza" in config["clean_sources"]["taiga_news_wiki"]["forbidden_subcorpora"]
+    assert config["clean_sources"]["ruwiki"]["enabled"] is False
+    assert config["clean_sources"]["ruwiki"]["url"] is None
+    assert config["clean_sources"]["ruwiki"]["snapshot"] == "manual_pinned_required"
 
 
 def test_nerus_conllu_extractor_does_not_require_nerus_package(tmp_path: Path):
@@ -208,6 +213,8 @@ def test_clean_sentence_pool_uses_license_status_column_and_reports_download_mod
     assert result.accepted_count == 1
     assert "license_status" in frame.columns
     assert "license/status" not in frame.columns
+    assert "token_count" in frame.columns
+    assert "char_count" in frame.columns
     assert "| unit_news | loaded | local |" in report
 
 

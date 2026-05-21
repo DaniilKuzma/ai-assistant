@@ -4,12 +4,15 @@ huggingface-hub>=0.34.0,<1.0
 peft==0.19.1
 accelerate
 datasets
+corus
 pandas
 numpy
 scikit-learn
 matplotlib
 tqdm
 pyyaml
+lxml
+beautifulsoup4
 pymorphy3
 natasha>=1.6.0,<2.0
 setuptools>=68.2.2

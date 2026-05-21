@@ -2,11 +2,12 @@ sources:
   download_policy:
     mode: local_first_with_controlled_downloads
     allow_downloads_env: RUSSIAN_CORRECTOR_ALLOW_SOURCE_DOWNLOADS
-    max_total_download_mb: 1500
-    max_source_download_mb: 700
-    cache_dir: data/external/real_pairs
+    cache_dir: data/external
+    max_total_download_mb: 6000
+    max_source_download_mb: 2500
     fail_if_insufficient_sources: false
     never_commit_downloaded_data: true
+    write_reports: true
 
 validation:
   min_tokens: 5
@@ -20,33 +21,20 @@ real_sources:
     type: huggingface_dataset
     hf_id: ai-forever/spellcheck_benchmark
     priority: 1
-    max_pairs: 20000
-    target_accepted_pairs: 4000
-    allowed_error_types:
-      - spelling
-      - punctuation
-      - split_join
-      - hyphen
-      - case
-      - final_punctuation
+    max_pairs: 50000
+    target_accepted_pairs: 15000
     strict_validation: true
-    cap_share: 0.50
+    cap_share: 0.45
 
   spellcheck_punctuation_benchmark:
     enabled: true
-    type: local_jsonl
+    type: huggingface_dataset
     hf_id: ai-forever/spellcheck_punctuation_benchmark
-    local_path: data/external/sage/spellcheck_punctuation_benchmark.jsonl
     priority: 1
-    max_raw_pairs: 8000
-    max_pairs: 12000
-    target_accepted_pairs: 2000
-    allowed_error_types:
-      - punctuation
-      - final_punctuation
-      - spelling
+    max_pairs: 30000
+    target_accepted_pairs: 8000
     strict_validation: true
-    cap_share: 0.30
+    cap_share: 0.25
 
   sage_ruspellru:
     enabled: true
@@ -54,10 +42,11 @@ real_sources:
     dataset_name: RUSpellRU
     local_path: data/external/sage/RUSpellRU.jsonl
     priority: 2
-    max_pairs: 8000
-    cap_share: 0.30
+    max_pairs: 20000
+    target_accepted_pairs: 6000
+    cap_share: 0.20
     strict_validation: true
-    notes: "May contain social style; filter aggressively."
+    notes: "Filter social/blog style aggressively."
 
   sage_multidomain_gold:
     enabled: true
@@ -65,8 +54,9 @@ real_sources:
     dataset_name: MultidomainGold
     local_path: data/external/sage/MultidomainGold.jsonl
     priority: 2
-    max_pairs: 8000
-    cap_share: 0.50
+    max_pairs: 20000
+    target_accepted_pairs: 8000
+    cap_share: 0.30
     strict_validation: true
 
   sage_medspellchecker:
@@ -75,10 +65,11 @@ real_sources:
     dataset_name: MedSpellChecker
     local_path: data/external/sage/MedSpellChecker.jsonl
     priority: 3
-    max_pairs: 3000
-    cap_share: 0.08
+    max_pairs: 8000
+    target_accepted_pairs: 1000
+    cap_share: 0.05
     strict_validation: true
-    notes: "Medical domain capped; remove medical jargon."
+    notes: "Medical domain capped; remove medical jargon unless minimal typo."
 
   sage_github_typo_ru:
     enabled: true
@@ -86,8 +77,9 @@ real_sources:
     dataset_name: GitHubTypoCorpusRu
     local_path: data/external/sage/GitHubTypoCorpusRu.jsonl
     priority: 3
-    max_pairs: 3000
-    cap_share: 0.08
+    max_pairs: 8000
+    target_accepted_pairs: 1000
+    cap_share: 0.05
     strict_validation: true
     notes: "Remove code, paths, identifiers, technical fragments."
 
@@ -96,7 +88,7 @@ real_sources:
     type: m2_local
     local_path: data/external/rulec_gec/
     priority: 4
-    max_pairs: 5000
+    max_pairs: 10000
     cap_share: 0.10
     strict_validation: true
-    notes: "Optional only if legally available. Keep minimal orthography/punctuation edits only."
+    notes: "Optional only if legally available. Keep only minimal spelling/punctuation edits."

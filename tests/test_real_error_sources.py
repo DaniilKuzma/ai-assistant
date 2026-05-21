@@ -1,6 +1,7 @@
 from pathlib import Path
 import json
 
+import pandas as pd
 import yaml
 
 from src.candidates.candidate_generator import CandidateGenerator
@@ -79,11 +80,15 @@ def test_real_error_config_uses_controlled_download_schema():
     assert policy["mode"] == "local_first_with_controlled_downloads"
     assert policy["allow_downloads_env"] == "RUSSIAN_CORRECTOR_ALLOW_SOURCE_DOWNLOADS"
     assert policy["fail_if_insufficient_sources"] is False
+    assert policy["write_reports"] is True
     assert config["real_sources"]["spellcheck_benchmark"]["type"] == "huggingface_dataset"
     assert config["real_sources"]["spellcheck_benchmark"]["hf_id"] == "ai-forever/spellcheck_benchmark"
-    assert config["real_sources"]["spellcheck_punctuation_benchmark"]["cap_share"] == 0.30
-    assert config["real_sources"]["sage_ruspellru"]["cap_share"] == 0.30
-    assert config["real_sources"]["sage_multidomain_gold"]["cap_share"] == 0.50
+    assert config["real_sources"]["spellcheck_punctuation_benchmark"]["cap_share"] == 0.25
+    assert config["real_sources"]["sage_ruspellru"]["cap_share"] == 0.20
+    assert config["real_sources"]["sage_multidomain_gold"]["cap_share"] == 0.30
+    assert config["real_sources"]["rulec_gec"]["enabled"] is False
+    assert config["real_sources"]["rulec_gec"]["type"] == "m2_local"
+    assert "url" not in config["real_sources"]["rulec_gec"]
 
 
 def test_real_pair_loader_reports_rejections(tmp_path: Path):
@@ -118,7 +123,104 @@ def test_real_pair_loader_reports_rejections(tmp_path: Path):
     assert output_path.exists()
     assert (reports_dir / "real_pair_filter_report.csv").exists()
     assert (reports_dir / "rejected_real_pairs.csv").exists()
+    assert (reports_dir / "rejected_real_pair_reasons.csv").exists()
     assert result.source_reports[0]["status"] == "loaded"
+
+
+def test_real_pair_loader_supports_alias_fields_and_writes_canonical_columns(tmp_path: Path):
+    source_path = tmp_path / "pairs.jsonl"
+    source_path.write_text(
+        '{"corrupted": "Жызнь в городе стала заметно спокойнее.", "tgt": "Жизнь в городе стала заметно спокойнее.", "raw_id": "a1"}\n',
+        encoding="utf-8",
+    )
+    output_path = tmp_path / "real_error_pairs_validated.csv.gz"
+    reports_dir = tmp_path / "reports"
+
+    result = load_real_error_pairs(
+        {
+            "real_sources": {
+                "unit_pairs": {
+                    "enabled": True,
+                    "type": "local_jsonl",
+                    "local_path": str(source_path),
+                    "max_pairs": 10,
+                }
+            },
+            "validation": {"min_tokens": 5},
+        },
+        candidate_generator=CandidateGenerator(),
+        output_path=output_path,
+        reports_dir=reports_dir,
+    )
+
+    frame = pd.read_csv(output_path)
+    assert result.accepted_count == 1
+    assert {
+        "source_subdataset",
+        "detected_error_types",
+        "candidate_rule_ids",
+        "edit_count",
+        "char_edit_ratio",
+        "token_edit_ratio",
+        "metadata",
+    } <= set(frame.columns)
+    assert frame.loc[0, "source_dataset"] == "unit_pairs"
+
+
+def test_real_pair_loader_skips_unknown_format_with_reason(tmp_path: Path):
+    source_path = tmp_path / "pairs.unknown"
+    source_path.write_text("not a supported format", encoding="utf-8")
+
+    result = load_real_error_pairs(
+        {
+            "real_sources": {
+                "unit_unknown": {
+                    "enabled": True,
+                    "type": "custom_unknown",
+                    "local_path": str(source_path),
+                }
+            }
+        },
+        candidate_generator=CandidateGenerator(),
+        output_path=tmp_path / "real_error_pairs_validated.csv.gz",
+        reports_dir=tmp_path / "reports",
+    )
+
+    assert result.accepted_count == 0
+    assert result.source_reports[0]["status"] == "skipped"
+    assert result.source_reports[0]["reason"] == "skipped_format_unknown"
+
+
+def test_real_pair_loader_reads_m2_local_directory(tmp_path: Path):
+    source_dir = tmp_path / "rulec_gec"
+    source_dir.mkdir()
+    (source_dir / "sample.m2").write_text(
+        "S Жызнь в городе стала заметно спокойнее .\n"
+        "A 0 1|||SPELL|||Жизнь|||REQUIRED|||-NONE-|||0\n\n",
+        encoding="utf-8",
+    )
+
+    result = load_real_error_pairs(
+        {
+            "real_sources": {
+                "rulec_gec": {
+                    "enabled": True,
+                    "type": "m2_local",
+                    "local_path": str(source_dir),
+                    "max_pairs": 10,
+                    "cap_share": 1.0,
+                }
+            },
+            "validation": {"min_tokens": 5},
+        },
+        candidate_generator=CandidateGenerator(),
+        output_path=tmp_path / "real_error_pairs_validated.csv.gz",
+        reports_dir=tmp_path / "reports",
+    )
+
+    assert result.accepted_count == 1
+    assert result.rows[0]["source_dataset"] == "rulec_gec"
+    assert result.rows[0]["raw_source_path"].endswith("sample.m2")
 
 
 def test_sage_materializer_writes_canonical_jsonl_from_local_snapshot(tmp_path: Path):

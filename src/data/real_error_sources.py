@@ -22,31 +22,53 @@ from src.data.source_downloads import DownloadBudget, SourceDownloadResult, down
 from src.preprocessing.protected_spans import find_protected_spans
 from src.validation.diff_analyzer import DiffAnalyzer, Edit
 from src.validation.edit_classifier import coarse_error_type, is_allowed_edit_type
+from src.validation.strict_validator import StrictValidator
 
 
 REAL_PAIR_COLUMNS = [
     "source",
     "target",
+    "source_dataset",
+    "source_subdataset",
+    "domain",
+    "detected_error_types",
+    "candidate_present",
+    "candidate_rule_ids",
+    "edit_count",
+    "char_edit_ratio",
+    "token_edit_ratio",
+    "is_real_pair",
+    "metadata",
+    "raw_id",
+    "raw_source_path",
     "error_types",
     "error_type",
-    "source_dataset",
     "source_type",
     "is_clean",
     "is_hard_negative",
     "is_synthetic",
-    "is_real_pair",
     "split",
-    "domain",
     "rule_id",
     "rule_ids",
     "edit_operations",
     "edits",
-    "metadata",
-    "candidate_present",
 ]
 
-SOURCE_COLUMNS = ("source", "input", "input_text", "incorrect", "erroneous", "original", "error_text")
-TARGET_COLUMNS = ("target", "target_text", "correction", "correct", "corrected", "output", "correct_text")
+REJECTED_PAIR_COLUMNS = [
+    "source_dataset",
+    "source",
+    "target",
+    "reason",
+    "detected_error_types",
+    "candidate_present",
+    "char_edit_ratio",
+    "token_edit_ratio",
+    "notes",
+    "edit_summary",
+]
+
+SOURCE_COLUMNS = ("source", "input", "input_text", "incorrect", "erroneous", "original", "error_text", "corrupted", "src")
+TARGET_COLUMNS = ("target", "target_text", "correction", "correct", "corrected", "output", "correct_text", "corrected_text", "tgt")
 DISALLOWED_REAL_MARKERS = (
     " чувак",
     " чувиха",
@@ -79,6 +101,8 @@ class RealPairValidation:
     edit_summary: str
     detected_error_types: list[str]
     candidate_present: bool
+    char_edit_ratio: float = 0.0
+    token_edit_ratio: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -89,6 +113,7 @@ class RealErrorLoadResult:
     source_reports: list[dict[str, Any]]
     rejection_reason_counts: dict[str, int]
     output_path: str
+    rejected_output_path: str = ""
 
 
 def load_real_error_config(path: str | Path) -> dict[str, Any]:
@@ -116,45 +141,65 @@ def validate_real_error_pair(
 
     char_ratio = Levenshtein.distance(source, target) / max(1, max(len(source), len(target)))
     if char_ratio > max_char_edit_ratio:
-        return RealPairValidation(False, "char_edit_distance_too_high", None, "", [], False)
+        return RealPairValidation(False, "char_edit_distance_too_high", None, "", [], False, char_ratio, 0.0)
     token_ratio = _token_edit_ratio(source, target)
     if token_ratio > max_token_edit_ratio:
-        return RealPairValidation(False, "token_edit_distance_too_high", None, "", [], False)
+        return RealPairValidation(False, "token_edit_distance_too_high", None, "", [], False, char_ratio, token_ratio)
 
     generator = candidate_generator or CandidateGenerator()
     candidates = generator.generate(source)
     edits = [edit for edit in DiffAnalyzer().analyze(source, target, candidates=candidates) if _is_real_edit_supported(source, edit)]
     if not edits:
-        return RealPairValidation(False, "unsupported_edit_type", None, "", [], False)
+        return RealPairValidation(False, "unsupported_edit_type", None, "", [], False, char_ratio, token_ratio)
     error_types = sorted({coarse_error_type(edit.edit_type) for edit in edits if coarse_error_type(edit.edit_type) != "unknown"})
     if not error_types:
-        return RealPairValidation(False, "unknown_error_type", None, "", [], False)
+        return RealPairValidation(False, "unknown_error_type", None, _edit_summary(edits), [], False, char_ratio, token_ratio)
     candidate_present = any(candidate_matches_edit(candidate, edit) for edit in edits for candidate in candidates)
     if not candidate_present:
-        return RealPairValidation(False, "candidate_missing", None, _edit_summary(edits), error_types, False)
+        return RealPairValidation(False, "candidate_missing", None, _edit_summary(edits), error_types, False, char_ratio, token_ratio)
+
+    strict_result = StrictValidator().validate(source, target, trusted_edits=candidates)
+    if strict_result.apply_accepted() != target:
+        reasons = sorted({edit.reason for edit in strict_result.rejected_edits if edit.reason})
+        reason = "strict_validator_rejected" + (f":{','.join(reasons[:3])}" if reasons else "")
+        return RealPairValidation(False, reason, None, _edit_summary(edits), error_types, candidate_present, char_ratio, token_ratio)
 
     rule_ids = _rule_ids(edits)
+    candidate_rule_ids = sorted({candidate.rule_id for candidate in candidates if any(candidate_matches_edit(candidate, edit) for edit in edits)})
+    metadata = {
+        "source_type": "real_error_pair",
+        "source_dataset": source_dataset,
+        "candidate_present": True,
+    }
     row = {
         "source": source,
         "target": target,
+        "source_dataset": source_dataset,
+        "source_subdataset": "",
+        "domain": domain,
+        "detected_error_types": json.dumps(error_types, ensure_ascii=False),
+        "candidate_present": True,
+        "candidate_rule_ids": json.dumps(candidate_rule_ids, ensure_ascii=False),
+        "edit_count": len(edits),
+        "char_edit_ratio": char_ratio,
+        "token_edit_ratio": token_ratio,
+        "is_real_pair": True,
+        "metadata": json.dumps(metadata, ensure_ascii=False, sort_keys=True),
+        "raw_id": "",
+        "raw_source_path": "",
         "error_types": json.dumps(error_types, ensure_ascii=False),
         "error_type": error_types[0],
-        "source_dataset": source_dataset,
         "source_type": "real_error_pair",
         "is_clean": False,
         "is_hard_negative": False,
         "is_synthetic": False,
-        "is_real_pair": True,
         "split": "train",
-        "domain": domain,
         "rule_id": rule_ids[0] if rule_ids else "unknown",
         "rule_ids": json.dumps(rule_ids or ["unknown"], ensure_ascii=False),
         "edit_operations": json.dumps([asdict(edit) for edit in edits], ensure_ascii=False),
         "edits": json.dumps([asdict(edit) for edit in edits], ensure_ascii=False),
-        "metadata": json.dumps({"source_type": "real_error_pair", "source_dataset": source_dataset}, ensure_ascii=False),
-        "candidate_present": True,
     }
-    return RealPairValidation(True, "", row, _edit_summary(edits), error_types, True)
+    return RealPairValidation(True, "", row, _edit_summary(edits), error_types, True, char_ratio, token_ratio)
 
 
 def load_real_error_pairs(
@@ -181,6 +226,9 @@ def load_real_error_pairs(
             source_reports.append(_source_report(source_name, spec, status="skipped", reason="disabled"))
             continue
         source_type = str(spec.get("type") or "local_jsonl")
+        if not _is_supported_source_type(source_type):
+            source_reports.append(_source_report(source_name, spec, status="skipped", reason="skipped_format_unknown"))
+            continue
         if _should_skip_materialized_hf_source(source_name, spec, source_specs):
             source_reports.append(_source_report(source_name, spec, status="skipped", reason="materialized_to_sage_local_jsonl"))
             continue
@@ -220,13 +268,30 @@ def load_real_error_pairs(
                             source,
                             target,
                             "disallowed_error_type",
-                            validation.edit_summary,
                             json.dumps(validation.detected_error_types, ensure_ascii=False),
                             validation.candidate_present,
+                            validation.char_edit_ratio,
+                            validation.token_edit_ratio,
+                            validation.edit_summary,
                         )
                     )
                 elif validation.accepted and validation.row is not None:
-                    rows.append(validation.row)
+                    accepted_row = dict(validation.row)
+                    raw_metadata = metadata.get("metadata") if isinstance(metadata.get("metadata"), dict) else {}
+                    row_metadata = _json_dict(accepted_row.get("metadata"))
+                    row_metadata.update(raw_metadata)
+                    row_metadata.setdefault("raw_id", str(metadata.get("raw_id") or ""))
+                    accepted_row["metadata"] = json.dumps(row_metadata, ensure_ascii=False, sort_keys=True)
+                    accepted_row["source_subdataset"] = str(
+                        metadata.get("source_subdataset")
+                        or raw_metadata.get("dataset")
+                        or spec.get("dataset_name")
+                        or spec.get("name_in_dataset")
+                        or ""
+                    )
+                    accepted_row["raw_id"] = str(metadata.get("raw_id") or "")
+                    accepted_row["raw_source_path"] = str(metadata.get("raw_source_path") or path or "")
+                    rows.append(accepted_row)
                 else:
                     rejection_counts[validation.reason] += 1
                     rejected_rows.append(
@@ -235,9 +300,11 @@ def load_real_error_pairs(
                             source,
                             target,
                             validation.reason,
-                            validation.edit_summary,
                             json.dumps(validation.detected_error_types, ensure_ascii=False),
                             validation.candidate_present,
+                            validation.char_edit_ratio,
+                            validation.token_edit_ratio,
+                            validation.edit_summary,
                         )
                     )
                 if len(rows) - accepted_before >= max_accepted_pairs:
@@ -251,8 +318,8 @@ def load_real_error_pairs(
             _source_report(
                 source_name,
                 spec,
-                status="loaded",
-                reason="",
+                status="loaded" if seen > 0 else "skipped",
+                reason="" if seen > 0 else "no_pairs_loaded",
                 total_seen=seen,
                 accepted=len(rows) - accepted_before,
                 rejected=len(rejected_rows) - rejected_before,
@@ -269,13 +336,19 @@ def load_real_error_pairs(
     output = Path(output_path or "data/processed/real_error_pairs_validated.csv.gz")
     output.parent.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(rows, columns=REAL_PAIR_COLUMNS).to_csv(output, index=False)
+    rejected_output = output.with_name("real_error_pairs_rejected.csv.gz")
+    pd.DataFrame(rejected_rows, columns=REJECTED_PAIR_COLUMNS).to_csv(rejected_output, index=False)
     report_dir = Path(reports_dir or "reports")
     report_dir.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(_real_pair_filter_rows(source_reports, rejection_counts)).to_csv(report_dir / "real_pair_filter_report.csv", index=False)
-    pd.DataFrame(rejected_rows, columns=["source_dataset", "source", "target", "reason", "edit_summary", "detected_error_types", "candidate_present"]).to_csv(
+    pd.DataFrame(rejected_rows, columns=REJECTED_PAIR_COLUMNS).to_csv(
         report_dir / "rejected_real_pairs.csv",
         index=False,
     )
+    pd.DataFrame(
+        [{"reason": reason, "count": count} for reason, count in sorted(rejection_counts.items())],
+        columns=["reason", "count"],
+    ).to_csv(report_dir / "rejected_real_pair_reasons.csv", index=False)
     _write_real_source_report(
         report_dir / "real_error_source_report.md",
         source_reports,
@@ -290,6 +363,7 @@ def load_real_error_pairs(
         source_reports=source_reports,
         rejection_reason_counts=dict(sorted(rejection_counts.items())),
         output_path=str(output),
+        rejected_output_path=str(rejected_output),
     )
 
 
@@ -306,7 +380,23 @@ def _source_specs(config: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
     return []
 
 
-def _iter_pairs(spec: dict[str, Any], path: Path) -> Iterable[tuple[str, str, dict[str, Any]]]:
+def _is_supported_source_type(source_type: str) -> bool:
+    return source_type in {
+        "sage_hf_or_local",
+        "local_jsonl",
+        "jsonl",
+        "local_csv",
+        "csv",
+        "tsv",
+        "table",
+        "m2",
+        "m2_local",
+        "hf_dataset",
+        "huggingface_dataset",
+    }
+
+
+def _iter_pairs(spec: dict[str, Any], path: Path | None) -> Iterable[tuple[str, str, dict[str, Any]]]:
     source_type = str(spec.get("type") or "local_jsonl")
     if source_type == "sage_hf_or_local":
         source_type = "local_jsonl"
@@ -321,6 +411,8 @@ def _iter_pairs(spec: dict[str, Any], path: Path) -> Iterable[tuple[str, str, di
                 yield _first_value(item, SOURCE_COLUMNS), _first_value(item, TARGET_COLUMNS), {
                     "domain": str(item.get("domain") or ""),
                     "raw_id": str(item.get("raw_id") or item.get("id") or ""),
+                    "source_subdataset": str(item.get("dataset") or item.get("source_subdataset") or ""),
+                    "raw_source_path": str(path),
                     "metadata": item.get("metadata") if isinstance(item.get("metadata"), dict) else {},
                 }
     elif source_type in {"local_csv", "csv", "tsv", "table"}:
@@ -330,21 +422,65 @@ def _iter_pairs(spec: dict[str, Any], path: Path) -> Iterable[tuple[str, str, di
         with _open_text(path) as handle:
             reader = csv.DictReader(handle, delimiter=delimiter)
             for item in reader:
-                yield _first_value(item, SOURCE_COLUMNS), _first_value(item, TARGET_COLUMNS), {"domain": str(item.get("domain") or "")}
-    elif source_type == "m2":
+                yield _first_value(item, SOURCE_COLUMNS), _first_value(item, TARGET_COLUMNS), {
+                    "domain": str(item.get("domain") or ""),
+                    "raw_id": str(item.get("raw_id") or item.get("id") or ""),
+                    "raw_source_path": str(path),
+                }
+    elif source_type in {"m2", "m2_local"}:
         if path is None:
             return
         from src.data.external_sources import _m2_pairs
 
-        for source, target in _m2_pairs(path):
-            yield source, target, {"domain": "m2"}
+        for file_path in _iter_m2_files(path):
+            for index, (source, target) in enumerate(_m2_pairs(file_path)):
+                yield source, target, {"domain": "m2", "raw_id": f"{file_path.name}:{index}", "raw_source_path": str(file_path)}
     elif source_type in {"hf_dataset", "huggingface_dataset"}:
-        from datasets import load_dataset
+        yield from _iter_hf_pairs(spec)
 
-        dataset_id = str(spec.get("hf_id") or spec.get("repo"))
-        dataset = load_dataset(dataset_id, name=spec.get("name_in_dataset"), split=spec.get("split", "train"))
-        for item in dataset:
-            yield _first_value(item, SOURCE_COLUMNS), _first_value(item, TARGET_COLUMNS), {"domain": str(item.get("domain") or "")}
+
+def _iter_hf_pairs(spec: dict[str, Any]) -> Iterable[tuple[str, str, dict[str, Any]]]:
+    from datasets import load_dataset
+
+    dataset_id = str(spec.get("hf_id") or spec.get("repo"))
+    requested_configs: list[str | None] = []
+    for key in ("name_in_dataset", "dataset_name"):
+        if spec.get(key):
+            requested_configs.append(str(spec[key]))
+    requested_configs.extend(str(item) for item in spec.get("configs", []) if item)
+    if not requested_configs:
+        requested_configs = [None, "RUSpellRU", "MultidomainGold", "MedSpellchecker", "MedSpellChecker", "GitHubTypoCorpusRu"]
+    configs: list[str | None] = []
+    for config_name in requested_configs:
+        if config_name not in configs:
+            configs.append(config_name)
+    splits = [str(spec["split"])] if spec.get("split") else [str(item) for item in spec.get("splits", ("train", "test"))]
+    loaded_any = False
+    for config_name in configs:
+        for split in splits:
+            kwargs: dict[str, Any] = {"split": split}
+            if config_name:
+                kwargs["name"] = config_name
+            try:
+                try:
+                    dataset = load_dataset(dataset_id, trust_remote_code=True, **kwargs)
+                except TypeError:
+                    dataset = load_dataset(dataset_id, **kwargs)
+            except Exception:
+                continue
+            loaded_any = True
+            for row_index, item in enumerate(dataset):
+                if not isinstance(item, dict):
+                    continue
+                yield _first_value(item, SOURCE_COLUMNS), _first_value(item, TARGET_COLUMNS), {
+                    "domain": str(item.get("domain") or config_name or ""),
+                    "raw_id": str(item.get("raw_id") or item.get("id") or f"{split}:{row_index}"),
+                    "source_subdataset": str(config_name or ""),
+                    "metadata": {"split": split, "hf_id": dataset_id, "hf_config": config_name or ""},
+                    "raw_source_path": dataset_id,
+                }
+    if not loaded_any:
+        return
 
 
 def _basic_pair_rejection(source: str, target: str, *, min_tokens: int, max_tokens: int) -> str:
@@ -372,9 +508,26 @@ def _basic_pair_rejection(source: str, target: str, *, min_tokens: int, max_toke
         return "forbidden_domain_noise"
     if re.search(r"https?://|www\.|@\w+|#[\wа-яё]+|```|/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", source + " " + target):
         return "code_or_social_marker"
+    if re.search(r"\b(?:анамнез|пациент|диагноз|симптом|терапия|таблетк|инъекц)\b", lower):
+        return "forbidden_domain_noise"
+    if re.search(r"^\s*(?:\d{1,2}:\d{2}(?::\d{2})?|\[[^\]]+\])", combined):
+        return "subtitles_or_dialogue_fragment"
+    if re.search(r"^\s*[—-]\s+", combined):
+        return "literary_or_dialogue_fragment"
     if any(ord(char) > 0xFFFF for char in source + target):
         return "emoji"
     return ""
+
+
+def _iter_m2_files(path: Path) -> Iterable[Path]:
+    if path.is_file():
+        if path.suffix.lower() == ".m2":
+            yield path
+        return
+    if path.is_dir():
+        for file_path in sorted(path.rglob("*.m2")):
+            if file_path.is_file():
+                yield file_path
 
 
 def _is_real_edit_supported(source_text: str, edit: Edit) -> bool:
@@ -420,6 +573,27 @@ def _edit_summary(edits: list[Edit]) -> str:
 
 def _normalize_text(text: str) -> str:
     return re.sub(r"\s+", " ", str(text or "").replace("\xa0", " ")).strip()
+
+
+def _json_dict(value: Any) -> dict[str, Any]:
+    if isinstance(value, dict):
+        return dict(value)
+    if isinstance(value, str) and value.strip():
+        try:
+            loaded = json.loads(value)
+        except json.JSONDecodeError:
+            return {"raw_metadata": value}
+        return dict(loaded) if isinstance(loaded, dict) else {}
+    return {}
+
+
+def _as_float(value: Any, default: float = 0.0) -> float:
+    try:
+        if value is None or str(value).strip() == "":
+            return default
+        return float(value)
+    except (TypeError, ValueError):
+        return default
 
 
 def _first_value(item: dict[str, Any], names: tuple[str, ...]) -> str:
@@ -493,9 +667,11 @@ def _apply_source_caps(
                 str(row.get("source", "")),
                 str(row.get("target", "")),
                 "source_share_cap",
-                str(row.get("edit_operations", "")),
                 str(row.get("error_types", "[]")),
                 bool(row.get("candidate_present", True)),
+                _as_float(row.get("char_edit_ratio"), 0.0),
+                _as_float(row.get("token_edit_ratio"), 0.0),
+                str(row.get("edit_operations", "")),
             )
         )
         counts["source_share_cap"] += 1
@@ -507,18 +683,23 @@ def _rejected_row(
     source: str,
     target: str,
     reason: str,
-    edit_summary: str,
     detected_error_types: str,
     candidate_present: bool,
+    char_edit_ratio: float,
+    token_edit_ratio: float,
+    notes: str,
 ) -> dict[str, Any]:
     return {
         "source_dataset": source_dataset,
         "source": _normalize_text(source),
         "target": _normalize_text(target),
         "reason": _normalize_text(reason),
-        "edit_summary": _normalize_text(edit_summary),
         "detected_error_types": _normalize_text(detected_error_types),
         "candidate_present": bool(candidate_present),
+        "char_edit_ratio": float(char_edit_ratio),
+        "token_edit_ratio": float(token_edit_ratio),
+        "notes": _normalize_text(notes),
+        "edit_summary": _normalize_text(notes),
     }
 
 
