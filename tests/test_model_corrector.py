@@ -101,6 +101,12 @@ def test_candidate_threshold_precedence_uses_rule_family_edit_type_and_default()
         requires_model=True,
         rule_id="tsya_soft_insert",
         mode="model_required",
+        edit_domain="orthography",
+        syntax_family="tsya_tsya_context",
+        subtype="soft_insert",
+        evidence="syntax/POS verb context evidence",
+        implementation_group="syntax_tsya_context",
+        metadata={"syntax_family": "tsya_tsya_context"},
     )
     spelling = Candidate("чясто", "часто", "spelling", 0, 5, confidence=0.94, mode="deterministic")
     edit_type = Candidate("что то", "что-то", "hyphen", 0, 6, confidence=0.95, mode="candidate_only")
@@ -176,6 +182,12 @@ def test_model_selection_preserves_candidate_metadata():
         requires_model=True,
         rule_id="tsya_soft_insert",
         mode="model_required",
+        edit_domain="orthography",
+        syntax_family="tsya_tsya_context",
+        subtype="soft_insert",
+        evidence="syntax/POS verb context evidence",
+        implementation_group="syntax_tsya_context",
+        metadata={"syntax_family": "tsya_tsya_context"},
     )
 
     selected = _select_candidates(
@@ -188,6 +200,12 @@ def test_model_selection_preserves_candidate_metadata():
     assert selected[0].mode == "model_required"
     assert selected[0].requires_model is True
     assert selected[0].requires_scoring is True
+    assert selected[0].edit_domain == "orthography"
+    assert selected[0].syntax_family == "tsya_tsya_context"
+    assert selected[0].subtype == "soft_insert"
+    assert selected[0].evidence == "syntax/POS verb context evidence"
+    assert selected[0].implementation_group == "syntax_tsya_context"
+    assert selected[0].metadata == {"syntax_family": "tsya_tsya_context"}
 
 
 def test_trained_model_corrector_preserves_accepted_punctuation_rule_id():
@@ -402,7 +420,7 @@ def test_trained_model_corrector_rejects_high_confidence_dangerous_tsya_predicti
     result = corrector.correct("Они могут появиться завтра.")
 
     assert result.corrected_text == "Они могут появиться завтра."
-    assert any(edit.source == "появиться" and edit.status == "rejected" and edit.reason == "dangerous_tsya" for edit in result.edits)
+    assert any(edit.source == "появиться" and edit.status == "rejected" and edit.reason == "tsya_unsafe" for edit in result.edits)
 
 
 def test_trained_model_corrector_accepts_high_confidence_useful_tsya_prediction():

@@ -2789,18 +2789,19 @@ orthography:
       rule_ids: []
       aliases: []
       requires:
+      - dictionary
       - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      notes: blocked_until_dictionary_backed_candidate_support
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_dictionary
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
+      training_eligibility_reason: requires dictionary-backed candidate path
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -2809,7 +2810,7 @@ orthography:
       current_gap_coverage: null
       risk_level: high
       needs_before_training:
-      - none
+      - dictionary_candidate_support
   orthography_1_2_7_2:
     source_section: orthography
     orfogrammka_id: 1.2.7.2
@@ -2830,18 +2831,19 @@ orthography:
       rule_ids: []
       aliases: []
       requires:
+      - dictionary
       - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      notes: blocked_until_dictionary_backed_candidate_support
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_dictionary
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
+      training_eligibility_reason: requires dictionary-backed candidate path
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -2850,7 +2852,7 @@ orthography:
       current_gap_coverage: null
       risk_level: high
       needs_before_training:
-      - none
+      - dictionary_candidate_support
   orthography_1_2_7_3:
     source_section: orthography
     orfogrammka_id: 1.2.7.3
@@ -2871,18 +2873,19 @@ orthography:
       rule_ids: []
       aliases: []
       requires:
+      - dictionary
       - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      notes: blocked_until_dictionary_backed_candidate_support
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_dictionary
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
+      training_eligibility_reason: requires dictionary-backed candidate path
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -2891,7 +2894,7 @@ orthography:
       current_gap_coverage: null
       risk_level: high
       needs_before_training:
-      - none
+      - dictionary_candidate_support
   orthography_1_2_7_4:
     source_section: orthography
     orfogrammka_id: 1.2.7.4
@@ -2912,18 +2915,19 @@ orthography:
       rule_ids: []
       aliases: []
       requires:
+      - dictionary
       - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      notes: blocked_until_dictionary_backed_candidate_support
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_dictionary
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
+      training_eligibility_reason: requires dictionary-backed candidate path
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -2932,7 +2936,7 @@ orthography:
       current_gap_coverage: null
       risk_level: high
       needs_before_training:
-      - none
+      - dictionary_candidate_support
   orthography_1_2_7_5:
     source_section: orthography
     orfogrammka_id: 1.2.7.5
@@ -2953,18 +2957,19 @@ orthography:
       rule_ids: []
       aliases: []
       requires:
+      - dictionary
       - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      notes: blocked_until_dictionary_backed_candidate_support
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_dictionary
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
+      training_eligibility_reason: requires dictionary-backed candidate path
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -2973,7 +2978,7 @@ orthography:
       current_gap_coverage: null
       risk_level: high
       needs_before_training:
-      - none
+      - dictionary_candidate_support
   orthography_1_2_7_6:
     source_section: orthography
     orfogrammka_id: 1.2.7.6
@@ -2994,18 +2999,19 @@ orthography:
       rule_ids: []
       aliases: []
       requires:
+      - dictionary
       - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      notes: blocked_until_dictionary_backed_candidate_support
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_dictionary
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
+      training_eligibility_reason: requires dictionary-backed candidate path
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -3014,7 +3020,7 @@ orthography:
       current_gap_coverage: null
       risk_level: high
       needs_before_training:
-      - none
+      - dictionary_candidate_support
   orthography_group_pravila_upotrebleniya_bukv_napisanie_znachimyh_chastey_slova_bezudarnye_glasnye_v_glagolnyh_formah:
     source_section: orthography
     orfogrammka_id: null
@@ -6031,18 +6037,19 @@ orthography:
       rule_ids: []
       aliases: []
       requires:
+      - dictionary
       - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      notes: blocked_until_dictionary_backed_candidate_support
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_dictionary
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
+      training_eligibility_reason: requires dictionary-backed candidate path
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -6051,7 +6058,7 @@ orthography:
       current_gap_coverage: null
       risk_level: high
       needs_before_training:
-      - none
+      - dictionary_candidate_support
   orthography_group_pravila_slitnogo_defisnogo_i_razdelnogo_napisaniya_napisanie_mestoimennyh_slov:
     source_section: orthography
     orfogrammka_id: null
@@ -6103,68 +6110,33 @@ orthography:
     order: 147
     source_url: https://orfogrammka.ru/орфография/слитное_написание_местоименных_слов/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - context_to_zhe
+      - context_chto_by
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - morphology
+      - model
+      notes: syntax_orthography_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_orthography_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_orthography_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 0.0
       risk_level: high
-      needs_before_training:
-      - none
-  ? orthography_group_pravila_slitnogo_defisnogo_i_razdelnogo_napisaniya_napisanie_mestoimennyh_slov_napisanie_mestoimennyh_slov_cherez_defis
-  : source_section: orthography
-    orfogrammka_id: null
-    title: Написание местоименных слов через дефис
-    normalized_title: написание местоименных слов через дефис
-    entry_type: group
-    parent_key: orthography_group_pravila_slitnogo_defisnogo_i_razdelnogo_napisaniya_napisanie_mestoimennyh_slov
-    parent_path:
-    - Правила слитного, дефисного и раздельного написания
-    - Написание местоименных слов
-    depth: 3
-    order: 148
-    source_url: https://orfogrammka.ru/орфография/
-    implementation:
-      status: metadata_only
-      executable: false
-      rule_ids: []
-      aliases: []
-      requires: []
-      notes: Group heading from Orfogrammka taxonomy; not an executable rule.
-    dataset:
-      eligible_now: false
-      reason: metadata_only
-      last_known_candidate_recall: null
-      last_known_eval_count: null
-      production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_METADATA_ONLY
-      training_eligibility_reason: metadata_only
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
-      risk_level: low
       needs_before_training:
       - none
   orthography_3_4_2_1:
@@ -6302,29 +6274,32 @@ orthography:
     order: 152
     source_url: https://orfogrammka.ru/орфография/сочетания_с_местоименными_словами/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - context_to_zhe
+      - context_chto_by
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - morphology
+      - model
+      notes: syntax_orthography_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_orthography_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_orthography_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 0.0
       risk_level: high
       needs_before_training:
       - none
@@ -6423,18 +6398,19 @@ orthography:
       rule_ids: []
       aliases: []
       requires:
+      - dictionary
       - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      notes: blocked_until_dictionary_backed_candidate_support
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_dictionary
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
+      training_eligibility_reason: requires dictionary-backed candidate path
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -6443,7 +6419,7 @@ orthography:
       current_gap_coverage: null
       risk_level: high
       needs_before_training:
-      - none
+      - dictionary_candidate_support
   orthography_3_5_1_2:
     source_section: orthography
     orfogrammka_id: 3.5.1.2
@@ -6464,18 +6440,19 @@ orthography:
       rule_ids: []
       aliases: []
       requires:
+      - dictionary
       - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      notes: blocked_until_dictionary_backed_candidate_support
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_dictionary
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
+      training_eligibility_reason: requires dictionary-backed candidate path
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -6484,7 +6461,7 @@ orthography:
       current_gap_coverage: null
       risk_level: high
       needs_before_training:
-      - none
+      - dictionary_candidate_support
   orthography_3_5_1_3:
     source_section: orthography
     orfogrammka_id: 3.5.1.3
@@ -6505,18 +6482,19 @@ orthography:
       rule_ids: []
       aliases: []
       requires:
+      - dictionary
       - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      notes: blocked_until_dictionary_backed_candidate_support
     dataset:
       eligible_now: false
-      reason: needs_syntax
+      reason: needs_dictionary
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
+      training_eligibility_reason: requires dictionary-backed candidate path
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -6525,7 +6503,7 @@ orthography:
       current_gap_coverage: null
       risk_level: high
       needs_before_training:
-      - none
+      - dictionary_candidate_support
   orthography_3_5_1_4:
     source_section: orthography
     orfogrammka_id: 3.5.1.4
@@ -7069,29 +7047,32 @@ orthography:
     order: 171
     source_url: https://orfogrammka.ru/орфография/написание_отрицательных_наречий/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - ne_adverb
+      - ne_predicative
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - morphology
+      - model
+      notes: syntax_orthography_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_orthography_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_orthography_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 0.0
       risk_level: high
       needs_before_training:
       - none
@@ -7230,29 +7211,34 @@ orthography:
     order: 175
     source_url: https://orfogrammka.ru/орфография/союзы_и_частицы_из_сочетаний_предлогов_и_союзов_с_местоименными_словами/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - context_chto_by
+      - context_za_to
+      - context_vsledstvie
+      - context_nesmotrya
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - morphology
+      - model
+      notes: syntax_orthography_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_orthography_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_orthography_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 0.0
       risk_level: high
       needs_before_training:
       - none
@@ -7598,29 +7584,33 @@ orthography:
     order: 184
     source_url: https://orfogrammka.ru/орфография/написание_сочетаний_с_частицами_через_дефис/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - context_tak_zhe
+      - context_to_zhe
+      - context_chto_by
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - morphology
+      - model
+      notes: syntax_orthography_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_orthography_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_orthography_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 0.0
       risk_level: high
       needs_before_training:
       - none
@@ -7639,29 +7629,33 @@ orthography:
     order: 185
     source_url: https://orfogrammka.ru/орфография/раздельное_написание_сочетаний_с_частицами/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - context_tak_zhe
+      - context_to_zhe
+      - context_chto_by
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - morphology
+      - model
+      notes: syntax_orthography_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_orthography_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_orthography_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 0.0
       risk_level: high
       needs_before_training:
       - none
@@ -7965,29 +7959,34 @@ orthography:
     order: 193
     source_url: https://orfogrammka.ru/орфография/наличие_слов_типа_очень_крайне_весьма/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - ne_adjective
+      - ne_adverb
+      - ne_short_form
+      - ne_predicative
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - morphology
+      - model
+      notes: syntax_orthography_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_orthography_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_orthography_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 0.0
       risk_level: high
       needs_before_training:
       - none
@@ -8007,29 +8006,34 @@ orthography:
     order: 194
     source_url: https://orfogrammka.ru/орфография/наличие_уточняющих_наречий/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - ne_adjective
+      - ne_adverb
+      - ne_short_form
+      - ne_predicative
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - morphology
+      - model
+      notes: syntax_orthography_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_orthography_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_orthography_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 0.0
       risk_level: high
       needs_before_training:
       - none
@@ -8048,29 +8052,31 @@ orthography:
     order: 195
     source_url: https://orfogrammka.ru/орфография/слитное_написание_с_полными_формами_причастий/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - ne_participle
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - morphology
+      - model
+      notes: syntax_orthography_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_orthography_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_orthography_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 0.0
       risk_level: high
       needs_before_training:
       - none
@@ -8375,29 +8381,35 @@ orthography:
     order: 203
     source_url: https://orfogrammka.ru/орфография/конструкции_с_противопоставлением/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - ne_adjective
+      - ne_adverb
+      - ne_participle
+      - ne_short_form
+      - ne_predicative
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - morphology
+      - model
+      notes: syntax_orthography_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_orthography_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_orthography_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 0.0
       risk_level: high
       needs_before_training:
       - none
@@ -8416,29 +8428,36 @@ orthography:
     order: 204
     source_url: https://orfogrammka.ru/орфография/конструкции_усиливающие_отрицание/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - ne_adjective
+      - ne_adverb
+      - ne_participle
+      - ne_short_form
+      - ne_predicative
+      - ni_particle_context
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - morphology
+      - model
+      notes: syntax_orthography_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_orthography_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_orthography_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 0.0
       risk_level: high
       needs_before_training:
       - none
@@ -8457,29 +8476,33 @@ orthography:
     order: 205
     source_url: https://orfogrammka.ru/орфография/сочетания_едва_ли_не_чуть_ли_не_разве_не_не_далее_как_не_позже_чем_не_раньше_чем/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - ne_adverb
+      - ne_predicative
+      - ni_particle_context
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - morphology
+      - model
+      notes: syntax_orthography_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_orthography_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_orthography_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 0.0
       risk_level: high
       needs_before_training:
       - none

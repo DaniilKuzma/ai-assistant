@@ -4,13 +4,13 @@ This audit reads `configs/rules.yaml` only. It does not build a dataset, train, 
 
 ## Summary
 
-- total syntax_required entries: 57
-- total leaf syntax_required entries: 57
+- total syntax_required entries: 45
+- total leaf syntax_required entries: 45
 - syntax families: 25 total, 5 nonzero
 - IMPLEMENT_NOW: 0
-- IMPLEMENT_WITH_BOUNDED_PATTERN: 12
+- IMPLEMENT_WITH_BOUNDED_PATTERN: 0
 - blocked/deferred: 45
-- expected training_eligible gain: 12
+- expected training_eligible gain: 0
 
 ## Family Summary
 
@@ -35,11 +35,11 @@ This audit reads `configs/rules.yaml` only. It does not build a dataset, train, 
 | direct_speech_syntax | 0 | 0 | 0 | 0 | 4 |
 | quote_bracket_balance | 0 | 0 | 0 | 0 | 4 |
 | punctuation_combinations | 11 | 0 | 0 | 11 | 4 |
-| ne_with_parts_of_speech | 15 | 0 | 7 | 8 | 3 |
+| ne_with_parts_of_speech | 8 | 0 | 0 | 8 | 4 |
 | ni_stable_and_context | 0 | 0 | 0 | 0 | 4 |
 | n_nn_context | 0 | 0 | 0 | 0 | 4 |
 | tsya_tsya_context | 0 | 0 | 0 | 0 | 4 |
-| context_pairs | 22 | 0 | 5 | 17 | 3 |
+| context_pairs | 17 | 0 | 0 | 17 | 4 |
 | grammatical_endings_context | 7 | 0 | 0 | 7 | 4 |
 
 ## Inventory
@@ -53,8 +53,6 @@ This audit reads `configs/rules.yaml` only. It does not build a dataset, train, 
 | orthography_1_2_7_5 | Падежные формы существительных на -ий, -ие, -ия | grammatical_endings_context | NEEDS_DICTIONARY | Syntax alone is insufficient; safe candidates require a lexical, stable-expression, or morphology dictionary first. |
 | orthography_1_2_7_6 | Предлоги «в», «на», «по» с существительными на -ие, -ии | grammatical_endings_context | NEEDS_DICTIONARY | Syntax alone is insufficient; safe candidates require a lexical, stable-expression, or morphology dictionary first. |
 | orthography_3_2_3_1 | Наречия и прилагательные или причастия | context_pairs | NEEDS_DICTIONARY | Syntax alone is insufficient; safe candidates require a lexical, stable-expression, or morphology dictionary first. |
-| orthography_3_4_1 | Слитное написание местоименных слов | context_pairs | IMPLEMENT_WITH_BOUNDED_PATTERN | context_pairs can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| orthography_3_4_3_2 | Сочетания с местоименными словами | context_pairs | IMPLEMENT_WITH_BOUNDED_PATTERN | context_pairs can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
 | orthography_3_5_1_1 | Наречия, образованные с помощью приставок от наречий | context_pairs | NEEDS_DICTIONARY | Syntax alone is insufficient; safe candidates require a lexical, stable-expression, or morphology dictionary first. |
 | orthography_3_5_1_2 | Наречия, образованные от имён прилагательных | context_pairs | NEEDS_DICTIONARY | Syntax alone is insufficient; safe candidates require a lexical, stable-expression, or morphology dictionary first. |
 | orthography_3_5_1_3 | Наречия, образованные от местоименных слов | context_pairs | NEEDS_DICTIONARY | Syntax alone is insufficient; safe candidates require a lexical, stable-expression, or morphology dictionary first. |
@@ -68,27 +66,17 @@ This audit reads `configs/rules.yaml` only. It does not build a dataset, train, 
 | orthography_3_5_2_4 | Наречные сочетания, образованные повторением существительных или числительных с предлогом | context_pairs | NEEDS_DICTIONARY | Syntax alone is insufficient; safe candidates require a lexical, stable-expression, or morphology dictionary first. |
 | orthography_3_5_2_5 | Наречные сочетания с существительным в разных падежах с предлогами | context_pairs | NEEDS_DICTIONARY | Syntax alone is insufficient; safe candidates require a lexical, stable-expression, or morphology dictionary first. |
 | orthography_3_5_3_1 | Дефисное написание наречий | context_pairs | NEEDS_DICTIONARY | Syntax alone is insufficient; safe candidates require a lexical, stable-expression, or morphology dictionary first. |
-| orthography_3_5_4 | Написание отрицательных наречий | ne_with_parts_of_speech | IMPLEMENT_WITH_BOUNDED_PATTERN | ne_with_parts_of_speech can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| orthography_3_6_1_2 | Союзы и частицы из сочетаний предлогов и союзов с местоименными словами | context_pairs | IMPLEMENT_WITH_BOUNDED_PATTERN | context_pairs can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
 | orthography_3_6_1_4 | Слитное написание междометий и звукоподражаний | context_pairs | NEEDS_DICTIONARY | Syntax alone is insufficient; safe candidates require a lexical, stable-expression, or morphology dictionary first. |
 | orthography_3_6_2_3 | Слитное написание междометий и звукоподражаний | context_pairs | NEEDS_DICTIONARY | Syntax alone is insufficient; safe candidates require a lexical, stable-expression, or morphology dictionary first. |
 | orthography_3_6_2_4 | Написание междометий и звукоподражаний через дефис | context_pairs | NEEDS_DICTIONARY | Syntax alone is insufficient; safe candidates require a lexical, stable-expression, or morphology dictionary first. |
-| orthography_3_6_4_1 | Дефисное написание сочетаний с частицами | context_pairs | IMPLEMENT_WITH_BOUNDED_PATTERN | context_pairs can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| orthography_3_6_4_2 | Раздельное написание сочетаний с частицами | context_pairs | IMPLEMENT_WITH_BOUNDED_PATTERN | context_pairs can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
 | orthography_3_7_1_3 | Приставки «недо-» и «небез- (небес-)» | ne_with_parts_of_speech | NEEDS_DICTIONARY | Syntax alone is insufficient; safe candidates require a lexical, stable-expression, or morphology dictionary first. |
 | orthography_3_7_1_4_2 | Непринадлежность к разряду лиц или явлений в сочетаниях с «не» | ne_with_parts_of_speech | NEEDS_SEMANTIC_MODEL | Local syntax can propose probes, but production candidates need semantic disambiguation beyond bounded patterns. |
 | orthography_3_7_1_4_3 | Определение или предлог перед существительным с «не» | ne_with_parts_of_speech | NEEDS_SEMANTIC_MODEL | Local syntax can propose probes, but production candidates need semantic disambiguation beyond bounded patterns. |
-| orthography_3_7_1_4_4 | Наличие слов типа «очень», «крайне», «весьма» | ne_with_parts_of_speech | IMPLEMENT_WITH_BOUNDED_PATTERN | ne_with_parts_of_speech can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| orthography_3_7_1_4_5 | Наличие уточняющих наречий | ne_with_parts_of_speech | IMPLEMENT_WITH_BOUNDED_PATTERN | ne_with_parts_of_speech can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| orthography_3_7_1_5 | Слитное написание с полными формами причастий | ne_with_parts_of_speech | IMPLEMENT_WITH_BOUNDED_PATTERN | ne_with_parts_of_speech can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
 | orthography_3_7_2_2 | Написание с числительными и счётными существительными | ne_with_parts_of_speech | NEEDS_DICTIONARY | Syntax alone is insufficient; safe candidates require a lexical, stable-expression, or morphology dictionary first. |
 | orthography_3_7_2_3 | Написание с местоименными словами | ne_with_parts_of_speech | NEEDS_DICTIONARY | Syntax alone is insufficient; safe candidates require a lexical, stable-expression, or morphology dictionary first. |
 | orthography_3_7_2_4 | Написание со всегда краткими прилагательными | ne_with_parts_of_speech | NEEDS_SEMANTIC_MODEL | Local syntax can propose probes, but production candidates need semantic disambiguation beyond bounded patterns. |
 | orthography_3_7_2_5 | Написание с наречиями и неизменяемыми словами в роли сказуемого | ne_with_parts_of_speech | NEEDS_SEMANTIC_MODEL | Local syntax can propose probes, but production candidates need semantic disambiguation beyond bounded patterns. |
 | orthography_3_7_2_6 | Написание с любыми словами, пишущимися через дефис | ne_with_parts_of_speech | NEEDS_DICTIONARY | Syntax alone is insufficient; safe candidates require a lexical, stable-expression, or morphology dictionary first. |
-| orthography_3_7_2_8 | Конструкции с противопоставлением | ne_with_parts_of_speech | IMPLEMENT_WITH_BOUNDED_PATTERN | ne_with_parts_of_speech can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| orthography_3_7_2_9 | Конструкции, усиливающие отрицание | ne_with_parts_of_speech | IMPLEMENT_WITH_BOUNDED_PATTERN | ne_with_parts_of_speech can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| orthography_3_7_2_10 | Сочетания «едва ли не…, чуть ли не…, разве не…, не далее как…, не позже чем…, не раньше чем…» | ne_with_parts_of_speech | IMPLEMENT_WITH_BOUNDED_PATTERN | ne_with_parts_of_speech can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
 | orthography_4_11_2 | Местоимения «Вы», «Ваш» | grammatical_endings_context | BLOCK_FOR_NOW | This capitalization choice is stylistic/formality-sensitive and is not safe as strict spelling or punctuation correction. |
 | punctuation_5_7_1 | Неразложимые сочетания с подчинительными союзами и союзными словами | punctuation_combinations | NEEDS_DICTIONARY | Syntax alone is insufficient; safe candidates require a lexical, stable-expression, or morphology dictionary first. |
 | punctuation_5_7_2 | Неразложимые сочетания с частицами | punctuation_combinations | NEEDS_DICTIONARY | Syntax alone is insufficient; safe candidates require a lexical, stable-expression, or morphology dictionary first. |

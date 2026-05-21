@@ -453,6 +453,19 @@ def _select_candidates_with_trace(
                 gap_index=candidate.gap_index,
                 requires=candidate.requires,
                 group=candidate.group,
+                edit_domain=candidate.edit_domain,
+                syntax_family=candidate.syntax_family,
+                subtype=candidate.subtype,
+                trigger_text=candidate.trigger_text,
+                trigger_lemma=candidate.trigger_lemma,
+                trigger_pos=candidate.trigger_pos,
+                gap_kind=candidate.gap_kind,
+                evidence=candidate.evidence,
+                confidence_source=candidate.confidence_source,
+                implementation_group=candidate.implementation_group,
+                constraint_group=candidate.constraint_group,
+                bundle_id=candidate.bundle_id,
+                metadata=candidate.metadata,
             )
         )
         occupied.append((candidate.start, candidate.end))
@@ -488,6 +501,19 @@ def _apply_candidates(text: str, candidates: list[Candidate]) -> str:
             gap_index=candidate.gap_index,
             requires=candidate.requires,
             group=candidate.group,
+            edit_domain=candidate.edit_domain,
+            syntax_family=candidate.syntax_family,
+            subtype=candidate.subtype,
+            trigger_text=candidate.trigger_text,
+            trigger_lemma=candidate.trigger_lemma,
+            trigger_pos=candidate.trigger_pos,
+            gap_kind=candidate.gap_kind,
+            evidence=candidate.evidence,
+            confidence_source=candidate.confidence_source,
+            implementation_group=candidate.implementation_group,
+            constraint_group=candidate.constraint_group,
+            bundle_id=candidate.bundle_id,
+            metadata=candidate.metadata,
         )
         before = proposed
         proposed = apply_candidate(proposed, shifted)

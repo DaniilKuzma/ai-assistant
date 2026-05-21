@@ -45,7 +45,7 @@ def test_candidate_generator_returns_keep_and_whitelist_split():
     }
 
     assert ("незнаю", "незнаю", "keep", "deterministic", False) in values
-    assert ("незнаю", "не знаю", "split_join", "candidate_only", True) in values
+    assert ("незнаю", "не знаю", "split_join", "model_required", True) in values
     assert ("что", "что", "keep", "deterministic", False) in values
 
 
@@ -333,7 +333,7 @@ def test_candidate_generator_emits_context_dependent_split_join_candidates_as_mo
         for candidate in candidates
     }
 
-    expected_requires = ("syntax", "model")
+    expected_requires = ("syntax", "morphology", "model")
     assert ("также", "так же", "split_join", "context_tak_zhe", "context_split_join", "model_required", True, True, expected_requires) in values
     assert ("так же", "также", "split_join", "context_tak_zhe", "context_split_join", "model_required", True, True, expected_requires) in values
     assert ("тоже", "то же", "split_join", "context_to_zhe", "context_split_join", "model_required", True, True, expected_requires) in values

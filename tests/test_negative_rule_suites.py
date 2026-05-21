@@ -370,7 +370,7 @@ def test_validator_rejects_mock_model_repeated_punctuation_noise(source, target,
 def test_validator_rejects_dangerous_tsya_prediction_but_keeps_rule_id(source, target, trusted):
     result = StrictValidator(tsya_threshold=0.98).validate(source, target, trusted_edits=[trusted])
 
-    assert any(edit.status == "rejected" and edit.reason == "dangerous_tsya" and edit.rule_id == trusted.rule_id for edit in result.edits)
+    assert any(edit.status == "rejected" and edit.reason == "tsya_unsafe" and edit.rule_id == trusted.rule_id for edit in result.edits)
     assert result.apply_accepted() == source
 
 

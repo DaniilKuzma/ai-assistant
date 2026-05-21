@@ -187,9 +187,14 @@ def normalize_coverage_entry(domain: str, group: str, entry: dict[str, Any]) -> 
 
 
 def iter_rule_ids(data: dict[str, Any]) -> Iterable[str]:
+    seen: set[str] = set()
     for _domain, _group, entry in iter_coverage_entries(data):
         for rule_id in entry.get("rules", []):
-            yield str(rule_id)
+            normalized = str(rule_id)
+            if normalized in seen:
+                continue
+            seen.add(normalized)
+            yield normalized
 
 
 def validate_rules_coverage(
@@ -207,7 +212,6 @@ def validate_rules_coverage(
 
         registry_rule_ids = {rule.spec.id for rule in all_rules()}
 
-    seen_rule_ids: set[str] = set()
     for domain, group, entry in iter_coverage_entries(data):
         _validate_group(domain, group, entry)
         status = entry["status"]
@@ -217,12 +221,12 @@ def validate_rules_coverage(
             raise ValueError(f"{domain}.{group} is implemented but has no rule_id")
         if executable and not rules:
             raise ValueError(f"{domain}.{group} is executable but has no rule_id")
+        duplicate_rule_ids = sorted({rule_id for rule_id in rules if rules.count(rule_id) > 1})
+        if duplicate_rule_ids:
+            raise ValueError(f"{domain}.{group} repeats rule_id(s): {duplicate_rule_ids}")
         for rule_id in rules:
-            if rule_id in seen_rule_ids:
-                raise ValueError(f"Duplicate rule_id in coverage matrix: {rule_id}")
             if executable and rule_id not in registry_rule_ids:
                 raise ValueError(f"{domain}.{group} references unknown rule_id: {rule_id}")
-            seen_rule_ids.add(rule_id)
     return data
 
 

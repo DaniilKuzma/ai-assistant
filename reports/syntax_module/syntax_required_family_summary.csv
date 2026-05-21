@@ -18,9 +18,9 @@ semicolon,0,0,0,0,0,0,[],0,4
 direct_speech_syntax,0,0,0,0,0,0,[],0,4
 quote_bracket_balance,0,0,0,0,0,0,[],0,4
 punctuation_combinations,11,11,0,0,0,11,[],0,4
-ne_with_parts_of_speech,15,15,0,0,7,8,"[""ne_adjective"", ""ne_adverb"", ""ne_participle"", ""ne_verb""]",7,3
+ne_with_parts_of_speech,8,8,0,0,0,8,[],0,4
 ni_stable_and_context,0,0,0,0,0,0,[],0,4
 n_nn_context,0,0,0,0,0,0,[],0,4
 tsya_tsya_context,0,0,0,0,0,0,[],0,4
-context_pairs,22,22,0,0,5,17,"[""context_chto_by"", ""context_nesmotrya"", ""context_tak_zhe"", ""context_to_zhe"", ""context_vsledstvie"", ""context_za_to""]",5,3
+context_pairs,17,17,0,0,0,17,[],0,4
 grammatical_endings_context,7,7,0,0,0,7,[],0,4

@@ -200,7 +200,7 @@ def test_validator_rejects_dangerous_tsya_direction_even_with_high_confidence_mo
     assert any(
         edit.source == "появиться"
         and edit.status == "rejected"
-        and edit.reason == "dangerous_tsya"
+        and edit.reason == "tsya_unsafe"
         and edit.rule_id == "tsya_soft_delete"
         for edit in result.edits
     )
@@ -226,7 +226,7 @@ def test_validator_rejects_finite_tsya_to_infinitive_even_with_high_confidence_m
 
     result = validator.validate(source, target, trusted_edits=trusted)
 
-    assert any(edit.source == "учится" and edit.status == "rejected" and edit.reason == "dangerous_tsya" for edit in result.edits)
+    assert any(edit.source == "учится" and edit.status == "rejected" and edit.reason == "tsya_unsafe" for edit in result.edits)
     assert result.apply_accepted() == source
 
 
@@ -380,7 +380,7 @@ def test_validator_rejects_edits_creating_unbalanced_quotes_or_brackets(source, 
                 requires_model=True,
                 rule_id="n_nn_short_form",
             ),
-            "protected_clean_word_form",
+            "n_nn_unsafe",
         ),
         (
             "Это не случайно важно.",
@@ -395,7 +395,7 @@ def test_validator_rejects_edits_creating_unbalanced_quotes_or_brackets(source, 
                 requires_model=True,
                 rule_id="ne_adverb",
             ),
-            "unsafe_ne_split_join",
+            "ne_ni_unsafe",
         ),
         (
             "Это небольшой дефицит.",
@@ -410,7 +410,7 @@ def test_validator_rejects_edits_creating_unbalanced_quotes_or_brackets(source, 
                 requires_model=True,
                 rule_id="ne_adjective",
             ),
-            "unsafe_ne_split_join",
+            "ne_ni_unsafe",
         ),
         (
             "Получается это решение подходит группе альфа.",

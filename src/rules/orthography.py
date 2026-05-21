@@ -11,6 +11,7 @@ from src.candidates.frequent_errors import (
 from src.candidates.morphology import has_pos, is_known_word, normal_forms, parses
 from src.preprocessing.tokenizer import tokenize_words
 from src.rules.base import RuleCandidate, RuleContext, RuleCorruption, RuleEdit, RuleMode, RuleSpec
+from src.rules.syntax_orthography import syntax_orthography_rules
 
 
 VERB_POSES = frozenset({"VERB", "INFN"})
@@ -150,7 +151,10 @@ SCORING_REQUIRED_RULE_IDS = frozenset(
         "ne_adjective",
         "ne_participle",
         "ne_adverb",
+        "ne_short_form",
+        "ne_predicative",
         "ni_stable_expression",
+        "ni_particle_context",
         "n_nn_adjective",
         "n_nn_participle",
         "n_nn_deverbal_adjective",
@@ -1940,17 +1944,9 @@ ORTHOGRAPHY_RULES: tuple[object, ...] = (
         "dictionary_model_required",
         "Opt-in lexicon-backed е/ё candidates that require model scoring.",
     ),
-    NnRule("n_nn_short_form", "Generate model-scored Н/НН candidates for short adjective and participle forms."),
-    NnRule("n_nn_participle", "Generate model-scored Н/НН candidates for participles."),
-    NnRule("n_nn_deverbal_adjective", "Generate model-scored Н/НН candidates for deverbal adjectives."),
-    NnRule("n_nn_adjective", "Generate model-scored Н/НН candidates for adjectives."),
+    *syntax_orthography_rules(),
     PrefixPrePriRule(),
     FrequentErrorRule(),
-    NeVerbRule(),
-    NePartOfSpeechRule("ne_participle", NE_PARTICIPLE_POSES, "Generate не + participle split/join candidates."),
-    NePartOfSpeechRule("ne_adverb", NE_ADVERB_POSES, "Generate не + adverb split/join candidates."),
-    NePartOfSpeechRule("ne_adjective", NE_ADJECTIVE_POSES, "Generate не + adjective split/join candidates."),
-    NiStableExpressionRule(),
     *(SpellingPatternRule(wrong, correct) for wrong, correct in SPELLING_PATTERNS.items()),
     CyExceptionRule(),
     SoftToHardSignRule(),
@@ -1958,22 +1954,6 @@ ORTHOGRAPHY_RULES: tuple[object, ...] = (
     SdelatPrefixRule(),
     PrefixZToSRule(),
     PrefixSToZRule(),
-    TsyaSoftDeleteRule(),
-    TsyaSoftInsertRule(),
-    ContextPairRule("context_tak_zhe", (("также", "так же"), ("так же", "также"))),
-    ContextPairRule("context_to_zhe", (("тоже", "то же"), ("то же", "тоже"))),
-    ContextPairRule("context_chto_by", (("чтобы", "что бы"), ("что бы", "чтобы"))),
-    ContextPairRule("context_za_to", (("зато", "за то"), ("за то", "зато"))),
-    ContextPairRule("context_vsledstvie", (("вследствие", "в следствие"), ("в следствие", "вследствие"))),
-    ContextPairRule(
-        "context_nesmotrya",
-        (
-            ("несмотря", "не смотря"),
-            ("не смотря", "несмотря"),
-            ("несмотря на", "не смотря на"),
-            ("не смотря на", "несмотря на"),
-        ),
-    ),
     HyphenParticleRule(),
     HyphenKoeKoyRule(),
     HyphenPoAdverbRule(),

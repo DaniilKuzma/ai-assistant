@@ -30,6 +30,18 @@ class RuleCandidate:
     mode: RuleMode = "deterministic"
     group: str = ""
     requires: tuple[str, ...] = ()
+    edit_domain: str = ""
+    syntax_family: str = ""
+    subtype: str = ""
+    trigger_text: str = ""
+    trigger_lemma: str = ""
+    trigger_pos: str = ""
+    evidence: str = ""
+    confidence_source: str = ""
+    implementation_group: str = ""
+    constraint_group: str = ""
+    bundle_id: str = ""
+    metadata: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -67,6 +79,18 @@ class RuleEdit:
     mode: RuleMode = "deterministic"
     group: str = ""
     requires: tuple[str, ...] = ()
+    edit_domain: str = ""
+    syntax_family: str = ""
+    subtype: str = ""
+    trigger_text: str = ""
+    trigger_lemma: str = ""
+    trigger_pos: str = ""
+    evidence: str = ""
+    confidence_source: str = ""
+    implementation_group: str = ""
+    constraint_group: str = ""
+    bundle_id: str = ""
+    metadata: dict[str, Any] | None = None
 
 
 class Rule(Protocol):

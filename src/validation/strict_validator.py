@@ -82,8 +82,11 @@ class StrictValidator:
                 validated.append(edit.with_status("rejected", guard_reason))
                 continue
             if _is_context_dependent_edit(edit):
-                if _is_trusted_context_pair(source, edit, trusted_context_keys):
-                    validated.append(edit.with_status("accepted", "trusted high-confidence context pair"))
+                if _has_trusted_context_pair_key(edit, trusted_context_keys):
+                    if _passes_context_pair_guard(source, edit):
+                        validated.append(edit.with_status("accepted", "trusted high-confidence context pair"))
+                    else:
+                        validated.append(edit.with_status("rejected", "context_pair_unsafe"))
                 else:
                     validated.append(edit.with_status("rejected", "context-dependent pair requires trusted model confidence"))
             elif edit.edit_type == "final_punctuation":
@@ -116,7 +119,8 @@ RUSSIAN_LETTER_RE = re.compile(r"[А-Яа-яЁё]")
 QUOTE_NORMALIZATION_RULE_IDS = frozenset({"quote_open", "quote_close"})
 N_NN_RULE_IDS = frozenset({"n_nn_adjective", "n_nn_participle", "n_nn_deverbal_adjective", "n_nn_short_form"})
 PROTECTED_N_NN_CLEAN_FORMS = frozenset({("намерены", "намеренны")})
-NE_SPLIT_JOIN_RULE_IDS = frozenset({"ne_verb", "ne_adjective", "ne_adverb", "ne_participle"})
+NE_SPLIT_JOIN_RULE_IDS = frozenset({"ne_verb", "ne_adjective", "ne_adverb", "ne_participle", "ne_short_form", "ne_predicative"})
+NI_RULE_IDS = frozenset({"ni_stable_expression", "ni_particle_context"})
 DIRECT_SPEECH_RULE_IDS = frozenset({"direct_speech_colon", "direct_speech_quotes", "direct_speech_dash"})
 SYNTAX_PUNCTUATION_RULE_IDS = frozenset(
     {
@@ -149,6 +153,8 @@ PROTECTED_ACRONYMS = frozenset({"УФСБ", "РИА", "США", "РФ", "НББ"
 ORG_LIKE_SUFFIXES = ("телеком", "банк", "газ", "нефть", "медиа", "инвест", "строй", "транс")
 MORPH_GUARDED_POSES = frozenset({"NOUN", "ADJF", "ADJS", "PRTF", "PRTS"})
 VERB_LIKE_POSES = frozenset({"VERB", "INFN", "GRND", "PRTF", "PRTS"})
+N_NN_ADJECTIVE_POSES = frozenset({"ADJF", "ADJS"})
+N_NN_PARTICIPLE_POSES = frozenset({"PRTF", "PRTS"})
 PROPER_LIKE_GRAMMEMES = frozenset({"Name", "Surn", "Patr", "Orgn", "Geox"})
 SAFE_SINGLE_CHAR_SPELLING_SUBSTITUTIONS = frozenset(
     {
@@ -210,15 +216,15 @@ def _guard_rejection_reason(
     final_reason = _final_punctuation_rejection_reason(source, edit)
     if final_reason:
         return final_reason
-    if _is_protected_n_nn_clean_form(edit):
-        return "protected_clean_word_form"
-    if _is_unsafe_n_nn_lexical_change(edit):
-        return "unsafe_n_nn_lexical_change"
+    n_nn_reason = _n_nn_rejection_reason(edit)
+    if n_nn_reason:
+        return n_nn_reason
     lexical_reason = _lexical_spelling_rejection_reason(source, edit)
     if lexical_reason:
         return lexical_reason
-    if _is_unsafe_ne_split_join(source, edit):
-        return "unsafe_ne_split_join"
+    ne_ni_reason = _ne_ni_rejection_reason(source, edit)
+    if ne_ni_reason:
+        return ne_ni_reason
     if _is_unsafe_hyphen_po_adverb(edit):
         return "unsafe_hyphen_po_adverb"
     if _is_unsafe_colon_candidate(source, edit):
@@ -234,11 +240,11 @@ def _guard_rejection_reason(
         return "unsafe_discourse_dash"
     if _is_tsya_pair(edit.source.lower(), edit.replacement.lower()):
         if _is_dangerous_tsya_edit(source, edit):
-            return "dangerous_tsya"
+            return "tsya_unsafe"
         if not _is_trusted_tsya_edit(edit, trusted_tsya_keys):
             return "requires_trusted_candidate"
     elif _is_dangerous_tsya_edit(source, edit):
-        return "dangerous_tsya"
+        return "tsya_unsafe"
     if _breaks_protected_span(edit, protected):
         return "protected_span"
     if _creates_duplicate_punctuation(source, target, edit):
@@ -355,15 +361,36 @@ def _is_straight_quote_normalization(edit: Edit) -> bool:
     return edit.source == '"' and edit.replacement in {"«", "»"}
 
 
-def _is_protected_n_nn_clean_form(edit: Edit) -> bool:
-    return (
-        edit.rule_id in N_NN_RULE_IDS
-        and (edit.source.lower(), edit.replacement.lower()) in PROTECTED_N_NN_CLEAN_FORMS
-    )
+def _n_nn_rejection_reason(edit: Edit) -> str:
+    if edit.rule_id not in N_NN_RULE_IDS:
+        return ""
+    if (edit.source.lower(), edit.replacement.lower()) in PROTECTED_N_NN_CLEAN_FORMS:
+        return "n_nn_unsafe"
+    if not _n_nn_morphology_compatible(edit):
+        return "morph_incompatible"
+    if _is_protected_acronym_or_all_caps(edit.source):
+        return "n_nn_unsafe"
+    return ""
 
 
-def _is_unsafe_n_nn_lexical_change(edit: Edit) -> bool:
-    return edit.rule_id in N_NN_RULE_IDS
+def _n_nn_morphology_compatible(edit: Edit) -> bool:
+    replacement = edit.replacement.lower()
+    source = edit.source.lower()
+    if not _is_known_correct_word(replacement):
+        return False
+    if edit.rule_id == "n_nn_short_form":
+        return _has_known_pos(replacement, frozenset({"ADJS", "PRTS"}))
+    if edit.rule_id == "n_nn_participle":
+        return _has_known_pos(replacement, N_NN_PARTICIPLE_POSES)
+    if edit.rule_id == "n_nn_deverbal_adjective":
+        return _has_known_pos(source, N_NN_PARTICIPLE_POSES) and _has_known_pos(replacement, N_NN_ADJECTIVE_POSES)
+    if edit.rule_id == "n_nn_adjective":
+        return _has_known_pos(replacement, N_NN_ADJECTIVE_POSES)
+    return False
+
+
+def _has_known_pos(word: str, poses: frozenset[str]) -> bool:
+    return any(getattr(parse, "is_known", False) and getattr(parse.tag, "POS", None) in poses for parse in parses(word))
 
 
 def _lexical_spelling_rejection_reason(source_text: str, edit: Edit) -> str:
@@ -775,18 +802,25 @@ def _previous_nonspace_index(text: str, position: int) -> int | None:
     return index if index >= 0 else None
 
 
-def _is_unsafe_ne_split_join(source_text: str, edit: Edit) -> bool:
+def _ne_ni_rejection_reason(source_text: str, edit: Edit) -> str:
+    if edit.rule_id in NI_RULE_IDS:
+        if edit.source.lower().startswith("ни") and edit.replacement.lower().startswith("не"):
+            return "ne_ni_unsafe"
+        return ""
     if edit.rule_id not in NE_SPLIT_JOIN_RULE_IDS:
-        return False
+        return ""
     source = edit.source.lower()
     replacement = edit.replacement.lower()
     if not (source.startswith("не") or source.startswith("не ") or replacement.startswith("не") or replacement.startswith("не ")):
-        return False
+        return ""
     if edit.rule_id == "ne_verb":
-        return not _looks_like_ne_verb_split(replacement)
+        return "" if _looks_like_ne_verb_split(replacement) else "morph_incompatible"
     if (source, replacement) == ("не случайно", "неслучайно"):
-        return True
-    return not _has_ne_contrast_marker(source_text, edit)
+        next_word = _next_word_after(source_text, edit.end)
+        return "ne_ni_unsafe" if next_word else ""
+    if " " in replacement:
+        return "" if _has_ne_contrast_marker(source_text, edit) else "ne_ni_unsafe"
+    return ""
 
 
 def _looks_like_ne_verb_split(replacement: str) -> bool:
@@ -1173,9 +1207,13 @@ def _trusted_context_pair_keys(trusted_edits: list[Any], threshold: float) -> se
     return keys
 
 
-def _is_trusted_context_pair(source_text: str, edit: Edit, trusted_keys: set[tuple[int, int, str, str]]) -> bool:
+def _has_trusted_context_pair_key(edit: Edit, trusted_keys: set[tuple[int, int, str, str]]) -> bool:
     key = (edit.start, edit.end, edit.source.lower(), edit.replacement.lower())
-    return key in trusted_keys and _passes_context_pair_guard(source_text, edit)
+    return key in trusted_keys
+
+
+def _is_trusted_context_pair(source_text: str, edit: Edit, trusted_keys: set[tuple[int, int, str, str]]) -> bool:
+    return _has_trusted_context_pair_key(edit, trusted_keys) and _passes_context_pair_guard(source_text, edit)
 
 
 def _passes_context_pair_guard(source_text: str, edit: Edit) -> bool:
@@ -1184,11 +1222,29 @@ def _passes_context_pair_guard(source_text: str, edit: Edit) -> bool:
     next_word = _next_word_after(source_text, edit.end)
     if source == "также" and replacement == "так же":
         return next_word == "как"
+    if source == "так же" and replacement == "также":
+        return next_word != "как"
     if source == "тоже" and replacement == "то же":
         return next_word == "что"
+    if source == "то же" and replacement == "тоже":
+        return next_word != "что"
+    if source == "чтобы" and replacement == "что бы":
+        return not _looks_like_infinitive(next_word)
     if source == "что бы" and replacement == "чтобы":
         return _looks_like_infinitive(next_word)
-    return False
+    if source == "зато" and replacement == "за то":
+        return _next_word_after(source_text, edit.end) in {"решение", "дело", "задание", "окно", "место"}
+    if source == "за то" and replacement == "зато":
+        return False
+    if source == "вследствие" and replacement == "в следствие":
+        return False
+    if source == "в следствие" and replacement == "вследствие":
+        return _next_word_after(source_text, edit.end) not in {"по", "делу"}
+    if source in {"несмотря", "несмотря на"} and replacement.startswith("не смотря"):
+        return False
+    if source in {"не смотря", "не смотря на"} and replacement.startswith("несмотря"):
+        return _next_word_after(source_text, edit.end) != "экран"
+    return True
 
 
 def _next_word_after(text: str, position: int) -> str:

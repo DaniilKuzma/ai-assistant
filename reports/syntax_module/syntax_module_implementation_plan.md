@@ -4,13 +4,13 @@ This is an implementation handoff for future syntax-module work. It does not bui
 
 ## Baseline
 
-- total syntax_required entries: 57
-- total leaf syntax_required entries: 57
+- total syntax_required entries: 45
+- total leaf syntax_required entries: 45
 - families count: 25 total, 5 nonzero
 - implement_now count: 0
-- bounded_pattern count: 12
+- bounded_pattern count: 0
 - blocked count: 45
-- expected training_eligible gain: 12
+- expected training_eligible gain: 0
 
 ## Files To Create
 
@@ -27,8 +27,6 @@ This is an implementation handoff for future syntax-module work. It does not bui
 
 ## Implementation Families
 
-- priority 3: `ne_with_parts_of_speech` covers 7 entries; candidate rule ids: ne_adjective, ne_adverb, ne_participle, ne_verb.
-- priority 3: `context_pairs` covers 5 entries; candidate rule ids: context_chto_by, context_nesmotrya, context_tak_zhe, context_to_zhe, context_vsledstvie, context_za_to.
 
 ## Blocked Or Deferred
 

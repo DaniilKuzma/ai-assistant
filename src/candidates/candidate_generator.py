@@ -212,13 +212,29 @@ class CandidateGenerator:
                             spec.mode,
                             requires=spec.requires,
                             group=spec.group,
+                            edit_domain=spec.edit_domain,
+                            syntax_family=spec.syntax_family,
+                            subtype=spec.subtype,
+                            trigger_text=spec.trigger_text,
+                            trigger_lemma=spec.trigger_lemma,
+                            trigger_pos=spec.trigger_pos,
+                            evidence=spec.evidence,
+                            confidence_source=spec.confidence_source,
+                            implementation_group=spec.implementation_group,
+                            constraint_group=spec.constraint_group,
+                            bundle_id=spec.bundle_id,
+                            metadata=spec.metadata,
                         ),
                     )
 
             for rule in rules:
                 if rule.spec.scope != "span" or not hasattr(rule, "generate_span"):
                     continue
-                for spec in rule.generate_span(text, word_tuple, index):
+                if getattr(rule, "uses_rule_context", False):
+                    span_specs = rule.generate_span(text, word_tuple, index, context)
+                else:
+                    span_specs = rule.generate_span(text, word_tuple, index)
+                for spec in span_specs:
                     _append_candidate(
                         candidates,
                         seen,
@@ -234,6 +250,18 @@ class CandidateGenerator:
                             spec.mode,
                             requires=spec.requires,
                             group=spec.group,
+                            edit_domain=spec.edit_domain,
+                            syntax_family=spec.syntax_family,
+                            subtype=spec.subtype,
+                            trigger_text=spec.trigger_text,
+                            trigger_lemma=spec.trigger_lemma,
+                            trigger_pos=spec.trigger_pos,
+                            evidence=spec.evidence,
+                            confidence_source=spec.confidence_source,
+                            implementation_group=spec.implementation_group,
+                            constraint_group=spec.constraint_group,
+                            bundle_id=spec.bundle_id,
+                            metadata=spec.metadata,
                         ),
                     )
 
