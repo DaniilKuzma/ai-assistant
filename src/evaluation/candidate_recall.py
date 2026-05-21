@@ -56,6 +56,7 @@ def build_candidate_recall_reports(
     max_candidates: int | None = None,
     rules_config_path: str | Path = "configs/rules.yaml",
     max_missing_examples: int = 20,
+    trust_candidate_backed_metadata: bool = True,
 ) -> dict[str, pd.DataFrame]:
     generator = candidate_generator or CandidateGenerator()
     rule_groups = _load_rule_groups(rules_config_path)
@@ -74,7 +75,7 @@ def build_candidate_recall_reports(
         gold_edits = _gold_edits(row, analyzer)
         if not gold_edits:
             continue
-        trusted_candidate_backed = _trusted_candidate_backed_row(row)
+        trusted_candidate_backed = trust_candidate_backed_metadata and _trusted_candidate_backed_row(row)
 
         candidates: list[Any] | None = None
         candidate_gap_keys: set[tuple[int | None, str, str]] | None = None
@@ -225,6 +226,7 @@ def write_candidate_recall_reports(
     max_candidates: int | None = None,
     rules_config_path: str | Path = "configs/rules.yaml",
     max_missing_examples: int = 20,
+    trust_candidate_backed_metadata: bool = True,
 ) -> None:
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
@@ -234,6 +236,7 @@ def write_candidate_recall_reports(
         max_candidates=max_candidates,
         rules_config_path=rules_config_path,
         max_missing_examples=max_missing_examples,
+        trust_candidate_backed_metadata=trust_candidate_backed_metadata,
     )
     reports["candidate_recall_by_rule"].to_csv(output / "candidate_recall_by_rule.csv", index=False)
     reports["gap_label_coverage_by_rule"].to_csv(output / "gap_label_coverage_by_rule.csv", index=False)

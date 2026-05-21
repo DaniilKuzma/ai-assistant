@@ -1153,14 +1153,13 @@ orthography:
       notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
     dataset:
       eligible_now: true
-      reason: eligible_but_needs_threshold
+      reason: syntax eval support verified
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: candidate path verified; validator guards and hard negatives are required before dataset
-        build
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -1170,7 +1169,6 @@ orthography:
       risk_level: high
       needs_before_training:
       - validator
-      - hard_negatives
   orthography_group_pravila_upotrebleniya_bukv_napisanie_znachimyh_chastey_slova:
     source_section: orthography
     orfogrammka_id: null
@@ -2801,7 +2799,7 @@ orthography:
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
-      training_eligibility_reason: requires dictionary-backed candidate path
+      training_eligibility_reason: grammatical_endings_context requires dictionary-backed lexical and morphology support
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -2885,7 +2883,7 @@ orthography:
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
-      training_eligibility_reason: requires dictionary-backed candidate path
+      training_eligibility_reason: grammatical_endings_context requires dictionary-backed lexical and morphology support
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -2927,7 +2925,7 @@ orthography:
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
-      training_eligibility_reason: requires dictionary-backed candidate path
+      training_eligibility_reason: grammatical_endings_context requires dictionary-backed lexical and morphology support
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -3090,7 +3088,7 @@ orthography:
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
-      training_eligibility_reason: requires dictionary-backed candidate path
+      training_eligibility_reason: grammatical_endings_context requires dictionary-backed lexical and morphology support
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -3401,13 +3399,13 @@ orthography:
       notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
     dataset:
       eligible_now: true
-      reason: eligible_but_needs_threshold
+      reason: syntax eval support verified
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
       training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
-      training_eligibility_reason: candidate path verified; current blocker is threshold calibration
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -4173,7 +4171,7 @@ orthography:
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
-      training_eligibility_reason: requires dictionary-backed candidate path
+      training_eligibility_reason: grammatical_endings_context requires dictionary-backed lexical and morphology support
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -4331,13 +4329,13 @@ orthography:
       notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
     dataset:
       eligible_now: true
-      reason: eligible_but_needs_more_training
+      reason: syntax eval support verified
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
       training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
-      training_eligibility_reason: candidate path verified; current blocker is threshold calibration
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -4375,13 +4373,13 @@ orthography:
       notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
     dataset:
       eligible_now: true
-      reason: eligible_but_needs_more_training
+      reason: syntax eval support verified
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
       training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
-      training_eligibility_reason: candidate path verified; current blocker is threshold calibration
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -4419,13 +4417,13 @@ orthography:
       notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
     dataset:
       eligible_now: true
-      reason: eligible_but_needs_more_training
+      reason: syntax eval support verified
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
       training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
-      training_eligibility_reason: candidate path verified; current blocker is threshold calibration
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -4463,13 +4461,13 @@ orthography:
       notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
     dataset:
       eligible_now: true
-      reason: eligible_but_needs_more_training
+      reason: syntax eval support verified
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
       training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
-      training_eligibility_reason: candidate path verified; current blocker is threshold calibration
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -6123,13 +6121,13 @@ orthography:
       notes: syntax_orthography_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_orthography_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_orthography_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -6287,13 +6285,13 @@ orthography:
       notes: syntax_orthography_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_orthography_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_orthography_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -7060,13 +7058,13 @@ orthography:
       notes: syntax_orthography_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_orthography_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_orthography_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -7178,14 +7176,13 @@ orthography:
       notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
     dataset:
       eligible_now: true
-      reason: eligible_but_needs_threshold
+      reason: syntax eval support verified
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: candidate path verified; validator guards and hard negatives are required before dataset
-        build
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -7195,7 +7192,6 @@ orthography:
       risk_level: high
       needs_before_training:
       - validator
-      - hard_negatives
   orthography_3_6_1_2:
     source_section: orthography
     orfogrammka_id: 3.6.1.2
@@ -7226,13 +7222,13 @@ orthography:
       notes: syntax_orthography_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_orthography_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_orthography_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -7270,14 +7266,13 @@ orthography:
       notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
     dataset:
       eligible_now: true
-      reason: eligible_but_needs_threshold
+      reason: syntax eval support verified
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: candidate path verified; validator guards and hard negatives are required before dataset
-        build
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -7287,7 +7282,6 @@ orthography:
       risk_level: high
       needs_before_training:
       - validator
-      - hard_negatives
   orthography_3_6_1_4:
     source_section: orthography
     orfogrammka_id: 3.6.1.4
@@ -7513,14 +7507,13 @@ orthography:
       notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
     dataset:
       eligible_now: true
-      reason: eligible_but_needs_threshold
+      reason: syntax eval support verified
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: candidate path verified; validator guards and hard negatives are required before dataset
-        build
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -7530,7 +7523,6 @@ orthography:
       risk_level: high
       needs_before_training:
       - validator
-      - hard_negatives
   ? orthography_group_pravila_slitnogo_defisnogo_i_razdelnogo_napisaniya_napisanie_sluzhebnyh_slov_i_mezhdometiy_sochetaniya_s_chastitsami
   : source_section: orthography
     orfogrammka_id: null
@@ -7598,13 +7590,13 @@ orthography:
       notes: syntax_orthography_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_orthography_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_orthography_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -7643,13 +7635,13 @@ orthography:
       notes: syntax_orthography_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_orthography_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_orthography_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -7843,13 +7835,13 @@ orthography:
       notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
     dataset:
       eligible_now: true
-      reason: eligible_but_needs_threshold
+      reason: syntax eval support verified
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
       training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
-      training_eligibility_reason: candidate path verified; current blocker is threshold calibration
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -7974,13 +7966,13 @@ orthography:
       notes: syntax_orthography_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_orthography_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_orthography_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -8021,13 +8013,13 @@ orthography:
       notes: syntax_orthography_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_orthography_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_orthography_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -8064,13 +8056,13 @@ orthography:
       notes: syntax_orthography_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_orthography_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_orthography_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -8145,13 +8137,13 @@ orthography:
       notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
     dataset:
       eligible_now: true
-      reason: eligible_but_needs_threshold
+      reason: syntax eval support verified
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
       training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
-      training_eligibility_reason: candidate path verified; current blocker is threshold calibration
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -8397,13 +8389,13 @@ orthography:
       notes: syntax_orthography_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_orthography_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_orthography_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -8445,13 +8437,13 @@ orthography:
       notes: syntax_orthography_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_orthography_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_orthography_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -8490,13 +8482,13 @@ orthography:
       notes: syntax_orthography_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_orthography_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_orthography_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -8533,13 +8525,13 @@ orthography:
       notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
     dataset:
       eligible_now: true
-      reason: eligible_but_needs_threshold
+      reason: syntax eval support verified
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
       training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
-      training_eligibility_reason: candidate path verified; current blocker is threshold calibration
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -11672,13 +11664,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -11713,13 +11705,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -11754,13 +11746,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -11869,13 +11861,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -11910,16 +11902,16 @@ punctuation:
       notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
     dataset:
       eligible_now: true
-      reason: eligible_but_needs_threshold
+      reason: syntax eval support verified
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: true
       training_eligible_now: true
       training_eligibility_decision: INCLUDE_NOW
-      training_eligibility_reason: candidate path and matrix safety gates are ready for dataset inclusion
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
-      current_hard_negative_support: false
+      current_hard_negative_support: true
       current_validator_support: false
       current_candidate_recall: 1.0
       current_gap_coverage: 1.0
@@ -11952,13 +11944,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -11994,13 +11986,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -12036,13 +12028,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -12078,13 +12070,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -12120,13 +12112,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -12162,13 +12154,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -12204,13 +12196,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -12246,13 +12238,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -12288,13 +12280,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -12329,13 +12321,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -12370,13 +12362,13 @@ punctuation:
       notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
     dataset:
       eligible_now: true
-      reason: eligible_but_needs_threshold
+      reason: syntax eval support verified
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
       training_eligibility_decision: INCLUDE_AFTER_TRAINING
-      training_eligibility_reason: candidate path verified by probe; rule needs training/eval coverage before production activation
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -12448,13 +12440,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -12488,16 +12480,16 @@ punctuation:
       notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
     dataset:
       eligible_now: true
-      reason: eligible_but_needs_threshold
+      reason: syntax eval support verified
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: true
       training_eligible_now: true
       training_eligibility_decision: INCLUDE_NOW
-      training_eligibility_reason: candidate path and matrix safety gates are ready for dataset inclusion
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
-      current_hard_negative_support: false
+      current_hard_negative_support: true
       current_validator_support: false
       current_candidate_recall: 1.0
       current_gap_coverage: 1.0
@@ -12529,13 +12521,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -12571,13 +12563,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -12613,13 +12605,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -12653,13 +12645,13 @@ punctuation:
       notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
     dataset:
       eligible_now: true
-      reason: eligible_but_needs_threshold
+      reason: syntax eval support verified
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
       training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
-      training_eligibility_reason: candidate path verified; current blocker is threshold calibration
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -12695,13 +12687,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -12737,13 +12729,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -12779,13 +12771,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -12821,13 +12813,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -12975,13 +12967,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -13018,13 +13010,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -13060,13 +13052,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -13102,13 +13094,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -13143,13 +13135,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -13221,13 +13213,13 @@ punctuation:
       notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
     dataset:
       eligible_now: true
-      reason: eligible_but_needs_threshold
+      reason: syntax eval support verified
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: true
       training_eligible_now: true
       training_eligibility_decision: INCLUDE_NOW
-      training_eligibility_reason: candidate path and matrix safety gates are ready for dataset inclusion
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -13263,13 +13255,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -13305,13 +13297,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -13347,13 +13339,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -13389,13 +13381,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -13431,13 +13423,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -13473,13 +13465,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -13515,13 +13507,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -13557,13 +13549,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -13598,13 +13590,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -13640,13 +13632,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -13682,13 +13674,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -13724,8 +13716,8 @@ punctuation:
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_METADATA_ONLY
-      training_eligibility_reason: metadata_only
+      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
+      training_eligibility_reason: stable punctuation combination requires semantic support before candidate generation
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -13765,7 +13757,7 @@ punctuation:
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_reason: stable punctuation combination requires semantic support before candidate generation
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -13805,7 +13797,7 @@ punctuation:
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_reason: stable punctuation combination requires semantic support before candidate generation
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -13885,7 +13877,7 @@ punctuation:
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_reason: stable punctuation combination requires semantic support before candidate generation
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -13925,7 +13917,7 @@ punctuation:
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_reason: stable punctuation combination requires semantic support before candidate generation
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -13965,7 +13957,7 @@ punctuation:
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_reason: bare comparative как patterns remain blocked by unsafe role/identity ambiguity
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -14125,7 +14117,7 @@ punctuation:
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_reason: stable punctuation combination requires semantic support before candidate generation
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -14197,13 +14189,13 @@ punctuation:
       notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
     dataset:
       eligible_now: true
-      reason: eligible_but_needs_threshold
+      reason: syntax eval support verified
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: true
       training_eligible_now: true
       training_eligibility_decision: INCLUDE_NOW
-      training_eligibility_reason: candidate path and matrix safety gates are ready for dataset inclusion
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -14239,13 +14231,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -14281,13 +14273,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -14323,13 +14315,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -14369,7 +14361,7 @@ punctuation:
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_reason: bare comparative как patterns remain blocked by unsafe role/identity ambiguity
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -14409,7 +14401,7 @@ punctuation:
       production_ready_now: false
       training_eligible_now: false
       training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_reason: bare comparative как patterns remain blocked by unsafe role/identity ambiguity
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -14445,13 +14437,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -14487,13 +14479,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -14601,13 +14593,13 @@ punctuation:
       notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
     dataset:
       eligible_now: true
-      reason: eligible_but_needs_threshold
+      reason: syntax eval support verified
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: true
       training_eligible_now: true
       training_eligibility_decision: INCLUDE_NOW
-      training_eligibility_reason: candidate path and matrix safety gates are ready for dataset inclusion
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -14643,13 +14635,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -14685,13 +14677,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -14727,13 +14719,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -14769,13 +14761,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -14811,13 +14803,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -14852,13 +14844,13 @@ punctuation:
       notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
     dataset:
       eligible_now: true
-      reason: eligible_but_needs_threshold
+      reason: syntax eval support verified
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: true
       training_eligible_now: true
       training_eligibility_decision: INCLUDE_NOW
-      training_eligibility_reason: candidate path and matrix safety gates are ready for dataset inclusion
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -14893,13 +14885,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -14934,13 +14926,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -14975,13 +14967,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -15089,13 +15081,13 @@ punctuation:
       notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
     dataset:
       eligible_now: true
-      reason: eligible_but_needs_threshold
+      reason: syntax eval support verified
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: true
       training_eligible_now: true
       training_eligibility_decision: INCLUDE_NOW
-      training_eligibility_reason: candidate path and matrix safety gates are ready for dataset inclusion
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -15130,13 +15122,13 @@ punctuation:
       notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
     dataset:
       eligible_now: true
-      reason: eligible_but_needs_threshold
+      reason: syntax eval support verified
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
       training_eligibility_decision: INCLUDE_AFTER_TRAINING
-      training_eligibility_reason: candidate path verified by probe; rule needs training/eval coverage before production activation
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -15208,13 +15200,13 @@ punctuation:
       notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
     dataset:
       eligible_now: true
-      reason: eligible_but_needs_threshold
+      reason: syntax eval support verified
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: true
       training_eligible_now: true
       training_eligibility_decision: INCLUDE_NOW
-      training_eligibility_reason: candidate path and matrix safety gates are ready for dataset inclusion
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -15250,13 +15242,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -15292,13 +15284,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -15335,13 +15327,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -15378,13 +15370,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -15420,8 +15412,8 @@ punctuation:
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_METADATA_ONLY
-      training_eligibility_reason: metadata_only
+      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
+      training_eligibility_reason: semantic-only asyndetic punctuation requires syntax/semantic support before candidate generation
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -15460,13 +15452,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -15575,13 +15567,13 @@ punctuation:
       notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
     dataset:
       eligible_now: true
-      reason: eligible_but_needs_threshold
+      reason: syntax eval support verified
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
       training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
-      training_eligibility_reason: candidate path verified; current blocker is threshold calibration
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -15616,13 +15608,13 @@ punctuation:
       notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
     dataset:
       eligible_now: true
-      reason: eligible_but_needs_threshold
+      reason: syntax eval support verified
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: true
       training_eligible_now: true
       training_eligibility_decision: INCLUDE_NOW
-      training_eligibility_reason: candidate path and matrix safety gates are ready for dataset inclusion
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -15660,13 +15652,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -15704,13 +15696,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -15748,13 +15740,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -15791,13 +15783,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -15868,13 +15860,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -15909,13 +15901,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -15950,13 +15942,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -15991,13 +15983,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -16032,13 +16024,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -16075,13 +16067,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -16119,8 +16111,8 @@ punctuation:
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
+      training_eligibility_decision: BLOCK_METADATA_ONLY
+      training_eligibility_reason: footnote formatting is layout metadata outside the correction candidate path
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
@@ -16155,13 +16147,13 @@ punctuation:
       notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: syntax_candidate_backed
+      reason: syntax eval support verified
       last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: syntax_candidate_backed
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -16231,13 +16223,13 @@ punctuation:
       notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
     dataset:
       eligible_now: true
-      reason: eligible_but_needs_threshold
+      reason: syntax eval support verified
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
       training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
-      training_eligibility_reason: candidate path verified; current blocker is threshold calibration
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -16496,14 +16488,13 @@ punctuation:
       notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
     dataset:
       eligible_now: true
-      reason: eligible_but_needs_more_training
+      reason: syntax eval support verified
       last_known_candidate_recall: null
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: candidate path verified; validator guards and hard negatives are required before dataset
-        build
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      training_eligibility_reason: syntax eval support verified; candidate recall and hard-negative gates pass
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -16513,4 +16504,3 @@ punctuation:
       risk_level: high
       needs_before_training:
       - validator
-      - hard_negatives
