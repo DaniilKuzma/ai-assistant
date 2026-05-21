@@ -47,3 +47,14 @@
 - Dictionary-model-required: tests на словарные candidates, лимиты, частотную фильтрацию, protected spans и отсутствие частных пар как основного механизма.
 - NER-required: tests на mocked NER spans и негативные примеры для обычных строчных слов.
 - Model-required: scorer/validator tests на принятие trusted candidates и отклонение низкой уверенности.
+## Matrix Eval Findings
+
+- Full matrix audit artifacts are under `reports/matrix_eval/`.
+- Dedicated eval corpus is under `data/processed/matrix_eval/`.
+- Use `reports/matrix_eval/next_dataset_activation_plan.md` for the next dataset cycle.
+## Matrix Eval Phase 2 Findings
+
+- Phase 2 artifacts are under `reports/matrix_eval_phase2/`.
+- Phase 2 eval corpus is under `data/processed/matrix_eval_phase2/`.
+- Use `reports/matrix_eval_phase2/wave1_activation_plan.md` and `reports/matrix_eval_phase2/rule_expansion_backlog_v2.md` for `short_dataset_v3` planning.
+- Planned and metadata-only matrix entries remain backlog items until executable support exists.

@@ -1,0 +1,2 @@
+total_eval_time_sec,feature_load_time_sec,model_forward_time_sec,thresholding_time_sec,validation_time_sec,edit_realization_time_sec,metrics_time_sec,detailed_reports_time_sec,rows_per_sec,eval_batch_size,gpu_available,cuda_device,feature_cache_hit,number_of_eval_examples,bottleneck
+244.595,1.16,17.258,0.615,60.21,3.425,99.593,60.936,20.442,256,True,NVIDIA GeForce RTX 4070,True,5000,metrics_time_sec dominates (99.593s)

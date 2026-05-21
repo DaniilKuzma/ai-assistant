@@ -121,12 +121,25 @@ CAPITALIZATION_NER_MIN_CONFIDENCE = 0.999999
 PROTECTED_ACRONYMS = frozenset({"УФСБ", "РИА", "США", "РФ", "НББ", "ООО", "АО", "ИП"})
 ORG_LIKE_SUFFIXES = ("телеком", "банк", "газ", "нефть", "медиа", "инвест", "строй", "транс")
 MORPH_GUARDED_POSES = frozenset({"NOUN", "ADJF", "ADJS", "PRTF", "PRTS"})
+VERB_LIKE_POSES = frozenset({"VERB", "INFN", "GRND", "PRTF", "PRTS"})
+PROPER_LIKE_GRAMMEMES = frozenset({"Name", "Surn", "Patr", "Orgn", "Geox"})
+SAFE_SINGLE_CHAR_SPELLING_SUBSTITUTIONS = frozenset(
+    {
+        ("ь", "ъ"),
+        ("е", "и"),
+        ("ы", "и"),
+        ("я", "е"),
+        ("ё", "е"),
+        ("е", "ё"),
+    }
+)
 RISKY_KNOWN_SOURCE_LEXICAL_RULE_IDS = frozenset(
     {
         "missing_hard_sign",
         "soft_to_hard_sign",
         "pattern_шо_ше",
         "pattern_жо_же",
+        "pattern_чо_че",
         "pattern_цы_ци",
         "dictionary_fuzzy",
         "double_consonant_candidate",
@@ -136,6 +149,7 @@ RISKY_KNOWN_SOURCE_LEXICAL_RULE_IDS = frozenset(
         "extra_letter_candidate",
     }
 )
+SAFE_HYPHEN_PO_ADVERB_BASES = frozenset({"русски", "новому", "старому"})
 ALWAYS_UNSAFE_LEXICAL_RULE_IDS = frozenset({"prefix_pre_pri"})
 ABBREVIATION_SENTENCE_START_PREFIXES = frozenset({"г", "см", "ул", "стр", "рис", "тыс", "млн", "млрд", "руб", "коп"})
 SPEECH_VERB_PATTERN = r"(говорит|написал[аи]?|написали|ответил[аи]?|ответили|сказал[аи]?|сказали|сообщил[аи]?|сообщили|спросил[аи]?|спросили)"
@@ -311,13 +325,39 @@ def _lexical_spelling_rejection_reason(source_text: str, edit: Edit) -> str:
         return "unsafe_fuzzy_spelling_candidate"
     if edit.rule_id not in RISKY_KNOWN_SOURCE_LEXICAL_RULE_IDS:
         return ""
+    if edit.rule_id == "swapped_letters_candidate" and not _is_adjacent_swap(edit.source.lower(), edit.replacement.lower()):
+        return "unsafe_fuzzy_spelling_candidate"
     if _is_protected_acronym_or_all_caps(edit.source):
         return "protected_lexical_guard"
     if _is_mixed_latin_token(edit.source) or _is_mixed_latin_token(edit.replacement):
         return "protected_lexical_guard"
+    if _is_mixed_case_technical_token(edit.source):
+        return "protected_lexical_guard"
     if _is_capitalized_proper_like_lexical_change(source_text, edit):
         return "protected_lexical_guard"
+    if edit.rule_id == "swapped_letters_candidate":
+        swapped_reason = _swapped_letters_rejection_reason(edit)
+        if swapped_reason:
+            return swapped_reason
+    if edit.rule_id == "double_consonant_candidate":
+        double_reason = _double_consonant_rejection_reason(edit)
+        if double_reason:
+            return double_reason
+    if edit.rule_id == "extra_letter_candidate":
+        extra_reason = _extra_letter_rejection_reason(edit)
+        if extra_reason:
+            return extra_reason
+    if edit.rule_id == "missing_letter_candidate":
+        missing_reason = _missing_letter_rejection_reason(edit)
+        if missing_reason:
+            return missing_reason
+    if edit.rule_id == "pattern_чо_че" and _is_known_correct_word(edit.source):
+        return "known_source_lexical_guard"
+    if edit.rule_id == "dictionary_fuzzy" and not _is_known_correct_word(edit.replacement):
+        return "unsafe_fuzzy_spelling_candidate"
     if _is_known_correct_word(edit.source) and _is_known_correct_word(edit.replacement):
+        return "known_source_lexical_guard"
+    if edit.rule_id == "dictionary_fuzzy" and _is_risky_same_length_dictionary_rewrite(edit):
         return "known_source_lexical_guard"
     if _morphology_incompatible_lexical_replacement(edit.source, edit.replacement):
         return "morphology_agreement_guard"
@@ -343,17 +383,55 @@ def _is_mixed_latin_token(word: str) -> bool:
     return bool(LATIN_RE.search(word) and RUSSIAN_LETTER_RE.search(word))
 
 
+def _is_mixed_case_technical_token(word: str) -> bool:
+    letters = [char for char in word if char.isalpha()]
+    if len(letters) < 2:
+        return False
+    has_lower = any(char.islower() for char in letters)
+    has_upper = any(char.isupper() for char in letters)
+    if not (has_lower and has_upper):
+        return False
+    if word.istitle():
+        return False
+    return True
+
+
 def _is_capitalized_proper_like_lexical_change(source_text: str, edit: Edit) -> bool:
     if not edit.source[:1].isupper():
         return False
     source_lower = edit.source.lower()
     if source_lower.endswith(ORG_LIKE_SUFFIXES):
         return True
-    if _is_sentence_initial_common_word_typo(source_text, edit):
+    if _looks_like_safe_sentence_initial_dictionary_typo(source_text, edit):
         return False
+    if _capitalized_token_is_mid_sentence(source_text, edit) or _has_proper_like_parse(edit.source):
+        return True
     if _source_has_common_morphology(edit.source):
         return False
     return edit.replacement[:1].isupper() and _is_known_correct_word(edit.replacement)
+
+
+def _looks_like_safe_sentence_initial_dictionary_typo(source_text: str, edit: Edit) -> bool:
+    if edit.rule_id != "dictionary_fuzzy":
+        return _is_sentence_initial_common_word_typo(source_text, edit)
+    if edit.start != 0:
+        return False
+    if not _is_known_correct_word(edit.replacement):
+        return False
+    if _edit_distance(edit.source.lower(), edit.replacement.lower()) > 1:
+        return False
+    diff = _single_char_difference(edit.source.lower(), edit.replacement.lower())
+    if diff is not None and diff not in SAFE_SINGLE_CHAR_SPELLING_SUBSTITUTIONS:
+        if _has_proper_like_parse(edit.source) or _has_known_proper_like_parse(edit.replacement):
+            return False
+    return not _is_risky_same_length_dictionary_rewrite(edit)
+
+
+def _capitalized_token_is_mid_sentence(source_text: str, edit: Edit) -> bool:
+    previous = _previous_nonspace_index(source_text, edit.start)
+    if previous is None:
+        return False
+    return source_text[previous] not in ".!?\n"
 
 
 def _is_sentence_initial_common_word_typo(source_text: str, edit: Edit) -> bool:
@@ -366,6 +444,172 @@ def _is_sentence_initial_common_word_typo(source_text: str, edit: Edit) -> bool:
 
 def _source_has_common_morphology(word: str) -> bool:
     return any(getattr(parse.tag, "POS", None) in MORPH_GUARDED_POSES for parse in parses(word.lower()))
+
+
+def _has_proper_like_parse(word: str) -> bool:
+    return any(
+        PROPER_LIKE_GRAMMEMES.intersection(set(getattr(parse.tag, "grammemes", frozenset())))
+        for parse in parses(word.lower())
+    )
+
+
+def _has_known_proper_like_parse(word: str) -> bool:
+    return any(
+        getattr(parse, "is_known", False)
+        and PROPER_LIKE_GRAMMEMES.intersection(set(getattr(parse.tag, "grammemes", frozenset())))
+        for parse in parses(word.lower())
+    )
+
+
+def _swapped_letters_rejection_reason(edit: Edit) -> str:
+    if _is_known_correct_word(edit.source):
+        return "known_source_lexical_guard"
+    if not _is_known_correct_word(edit.replacement):
+        return "unsafe_fuzzy_spelling_candidate"
+    if _probable_clean_source_to_unrelated_known_replacement(edit.source, edit.replacement):
+        return "known_source_lexical_guard"
+    return ""
+
+
+def _double_consonant_rejection_reason(edit: Edit) -> str:
+    source = edit.source.lower()
+    replacement = edit.replacement.lower()
+    if _removes_duplicate_consonant(source, replacement):
+        return "unsafe_double_consonant_candidate"
+    if len(replacement) == len(source) + 1 and _removes_duplicate_consonant(replacement, source):
+        return ""
+    if _is_known_correct_word(edit.source):
+        return "known_source_lexical_guard"
+    if not _is_known_correct_word(edit.replacement):
+        return "unsafe_fuzzy_spelling_candidate"
+    return ""
+
+
+def _extra_letter_rejection_reason(edit: Edit) -> str:
+    source = edit.source.lower()
+    replacement = edit.replacement.lower()
+    deletion_index = _single_deletion_index(source, replacement)
+    if deletion_index is None:
+        return "unsafe_fuzzy_spelling_candidate"
+    if deletion_index == 0:
+        return "known_source_lexical_guard"
+    if _is_known_correct_word(edit.source):
+        return "known_source_lexical_guard"
+    if not _is_known_correct_word(edit.replacement):
+        return "unsafe_fuzzy_spelling_candidate"
+    if not _deleted_char_is_duplicate(source, deletion_index) and _best_parse_score(source) >= 0.20:
+        return "known_source_lexical_guard"
+    return ""
+
+
+def _missing_letter_rejection_reason(edit: Edit) -> str:
+    source = edit.source.lower()
+    replacement = edit.replacement.lower()
+    insertion_index = _single_deletion_index(replacement, source)
+    if insertion_index is None:
+        return "unsafe_fuzzy_spelling_candidate"
+    if insertion_index >= len(source):
+        return "known_source_lexical_guard"
+    if _is_known_correct_word(edit.source):
+        return "known_source_lexical_guard"
+    if not _is_known_correct_word(edit.replacement):
+        return "unsafe_fuzzy_spelling_candidate"
+    return ""
+
+
+def _single_deletion_index(longer: str, shorter: str) -> int | None:
+    if len(longer) != len(shorter) + 1:
+        return None
+    for index in range(len(longer)):
+        if longer[:index] + longer[index + 1 :] == shorter:
+            return index
+    return None
+
+
+def _deleted_char_is_duplicate(word: str, index: int) -> bool:
+    return (index > 0 and word[index] == word[index - 1]) or (
+        index + 1 < len(word) and word[index] == word[index + 1]
+    )
+
+
+def _removes_duplicate_consonant(source: str, replacement: str) -> bool:
+    deletion_index = _single_deletion_index(source, replacement)
+    if deletion_index is None:
+        return False
+    return source[deletion_index] in "бвгджзйклмнпрстфхцчшщ" and _deleted_char_is_duplicate(source, deletion_index)
+
+
+def _probable_clean_source_to_unrelated_known_replacement(source: str, replacement: str) -> bool:
+    replacement_poses = _known_coarse_pos_set(replacement)
+    if not replacement_poses:
+        return False
+    source_best = _best_parse_score(source)
+    if source_best <= 0.0:
+        return False
+    compatible_score = _best_compatible_pos_score(source, replacement_poses)
+    if compatible_score >= source_best * 0.80:
+        return False
+    return True
+
+
+def _is_risky_same_length_dictionary_rewrite(edit: Edit) -> bool:
+    source = edit.source.lower()
+    replacement = edit.replacement.lower()
+    if len(source) < 8 or len(source) != len(replacement):
+        return False
+    if _edit_distance(source, replacement) != 1:
+        return False
+    if not _is_known_correct_word(edit.replacement):
+        return False
+    diff = _single_char_difference(source, replacement)
+    if diff is None or diff in SAFE_SINGLE_CHAR_SPELLING_SUBSTITUTIONS:
+        return False
+    return _best_parse_score(source) >= 0.50
+
+
+def _single_char_difference(source: str, replacement: str) -> tuple[str, str] | None:
+    differences = [(left, right) for left, right in zip(source, replacement) if left != right]
+    if len(differences) != 1:
+        return None
+    return differences[0]
+
+
+def _is_adjacent_swap(source: str, replacement: str) -> bool:
+    if len(source) != len(replacement) or source == replacement:
+        return False
+    differences = [index for index, (left, right) in enumerate(zip(source, replacement)) if left != right]
+    if len(differences) != 2:
+        return False
+    first, second = differences
+    return second == first + 1 and source[first] == replacement[second] and source[second] == replacement[first]
+
+
+def _known_coarse_pos_set(word: str) -> frozenset[str]:
+    return frozenset(
+        _coarse_lexical_pos(str(getattr(parse.tag, "POS", "") or ""))
+        for parse in parses(word.lower())
+        if getattr(parse, "is_known", False) and str(getattr(parse.tag, "POS", "") or "")
+    )
+
+
+def _best_parse_score(word: str) -> float:
+    scores = [float(getattr(parse, "score", 0.0)) for parse in parses(word.lower())]
+    return max(scores) if scores else 0.0
+
+
+def _best_compatible_pos_score(word: str, replacement_poses: frozenset[str]) -> float:
+    scores = [
+        float(getattr(parse, "score", 0.0))
+        for parse in parses(word.lower())
+        if _coarse_lexical_pos(str(getattr(parse.tag, "POS", "") or "")) in replacement_poses
+    ]
+    return max(scores) if scores else 0.0
+
+
+def _coarse_lexical_pos(pos: str) -> str:
+    if pos in VERB_LIKE_POSES:
+        return "VERB"
+    return _coarse_morph_pos(pos)
 
 
 def _morphology_incompatible_lexical_replacement(source: str, replacement: str) -> bool:
@@ -531,7 +775,12 @@ def _is_unsafe_hyphen_po_adverb(edit: Edit) -> bool:
     if edit.rule_id != "hyphen_po_adverbs":
         return False
     parts = edit.source.lower().split()
-    return len(parts) == 2 and parts[0] == "по" and parts[1].endswith(("ому", "ему"))
+    if len(parts) != 2 or parts[0] != "по":
+        return True
+    base = parts[1]
+    if base not in SAFE_HYPHEN_PO_ADVERB_BASES:
+        return True
+    return edit.replacement.lower() != f"по-{base}"
 
 
 def _is_unsafe_colon_candidate(source_text: str, edit: Edit) -> bool:

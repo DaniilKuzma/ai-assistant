@@ -1,0 +1,1184 @@
+row_id,source,replacement,edit_type,rule_id,status,reason,confidence
+7,Обьехав,Объехав,spelling_replace,dictionary_fuzzy,accepted,trusted bounded candidate,0.990234375
+63,Обьехав,Объехав,spelling_replace,dictionary_fuzzy,accepted,trusted bounded candidate,0.990234375
+83,,.,final_punctuation,final_punctuation_default,accepted,trusted bounded candidate,0.98681640625
+85,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.98779296875
+86,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.98876953125
+87,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.98828125
+88,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.990234375
+89,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.990234375
+90,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.986328125
+91,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.99072265625
+92,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.9892578125
+93,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99609375
+94,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99658203125
+95,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99853515625
+96,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99609375
+97,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.97265625
+98,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.97412109375
+99,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.93896484375
+100,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.97021484375
+101,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9716796875
+102,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.98681640625
+103,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.96435546875
+104,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9541015625
+105,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.98974609375
+145,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.441162109375
+146,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.43359375
+147,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.451416015625
+149,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.446044921875
+150,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98388671875
+151,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.978515625
+152,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98681640625
+153,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.974609375
+154,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.984375
+155,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98291015625
+156,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98583984375
+157,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98291015625
+158,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.9814453125
+159,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.984375
+160,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.97705078125
+166,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.9990234375
+167,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+168,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+169,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.9990234375
+170,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+171,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+195,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.97216796875
+196,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.97802734375
+197,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.966796875
+198,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.98291015625
+199,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.970703125
+200,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.9765625
+201,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.43310546875
+202,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.40966796875
+203,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.44775390625
+204,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.4365234375
+205,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.43896484375
+206,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.460205078125
+207,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.455810546875
+208,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.447265625
+209,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.449951171875
+214,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98193359375
+215,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98779296875
+216,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9912109375
+217,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.97607421875
+218,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9736328125
+219,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.99267578125
+220,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9873046875
+221,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.99169921875
+222,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9853515625
+223,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98193359375
+224,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98388671875
+292,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98681640625
+293,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.990234375
+294,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98828125
+295,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.990234375
+296,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.990234375
+297,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.9873046875
+308,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.9970703125
+309,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.978515625
+310,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.97216796875
+318,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.98876953125
+320,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+321,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9873046875
+326,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99658203125
+332,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9892578125
+338,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.99072265625
+340,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.98291015625
+345,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.96435546875
+350,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.9970703125
+354,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98388671875
+365,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.9990234375
+369,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.984375
+377,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.990234375
+383,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.990234375
+385,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.98779296875
+389,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.974609375
+391,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9775390625
+394,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.97607421875
+395,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.970703125
+396,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.435546875
+402,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.447265625
+403,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.96630859375
+404,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98974609375
+405,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9873046875
+406,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.9912109375
+408,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98779296875
+412,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.43896484375
+419,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.98388671875
+427,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.99072265625
+428,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.4365234375
+429,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.9833984375
+430,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98388671875
+431,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.96826171875
+434,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.97265625
+439,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+442,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+443,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.433837890625
+447,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+448,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.460205078125
+456,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.990234375
+458,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.966796875
+459,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.97119140625
+461,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.98779296875
+462,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9736328125
+467,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9521484375
+469,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.98876953125
+471,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+472,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9873046875
+474,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.990234375
+477,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.9990234375
+478,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.9736328125
+483,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.9873046875
+494,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98681640625
+497,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.97802734375
+514,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99853515625
+517,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98828125
+520,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.986328125
+522,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.445556640625
+525,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98193359375
+530,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.44921875
+535,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.472900390625
+537,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.990234375
+538,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.44775390625
+543,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+545,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.97705078125
+547,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99609375
+551,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+552,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.424560546875
+556,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.99267578125
+560,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9833984375
+562,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98193359375
+565,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98681640625
+566,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.97705078125
+568,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.9892578125
+569,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9892578125
+578,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99169921875
+582,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.446044921875
+583,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.408935546875
+586,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.9970703125
+587,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.984375
+588,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98388671875
+592,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98876953125
+595,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99609375
+609,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.98974609375
+610,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99609375
+613,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98583984375
+622,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.990234375
+623,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.98779296875
+624,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.9970703125
+626,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.441162109375
+627,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.9990234375
+630,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.43359375
+632,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9775390625
+635,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.435546875
+636,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98779296875
+639,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.479736328125
+640,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.9814453125
+641,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9873046875
+642,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9775390625
+646,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.97265625
+650,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.43896484375
+651,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9736328125
+654,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+656,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.4423828125
+663,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9697265625
+666,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.97412109375
+668,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.96826171875
+670,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.97265625
+674,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+675,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.4697265625
+678,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.451416015625
+679,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+680,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.433837890625
+683,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.460205078125
+687,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98291015625
+688,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.990234375
+691,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.966796875
+693,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.98779296875
+699,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+700,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.990234375
+705,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.9736328125
+710,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.986328125
+713,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.9873046875
+721,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.4326171875
+722,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.98095703125
+730,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.97802734375
+735,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99658203125
+744,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.984375
+747,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.455810546875
+749,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98828125
+753,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.986328125
+760,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9912109375
+764,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.453857421875
+765,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9716796875
+768,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.472900390625
+771,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+772,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.97607421875
+774,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.97705078125
+775,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.990234375
+778,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.970703125
+782,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.98828125
+786,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.4541015625
+791,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98193359375
+795,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.9765625
+796,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98681640625
+797,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.98974609375
+799,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.97705078125
+800,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9892578125
+807,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99169921875
+808,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.93896484375
+810,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98291015625
+813,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.96435546875
+815,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.446044921875
+816,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.408935546875
+818,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.9970703125
+823,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98388671875
+826,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98876953125
+830,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.474853515625
+831,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.9990234375
+835,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.984375
+840,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98583984375
+841,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.990234375
+843,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.449951171875
+849,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.990234375
+852,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.98779296875
+853,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.9970703125
+855,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.978515625
+860,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.974609375
+862,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9775390625
+868,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.435546875
+869,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9853515625
+870,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98779296875
+874,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.9814453125
+875,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.96630859375
+876,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98974609375
+877,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9775390625
+879,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98779296875
+882,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.43896484375
+883,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9736328125
+886,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99755859375
+887,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.97021484375
+889,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+890,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.98388671875
+891,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.99169921875
+897,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.97119140625
+901,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.9833984375
+902,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98388671875
+903,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.96826171875
+905,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.97265625
+911,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.966796875
+912,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.4697265625
+913,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.451416015625
+921,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.97119140625
+924,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9521484375
+928,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+929,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.990234375
+931,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.98681640625
+937,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.986328125
+938,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.9873046875
+939,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.98974609375
+943,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.98095703125
+945,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98681640625
+949,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99658203125
+955,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.984375
+958,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.455810546875
+959,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98828125
+962,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.9873046875
+969,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9716796875
+975,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.97607421875
+976,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.97705078125
+977,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.990234375
+980,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.427978515625
+981,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.44384765625
+986,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.98828125
+987,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+988,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.424560546875
+992,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+993,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.99267578125
+997,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9833984375
+998,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98193359375
+999,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.9765625
+1001,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.98974609375
+1006,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.9892578125
+1016,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99169921875
+1017,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.93896484375
+1018,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.40966796875
+1022,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.96435546875
+1023,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.446044921875
+1029,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98876953125
+1030,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99609375
+1038,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.9990234375
+1042,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.984375
+1044,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99609375
+1049,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.990234375
+1052,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.990234375
+1054,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.9970703125
+1056,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.441162109375
+1057,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.978515625
+1064,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.974609375
+1067,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9775390625
+1072,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.97607421875
+1073,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9853515625
+1075,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.98828125
+1076,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99658203125
+1080,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.479736328125
+1081,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.9814453125
+1082,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.447265625
+1084,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.9912109375
+1090,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98779296875
+1094,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.97265625
+1098,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9736328125
+1099,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+1100,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.99169921875
+1110,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9697265625
+1113,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.4365234375
+1114,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.9833984375
+1115,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.97412109375
+1117,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98388671875
+1118,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.96826171875
+1122,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.97265625
+1124,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.966796875
+1125,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.4697265625
+1128,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.451416015625
+1130,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+1132,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+1135,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98291015625
+1136,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+1138,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.990234375
+1143,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9736328125
+1145,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.43310546875
+1150,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.98876953125
+1154,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.990234375
+1159,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.9736328125
+1166,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.9873046875
+1171,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.4326171875
+1172,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.98095703125
+1174,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98681640625
+1182,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99658203125
+1185,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.97607421875
+1189,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.984375
+1192,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99853515625
+1194,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.455810546875
+1195,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98828125
+1197,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.986328125
+1198,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.9873046875
+1208,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.453857421875
+1209,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.44921875
+1211,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9716796875
+1212,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.472900390625
+1217,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+1218,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.97607421875
+1220,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.97705078125
+1221,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99609375
+1222,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.970703125
+1223,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.427978515625
+1224,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.44384765625
+1227,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.98828125
+1231,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.4541015625
+1232,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.99267578125
+1235,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9833984375
+1237,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99658203125
+1239,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98681640625
+1241,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.97705078125
+1247,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.99072265625
+1248,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99169921875
+1250,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98291015625
+1251,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.98291015625
+1255,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.96435546875
+1257,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.408935546875
+1261,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98388671875
+1265,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99609375
+1268,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.99365234375
+1269,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.474853515625
+1275,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.984375
+1281,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.98974609375
+1282,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99609375
+1288,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98583984375
+1289,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.990234375
+1292,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.449951171875
+1296,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.98779296875
+1297,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.441162109375
+1298,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.9990234375
+1299,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.97216796875
+1302,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.43359375
+1303,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.974609375
+1306,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9775390625
+1311,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.970703125
+1312,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.435546875
+1313,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9853515625
+1314,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98779296875
+1317,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.98828125
+1318,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99658203125
+1321,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.479736328125
+1322,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.9814453125
+1324,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.9912109375
+1326,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9775390625
+1333,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.97265625
+1335,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.43896484375
+1336,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9736328125
+1341,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99755859375
+1343,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.98388671875
+1352,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.97119140625
+1354,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9697265625
+1355,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.9833984375
+1356,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.97412109375
+1357,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98388671875
+1361,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.966796875
+1362,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.4697265625
+1366,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.451416015625
+1371,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+1376,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.97119140625
+1378,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.98779296875
+1380,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9736328125
+1382,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.97607421875
+1384,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+1392,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.9736328125
+1396,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.986328125
+1402,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.4326171875
+1403,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.98095703125
+1407,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99658203125
+1411,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.97607421875
+1419,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99853515625
+1421,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98828125
+1423,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.986328125
+1424,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9541015625
+1429,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98193359375
+1437,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9912109375
+1441,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.453857421875
+1444,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.472900390625
+1446,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.990234375
+1449,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+1450,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.97607421875
+1451,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.990234375
+1452,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99609375
+1453,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.427978515625
+1458,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.424560546875
+1463,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+1464,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.4541015625
+1465,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.99267578125
+1469,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9833984375
+1471,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98193359375
+1478,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.9892578125
+1485,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99169921875
+1488,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.98291015625
+1489,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.40966796875
+1494,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.446044921875
+1499,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.984375
+1500,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98388671875
+1503,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99609375
+1506,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.99365234375
+1515,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99609375
+1527,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.990234375
+1529,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.98779296875
+1530,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.441162109375
+1532,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.97216796875
+1536,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.974609375
+1541,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.970703125
+1542,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.435546875
+1543,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98779296875
+1546,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99658203125
+1550,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.479736328125
+1551,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.9814453125
+1552,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98974609375
+1554,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9775390625
+1557,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98779296875
+1563,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99755859375
+1564,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.97021484375
+1565,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+1566,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.99169921875
+1570,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.4423828125
+1572,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.990234375
+1575,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.97119140625
+1579,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.99072265625
+1581,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.4365234375
+1583,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.9833984375
+1585,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98388671875
+1592,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+1593,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.4697265625
+1597,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.451416015625
+1599,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+1600,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.433837890625
+1603,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+1606,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+1610,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.966796875
+1612,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.98779296875
+1616,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9521484375
+1622,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.98681640625
+1625,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.9736328125
+1632,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.98974609375
+1637,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.98095703125
+1641,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98681640625
+1643,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.97802734375
+1646,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99658203125
+1649,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.97607421875
+1653,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.984375
+1657,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99853515625
+1659,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9541015625
+1660,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.445556640625
+1661,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.9873046875
+1670,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.44921875
+1672,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.472900390625
+1673,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.990234375
+1674,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.44775390625
+1679,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99609375
+1680,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.427978515625
+1682,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.98828125
+1683,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+1684,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.424560546875
+1688,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+1689,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.99267578125
+1692,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9833984375
+1694,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99658203125
+1696,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.9765625
+1697,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98681640625
+1698,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.98974609375
+1702,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.9892578125
+1708,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.99072265625
+1709,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.93896484375
+1710,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.98291015625
+1715,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.96435546875
+1721,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.984375
+1722,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98876953125
+1724,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99609375
+1729,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.9990234375
+1734,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.984375
+1737,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.98974609375
+1740,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98583984375
+1743,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.449951171875
+1748,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.990234375
+1750,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.9990234375
+1756,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.43359375
+1757,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.974609375
+1763,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.97607421875
+1764,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.435546875
+1767,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99658203125
+1771,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.9814453125
+1772,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.447265625
+1773,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9873046875
+1774,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.9912109375
+1776,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9775390625
+1777,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98779296875
+1781,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.97265625
+1785,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.43896484375
+1786,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9736328125
+1790,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+1791,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.98388671875
+1800,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9697265625
+1802,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.99072265625
+1804,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.97412109375
+1805,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.96826171875
+1809,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+1812,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.451416015625
+1814,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+1815,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.433837890625
+1819,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+1820,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.460205078125
+1827,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.966796875
+1829,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.98779296875
+1830,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9736328125
+1831,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.43310546875
+1834,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.97607421875
+1839,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+1840,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9873046875
+1842,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.990234375
+1843,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.98681640625
+1846,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.9990234375
+1848,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.9736328125
+1854,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.9873046875
+1859,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.4326171875
+1864,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98681640625
+1866,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.97802734375
+1877,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.984375
+1878,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98828125
+1882,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9541015625
+1884,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.445556640625
+1885,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.9873046875
+1897,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.44921875
+1900,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9716796875
+1903,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.472900390625
+1907,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.44775390625
+1912,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98681640625
+1913,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.98828125
+1918,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.4541015625
+1920,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9833984375
+1922,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98193359375
+1924,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.9765625
+1930,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.9892578125
+1936,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.99072265625
+1939,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98291015625
+1940,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.98291015625
+1943,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.96435546875
+1946,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.408935546875
+1953,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.984375
+1954,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98388671875
+1957,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98876953125
+1960,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99609375
+1963,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.99365234375
+1967,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.474853515625
+1974,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.98974609375
+1982,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.449951171875
+1989,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.98779296875
+1990,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.9970703125
+1991,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.441162109375
+1992,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.978515625
+1993,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.97216796875
+1997,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.974609375
+1999,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9775390625
+2003,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.970703125
+2004,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.435546875
+2005,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9853515625
+2009,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99658203125
+2011,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.96630859375
+2012,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98974609375
+2013,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9873046875
+2015,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.9912109375
+2024,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.43896484375
+2025,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9736328125
+2030,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99755859375
+2031,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.97021484375
+2032,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+2033,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.98388671875
+2037,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.4423828125
+2041,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9697265625
+2043,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.99072265625
+2045,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.4365234375
+2046,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.97412109375
+2048,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.96826171875
+2053,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.966796875
+2057,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+2058,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.433837890625
+2061,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.460205078125
+2065,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.990234375
+2068,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.97119140625
+2070,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9736328125
+2073,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.43310546875
+2077,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9873046875
+2081,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.9736328125
+2086,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.98974609375
+2097,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99658203125
+2104,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.97607421875
+2109,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.984375
+2115,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.445556640625
+2118,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98193359375
+2126,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.453857421875
+2129,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9716796875
+2138,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.97607421875
+2140,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.97705078125
+2141,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.990234375
+2144,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99609375
+2145,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.970703125
+2146,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.427978515625
+2147,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.44384765625
+2150,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98681640625
+2151,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+2152,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.424560546875
+2156,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+2157,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.4541015625
+2160,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98193359375
+2162,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99658203125
+2164,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.9765625
+2166,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98681640625
+2167,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.98974609375
+2170,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.97705078125
+2172,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9892578125
+2179,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.99072265625
+2182,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98291015625
+2183,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.98291015625
+2184,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.40966796875
+2187,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.446044921875
+2190,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98388671875
+2195,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99609375
+2198,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.99365234375
+2202,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.474853515625
+2203,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.9990234375
+2212,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99609375
+2227,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.43359375
+2228,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.974609375
+2236,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.97607421875
+2237,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.970703125
+2238,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9853515625
+2240,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.98828125
+2243,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.479736328125
+2244,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.447265625
+2245,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.96630859375
+2247,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.9912109375
+2251,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9775390625
+2253,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.97265625
+2256,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.43896484375
+2257,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9736328125
+2262,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99755859375
+2263,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.97021484375
+2264,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+2265,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.98388671875
+2269,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.4423828125
+2273,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.990234375
+2276,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.97119140625
+2279,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9697265625
+2280,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.99072265625
+2282,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.9833984375
+2284,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98388671875
+2285,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.96826171875
+2289,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.97265625
+2292,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+2295,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.451416015625
+2298,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98291015625
+2299,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.990234375
+2301,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.966796875
+2304,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9736328125
+2305,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.43310546875
+2308,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9521484375
+2310,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.97607421875
+2315,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.990234375
+2317,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.98681640625
+2319,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.9990234375
+2330,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.4326171875
+2331,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.98095703125
+2337,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98681640625
+2347,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.984375
+2350,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99853515625
+2353,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.455810546875
+2354,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98828125
+2356,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9541015625
+2357,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.445556640625
+2360,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98193359375
+2366,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9912109375
+2369,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.44921875
+2370,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9716796875
+2374,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.990234375
+2376,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+2381,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99609375
+2382,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.970703125
+2386,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98681640625
+2387,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.98828125
+2388,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+2393,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+2397,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99658203125
+2398,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.9765625
+2400,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98681640625
+2406,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.9892578125
+2411,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.99072265625
+2412,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.93896484375
+2415,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98291015625
+2416,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.98291015625
+2417,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.40966796875
+2419,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.96435546875
+2421,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.446044921875
+2422,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.408935546875
+2425,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.9970703125
+2426,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98388671875
+2431,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.99365234375
+2435,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.474853515625
+2437,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.9990234375
+2442,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.984375
+2455,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.449951171875
+2462,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.98779296875
+2463,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.9970703125
+2464,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.978515625
+2465,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.9990234375
+2466,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.97216796875
+2474,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.970703125
+2475,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9853515625
+2476,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98779296875
+2478,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.98828125
+2479,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99658203125
+2482,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.479736328125
+2483,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.9814453125
+2484,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.96630859375
+2485,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98974609375
+2489,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9775390625
+2494,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.43896484375
+2499,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99755859375
+2500,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.97021484375
+2502,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.99169921875
+2514,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.97119140625
+2518,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.99072265625
+2521,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.9833984375
+2522,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.97412109375
+2524,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98388671875
+2525,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+2526,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.966796875
+2528,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+2529,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+2534,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98291015625
+2535,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+2538,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.966796875
+2539,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.98779296875
+2542,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.43310546875
+2544,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9521484375
+2545,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.97607421875
+2547,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.98876953125
+2549,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+2550,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9873046875
+2553,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.98681640625
+2560,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.986328125
+2572,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.97802734375
+2578,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.97607421875
+2583,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99853515625
+2586,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.986328125
+2587,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9541015625
+2588,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.9873046875
+2595,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9912109375
+2600,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.453857421875
+2605,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.44775390625
+2607,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+2610,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99609375
+2611,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.970703125
+2612,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.427978515625
+2613,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.44384765625
+2615,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98681640625
+2617,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.98828125
+2618,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+2619,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.424560546875
+2623,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.99267578125
+2626,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99658203125
+2631,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.97705078125
+2633,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.9892578125
+2634,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9892578125
+2642,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99169921875
+2643,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.93896484375
+2645,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.98291015625
+2654,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98388671875
+2658,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.474853515625
+2659,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.9990234375
+2666,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.98974609375
+2670,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98583984375
+2675,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.98779296875
+2681,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.43359375
+2682,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.974609375
+2684,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9775390625
+2687,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9853515625
+2689,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.98828125
+2691,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.479736328125
+2692,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.447265625
+2693,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98974609375
+2694,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9873046875
+2697,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98779296875
+2704,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.43896484375
+2709,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.99169921875
+2711,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.4423828125
+2718,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.97119140625
+2720,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9697265625
+2722,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.4365234375
+2730,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.451416015625
+2732,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+2737,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98291015625
+2738,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+2740,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.97119140625
+2743,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.43310546875
+2747,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.97607421875
+2749,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.98876953125
+2751,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.990234375
+2754,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.9736328125
+2755,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.986328125
+2758,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.98974609375
+2767,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.97802734375
+2774,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.97607421875
+2781,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.984375
+2784,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99853515625
+2787,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.986328125
+2788,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9541015625
+2789,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.445556640625
+2791,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98193359375
+2798,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.453857421875
+2801,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9716796875
+2805,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.990234375
+2806,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.44775390625
+2810,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.97607421875
+2811,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.97705078125
+2814,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99609375
+2815,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.970703125
+2816,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.427978515625
+2817,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.44384765625
+2821,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98681640625
+2827,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.4541015625
+2830,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9833984375
+2836,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98681640625
+2837,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.98974609375
+2841,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.9892578125
+2847,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99169921875
+2848,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.93896484375
+2850,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98291015625
+2851,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.98291015625
+2852,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.40966796875
+2854,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.96435546875
+2856,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.446044921875
+2857,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.408935546875
+2861,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.9970703125
+2864,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.984375
+2866,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98876953125
+2870,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.99365234375
+2875,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.9990234375
+2884,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.98974609375
+2885,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99609375
+2892,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.990234375
+2895,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.449951171875
+2900,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.990234375
+2902,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.9970703125
+2907,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.43359375
+2908,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.974609375
+2915,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.435546875
+2916,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98779296875
+2918,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.98828125
+2919,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99658203125
+2924,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.447265625
+2925,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98974609375
+2926,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.9912109375
+2932,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.97265625
+2936,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.43896484375
+2939,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.98388671875
+2941,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.4423828125
+2943,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.990234375
+2945,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.97119140625
+2948,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.4365234375
+2949,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.9833984375
+2950,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.97412109375
+2952,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98388671875
+2958,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+2959,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.966796875
+2960,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.4697265625
+2963,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.433837890625
+2966,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+2967,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.460205078125
+2969,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98291015625
+2970,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.990234375
+2973,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.966796875
+2974,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.98779296875
+2977,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.97607421875
+2979,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9873046875
+2981,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.990234375
+2983,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.98681640625
+2984,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.9990234375
+2986,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.9736328125
+2990,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.986328125
+2994,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.98095703125
+3006,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99658203125
+3011,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.97607421875
+3017,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.455810546875
+3021,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.986328125
+3022,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9541015625
+3023,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.445556640625
+3027,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98193359375
+3034,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9912109375
+3039,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9716796875
+3044,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.990234375
+3045,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.44775390625
+3049,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.97607421875
+3050,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.990234375
+3053,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99609375
+3054,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.970703125
+3055,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.427978515625
+3056,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.44384765625
+3061,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98681640625
+3063,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.424560546875
+3067,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+3068,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.4541015625
+3073,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98193359375
+3074,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99658203125
+3075,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.9765625
+3077,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.98974609375
+3080,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.97705078125
+3082,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9892578125
+3090,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.99072265625
+3092,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.40966796875
+3097,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.408935546875
+3099,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.9970703125
+3100,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.984375
+3101,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98388671875
+3104,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99609375
+3111,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.474853515625
+3118,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99609375
+3123,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98583984375
+3129,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.9990234375
+3135,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9775390625
+3139,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.97607421875
+3142,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.98828125
+3143,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99658203125
+3148,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98974609375
+3152,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98779296875
+3156,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.97265625
+3158,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.43896484375
+3159,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9736328125
+3164,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99755859375
+3165,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.97021484375
+3166,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+3169,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.990234375
+3171,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.97119140625
+3174,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.97412109375
+3175,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.96826171875
+3176,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.97265625
+3180,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.4697265625
+3185,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.460205078125
+3187,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.990234375
+3190,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.97119140625
+3191,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.98779296875
+3197,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9521484375
+3199,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.98876953125
+3201,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9873046875
+3204,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.98681640625
+3206,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.9990234375
+3208,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.9736328125
+3212,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.986328125
+3215,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.98974609375
+3221,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.4326171875
+3223,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.98095703125
+3227,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98681640625
+3228,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.97802734375
+3239,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.455810546875
+3242,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9541015625
+3244,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.445556640625
+3245,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.9873046875
+3249,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98193359375
+3254,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9912109375
+3258,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.453857421875
+3259,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.44921875
+3261,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9716796875
+3264,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.472900390625
+3265,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.990234375
+3269,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.97607421875
+3271,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.97705078125
+3272,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.990234375
+3276,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98681640625
+3277,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.98828125
+3278,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+3279,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.424560546875
+3284,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.4541015625
+3289,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.9765625
+3290,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98681640625
+3291,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.98974609375
+3293,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.97705078125
+3296,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9892578125
+3301,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98291015625
+3302,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.98291015625
+3303,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.40966796875
+3308,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.96435546875
+3310,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.446044921875
+3313,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.9970703125
+3315,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98388671875
+3317,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98876953125
+3321,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.474853515625
+3327,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.98974609375
+3335,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.990234375
+3337,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.449951171875
+3341,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.990234375
+3344,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.98779296875
+3345,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.9970703125
+3346,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.441162109375
+3347,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.978515625
+3348,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.9990234375
+3349,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.97216796875
+3354,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.43359375
+3356,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9775390625
+3362,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.97607421875
+3363,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.970703125
+3364,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98779296875
+3369,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.479736328125
+3370,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.447265625
+3371,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.96630859375
+3372,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98974609375
+3373,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9873046875
+3376,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9775390625
+3379,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.97265625
+3386,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.98388671875
+3387,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.99169921875
+3389,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.4423828125
+3391,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.990234375
+3393,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.97119140625
+3394,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.4365234375
+3396,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98388671875
+3402,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.966796875
+3403,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.4697265625
+3406,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.451416015625
+3409,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.460205078125
+3415,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+3419,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.966796875
+3420,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9736328125
+3422,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.43310546875
+3423,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9521484375
+3425,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.97607421875
+3427,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.98876953125
+3429,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+3430,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9873046875
+3434,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.9736328125
+3438,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.9873046875
+3441,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.4326171875
+3444,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98681640625
+3457,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.455810546875
+3460,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.986328125
+3461,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.445556640625
+3462,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.9873046875
+3464,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98193359375
+3471,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9912109375
+3474,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.453857421875
+3475,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.44921875
+3477,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9716796875
+3478,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.472900390625
+3483,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.990234375
+3484,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.44775390625
+3487,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+3488,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.97607421875
+3489,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99609375
+3490,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.970703125
+3491,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.44384765625
+3493,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+3496,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+3498,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9833984375
+3503,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98681640625
+3506,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9892578125
+3511,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.99072265625
+3512,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.98291015625
+3517,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.446044921875
+3521,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.9970703125
+3524,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.984375
+3525,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.98388671875
+3528,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98876953125
+3531,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99609375
+3534,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.99365234375
+3539,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.474853515625
+3545,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.984375
+3548,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.98974609375
+3549,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99609375
+3559,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.978515625
+3560,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.9990234375
+3561,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.97216796875
+3562,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.43359375
+3563,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.974609375
+3567,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.97607421875
+3568,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.435546875
+3569,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98779296875
+3576,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.479736328125
+3577,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.96630859375
+3578,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.98974609375
+3579,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9873046875
+3580,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.9912109375
+3584,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.9775390625
+3597,,",",punctuation_insert,comma_conjunction,accepted,trusted bounded candidate,0.99755859375
+3598,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.97021484375
+3600,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+3601,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.99169921875
+3604,цикнуть,цыкнуть,spelling_replace,cy_exception,accepted,trusted bounded candidate,0.4423828125
+3607,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.990234375
+3611,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9697265625
+3613,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.99072265625
+3621,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+3622,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.4697265625
+3625,Кой кто,Кой-кто,hyphen_change,hyphen_koe_koy,accepted,trusted bounded candidate,0.433837890625
+3629,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.99951171875
+3630,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.460205078125
+3636,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98291015625
+3638,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.990234375
+3642,,",",punctuation_insert,homogeneous_comma,accepted,trusted bounded candidate,0.966796875
+3643,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.97119140625
+3647,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.9521484375
+3648,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.97607421875
+3651,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.98876953125
+3654,,",",punctuation_insert,introductory_comma,accepted,trusted bounded candidate,0.9873046875
+3658,,—,punctuation_insert,direct_speech_dash,accepted,trusted bounded candidate,0.9990234375
+3664,,—,punctuation_insert,subject_predicate_dash,accepted,trusted bounded candidate,0.9873046875
+3666,,",",punctuation_insert,comparative_turnover_comma,accepted,trusted bounded candidate,0.98974609375
+3676,,",",punctuation_insert,detached_adverbial_comma,accepted,trusted bounded candidate,0.98681640625
+3690,,",",punctuation_insert,comma_subordinate,accepted,trusted bounded candidate,0.984375
+3695,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.455810546875
+3698,,",",punctuation_insert,address_comma,accepted,trusted bounded candidate,0.986328125
+3699,Что то,Что-то,hyphen_change,hyphen_particles,accepted,trusted bounded candidate,0.445556640625

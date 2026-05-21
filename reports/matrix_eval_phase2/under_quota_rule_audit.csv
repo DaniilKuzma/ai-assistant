@@ -1,0 +1,35 @@
+rule_id,matrix_group,current_eval_count,target_eval_count,candidate_path_exists,synthetic_generator_exists,hard_negative_exists,can_backfill_with_existing_generator,backfill_attempted,backfill_success_count,candidate_recall_after_backfill,decision,reason
+abbreviation_case_protection,abbreviations_initial,0,50,False,False,False,False,False,0,0.0,NO_CANDIDATE_PATH,No verified candidate-backed eval path exists.
+asyndetic_dash,complex_sentence_asyndetic,124,50,False,False,False,False,False,0,0.0,NO_CANDIDATE_PATH,No verified candidate-backed eval path exists.
+bracket_pair_balance,quotes_brackets,0,50,False,False,False,False,False,0,0.0,NO_CANDIDATE_PATH,No verified candidate-backed eval path exists.
+capitalization_ner,capitalization_names,0,50,False,False,False,False,False,0,0.0,NO_CANDIDATE_PATH,No verified candidate-backed eval path exists.
+capitalization_sentence_start,capitalization_sentence_start,0,50,False,False,False,False,False,0,0.0,NO_CANDIDATE_PATH,No verified candidate-backed eval path exists.
+consequence_dash,complex_sentence_asyndetic,124,50,False,False,False,False,False,0,0.0,NO_CANDIDATE_PATH,No verified candidate-backed eval path exists.
+hyphen_whitelist,solid_hyphen_separate_pronouns_adverbs_particles,1,50,True,False,False,False,True,0,1.0,KEEP_UNDER_QUOTA,Existing examples remain below quota; no additional safe rows found.
+missing_hard_sign,hard_soft_signs,24,50,True,True,False,True,True,26,1.0,BACKFILLED,Candidate-backed examples reached target 50.
+n_nn_adjective,n_nn_suffixes,5,50,True,True,False,True,True,5,1.0,KEEP_UNDER_QUOTA,Backfill added 5 rows but did not reach target 50.
+n_nn_participle,n_nn_suffixes,7,50,True,True,False,True,True,72,1.0,BACKFILLED,Candidate-backed examples reached target 50.
+n_nn_short_form,n_nn_suffixes,6,50,True,True,False,True,True,92,1.0,BACKFILLED,Candidate-backed examples reached target 50.
+pattern_жо_же,letter_basic_hissing_vowel_patterns,28,50,True,True,False,True,True,174,1.0,BACKFILLED,Candidate-backed examples reached target 50.
+pattern_жы_жи,letter_basic_hissing_vowel_patterns,23,50,True,True,False,True,True,29,1.0,BACKFILLED,Candidate-backed examples reached target 50.
+pattern_цы_ци,letter_basic_hissing_vowel_patterns,1,50,True,True,False,True,True,0,1.0,KEEP_UNDER_QUOTA,Existing examples remain below quota; no additional safe rows found.
+pattern_чо_че,letter_basic_hissing_vowel_patterns,22,50,True,True,False,True,True,189,1.0,BACKFILLED,Candidate-backed examples reached target 50.
+pattern_чю_чу,letter_basic_hissing_vowel_patterns,2,50,True,True,False,True,True,15,1.0,KEEP_UNDER_QUOTA,Backfill added 15 rows but did not reach target 50.
+pattern_чя_ча,letter_basic_hissing_vowel_patterns,24,50,True,True,False,True,True,91,1.0,BACKFILLED,Candidate-backed examples reached target 50.
+pattern_шо_ше,letter_basic_hissing_vowel_patterns,22,50,True,True,False,True,True,133,1.0,BACKFILLED,Candidate-backed examples reached target 50.
+pattern_шы_ши,letter_basic_hissing_vowel_patterns,12,50,True,True,False,True,True,30,1.0,KEEP_UNDER_QUOTA,Backfill added 30 rows but did not reach target 50.
+pattern_що_ще,letter_basic_hissing_vowel_patterns,31,50,True,True,False,True,True,98,1.0,BACKFILLED,Candidate-backed examples reached target 50.
+pattern_щю_щу,letter_basic_hissing_vowel_patterns,228,50,False,True,False,False,False,0,1.0,NO_CANDIDATE_PATH,No verified candidate-backed eval path exists.
+pattern_щя_ща,letter_basic_hissing_vowel_patterns,1,50,True,True,False,True,True,5,1.0,KEEP_UNDER_QUOTA,Backfill added 5 rows but did not reach target 50.
+prefix_pre_pri,prefix_vowels,36,50,True,True,False,True,True,79,1.0,BACKFILLED,Candidate-backed examples reached target 50.
+prefix_s_to_z,consonants_prefix_z_s,15,50,True,True,False,True,True,58,1.0,BACKFILLED,Candidate-backed examples reached target 50.
+prefix_z_to_s,consonants_prefix_z_s,1,50,True,True,False,True,True,18,1.0,KEEP_UNDER_QUOTA,Backfill added 18 rows but did not reach target 50.
+punctuation_delete_replace,punctuation_combinations,0,50,False,True,False,False,False,0,0.0,NO_CANDIDATE_PATH,No verified candidate-backed eval path exists.
+quote_close,quotes_brackets,0,50,False,False,False,False,False,0,0.0,NO_CANDIDATE_PATH,No verified candidate-backed eval path exists.
+quote_open,quotes_brackets,0,50,False,False,False,False,False,0,0.0,NO_CANDIDATE_PATH,No verified candidate-backed eval path exists.
+quote_pair_balance,quotes_brackets,0,50,False,False,False,False,False,0,0.0,NO_CANDIDATE_PATH,No verified candidate-backed eval path exists.
+sdelat_prefix,consonants_prefix_z_s,32,50,True,True,False,True,True,100,1.0,BACKFILLED,Candidate-backed examples reached target 50.
+semicolon,complex_sentence_compound,0,50,False,False,False,False,False,0,0.0,NO_CANDIDATE_PATH,No verified candidate-backed eval path exists.
+soft_to_hard_sign,hard_soft_signs,23,50,True,True,False,True,True,30,1.0,BACKFILLED,Candidate-backed examples reached target 50.
+tsya_soft_delete,soft_sign_grammatical_forms,23,50,True,True,False,True,True,154,1.0,BACKFILLED,Candidate-backed examples reached target 50.
+yo_e_candidate,letter_vowels_not_after_hissing_c,0,50,False,False,False,False,False,0,0.0,NO_CANDIDATE_PATH,No verified candidate-backed eval path exists.

@@ -654,6 +654,213 @@ def test_validator_rejects_required_risky_lexical_false_positives(source, target
 
 
 @pytest.mark.parametrize(
+    ("source", "replacement"),
+    [
+        ("мир", "миф"),
+        ("замок", "звонок"),
+    ],
+)
+def test_dictionary_fuzzy_rejects_known_clean_word_to_known_word(source, replacement):
+    text = f"Это {source}."
+    start = text.index(source)
+    target = text[:start] + replacement + text[start + len(source) :]
+    trusted = Candidate(
+        source,
+        replacement,
+        "spelling",
+        start=start,
+        end=start + len(source),
+        confidence=0.999,
+        requires_model=True,
+        rule_id="dictionary_fuzzy",
+    )
+
+    result = StrictValidator().validate(text, target, trusted_edits=[trusted])
+
+    assert any(edit.status == "rejected" and edit.reason == "known_source_lexical_guard" for edit in result.edits)
+    assert result.apply_accepted() == text
+
+
+@pytest.mark.parametrize(
+    ("source", "replacement"),
+    [
+        ("Щеголев", "Щеголяв"),
+        ("Марзук", "Марчук"),
+        ("Газпром", "Газром"),
+    ],
+)
+def test_dictionary_fuzzy_rejects_name_or_org_like_token(source, replacement):
+    text = f"Игорь {source} выступил."
+    start = text.index(source)
+    target = text[:start] + replacement + text[start + len(source) :]
+    trusted = Candidate(
+        source,
+        replacement,
+        "spelling",
+        start=start,
+        end=start + len(source),
+        confidence=0.999,
+        requires_model=True,
+        rule_id="dictionary_fuzzy",
+    )
+
+    result = StrictValidator().validate(text, target, trusted_edits=[trusted])
+
+    assert any(edit.status == "rejected" and edit.reason == "protected_lexical_guard" for edit in result.edits)
+    assert result.apply_accepted() == text
+
+
+@pytest.mark.parametrize(
+    ("source", "replacement"),
+    [
+        ("карова", "корова"),
+        ("територия", "территория"),
+        ("апеляция", "апелляция"),
+        ("група", "группа"),
+        ("Обьяснил", "Объяснил"),
+    ],
+)
+def test_dictionary_fuzzy_keeps_obvious_unknown_typpo_allowed(source, replacement):
+    text = f"{source} пример." if source[:1].isupper() else f"Это {source}."
+    start = text.index(source)
+    target = text[:start] + replacement + text[start + len(source) :]
+    trusted = Candidate(
+        source,
+        replacement,
+        "spelling",
+        start=start,
+        end=start + len(source),
+        confidence=0.999,
+        requires_model=True,
+        rule_id="dictionary_fuzzy",
+    )
+
+    result = StrictValidator().validate(text, target, trusted_edits=[trusted])
+
+    assert any(edit.status == "accepted" and edit.rule_id == "dictionary_fuzzy" for edit in result.edits)
+    assert result.apply_accepted() == target
+
+
+def test_swapped_letters_rejects_known_clean_source_word():
+    source = "Он держит пост."
+    target = "Он держит псот."
+    trusted = Candidate(
+        "пост",
+        "псот",
+        "spelling",
+        start=10,
+        end=14,
+        confidence=0.999,
+        requires_model=True,
+        rule_id="swapped_letters_candidate",
+    )
+
+    result = StrictValidator().validate(source, target, trusted_edits=[trusted])
+
+    assert any(edit.status == "rejected" and edit.reason == "known_source_lexical_guard" for edit in result.edits)
+    assert result.apply_accepted() == source
+
+
+def test_swapped_letters_rejects_priemlet_to_primielet_variant():
+    source = "Он не приемлет отмену льгот."
+    target = "Он не примелет отмену льгот."
+    start = source.index("приемлет")
+    trusted = Candidate(
+        "приемлет",
+        "примелет",
+        "spelling",
+        start=start,
+        end=start + len("приемлет"),
+        confidence=0.999,
+        requires_model=True,
+        rule_id="swapped_letters_candidate",
+    )
+
+    result = StrictValidator().validate(source, target, trusted_edits=[trusted])
+
+    assert any(edit.status == "rejected" and edit.reason == "known_source_lexical_guard" for edit in result.edits)
+    assert result.apply_accepted() == source
+
+
+def test_swapped_letters_allows_obvious_unknown_typo_allowed():
+    source = "Во дворе стояла коорва."
+    target = "Во дворе стояла корова."
+    start = source.index("коорва")
+    trusted = Candidate(
+        "коорва",
+        "корова",
+        "spelling",
+        start=start,
+        end=start + len("коорва"),
+        confidence=0.999,
+        requires_model=True,
+        rule_id="swapped_letters_candidate",
+    )
+
+    result = StrictValidator().validate(source, target, trusted_edits=[trusted])
+
+    assert any(edit.status == "accepted" and edit.rule_id == "swapped_letters_candidate" for edit in result.edits)
+    assert result.apply_accepted() == target
+
+
+@pytest.mark.parametrize(
+    ("source", "replacement", "reason"),
+    [
+        ("УФСБ", "Фсб", "breaks_abbreviation"),
+        ("РИА", "Риа", "breaks_abbreviation"),
+        ("Лукойл", "Ликойл", "protected_lexical_guard"),
+    ],
+)
+def test_acronym_and_capitalized_entity_protection_for_dictionary_fuzzy(source, replacement, reason):
+    text = f"{source} сообщило о проекте."
+    target = text.replace(source, replacement, 1)
+    trusted = Candidate(
+        source,
+        replacement,
+        "spelling",
+        start=0,
+        end=len(source),
+        confidence=0.999,
+        requires_model=True,
+        rule_id="dictionary_fuzzy",
+    )
+
+    result = StrictValidator().validate(text, target, trusted_edits=[trusted])
+
+    assert any(edit.status == "rejected" and edit.reason == reason for edit in result.edits)
+    assert result.apply_accepted() == text
+
+
+@pytest.mark.parametrize(
+    ("source", "replacement", "rule_id"),
+    [
+        ("заминировании", "ламинировании", "dictionary_fuzzy"),
+        ("отлаживанию", "отваживанию", "dictionary_fuzzy"),
+        ("приемлет", "примелет", "swapped_letters_candidate"),
+    ],
+)
+def test_observed_v2_probable_clean_lexical_regressions_are_rejected(source, replacement, rule_id):
+    text = f"В тексте есть {source}."
+    start = text.index(source)
+    target = text[:start] + replacement + text[start + len(source) :]
+    trusted = Candidate(
+        source,
+        replacement,
+        "spelling",
+        start=start,
+        end=start + len(source),
+        confidence=0.999,
+        requires_model=True,
+        rule_id=rule_id,
+    )
+
+    result = StrictValidator().validate(text, target, trusted_edits=[trusted])
+
+    assert any(edit.status == "rejected" and edit.reason == "known_source_lexical_guard" for edit in result.edits)
+    assert result.apply_accepted() == text
+
+
+@pytest.mark.parametrize(
     ("source", "target", "trusted"),
     [
         (

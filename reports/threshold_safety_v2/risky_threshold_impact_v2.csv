@@ -1,0 +1,5 @@
+threshold_key,rule_id,conservative_threshold,v1_threshold,val_improvement,test_clean_fp_impact,test_real_dirty_worse_impact,guard_prevented_known_fp_examples,real_support_count,has_enough_real_support,recommendation
+dictionary_fuzzy_threshold,dictionary_fuzzy,0.95,0.75,0.035626679425455,12,0,True,2,True,raise or rollback in v2
+double_consonant_candidate_threshold,double_consonant_candidate,0.95,0.553223,0.004775130238066194,2,1,True,6,True,raise or rollback in v2
+swapped_letters_candidate_threshold,swapped_letters_candidate,0.95,0.76,0.0,2,0,False,0,False,raise or rollback in v2
+hyphen_po_adverbs_threshold,hyphen_po_adverbs,0.95,0.41333,0.03155904321788272,0,0,True,0,False,keep conservative unless safety proves otherwise

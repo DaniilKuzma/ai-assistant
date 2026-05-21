@@ -1,0 +1,279 @@
+row_id,source,replacement,edit_type,rule_id,status,reason,confidence
+64,По периодически,По-периодически,hyphen_change,hyphen_po_adverbs,rejected,unsafe_hyphen_po_adverb,0.9560546875
+64,ракетамкоторые,ракетам которые,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+66,военныхподвозили,военных подвозили,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+87,работы-,работы -,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+109,вокзалоказалось,вокзал оказалось,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+113,тогопричинил,того причинил,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+182,мераосуществляющаяся,мера осуществляющаяся,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+200,обеденное,объеденное,spelling_replace,missing_hard_sign,rejected,known_source_lexical_guard,0.97509765625
+221,квартирасообщили,квартира сообщили,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+302,трейдерскими,рейдерскими,spelling_replace,extra_letter_candidate,rejected,known_source_lexical_guard,0.998046875
+342,РФкоторая,РФ которая,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+350,тоже,то же,split_word,context_to_zhe,rejected,context-dependent pair requires trusted model confidence,0.0
+353,городасигнал,города сигнал,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+453,родственникамотмечает,родственникам отмечает,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+507,Россиикоторые,России которые,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+522,АвстралииНовой,Австралии Новой,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+523,такжечто,также что,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+524,кандидатасообщает,кандидата сообщает,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+533,обеспечилиподчеркнул,обеспечили подчеркнул,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+573,тогопредусмотрено,того предусмотрено,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+604,по всему,по-всему,hyphen_change,hyphen_po_adverbs,rejected,unsafe_hyphen_po_adverb,0.8544921875
+612,По официальному,По-официальному,hyphen_change,hyphen_po_adverbs,rejected,unsafe_hyphen_po_adverb,0.98779296875
+650,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.9970703125
+651,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+653,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99755859375
+654,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99560546875
+655,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99755859375
+657,,«,punctuation_insert,direct_speech_quotes,rejected,weak_direct_speech_pattern,0.9951171875
+658,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99609375
+659,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99853515625
+661,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99658203125
+662,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99755859375
+663,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99853515625
+664,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99560546875
+665,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99609375
+666,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99609375
+669,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.9951171875
+670,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99609375
+671,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+674,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.9970703125
+675,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+677,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99609375
+678,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.9970703125
+681,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99658203125
+683,,«,punctuation_insert,direct_speech_quotes,rejected,weak_direct_speech_pattern,0.99609375
+685,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99658203125
+686,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99755859375
+687,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+689,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.9951171875
+690,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.9970703125
+691,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+692,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99658203125
+693,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99755859375
+694,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99609375
+695,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99755859375
+696,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99560546875
+697,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99658203125
+698,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99755859375
+699,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+701,Алленкоторый,Аллен который,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+740,ч,Ч,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+740,уЧеные,ученые,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+741,М,м,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+741,москвы,Москвы,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+750,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.9970703125
+751,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+753,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99755859375
+754,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99560546875
+755,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99755859375
+757,,«,punctuation_insert,direct_speech_quotes,rejected,weak_direct_speech_pattern,0.9951171875
+758,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99609375
+759,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99853515625
+760,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99658203125
+761,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99755859375
+762,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99853515625
+763,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99560546875
+764,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99609375
+765,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99609375
+767,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.9951171875
+768,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99609375
+769,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+771,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.9970703125
+772,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+774,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99609375
+775,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.9970703125
+777,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99658203125
+778,,«,punctuation_insert,direct_speech_quotes,rejected,weak_direct_speech_pattern,0.99609375
+780,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99658203125
+781,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99755859375
+782,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+783,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.9951171875
+784,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.9970703125
+785,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+786,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99658203125
+787,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99755859375
+788,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99609375
+789,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99755859375
+790,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99560546875
+791,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99658203125
+792,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.99755859375
+793,,«,punctuation_insert,direct_speech_quotes,rejected,unbalanced_pairs,0.998046875
+844,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.97265625
+845,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9716796875
+846,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.96435546875
+847,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.97119140625
+848,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.96484375
+849,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9755859375
+850,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.97265625
+851,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.98046875
+852,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.97265625
+853,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9658203125
+854,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.97412109375
+855,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.98486328125
+855,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98486328125
+856,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.95849609375
+857,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9775390625
+858,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.97412109375
+859,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.97705078125
+860,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.96826171875
+861,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9736328125
+862,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.951171875
+863,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.978515625
+864,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9716796875
+865,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9765625
+866,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.97265625
+867,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.974609375
+868,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9697265625
+869,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.978515625
+870,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.951171875
+871,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.97607421875
+872,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9775390625
+873,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.97021484375
+874,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.97412109375
+875,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.98095703125
+876,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9765625
+877,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.95654296875
+878,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.99755859375
+879,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.98046875
+880,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9560546875
+881,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9736328125
+882,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.998046875
+883,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9755859375
+884,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.97607421875
+885,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9560546875
+886,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.99609375
+887,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.97802734375
+888,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9794921875
+889,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9765625
+890,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.99853515625
+891,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9736328125
+892,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.9580078125
+893,,:,punctuation_insert,enumeration_colon,rejected,unsafe_colon_candidate,0.96142578125
+894,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.986328125
+895,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98291015625
+896,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98193359375
+897,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9443359375
+898,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9677734375
+899,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98828125
+900,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98046875
+901,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9716796875
+901,зонах com,зонахcom,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+901,и net,иnet,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+902,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9873046875
+903,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.97607421875
+904,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9853515625
+905,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9873046875
+906,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.96240234375
+907,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98193359375
+908,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9833984375
+909,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.97314453125
+910,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.984375
+911,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98486328125
+912,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9833984375
+913,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98681640625
+914,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9892578125
+915,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9765625
+916,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98388671875
+917,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98828125
+918,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9833984375
+919,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.986328125
+920,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98779296875
+921,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.97607421875
+922,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9755859375
+923,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.986328125
+924,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.97998046875
+925,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.958984375
+926,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.94775390625
+927,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98095703125
+928,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.96044921875
+929,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.97265625
+929,Т,т,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+929,тополь-М,Тополь-М,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+930,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98095703125
+931,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.984375
+932,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98681640625
+933,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.939453125
+934,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.978515625
+934,е,Е,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+935,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9853515625
+936,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.95703125
+937,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9716796875
+938,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9873046875
+938,скачок,скачек,spelling_replace,pattern_чо_че,rejected,known_source_lexical_guard,0.9970703125
+939,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.984375
+940,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.97900390625
+941,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.9853515625
+942,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.98095703125
+943,,:,punctuation_insert,explanation_colon,rejected,unsafe_colon_candidate,0.95751953125
+1017,,.,final_punctuation,final_punctuation_default,rejected,breaks_abbreviation,0.97021484375
+1048,сдесь,здесь,spelling_replace,frequent_error_exact,rejected,requires_trusted_candidate,0.95
+1048,здесь,сдесь,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+1096,кинорежиссердиректор,кинорежиссер директор,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+1195,обеденное,объеденное,spelling_replace,missing_hard_sign,rejected,known_source_lexical_guard,0.97509765625
+1206,дурдом,урдом,spelling_replace,extra_letter_candidate,rejected,known_source_lexical_guard,0.958984375
+1210,жекогда-нибудьстав,же когда-нибудь став,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+1511,лиСью,ли Сью,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+1554,Транскаспийский,Трансальпийский,spelling_replace,dictionary_fuzzy,rejected,protected_lexical_guard,0.98681640625
+1615,то,То,case_change,capitalization_sentence_start,rejected,abbreviation_sentence_start_capitalization,0.998046875
+1616,дам И,дамИ,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+1616,мужчины Лето,мужчиныЛето,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+1645,ветренно,ветрено,spelling_replace,double_consonant_candidate,rejected,unsafe_double_consonant_candidate,0.91064453125
+1646,обеденное,объеденное,spelling_replace,missing_hard_sign,rejected,known_source_lexical_guard,0.97509765625
+1666,ннедалеко,недалеко,spelling_replace,double_consonant_candidate,rejected,unsafe_double_consonant_candidate,0.7978515625
+1667,ннедалеко,недалеко,spelling_replace,double_consonant_candidate,rejected,unsafe_double_consonant_candidate,0.77783203125
+1667,аннглийская,английская,spelling_replace,double_consonant_candidate,rejected,unsafe_double_consonant_candidate,0.81005859375
+1668,ннедалеко,недалеко,spelling_replace,double_consonant_candidate,rejected,unsafe_double_consonant_candidate,0.79296875
+1669,ннедалеко,недалеко,spelling_replace,double_consonant_candidate,rejected,unsafe_double_consonant_candidate,0.7841796875
+1670,ннедалеко,недалеко,spelling_replace,double_consonant_candidate,rejected,unsafe_double_consonant_candidate,0.7724609375
+1702,пределах,приделах,spelling_replace,prefix_pre_pri,rejected,unsafe_fuzzy_spelling_candidate,0.984375
+1765,по чеченскому,по-чеченскому,hyphen_change,hyphen_po_adverbs,rejected,unsafe_hyphen_po_adverb,0.94970703125
+1856,блонди,блондин,spelling_replace,missing_letter_candidate,rejected,known_source_lexical_guard,0.935546875
+1871,себяно,себя но,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+1951,Анналогичный,Аналогичный,spelling_replace,double_consonant_candidate,rejected,unsafe_double_consonant_candidate,0.873046875
+2103,ннедалеко,недалеко,spelling_replace,double_consonant_candidate,rejected,unsafe_double_consonant_candidate,0.7841796875
+2230,шол,шел,spelling_replace,frequent_error_exact,rejected,requires_trusted_candidate,0.95
+2230,шельфе,шольфе,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+2406,шотландских,шетландских,spelling_replace,pattern_шо_ше,rejected,known_source_lexical_guard,0.9755859375
+2429,номеромпредставляетобщефедеральную,номером представляетобщефедеральную,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+2548,преступило,приступило,spelling_replace,prefix_pre_pri,rejected,unsafe_fuzzy_spelling_candidate,0.951171875
+2561,призрением,презрением,spelling_replace,prefix_pre_pri,rejected,unsafe_fuzzy_spelling_candidate,0.95947265625
+2569,призрение,презрение,spelling_replace,prefix_pre_pri,rejected,unsafe_fuzzy_spelling_candidate,0.982421875
+2575,призрения,презрения,spelling_replace,prefix_pre_pri,rejected,unsafe_fuzzy_spelling_candidate,0.98291015625
+2626,шол,шел,spelling_replace,frequent_error_exact,rejected,requires_trusted_candidate,0.95
+2626,шельфе,шольфе,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+2661,Анналогичный,Аналогичный,spelling_replace,double_consonant_candidate,rejected,unsafe_double_consonant_candidate,0.87158203125
+2675,по международному,по-международному,hyphen_change,hyphen_po_adverbs,rejected,unsafe_hyphen_po_adverb,0.96826171875
+2678,по международному,по-международному,hyphen_change,hyphen_po_adverbs,rejected,unsafe_hyphen_po_adverb,0.93310546875
+2807,ч,Ч,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+2807,ч,Ч,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+2807,ЧеЧни,Чечни,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+2807,наЧать,начать,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+2813,к,К,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+2813,ДоКумент,Документ,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+2817,к,К,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+2817,ПроеКт,Проект,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+2902,соревнуються,соревнуется,spelling_replace,dictionary_fuzzy,rejected,unsafe_fuzzy_spelling_candidate,0.9599609375
+2906,по дому,по-дому,hyphen_change,hyphen_po_adverbs,rejected,unsafe_hyphen_po_adverb,0.98486328125
+2942,ни,не,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+2966,светитТо,светило,spelling_replace,dictionary_fuzzy,rejected,protected_lexical_guard,0.953125
+3008,воздушнойИ,воздушной,spelling_replace,extra_letter_candidate,rejected,protected_lexical_guard,0.99609375
+3008,послушныйПротивник,послушный Противник,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+3009,стальнаяНа,стальная На,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+3028,кабине-,кабине -,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+3028,он-,он -,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+3036,прием,преем,spelling_replace,prefix_pre_pri,rejected,unsafe_fuzzy_spelling_candidate,0.93798828125
+3051,мишекоткрытки,мишек открытки,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+3055,шотландском,шетландском,spelling_replace,pattern_шо_ше,rejected,known_source_lexical_guard,0.99853515625
+3063,любовникумайору,любовнику майору,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+3108,по национальному,по-национальному,hyphen_change,hyphen_po_adverbs,rejected,unsafe_hyphen_po_adverb,0.94775390625
+3115,по национальному,по-национальному,hyphen_change,hyphen_po_adverbs,rejected,unsafe_hyphen_po_adverb,0.9697265625
+3198,ООН-,ООН -,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+3199,об,Об,case_change,capitalization_sentence_start,rejected,abbreviation_sentence_start_capitalization,0.99951171875
+3199,не,Не,case_change,capitalization_sentence_start,rejected,abbreviation_sentence_start_capitalization,0.9931640625
+3199,призыву-,призыву -,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+3203,по французскому,по-французскому,hyphen_change,hyphen_po_adverbs,rejected,unsafe_hyphen_po_adverb,0.99267578125
+3206,стерлинговшвейцарский,стерлингов швейцарский,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+3236,Сухумиим,Сухуми им,unknown,,rejected,outside strict spelling/punctuation scope,0.0
+3271,восточнотиморской,восточнотиморкою,spelling_replace,dictionary_fuzzy,rejected,unsafe_fuzzy_spelling_candidate,0.95458984375

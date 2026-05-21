@@ -354,7 +354,7 @@ def _attempt_limit_for_rule(rule_id: str, required_count: int) -> int:
     term_count = len(TARGETED_BACKFILL_TERM_BANK.get(rule_id, ()))
     estimated_unique = template_count * len(TARGETED_BACKFILL_TOPICS)
     estimated_unique += term_count * len(TARGETED_BACKFILL_TOPICS) * 6
-    return max(required_count * 4, estimated_unique * 4, 64)
+    return max(required_count * 6, min(estimated_unique * 2, 600), 64)
 
 
 def _apply_candidate(source: str, candidate: Any) -> str:

@@ -1,0 +1,6 @@
+threshold_key,v1_threshold,selected_threshold,selection_objective,selection_clean_overcorrection_rate,selection_real_dirty_worse_rate,val_clean_overcorrection_rate,val_real_dirty_worse_rate,reason
+dictionary_fuzzy_threshold,0.75,0.95,0.0,0.0,0.0,0.0,0.0,rollback to conservative: val calibration admitted clean false positives and dictionary fuzzy dominates clean safety risk
+double_consonant_candidate_threshold,0.553223,0.84,0.0,0.0,0.0,0.0,0.0,raise per v2 candidate grid: val calibration admitted clean false positives with low positive score support
+swapped_letters_candidate_threshold,0.76,0.84,0.0,0.0,0.0,0.0,0.0,raise per v2 candidate grid: synthetic-only gain and expanded clean safety priority
+hyphen_po_adverbs_threshold,0.41333,0.88,0.0,0.0,0.0,0.0,0.0,raise per v2 candidate grid: synthetic-only gain with high negative-score risk
+final_punctuation_threshold,0.88,0.95,0.0,0.0,0.0,0.0,0.0,raise sentinel from val evidence: final_punctuation_default has val false positives and zero rule-level precision

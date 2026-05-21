@@ -1,0 +1,68 @@
+# Feature Build Profile Summary
+
+- total rows profiled: 2000
+- total time: 56.642s
+- rows/sec: 35.310
+- p50/p90/p99 total_ms: 9.466 / 24.564 / 58.716
+- p50/p90/p99 candidate_generation_ms: 5.547 / 20.199 / 54.512
+- p50/p90/p99 dictionary_candidate_ms: 0.530 / 13.636 / 44.251
+- average candidates per row: 14.213
+- average dictionary candidates per row: 0.405
+- syntax enabled/disabled: disabled
+- dictionary lexicon size: 3063822
+- dictionary cache hit/miss stats: {'hits': 896, 'misses': 1232, 'size': 1232, 'max_size': 200000, 'hit_rate': 0.42105263157894735}
+- feature cache hit/miss stats: {'enabled': True, 'hit': False}
+- clear bottleneck conclusion: dictionary dominates average row time (4.998 ms)
+
+## Top 50 Slowest Rows
+
+- row_index=40 total_ms=2773.171 candidate_generation_ms=2769.179 dictionary_candidate_ms=2763.907 rule_ids=address_comma|context_tak_zhe|dictionary_fuzzy|direct_speech_colon|direct_speech_quotes
+- row_index=1935 total_ms=329.503 candidate_generation_ms=323.718 dictionary_candidate_ms=57.514 rule_ids=capitalization_sentence_start|comma_conjunction|comma_subordinate|comparative_turnover_comma|dictionary_fuzzy|extra_letter_candidate|final_punctuation_default|frequent_error_exact|missing_letter_candidate
+- row_index=1026 total_ms=238.730 candidate_generation_ms=234.709 dictionary_candidate_ms=0.850 rule_ids=cy_exception|dictionary_fuzzy|extra_letter_candidate
+- row_index=356 total_ms=223.072 candidate_generation_ms=218.313 dictionary_candidate_ms=1.053 rule_ids=comparative_turnover_comma
+- row_index=0 total_ms=207.353 candidate_generation_ms=199.846 dictionary_candidate_ms=189.976 rule_ids=address_comma|n_nn_short_form|ne_adverb
+- row_index=1879 total_ms=140.519 candidate_generation_ms=136.360 dictionary_candidate_ms=127.623 rule_ids=dictionary_fuzzy|final_punctuation_default
+- row_index=1689 total_ms=88.734 candidate_generation_ms=83.816 dictionary_candidate_ms=74.425 rule_ids=explanation_colon|quote_close|quote_open
+- row_index=592 total_ms=78.150 candidate_generation_ms=73.791 dictionary_candidate_ms=65.259 rule_ids=context_nesmotrya|n_nn_adjective
+- row_index=1306 total_ms=76.490 candidate_generation_ms=72.140 dictionary_candidate_ms=61.993 rule_ids=direct_speech_colon|direct_speech_quotes
+- row_index=1508 total_ms=72.156 candidate_generation_ms=67.964 dictionary_candidate_ms=62.603 rule_ids=dictionary_fuzzy|double_consonant_candidate|extra_letter_candidate|quote_close|quote_open
+- row_index=1305 total_ms=70.054 candidate_generation_ms=65.390 dictionary_candidate_ms=57.187 rule_ids=direct_speech_colon
+- row_index=403 total_ms=65.857 candidate_generation_ms=61.732 dictionary_candidate_ms=50.847 rule_ids=context_chto_by|dictionary_fuzzy|extra_letter_candidate
+- row_index=200 total_ms=64.581 candidate_generation_ms=60.379 dictionary_candidate_ms=49.173 rule_ids=comma_subordinate|quote_close|quote_open
+- row_index=602 total_ms=64.507 candidate_generation_ms=60.441 dictionary_candidate_ms=50.968 rule_ids=context_tak_zhe|dictionary_fuzzy|extra_letter_candidate
+- row_index=1842 total_ms=63.715 candidate_generation_ms=59.859 dictionary_candidate_ms=53.189 rule_ids=final_punctuation_default|quote_close|quote_open
+- row_index=1915 total_ms=63.003 candidate_generation_ms=59.509 dictionary_candidate_ms=51.885 rule_ids=capitalization_sentence_start|comma_subordinate|dictionary_fuzzy|extra_letter_candidate|final_punctuation_default|frequent_error_exact|keyboard_typo_candidate
+- row_index=1149 total_ms=62.781 candidate_generation_ms=58.953 dictionary_candidate_ms=51.770 rule_ids=detached_adverbial_comma|dictionary_fuzzy|direct_speech_colon|direct_speech_quotes|extra_letter_candidate|keyboard_typo_candidate
+- row_index=1327 total_ms=61.188 candidate_generation_ms=57.665 dictionary_candidate_ms=51.424 rule_ids=direct_speech_colon|direct_speech_dash|direct_speech_quotes
+- row_index=1953 total_ms=60.826 candidate_generation_ms=55.848 dictionary_candidate_ms=46.426 rule_ids=capitalization_sentence_start|extra_letter_candidate|final_punctuation_default|frequent_error_exact|keyboard_typo_candidate|missing_letter_candidate|tsya_soft_delete
+- row_index=52 total_ms=60.583 candidate_generation_ms=56.351 dictionary_candidate_ms=47.095 rule_ids=address_comma|keyboard_typo_candidate
+- row_index=809 total_ms=58.697 candidate_generation_ms=53.854 dictionary_candidate_ms=44.249 rule_ids=context_vsledstvie
+- row_index=1937 total_ms=58.486 candidate_generation_ms=54.498 dictionary_candidate_ms=47.183 rule_ids=capitalization_sentence_start|comma_subordinate|extra_letter_candidate|final_punctuation_default|frequent_error_exact|missing_letter_candidate
+- row_index=205 total_ms=57.698 candidate_generation_ms=52.811 dictionary_candidate_ms=42.501 rule_ids=comma_subordinate|extra_letter_candidate
+- row_index=208 total_ms=56.279 candidate_generation_ms=51.444 dictionary_candidate_ms=40.509 rule_ids=comma_subordinate
+- row_index=1840 total_ms=53.587 candidate_generation_ms=50.143 dictionary_candidate_ms=44.446 rule_ids=dictionary_fuzzy|final_punctuation_default|n_nn_short_form
+- row_index=207 total_ms=53.428 candidate_generation_ms=49.359 dictionary_candidate_ms=35.518 rule_ids=comma_subordinate|dictionary_fuzzy|extra_letter_candidate|ne_adjective
+- row_index=1417 total_ms=51.291 candidate_generation_ms=46.744 dictionary_candidate_ms=37.377 rule_ids=direct_speech_colon|direct_speech_dash|direct_speech_quotes
+- row_index=802 total_ms=51.251 candidate_generation_ms=46.814 dictionary_candidate_ms=37.493 rule_ids=context_vsledstvie|dictionary_fuzzy|extra_letter_candidate
+- row_index=1123 total_ms=50.367 candidate_generation_ms=45.766 dictionary_candidate_ms=38.818 rule_ids=detached_adverbial_comma|dictionary_fuzzy
+- row_index=1997 total_ms=50.331 candidate_generation_ms=45.340 dictionary_candidate_ms=38.601 rule_ids=dictionary_fuzzy|extra_letter_candidate|homogeneous_comma|quote_close|quote_open|tsya_soft_insert
+- row_index=209 total_ms=49.958 candidate_generation_ms=45.687 dictionary_candidate_ms=33.800 rule_ids=comma_subordinate|prefix_pre_pri
+- row_index=1721 total_ms=49.729 candidate_generation_ms=45.066 dictionary_candidate_ms=35.743 rule_ids=explanation_colon|extra_letter_candidate|quote_close|quote_open
+- row_index=1100 total_ms=49.228 candidate_generation_ms=44.750 dictionary_candidate_ms=36.544 rule_ids=detached_adverbial_comma|quote_close|quote_open
+- row_index=883 total_ms=47.801 candidate_generation_ms=43.112 dictionary_candidate_ms=32.496 rule_ids=context_vsledstvie|dictionary_fuzzy|extra_letter_candidate|missing_letter_candidate|ne_participle
+- row_index=795 total_ms=47.786 candidate_generation_ms=43.621 dictionary_candidate_ms=29.842 rule_ids=context_to_zhe|dictionary_fuzzy
+- row_index=1153 total_ms=47.195 candidate_generation_ms=42.928 dictionary_candidate_ms=36.073 rule_ids=detached_adverbial_comma|prefix_pre_pri|tsya_soft_delete
+- row_index=669 total_ms=47.073 candidate_generation_ms=42.361 dictionary_candidate_ms=32.080 rule_ids=context_tak_zhe|n_nn_short_form
+- row_index=1041 total_ms=46.986 candidate_generation_ms=41.816 dictionary_candidate_ms=31.485 rule_ids=cy_exception|dictionary_fuzzy|extra_letter_candidate|introductory_comma|n_nn_short_form
+- row_index=1811 total_ms=46.687 candidate_generation_ms=42.494 dictionary_candidate_ms=30.377 rule_ids=final_punctuation_default
+- row_index=412 total_ms=46.265 candidate_generation_ms=41.908 dictionary_candidate_ms=30.728 rule_ids=context_chto_by
+- row_index=170 total_ms=46.126 candidate_generation_ms=41.666 dictionary_candidate_ms=30.889 rule_ids=comma_conjunction|dictionary_fuzzy|extra_letter_candidate|pattern_жо_же|quote_close|quote_open
+- row_index=1004 total_ms=46.017 candidate_generation_ms=40.948 dictionary_candidate_ms=30.488 rule_ids=cy_exception|dictionary_fuzzy|extra_letter_candidate|keyboard_typo_candidate
+- row_index=1235 total_ms=45.668 candidate_generation_ms=41.549 dictionary_candidate_ms=30.660 rule_ids=dictionary_fuzzy|direct_speech_colon|direct_speech_quotes|keyboard_typo_candidate|missing_letter_candidate
+- row_index=274 total_ms=45.517 candidate_generation_ms=41.906 dictionary_candidate_ms=35.141 rule_ids=comma_subordinate|ne_adverb
+- row_index=331 total_ms=45.425 candidate_generation_ms=40.385 dictionary_candidate_ms=32.063 rule_ids=comparative_turnover_comma|dictionary_fuzzy|direct_speech_colon|missing_letter_candidate|quote_close|quote_open
+- row_index=1878 total_ms=45.409 candidate_generation_ms=42.722 dictionary_candidate_ms=37.954 rule_ids=dictionary_fuzzy|final_punctuation_default
+- row_index=1152 total_ms=44.096 candidate_generation_ms=39.903 dictionary_candidate_ms=31.341 rule_ids=detached_adverbial_comma
+- row_index=271 total_ms=43.957 candidate_generation_ms=39.625 dictionary_candidate_ms=30.316 rule_ids=comma_subordinate|context_tak_zhe
+- row_index=532 total_ms=43.950 candidate_generation_ms=39.472 dictionary_candidate_ms=32.430 rule_ids=context_nesmotrya
+- row_index=967 total_ms=43.899 candidate_generation_ms=39.360 dictionary_candidate_ms=32.975 rule_ids=context_za_to

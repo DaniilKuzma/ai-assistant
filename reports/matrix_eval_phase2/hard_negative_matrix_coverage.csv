@@ -1,0 +1,11 @@
+trap_type,related_rule_id,examples_count,accepted_bad_edits_count,rejected_bad_edits_count,clean_overcorrection_count,decision
+abbreviation_correct,abbreviation_case_protection,28,0,0,0,SAFE
+clean_identity,,1,0,0,0,SAFE
+context_pair_correct,,25,0,0,0,SAFE
+hyphen_correct,hyphen_whitelist,52,0,0,0,SAFE
+n_nn_correct,n_nn_adjective,298,0,0,0,SAFE
+ne_ni_correct,ne_verb,50,0,0,0,SAFE
+numbers_percent_decimals,,21,0,0,0,SAFE
+punctuation_trap,punctuation_delete_replace,28,0,0,0,SAFE
+quotes_brackets_final_punctuation,punctuation_delete_replace,15,0,0,0,SAFE
+tsya_correct,tsya_soft_insert,53,0,0,0,SAFE
