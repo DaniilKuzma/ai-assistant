@@ -55,6 +55,18 @@ def _v3_entry(
             "reason": "planned",
             "last_known_candidate_recall": None,
             "last_known_eval_count": None,
+            "production_ready_now": False,
+            "training_eligible_now": False,
+            "training_eligibility_decision": "BLOCK_PLANNED",
+            "training_eligibility_reason": "planned",
+            "current_candidate_path": False,
+            "current_synthetic_support": False,
+            "current_hard_negative_support": False,
+            "current_validator_support": False,
+            "current_candidate_recall": None,
+            "current_gap_coverage": None,
+            "risk_level": "high",
+            "needs_before_training": ["none"],
         },
     }
 
@@ -98,6 +110,18 @@ def test_project_rules_coverage_checker_passes():
     from src.rules.coverage_matrix import validate_project_rules_coverage
 
     validate_project_rules_coverage(RULES_PATH)
+
+
+def test_training_eligibility_fields_are_present_and_block_no_candidate_entries():
+    from src.rules.coverage_matrix import iter_coverage_entries, load_rules_coverage
+
+    data = load_rules_coverage(RULES_PATH)
+    for domain, group, entry in iter_coverage_entries(data):
+        dataset = entry["dataset"]
+        assert "production_ready_now" in dataset, f"{domain}.{group} missing production_ready_now"
+        assert "training_eligible_now" in dataset, f"{domain}.{group} missing training_eligible_now"
+        if not entry["rules"]:
+            assert dataset["training_eligible_now"] is False, f"{domain}.{group} lacks rule_ids"
 
 
 def test_all_statuses_are_allowed():

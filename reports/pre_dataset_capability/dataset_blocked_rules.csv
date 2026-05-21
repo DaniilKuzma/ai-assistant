@@ -1,0 +1,363 @@
+matrix_key,title,status,blocked_reason,requires,recommended_next_action
+orthography_group_pravila_upotrebleniya_bukv,Правила употребления букв,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_group_pravila_upotrebleniya_bukv_obschie_pravila,Общие правила,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_group_pravila_upotrebleniya_bukv_obschie_pravila_glasnye_ne_posle_shipyaschih_i_ts,Гласные не после шипящих и «ц»,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_1_1_1_1,"Буквы «а» — «я», «у» — «ю»",dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_1_1_2,Буква «о»,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_1_1_3,Буква «ё»,disabled,BLOCK_DISABLED,"[""dictionary"", ""model""]",keep disabled until explicit policy decision
+orthography_1_1_1_4,Буквы «э» — «е»,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_1_1_5,Буква «и»,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_1_1_6,Буква «ы»,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_group_pravila_upotrebleniya_bukv_obschie_pravila_glasnye_posle_shipyaschih_i_ts,Гласные после шипящих и «ц»,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_1_1_2_4,Буква «о» на месте ударной гласной,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_1_2_5,Буква «ё» на месте ударной гласной,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_1_2_6,"Буквы «о», «е» на месте безударной гласной",dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_1_2_7,Буквы «о» и «е» после «ц»,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_1_2_8,Буква «э» после шипящих и «ц»,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_1_3,Буква «й»,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_group_pravila_upotrebleniya_bukv_obschie_pravila_bukvy_i,Буквы «ъ» и «ь»,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_1_1_4_2,Буква «ь» как знак мягкости согласного,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_1_4_3,Буква «ь» после шипящих в некоторых грамматических формах,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_group_pravila_upotrebleniya_bukv_napisanie_znachimyh_chastey_slova,Написание значимых частей слова,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_1_2_1,Безударные гласные в корнях,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_group_pravila_upotrebleniya_bukv_napisanie_znachimyh_chastey_slova_napisanie_otdelnyh_korney,Написание отдельных корней,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_group_pravila_upotrebleniya_bukv_napisanie_znachimyh_chastey_slova_napisanie_otdelnyh_korney_korni_s_chereduyuschimisya_glasnymi,Корни с чередующимися гласными,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_1_2_2_1_1,Корни с буквами «а» и «о»,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_2_2_1_2,Корни с буквами «и» и «е»,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_2_2_2,Трудные случаи написания корневых гласных,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_group_pravila_upotrebleniya_bukv_napisanie_znachimyh_chastey_slova_bezudarnye_glasnye_v_pristavkah,Безударные гласные в приставках,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_1_2_3_1,Написание букв на месте безударных гласных в приставках,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_2_3_3,Приставка раз- (рас-) / роз- (рос-),dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_2_3_4,Гласные на конце приставок и предлогов на безударный гласный,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_group_pravila_upotrebleniya_bukv_napisanie_znachimyh_chastey_slova_bezudarnye_glasnye_v_suffiksah,Безударные гласные в суффиксах,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_1_2_4_1,Суффиксы с проверяемыми безударными гласными,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_2_4_2,Суффиксы с непроверяемыми безударными гласными,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_2_4_3,"Гласный на конце основы в существительных на «-ий», «-ия», «-ие»",dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_group_pravila_upotrebleniya_bukv_napisanie_znachimyh_chastey_slova_bezudarnye_glasnye_v_suffiksah_osobennosti_napisaniya_otdelnyh_suffiksov,Особенности написания отдельных суффиксов,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_1_2_4_4_1,"Суффиксы -енн, -ян",dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_2_4_4_2,"Суффиксы -ев, -ив, -лив, -чив",dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_2_4_4_3,"Суффиксы -еньк, -оньк",dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_2_4_4_4,"Суффиксы -очк , -ечк",dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_2_4_4_5,"Суффиксы -ачий (-ячий), -ечий, -ичий",dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_2_4_4_6,"Суффиксы -ек, -ик",dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_2_4_4_7,"Суффиксы -инк, -енк, -анк (-янк)",dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_2_4_4_8,"Суффиксы -иц, -ец",dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_2_4_4_9,Суффикс -(м)ен,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_2_4_4_10,"Суффиксы -ышк , -ышек, -ешек и -ушк (-юшк), -ушек",dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_2_4_4_11,"Суффиксы -инск , -енск",dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_2_4_4_12,"Суффиксы -ошн, -ашн, -ешн, -ишн",dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_2_4_4_13,"Суффиксы -ив, -ев",dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_2_4_4_14,"Суффиксы -ущ (-ющ), -ащ (-ящ)",dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_2_4_4_15,"Суффиксы -ем, -им, -емость, -имость",dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_2_4_4_16,Суффиксы -анн (-янн) и -ан (-ян); -енн и -ен,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_2_4_4_17,"Особенности написания суффиксов -ыва (-ива), -ова (-ева)",dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_2_4_4_18,Суффикс -ва,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_2_4_4_19,"Суффиксы -е(ть), -и(ть), -ене(ть), -ени(ть)",dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_2_5,Беглые гласные в корнях и суффиксах существительных и прилагательных,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_2_6,Соединительные гласные,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_group_pravila_upotrebleniya_bukv_napisanie_znachimyh_chastey_slova_bezudarnye_glasnye_v_padezhnyh_okonchaniyah,Безударные гласные в падежных окончаниях,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_1_2_7_1,Написание букв в окончаниях по формам слов с тем же окончанием,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_1_2_7_2,"Написание в форме им. п. ед. ч. муж. рода прилагательных / слов, склоняющихся как прилагательные",syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_1_2_7_3,"Окончания, содержащие гласные, не проверяемые ударной позицией",syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_1_2_7_4,Безударные окончания у существительных с некоторыми суффиксами,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_1_2_7_5,"Падежные формы существительных на -ий, -ие, -ия",syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_1_2_7_6,"Предлоги «в», «на», «по» с существительными на -ие, -ии",syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_group_pravila_upotrebleniya_bukv_napisanie_znachimyh_chastey_slova_bezudarnye_glasnye_v_glagolnyh_formah,Безударные гласные в глагольных формах,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_1_2_8_1,Гласные в глагольных окончаниях,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_2_8_2,Гласные в инфинитиве перед -ть,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_group_pravila_upotrebleniya_bukv_napisanie_znachimyh_chastey_slova_chastitsy_ne_i_ni,Частицы не и ни,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_1_2_9_1,Одиночная частица «ни» перед словами «один» и «единый»,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_1_2_9_2,Частица «ни» в союзе «ни... ни»,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_1_2_9_5,Уступительные придаточные с частицей «ни»,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_1_2_9_6,"Конструкции «не кто иной», «не что иное»",planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_1_2_9_7,Частица «не» в устойчивых сочетаниях,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_1_2_9_9,Основное употребление частицы «ни»,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_1_2_9_10,Основное употребление частицы «не»,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_group_pravila_upotrebleniya_bukv_pravopisanie_soglasnyh,Правописание согласных,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_group_pravila_upotrebleniya_bukv_pravopisanie_soglasnyh_gluhie_i_zvonkie_soglasnye,Глухие и звонкие согласные,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_1_3_1_1,Парные глухие согласные,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_3_1_2,Написание непроверяемых согласных,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_3_1_3,"Слова с сочетаниями согласных «ск, ст, зг, зд»",dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_3_2,Непроизносимые согласные,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_group_pravila_upotrebleniya_bukv_pravopisanie_soglasnyh_gruppy_soglasnyh_na_styke_znachimyh_chastey_slova,Группы согласных на стыке значимых частей слова,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_1_3_3_1,Прилагательные с суффиксом «-ск»,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_3_3_2,"Буквенные сочетания «тс», «дс», «тц» и «дц»",dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_3_3_3,"Буквенные сочетания «тч», «стч», «дч» и «здч»",dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_3_3_4,Буквенное сочетание «тч»,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_3_3_5,"Буквенные сочетания «сч», «зч», «жч» и «шч»",dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_3_3_6,"Буквенные сочетания «сш», «сж», «зш» и «зж»",dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_3_3_7,"Буквенные сочетания «жс», «шс», «чс» и «щс»",dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_3_4,Буквы «ч» и «ш» перед «н» и «т»,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_3_5,Буква «г» в окончаниях «-ого» и «-его»,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_group_pravila_upotrebleniya_bukv_pravopisanie_soglasnyh_dvoynye_soglasnye,Двойные согласные,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_1_3_6_1,Двойные согласные на стыке приставки и корня,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_3_6_3,Двойное н и двойное с на стыке производящей основы и суффикса,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_3_6_10,Двойные согласные в заимствованных корнях,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_3_6_11,Двойные согласные после корня в заимствованных словах,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_3_6_12,"Двойные согласные в словах, образованных от основ на две одинаковые согласные",dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_1_3_6_13,Двойные согласные при сокращении слов,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_group_pravila_upotrebleniya_nebukvennyh_znakov,Правила употребления небуквенных знаков,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_2_1,Дефис,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_2_2,Косая черта,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_2_3,Апостроф,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_group_pravila_slitnogo_defisnogo_i_razdelnogo_napisaniya,"Правила слитного, дефисного и раздельного написания",metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_group_pravila_slitnogo_defisnogo_i_razdelnogo_napisaniya_napisanie_suschestvitelnogo,Написание существительного,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_group_pravila_slitnogo_defisnogo_i_razdelnogo_napisaniya_napisanie_suschestvitelnogo_napisanie_naritsatelnyh_imen,Написание нарицательных имён,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_group_pravila_slitnogo_defisnogo_i_razdelnogo_napisaniya_napisanie_suschestvitelnogo_napisanie_naritsatelnyh_imen_slitnoe_napisanie_naritsatelnyh_imen,Слитное написание нарицательных имён,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_3_1_1_1_1,Слитное написание сложносокращенных слов,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_3_1_1_1_2,Сложные существительные с соединительными гласными «о» и «е»,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_group_pravila_slitnogo_defisnogo_i_razdelnogo_napisaniya_napisanie_suschestvitelnogo_napisanie_naritsatelnyh_imen_napisanie_naritsatelnyh_imen_cherez_defis,Написание нарицательных имён через дефис,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_3_1_1_2_1,"Сочетания двух существительных, первая часть с самостоятельным склонением",planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_3_1_1_2_2,Сочетания с несклоняемыми существительными,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_3_1_1_2_3,Дефисное написание существительных,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_3_1_1_2_4,Сложные слова с несклоняемой первой частью в им. п. ед. ч. с нулевым окончанием,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_3_1_1_2_5,"Слова с первыми частями «диско-», «макси-», «миди-», «мини-»",planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_3_1_1_2_6,Группы существительных с соединительными гласными,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_3_1_1_2_7,"Группа слов, обозначающих должности и звания",planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_3_1_1_2_8,"Названия, имеющие форму словосочетаний со служебным словом",planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_3_1_1_2_10,"Существительные, образованные от пишущихся через дефис нарицательных",planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_group_pravila_slitnogo_defisnogo_i_razdelnogo_napisaniya_napisanie_suschestvitelnogo_napisanie_naritsatelnyh_imen_razdelnoe_napisanie_naritsatelnyh_imen,Раздельное написание нарицательных имён,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_3_1_1_4_1,"Сочетания с приложениями и определениями, следующими после существительных",planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_group_pravila_slitnogo_defisnogo_i_razdelnogo_napisaniya_napisanie_suschestvitelnogo_sobstvennye_imena_i_sostavnye_nazvaniya,Собственные имена и составные названия,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_3_1_2_2,"Написание имён, псевдонимов, прозвищ, кличек через дефис",planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_group_pravila_slitnogo_defisnogo_i_razdelnogo_napisaniya_napisanie_prilagatelnogo,Написание прилагательного,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_group_pravila_slitnogo_defisnogo_i_razdelnogo_napisaniya_napisanie_prilagatelnogo_napisanie_prilagatelnogo_cherez_defis,Написание прилагательного через дефис,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_3_2_1_1,"Прилагательные, образованные от существительных, пишущихся через дефис",planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_3_2_1_2,"Дефисное написание прилагательных, обозначающих оттенки качества",planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_group_pravila_slitnogo_defisnogo_i_razdelnogo_napisaniya_napisanie_prilagatelnogo_slitnoe_napisanie_prilagatelnogo,Слитное написание прилагательного,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_3_2_2_1,"Прилагательные с первыми частями много-, мало-",planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_3_2_2_2,Прилагательные терминологического характера,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_3_2_2_5,"Прилагательные, образованные из основ слов с подчинительным отношением",planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_group_pravila_slitnogo_defisnogo_i_razdelnogo_napisaniya_napisanie_prilagatelnogo_razdelnoe_napisanie_prilagatelnogo,Раздельное написание прилагательного,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_3_2_3_1,Наречия и прилагательные или причастия,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_group_pravila_slitnogo_defisnogo_i_razdelnogo_napisaniya_napisanie_mestoimennyh_slov,Написание местоименных слов,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_3_4_1,Слитное написание местоименных слов,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_group_pravila_slitnogo_defisnogo_i_razdelnogo_napisaniya_napisanie_mestoimennyh_slov_napisanie_mestoimennyh_slov_cherez_defis,Написание местоименных слов через дефис,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_group_pravila_slitnogo_defisnogo_i_razdelnogo_napisaniya_napisanie_mestoimennyh_slov_razdelnoe_napisanie_mestoimennyh_slov,Раздельное написание местоименных слов,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_3_4_3_2,Сочетания с местоименными словами,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_group_pravila_slitnogo_defisnogo_i_razdelnogo_napisaniya_napisanie_narechiy,Написание наречий,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_group_pravila_slitnogo_defisnogo_i_razdelnogo_napisaniya_napisanie_narechiy_slitnoe_napisanie_narechiy,Слитное написание наречий,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_3_5_1_1,"Наречия, образованные с помощью приставок от наречий",syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_3_5_1_2,"Наречия, образованные от имён прилагательных",syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_3_5_1_3,"Наречия, образованные от местоименных слов",syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_3_5_1_4,"Наречия, образованные с помощью приставок «в», «на» от собирательных числительных",syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_3_5_1_5,Наречия с первой частью «впол-»,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_3_5_1_6,Наречия с пространственным и временным значениями,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_3_5_1_7,Слитное написание сочетаний с предлогами-приставками,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_group_pravila_slitnogo_defisnogo_i_razdelnogo_napisaniya_napisanie_narechiy_razdelnoe_napisanie_narechiy,Раздельное написание наречий,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_3_5_2_1,Раздельное написание сочетаний с предлогами-приставками,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_3_5_2_2,Наречные сочетания из предлога-приставки «с» и формы род. п. существительного на «-у (-а)»,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_3_5_2_3,"Наречные сочетания предлогов-приставок «в», «с» со второй частью, начинающейся с гласных",syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_3_5_2_4,"Наречные сочетания, образованные повторением существительных или числительных с предлогом",syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_3_5_2_5,Наречные сочетания с существительным в разных падежах с предлогами,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_group_pravila_slitnogo_defisnogo_i_razdelnogo_napisaniya_napisanie_narechiy_napisanie_narechiy_cherez_defis,Написание наречий через дефис,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_3_5_3_1,Дефисное написание наречий,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_3_5_4,Написание отрицательных наречий,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_group_pravila_slitnogo_defisnogo_i_razdelnogo_napisaniya_napisanie_sluzhebnyh_slov_i_mezhdometiy,Написание служебных слов и междометий,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_group_pravila_slitnogo_defisnogo_i_razdelnogo_napisaniya_napisanie_sluzhebnyh_slov_i_mezhdometiy_slitnoe_napisanie_sluzhebnyh_slov_i_mezhdometiy,Слитное написание служебных слов и междометий,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_3_6_1_2,Союзы и частицы из сочетаний предлогов и союзов с местоименными словами,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_3_6_1_4,Слитное написание междометий и звукоподражаний,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_group_pravila_slitnogo_defisnogo_i_razdelnogo_napisaniya_napisanie_sluzhebnyh_slov_i_mezhdometiy_napisanie_sluzhebnyh_slov_i_mezhdometiy_cherez_defis,Написание служебных слов и междометий через дефис,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_3_6_2_3,Слитное написание междометий и звукоподражаний,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_3_6_2_4,Написание междометий и звукоподражаний через дефис,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_group_pravila_slitnogo_defisnogo_i_razdelnogo_napisaniya_napisanie_sluzhebnyh_slov_i_mezhdometiy_razdelnoe_napisanie_sluzhebnyh_slov_i_mezhdometiy,Раздельное написание служебных слов и междометий,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_group_pravila_slitnogo_defisnogo_i_razdelnogo_napisaniya_napisanie_sluzhebnyh_slov_i_mezhdometiy_sochetaniya_s_chastitsami,Сочетания с частицами,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_3_6_4_1,Дефисное написание сочетаний с частицами,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_3_6_4_2,Раздельное написание сочетаний с частицами,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_group_pravila_slitnogo_defisnogo_i_razdelnogo_napisaniya_napisaniya_s_otritsaniem_ne,Написания с отрицанием «не»,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_group_pravila_slitnogo_defisnogo_i_razdelnogo_napisaniya_napisaniya_s_otritsaniem_ne_slitnoe_napisanie_ne,Слитное написание «не»,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_3_7_1_3,Приставки «недо-» и «небез- (небес-)»,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_group_pravila_slitnogo_defisnogo_i_razdelnogo_napisaniya_napisaniya_s_otritsaniem_ne_slitnoe_napisanie_ne_napisanie_s_nekotorymi_suschestvitelnymi_prilagatelnymi_narechiyami_na_o,"Написание с некоторыми существительными, прилагательными, наречиями на «-о»",metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_3_7_1_4_2,Непринадлежность к разряду лиц или явлений в сочетаниях с «не»,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_3_7_1_4_3,Определение или предлог перед существительным с «не»,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_3_7_1_4_4,"Наличие слов типа «очень», «крайне», «весьма»",syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_3_7_1_4_5,Наличие уточняющих наречий,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_3_7_1_5,Слитное написание с полными формами причастий,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_group_pravila_slitnogo_defisnogo_i_razdelnogo_napisaniya_napisaniya_s_otritsaniem_ne_razdelnoe_napisanie_ne,Раздельное написание «не»,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_3_7_2_2,Написание с числительными и счётными существительными,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_3_7_2_3,Написание с местоименными словами,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_3_7_2_4,Написание со всегда краткими прилагательными,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_3_7_2_5,Написание с наречиями и неизменяемыми словами в роли сказуемого,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_3_7_2_6,"Написание с любыми словами, пишущимися через дефис",syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_3_7_2_8,Конструкции с противопоставлением,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_3_7_2_9,"Конструкции, усиливающие отрицание",syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_3_7_2_10,"Сочетания «едва ли не…, чуть ли не…, разве не…, не далее как…, не позже чем…, не раньше чем…»",syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_group_pravila_slitnogo_defisnogo_i_razdelnogo_napisaniya_obschie_pravila_slitnogo_napisaniya,Общие правила слитного написания,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_3_8_1,Написание слов с приставками,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_3_8_2,"Написание слов, первая часть которых совпадает с формой числительного",planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_3_8_3,Написание слов с первой иноязычной частью,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_3_8_4,Сложные слова без соединительной гласной,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_group_pravila_slitnogo_defisnogo_i_razdelnogo_napisaniya_obschie_pravila_napisaniya_cherez_defis,Общие правила написания через дефис,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_3_9_1,Дефисное написание повторяемых сочетаний,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_3_9_3,Парные конструкции из слов с первой частью «полу-»,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_3_9_5,Сочетания со значением указания на количество или время,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_group_pravila_upotrebleniya_propisnyh_i_strochnyh_bukv,Правила употребления прописных и строчных букв,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_group_pravila_upotrebleniya_propisnyh_i_strochnyh_bukv_sobstvennye_imena_i_proizvodnye_ot_nih_slova,Собственные имена и производные от них слова,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_4_1_1,"Личные имена, отчества, фамилии, псевдонимы, прозвища",ner_required,BLOCK_NEEDS_NER,"[""model"", ""ner"", ""syntax""]",add NER/protected-span candidate path and hard negatives
+orthography_4_1_2,Служебные слова в составе фамилий,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_4_1_3,"Составные части арабских, тюркских, персидских имён",planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_4_1_4,"Имена, относящиеся к религии и мифологии",planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_4_1_5,Нарицательные имена со строчной буквы,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_4_1_7,Нарицательные слова как названия персонажей,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_4_1_9,"Имена прилагательные с суффиксами -ск-, -овск- (-евск-), -инск-",dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_4_1_11,Названия и веб-адреса сайтов,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_group_pravila_upotrebleniya_propisnyh_i_strochnyh_bukv_geograficheskie_i_administrativno_territorialnye_nazvaniya_i_proizvodnye_ot_nih_slova,Географические и административно-территориальные названия и производные от них слова,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_4_2_1,Географические и административно-территориальные названия,ner_required,BLOCK_NEEDS_NER,"[""model"", ""ner"", ""syntax""]",add NER/protected-span candidate path and hard negatives
+orthography_4_2_4,Названия стран света,ner_required,BLOCK_NEEDS_NER,"[""model"", ""ner"", ""syntax""]",add NER/protected-span candidate path and hard negatives
+orthography_4_2_5,"Однословные производные названия территорий, областей, местностей",ner_required,BLOCK_NEEDS_NER,"[""model"", ""ner"", ""syntax""]",add NER/protected-span candidate path and hard negatives
+orthography_4_2_6,Неофициальные устойчивые названия государств и городов,ner_required,BLOCK_NEEDS_NER,"[""model"", ""ner"", ""syntax""]",add NER/protected-span candidate path and hard negatives
+orthography_4_2_7,"Названия железнодорожных станций, вокзалов, аэропортов",ner_required,BLOCK_NEEDS_NER,"[""model"", ""ner"", ""syntax""]",add NER/protected-span candidate path and hard negatives
+orthography_4_3,Астрономические названия,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_4_4,"Названия исторических эпох, событий, календарных периодов, праздников и общественных мероприятий",planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_group_pravila_upotrebleniya_propisnyh_i_strochnyh_bukv_nazvaniya_svyazannye_s_religiey,"Названия, связанные с религией",metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_4_5_1,Написание слова «Бог» и производных,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_4_5_2,Слова перед собственными именами,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_4_5_3,Слово «бог» в устойчивых сочетаниях,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_4_5_5,Первое слово и собственные имена в названиях религиозных праздников,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_4_5_6,"Названия постов, недель и дней, относящихся к этим периодам",planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_4_5_7,Названия конфессий,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_4_5_8,Первое слово в названиях высших органов церковной власти,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_4_5_9,Полные официальные наименования высших церковных должностных лиц,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_4_5_10,"Названия монастырей, храмов, икон",planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_4_5_11,Родовые наименования,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_4_5_12,Названия культовых книг,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_group_pravila_upotrebleniya_propisnyh_i_strochnyh_bukv_nazvaniya_organov_vlasti_uchrezhdeniy_organizatsiy_obschestv_partiy,"Названия органов власти, учреждений, организаций, обществ, партий",metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_4_6_1,Официальные составные названия,ner_required,BLOCK_NEEDS_NER,"[""model"", ""ner"", ""syntax""]",add NER/protected-span candidate path and hard negatives
+orthography_4_6_3,Высшие представительные учреждения зарубежных стран,ner_required,BLOCK_NEEDS_NER,"[""model"", ""ner"", ""syntax""]",add NER/protected-span candidate path and hard negatives
+orthography_group_pravila_upotrebleniya_propisnyh_i_strochnyh_bukv_nazvaniya_dokumentov_pamyatnikov_predmetov_i_proizvedeniy_iskusstva,"Названия документов, памятников, предметов и произведений искусства",metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_4_7_1,"Прописная буква в названиях документов, государственных законов, архитектурных памятников, предметов и произведений искусства",ner_required,BLOCK_NEEDS_NER,"[""model"", ""ner"", ""syntax""]",add NER/protected-span candidate path and hard negatives
+orthography_4_8,"Названия должностей, званий, титулов",ner_required,BLOCK_NEEDS_NER,"[""model"", ""ner"", ""syntax""]",add NER/protected-span candidate path and hard negatives
+orthography_4_9,"Названия орденов, медалей, наград, знаков отличия",ner_required,BLOCK_NEEDS_NER,"[""model"", ""ner"", ""syntax""]",add NER/protected-span candidate path and hard negatives
+orthography_group_pravila_upotrebleniya_propisnyh_i_strochnyh_bukv_propisnye_bukvy_v_osobom_stilisticheskom_upotreblenii,Прописные буквы в особом стилистическом употреблении,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_4_11_2,"Местоимения «Вы», «Ваш»",syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+orthography_group_pravila_napisaniya_abbreviatur_i_graficheskih_sokrascheniy,Правила написания аббревиатур и графических сокращений,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_group_pravila_napisaniya_abbreviatur_i_graficheskih_sokrascheniy_abbreviatury_i_proizvodnye_ot_nih_slova,Аббревиатуры и производные от них слова,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_group_pravila_napisaniya_abbreviatur_i_graficheskih_sokrascheniy_graficheskie_sokrascheniya,Графические сокращения,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_group_pravila_napisaniya_abbreviatur_i_graficheskih_sokrascheniy_graficheskie_sokrascheniya_tochka_posle_sokrascheniy,Точка после сокращений,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_5_2_1_1,Общеупотребительные сокращения,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_5_2_1_2,Самостоятельно употребляемые сокращения,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_5_2_1_3,"Сокращение к идущим подряд нескольким числам, названиям, именам",dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_group_pravopisanie_inostrannyh_slov,Правописание иностранных слов,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_6_1,Правописание английских слов,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_6_2,Правописание латинских слов,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_6_3,Правописание иноязычных слов и предложений,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_group_opechatki,Опечатки,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_7_2,Пропуск или вставка пробела,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_7_4,Алфавитная опечатка,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_7_5,Межбуквенные пробелы,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_7_6,Лишние повторяющиеся буквы,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_7_7,Ошибочное появление пробелов внутри слов,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_7_8,Ошибочное склеивание слов,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_7_9,Пропуск точки после инициала,ner_required,BLOCK_NEEDS_NER,"[""model"", ""ner"", ""syntax""]",add NER/protected-span candidate path and hard negatives
+orthography_group_tipichnye_oshibki,Типичные ошибки,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+orthography_8_2,Слова с неустоявшимся написанием,planned,BLOCK_PLANNED,[],implement bounded candidate path before training data
+orthography_8_3,Неизвестные термины-неологизмы,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+orthography_8_4,Омофоны,dictionary_model_required,BLOCK_NEEDS_DICTIONARY,"[""dictionary"", ""model""]",add dictionary/lexicon candidate support and probes
+punctuation_group_znaki_prepinaniya_v_kontse_v_nachale_v_seredine_predlozheniya,"Знаки препинания в конце, в начале, в середине предложения",metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+punctuation_group_znaki_prepinaniya_v_kontse_v_nachale_v_seredine_predlozheniya_znaki_kontsa_predlozheniya_vnutri_predlozheniya,Знаки конца предложения внутри предложения,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+punctuation_1_3_5,Непонятная точка,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_1_4,Запятая между подлежащим и сказуемым,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_1_5,Лишняя запятая в управлении,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_group_tire_mezhdu_chlenami_predlozheniya,Тире между членами предложения,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+punctuation_group_tire_mezhdu_chlenami_predlozheniya_tire_mezhdu_podlezhaschim_i_skazuemym,Тире между подлежащим и сказуемым,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+punctuation_2_1_1,Тире при подлежащем и сказуемом в именительном падеже,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_2_1_3,Подлежащее и/или сказуемое выражены инфинитивом,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_2_1_4,Сказуемое выражено числительным,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_2_1_5,Тире при фразеологическом обороте,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_2_1_6,Тире при личном или указательном местоимении,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_2_1_7,Отсутствие тире при вопросительном местоимении,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_2_1_8,Тире при существительном с отрицанием,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_2_1_9,Тире перед прилагательным или причастием,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_2_1_10,Тире перед оборотом со сравнительными частицами,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_2_1_11,"Отсутствие тире при вводном слове, обстоятельстве или дополнении, союзе или частице",syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_2_2,Тире в неполном предложении,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_group_znaki_prepinaniya_pri_odnorodnyh_chlenah_predlozheniya,Знаки препинания при однородных членах предложения,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+punctuation_4_1,"Запятые при однородных членах предложения, не соединенных союзами",syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_4_3,"Однородные члены предложения, соединенные противительными союзами",syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_4_4,"Однородные члены предложения, соединенные одиночными союзами",syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_4_5,Запятая при составных союзах,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_4_8,"Тире перед обобщающим словом, стоящим после однородных членов",syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_4_10,Запятая при однородных и неоднородных определениях,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_4_11,Запятая при сочетании определения-прилагательного с причастным оборотом,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_4_14,Знаки препинания при повторяющихся членах предложения,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_group_znaki_prepinaniya_pri_obosoblennyh_chlenah_predlozheniya,Знаки препинания при обособленных членах предложения,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+punctuation_group_znaki_prepinaniya_pri_obosoblennyh_chlenah_predlozheniya_znaki_prepinaniya_pri_soglasovannyh_opredeleniyah,Знаки препинания при согласованных определениях,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+punctuation_group_znaki_prepinaniya_pri_obosoblennyh_chlenah_predlozheniya_znaki_prepinaniya_pri_soglasovannyh_opredeleniyah_zapyatye_pri_opredelitelnyh_oborotah,Запятые при определительных оборотах,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+punctuation_5_1_1_1,Оборот после определяемого существительного,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_5_1_1_2,Оборот перед определяемым существительным,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_5_1_2,Определительный оборот при личном местоимении,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_5_1_3,Нераспространенное согласованное определение,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_5_3,Знаки препинания при приложениях,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_group_znaki_prepinaniya_pri_obosoblennyh_chlenah_predlozheniya_znaki_prepinaniya_pri_obstoyatelstvah,Знаки препинания при обстоятельствах,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+punctuation_5_4_2,Ограничительные частицы перед деепричастным оборотом,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_5_4_3,Обособленное одиночное деепричастие,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_5_4_5,Обстоятельственные члены предложения с производными предлогами и предложными сочетаниями,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_5_4_6,"Деепричастие, утратившее глагольное значение",syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_5_4_7,Деепричастие в составе устойчивого оборота,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_5_4_8,Деепричастие с зависимым словом «который»,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_5_4_9,Необособленное одиночное деепричастие,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_5_4_10,"Обстоятельство, выраженное наречием",syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_5_5,Знаки препинания при ограничительно-выделительных оборотах,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_group_znaki_prepinaniya_pri_obosoblennyh_chlenah_predlozheniya_znaki_prepinaniya_pri_utochnyayuschih_poyasnitelnyh_i_prisoedinitelnyh_chlenah_predlozheniya,"Знаки препинания при уточняющих, пояснительных и присоединительных членах предложения",metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+punctuation_5_6_2,Пояснительные члены предложения,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_5_6_3,Присоединительные члены предложения,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_group_znaki_prepinaniya_pri_obosoblennyh_chlenah_predlozheniya_znaki_prepinaniya_v_nerazlozhimyh_sochetaniyah,Знаки препинания в неразложимых сочетаниях,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+punctuation_5_7_1,Неразложимые сочетания с подчинительными союзами и союзными словами,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_5_7_2,Неразложимые сочетания с частицами,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_5_7_3,Выражения с глаголом «хотеть»,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_5_7_4,Неразложимые сочетания с местоименными и наречными словами,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_5_7_5,Неразложимые сочетания с союзом «чем»,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_5_7_6,"Неразложимые сочетания «не кто иной, как» и «не что иное, как»",syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_5_7_7,Запятая внутри выражений,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_5_7_8,Сочетания типа «кто ни на есть»,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_5_7_9,Союз «что» в выражении «только и…что»,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_5_7_10,Тире в цельных по смыслу сочетаниях,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_group_znaki_prepinaniya_pri_obosoblennyh_chlenah_predlozheniya_znaki_prepinaniya_pri_sravnitelnom_oborote,Знаки препинания при сравнительном обороте,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+punctuation_5_8_3,Указательное слово в основной части предложения,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_5_8_5,Оборот типа «как и»,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_5_8_6,Оборот в составе сказуемого,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_5_8_7,Сравнительный оборот с «как»,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_5_8_10,Устойчивые сочетания с союзом «как»,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_5_8_11,Частица или наречие перед союзом в сравнительном обороте,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_5_8_12,Повторение сравниваемого слова,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_group_slova_i_sochetaniya_slov_grammaticheski_ne_svyazannye_s_chlenami_predlozheniya,"Слова и сочетания слов, грамматически не связанные с членами предложения",metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+punctuation_group_slova_i_sochetaniya_slov_grammaticheski_ne_svyazannye_s_chlenami_predlozheniya_znaki_prepinaniya_pri_vvodnyh_i_vstavnyh_konstruktsiyah,Знаки препинания при вводных и вставных конструкциях,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+punctuation_6_1_2,"Вводные слова, омонимичные членам предложения или союзам",syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_6_1_3,Запятые при вводных словах с распространением,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_6_1_5,"Слова, не являющиеся вводными",syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_6_1_6,Вставки,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_6_1_7,Вводные предложения,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_group_slova_i_sochetaniya_slov_grammaticheski_ne_svyazannye_s_chlenami_predlozheniya_znaki_prepinaniya_pri_obrascheniyah,Знаки препинания при обращениях,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+punctuation_6_3,"Знаки препинания при междометиях, междометных предложениях и частицах",syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_6_4,Знаки препинания при частицах,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_6_5,"Знаки препинания при утвердительных, отрицательных и вопросительно-восклицательных словах",syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_group_znaki_prepinaniya_v_slozhnom_predlozhenii,Знаки препинания в сложном предложении,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+punctuation_group_znaki_prepinaniya_v_slozhnom_predlozhenii_slozhnosochinennoe_predlozhenie,Сложносочиненное предложение,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+punctuation_group_znaki_prepinaniya_v_slozhnom_predlozhenii_slozhnopodchinennoe_predlozhenie,Сложноподчиненное предложение,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+punctuation_7_2_2,Отсутствие запятой между частями сложноподчинённого предложения,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_7_2_3,Запятая перед усилительно-ограничительными словами,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_group_znaki_prepinaniya_v_slozhnom_predlozhenii_slozhnopodchinennoe_predlozhenie_zapyataya_pri_slozhnyh_soyuzah,Запятая при сложных союзах,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+punctuation_7_2_4_1,Расчленение сложного союза,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_7_2_4_2,Нерасчленение сложного союза,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_group_znaki_prepinaniya_v_slozhnom_predlozhenii_bessoyuznoe_slozhnoe_predlozhenie,Бессоюзное сложное предложение,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+punctuation_7_3_1,Запятая в бессоюзном сложном предложении,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_group_znaki_prepinaniya_pri_pryamoy_rechi_i_tsitatah,Знаки препинания при прямой речи и цитатах,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+punctuation_group_znaki_prepinaniya_pri_pryamoy_rechi_i_tsitatah_znaki_prepinaniya_pri_pryamoy_rechi,Знаки препинания при прямой речи,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+punctuation_8_1_3,Разрыв прямой речи,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_8_1_4,Прямая речь внутри слов автора,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_8_1_6,Реплики с особой строки,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_8_2,Знаки препинания при цитатах,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_group_sochetanie_znakov_prepinaniya,Сочетание знаков препинания,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+punctuation_9_1,Вопросительный и восклицательный знаки,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_9_2,Вопросительный или восклицательный знак с многоточием,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_9_3,Запятая и тире,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_9_4,Многоточие и двоеточие вместо запятой,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_9_7,Оформление сноски,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_9_8,Несколько тире в предложении,syntax_required,BLOCK_NEEDS_SYNTAX,"[""model"", ""syntax""]",add bounded syntax-backed candidate implementation
+punctuation_group_vzaimodeystvie_znakov_prepinaniya_v_slozhnyh_konstruktsiyah,Взаимодействие знаков препинания в сложных конструкциях,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+punctuation_group_neyropunktuatsiya,Нейропунктуация,metadata_only,BLOCK_METADATA_ONLY,[],keep as taxonomy heading only
+punctuation_11_1,Постановка запятой,model_required,BLOCK_NO_CANDIDATE,"[""model""]",add candidate generator and candidate-backed probes
+punctuation_11_2,Постановка тире,model_required,BLOCK_NO_CANDIDATE,"[""model""]",add candidate generator and candidate-backed probes
+punctuation_11_3,Постановка двоеточия,model_required,BLOCK_NO_CANDIDATE,"[""model""]",add candidate generator and candidate-backed probes
+punctuation_11_4,Постановка запятой и тире,model_required,BLOCK_NO_CANDIDATE,"[""model""]",add candidate generator and candidate-backed probes
+punctuation_11_5,Постановка точки с запятой,model_required,BLOCK_NO_CANDIDATE,"[""model""]",add candidate generator and candidate-backed probes

@@ -189,6 +189,38 @@ def test_gap_label_coverage_counts_punctuation_candidates_by_rule(tmp_path: Path
     assert gap_summary.loc["final_punctuation_default", "gap_candidate_recall"] == 1.0
 
 
+def test_candidate_recall_counts_pre_dataset_probe_rows_as_candidate_backed(tmp_path: Path):
+    rows = [
+        {
+            "source": "Документ готов",
+            "target": "Документ готов.",
+            "rule_id": "final_punctuation_default",
+            "edit_operations": json.dumps(
+                [
+                    {
+                        "source": "",
+                        "replacement": ".",
+                        "edit_type": "final_punctuation",
+                        "start": 14,
+                        "end": 14,
+                        "rule_id": "final_punctuation_default",
+                    }
+                ],
+                ensure_ascii=False,
+            ),
+            "metadata": json.dumps(
+                {"candidate_present": True, "target_family": "final_punctuation_default"},
+                ensure_ascii=False,
+            ),
+        }
+    ]
+
+    reports = build_candidate_recall_reports(rows, rules_config_path=_rules_config(tmp_path))
+
+    summary = reports["candidate_recall_by_rule"].set_index("rule_id")
+    assert summary.loc["final_punctuation_default", "candidate_recall"] == 1.0
+
+
 def _rules_config(tmp_path: Path) -> Path:
     path = tmp_path / "rules.yaml"
     path.write_text(

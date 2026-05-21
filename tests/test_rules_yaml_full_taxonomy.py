@@ -45,6 +45,18 @@ REQUIRED_DATASET_FIELDS = {
     "reason",
     "last_known_candidate_recall",
     "last_known_eval_count",
+    "production_ready_now",
+    "training_eligible_now",
+    "training_eligibility_decision",
+    "training_eligibility_reason",
+    "current_candidate_path",
+    "current_synthetic_support",
+    "current_hard_negative_support",
+    "current_validator_support",
+    "current_candidate_recall",
+    "current_gap_coverage",
+    "risk_level",
+    "needs_before_training",
 }
 DICTIONARY_CANDIDATE_IDS = {
     "dictionary_fuzzy",
@@ -54,6 +66,21 @@ DICTIONARY_CANDIDATE_IDS = {
     "missing_letter_candidate",
     "extra_letter_candidate",
     "yo_e_candidate",
+}
+BLOCKING_TRAINING_DECISIONS = {
+    "BLOCK_METADATA_ONLY",
+    "BLOCK_PLANNED",
+    "BLOCK_NO_CANDIDATE",
+    "BLOCK_NEEDS_SYNTAX",
+    "BLOCK_NEEDS_DICTIONARY",
+    "BLOCK_NEEDS_NER",
+    "BLOCK_DISABLED",
+}
+TRAINING_INCLUDE_DECISIONS = {
+    "INCLUDE_NOW",
+    "INCLUDE_AFTER_VALIDATOR",
+    "INCLUDE_AFTER_THRESHOLD_CALIBRATION",
+    "INCLUDE_AFTER_TRAINING",
 }
 
 
@@ -123,6 +150,16 @@ def test_every_taxonomy_entry_has_required_v3_fields():
         assert REQUIRED_DATASET_FIELDS <= set(dataset), f"{section}.{key} dataset metadata is incomplete"
         assert isinstance(dataset["eligible_now"], bool)
         assert isinstance(dataset["reason"], str) and dataset["reason"]
+        assert isinstance(dataset["production_ready_now"], bool)
+        assert isinstance(dataset["training_eligible_now"], bool)
+        assert dataset["training_eligibility_decision"] in TRAINING_INCLUDE_DECISIONS | BLOCKING_TRAINING_DECISIONS
+        assert isinstance(dataset["training_eligibility_reason"], str) and dataset["training_eligibility_reason"]
+        assert isinstance(dataset["current_candidate_path"], bool)
+        assert isinstance(dataset["current_synthetic_support"], bool)
+        assert isinstance(dataset["current_hard_negative_support"], bool)
+        assert isinstance(dataset["current_validator_support"], bool)
+        assert dataset["risk_level"] in {"low", "medium", "high"}
+        assert isinstance(dataset["needs_before_training"], list)
 
 
 def test_no_duplicate_numbered_orfogrammka_ids_per_section():
@@ -176,6 +213,7 @@ def test_planned_and_metadata_entries_do_not_claim_executability():
         implementation = entry["implementation"]
         if implementation["status"] in {"planned", "metadata_only", "disabled"}:
             assert implementation["executable"] is False, f"{section}.{key} must not be executable"
+            assert entry["dataset"]["training_eligible_now"] is False, f"{section}.{key} must not be training eligible"
 
 
 def test_dataset_eligible_entries_have_candidate_path():
@@ -187,6 +225,33 @@ def test_dataset_eligible_entries_have_candidate_path():
         rule_ids = entry["implementation"]["rule_ids"]
         assert rule_ids, f"{section}.{key} is dataset-eligible without rule_ids"
         assert all(_candidate_path_exists(rule_id) for rule_id in rule_ids), f"{section}.{key} lacks candidate path"
+
+
+def test_training_eligible_entries_have_candidate_path_and_valid_decision():
+    config = _load_rules()
+
+    for section, key, entry in _entries(config):
+        dataset = entry["dataset"]
+        if not dataset["training_eligible_now"]:
+            continue
+        rule_ids = entry["implementation"]["rule_ids"]
+        assert rule_ids, f"{section}.{key} is training-eligible without rule_ids"
+        assert dataset["current_candidate_path"] is True
+        assert any(_candidate_path_exists(rule_id) for rule_id in rule_ids), f"{section}.{key} lacks candidate path"
+        assert dataset["training_eligibility_decision"] in TRAINING_INCLUDE_DECISIONS
+        assert entry["entry_type"] != "group"
+
+
+def test_model_required_and_candidate_only_rules_can_be_training_eligible():
+    config = _load_rules()
+    eligible_by_status = {
+        entry["implementation"]["status"]
+        for _section, _key, entry in _entries(config)
+        if entry["dataset"]["training_eligible_now"]
+    }
+
+    assert "model_required" in eligible_by_status
+    assert "candidate_only" in eligible_by_status
 
 
 def test_rules_taxonomy_update_report_exists():

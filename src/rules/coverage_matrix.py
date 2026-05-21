@@ -119,7 +119,26 @@ REQUIRED_V3_ENTRY_FIELDS = frozenset(
     }
 )
 REQUIRED_V3_IMPLEMENTATION_FIELDS = frozenset({"status", "executable", "rule_ids", "aliases", "requires", "notes"})
-REQUIRED_V3_DATASET_FIELDS = frozenset({"eligible_now", "reason", "last_known_candidate_recall", "last_known_eval_count"})
+REQUIRED_V3_DATASET_FIELDS = frozenset(
+    {
+        "eligible_now",
+        "reason",
+        "last_known_candidate_recall",
+        "last_known_eval_count",
+        "production_ready_now",
+        "training_eligible_now",
+        "training_eligibility_decision",
+        "training_eligibility_reason",
+        "current_candidate_path",
+        "current_synthetic_support",
+        "current_hard_negative_support",
+        "current_validator_support",
+        "current_candidate_recall",
+        "current_gap_coverage",
+        "risk_level",
+        "needs_before_training",
+    }
+)
 
 
 def load_rules_coverage(path: str | Path = RULES_COVERAGE_PATH) -> dict[str, Any]:

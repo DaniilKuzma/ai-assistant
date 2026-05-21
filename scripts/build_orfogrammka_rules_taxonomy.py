@@ -199,9 +199,18 @@ def main() -> int:
     }
     if isinstance(old, dict) and old.get("synthetic_generation"):
         config["synthetic_generation"] = old["synthetic_generation"]
+    old_entries = {
+        section: old.get(section, {}) if isinstance(old.get(section), dict) else {}
+        for section in ("orthography", "punctuation")
+    }
     for section in ("orthography", "punctuation"):
         config[section] = {
-            item["matrix_key"]: build_entry(item, by_key.get(item["matrix_key"], []), registry)
+            item["matrix_key"]: build_entry(
+                item,
+                by_key.get(item["matrix_key"], []),
+                registry,
+                old_entries.get(section, {}).get(item["matrix_key"], {}),
+            )
             for item in extracted[section]["entries"]
         }
     rules_path.write_text(yaml.safe_dump(config, allow_unicode=True, sort_keys=False, width=120), encoding="utf-8")
@@ -307,7 +316,12 @@ def normalize_title(title: str) -> str:
     return WS_RE.sub(" ", title).strip().lower()
 
 
-def build_entry(raw: dict[str, Any], mappings: list[dict[str, str]], registry: dict[str, Any]) -> dict[str, Any]:
+def build_entry(
+    raw: dict[str, Any],
+    mappings: list[dict[str, str]],
+    registry: dict[str, Any],
+    old_entry: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     rule_ids = [row["rule_id"] for row in mappings if row["rule_id"] in registry]
     status = status_for(raw, rule_ids)
     executable = bool(rule_ids) and status not in {"planned", "metadata_only", "disabled"}
@@ -325,6 +339,17 @@ def build_entry(raw: dict[str, Any], mappings: list[dict[str, str]], registry: d
     }
     if raw["matrix_key"] in TESTS_BY_KEY:
         impl["tests"] = TESTS_BY_KEY[raw["matrix_key"]]
+    old_dataset = old_entry.get("dataset", {}) if isinstance(old_entry, dict) else {}
+    dataset = {
+        "eligible_now": eligible,
+        "reason": reason,
+        "last_known_candidate_recall": None,
+        "last_known_eval_count": None,
+        **pre_dataset_defaults(status, executable, rule_ids, requires, eligible, reason),
+    }
+    for key in PRE_DATASET_DATASET_FIELDS:
+        if key in old_dataset:
+            dataset[key] = old_dataset[key]
     return {
         "source_section": raw["source_section"],
         "orfogrammka_id": raw["orfogrammka_id"],
@@ -337,12 +362,7 @@ def build_entry(raw: dict[str, Any], mappings: list[dict[str, str]], registry: d
         "order": raw["order"],
         "source_url": raw["source_url"],
         "implementation": impl,
-        "dataset": {
-            "eligible_now": eligible,
-            "reason": reason,
-            "last_known_candidate_recall": None,
-            "last_known_eval_count": None,
-        },
+        "dataset": dataset,
     }
 
 
@@ -418,6 +438,69 @@ def dataset_eligibility(status: str, executable: bool, rule_ids: list[str], requ
     if status in {"partial", "candidate_only"}:
         return True, "eligible_but_needs_more_training"
     return True, "eligible_candidate_backed"
+
+
+PRE_DATASET_DATASET_FIELDS = (
+    "production_ready_now",
+    "training_eligible_now",
+    "training_eligibility_decision",
+    "training_eligibility_reason",
+    "current_candidate_path",
+    "current_synthetic_support",
+    "current_hard_negative_support",
+    "current_validator_support",
+    "current_candidate_recall",
+    "current_gap_coverage",
+    "risk_level",
+    "needs_before_training",
+)
+
+
+def pre_dataset_defaults(
+    status: str,
+    executable: bool,
+    rule_ids: list[str],
+    requires: list[str],
+    eligible: bool,
+    reason: str,
+) -> dict[str, Any]:
+    if status == "metadata_only":
+        decision = "BLOCK_METADATA_ONLY"
+    elif status == "planned":
+        decision = "BLOCK_PLANNED"
+    elif status == "disabled":
+        decision = "BLOCK_DISABLED"
+    elif not executable or not rule_ids:
+        if "ner" in requires:
+            decision = "BLOCK_NEEDS_NER"
+        elif "syntax" in requires:
+            decision = "BLOCK_NEEDS_SYNTAX"
+        elif "dictionary" in requires:
+            decision = "BLOCK_NEEDS_DICTIONARY"
+        else:
+            decision = "BLOCK_NO_CANDIDATE"
+    elif eligible and status == "model_required":
+        decision = "INCLUDE_AFTER_THRESHOLD_CALIBRATION"
+    elif eligible and status in {"partial", "candidate_only"}:
+        decision = "INCLUDE_AFTER_TRAINING"
+    elif eligible:
+        decision = "INCLUDE_NOW"
+    else:
+        decision = "BLOCK_NO_CANDIDATE"
+    return {
+        "production_ready_now": False,
+        "training_eligible_now": bool(eligible),
+        "training_eligibility_decision": decision,
+        "training_eligibility_reason": reason,
+        "current_candidate_path": bool(executable and rule_ids),
+        "current_synthetic_support": bool(eligible),
+        "current_hard_negative_support": False,
+        "current_validator_support": False,
+        "current_candidate_recall": None,
+        "current_gap_coverage": None,
+        "risk_level": "high" if any(item in {"syntax", "ner"} for item in requires) else ("medium" if "dictionary" in requires else "low"),
+        "needs_before_training": ["none"],
+    }
 
 
 def write_reports(config: dict[str, Any], extracted: dict[str, Any], registry: dict[str, Any], reports_dir: Path, extracted_at: str) -> None:
