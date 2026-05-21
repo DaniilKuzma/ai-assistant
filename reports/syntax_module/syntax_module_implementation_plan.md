@@ -4,13 +4,13 @@ This is an implementation handoff for future syntax-module work. It does not bui
 
 ## Baseline
 
-- total syntax_required entries: 122
-- total leaf syntax_required entries: 122
-- families count: 25 total, 17 nonzero
-- implement_now count: 1
-- bounded_pattern count: 75
-- blocked count: 46
-- expected training_eligible gain: 76
+- total syntax_required entries: 57
+- total leaf syntax_required entries: 57
+- families count: 25 total, 5 nonzero
+- implement_now count: 0
+- bounded_pattern count: 12
+- blocked count: 45
+- expected training_eligible gain: 12
 
 ## Files To Create
 
@@ -27,26 +27,12 @@ This is an implementation handoff for future syntax-module work. It does not bui
 
 ## Implementation Families
 
-- priority 1: `subordinate_clause_comma` covers 4 entries; candidate rule ids: comma_subordinate.
-- priority 2: `coordinating_conjunction_comma` covers 1 entries; candidate rule ids: comma_conjunction.
-- priority 1: `introductory_words` covers 8 entries; candidate rule ids: introductory_comma.
-- priority 1: `homogeneous_members` covers 6 entries; candidate rule ids: homogeneous_comma, enumeration_colon.
-- priority 1: `detached_adverbial_phrases` covers 8 entries; candidate rule ids: detached_adverbial_comma.
-- priority 2: `detached_participial_phrases` covers 4 entries; candidate rule ids: detached_participial_comma.
-- priority 4: `detached_applications` covers 1 entries; candidate rule ids: detached_application_comma.
-- priority 2: `clarification_members` covers 3 entries; candidate rule ids: clarification_comma.
-- priority 3: `comparative_turnovers` covers 5 entries; candidate rule ids: comparative_turnover_comma.
-- priority 1: `subject_predicate_dash` covers 12 entries; candidate rule ids: subject_predicate_dash.
-- priority 2: `enumeration_colon_dash` covers 1 entries; candidate rule ids: enumeration_colon.
-- priority 2: `direct_speech_syntax` covers 4 entries; candidate rule ids: direct_speech_colon, direct_speech_dash, direct_speech_quotes.
-- priority 3: `punctuation_combinations` covers 7 entries; candidate rule ids: punctuation_delete_replace.
 - priority 3: `ne_with_parts_of_speech` covers 7 entries; candidate rule ids: ne_adjective, ne_adverb, ne_participle, ne_verb.
 - priority 3: `context_pairs` covers 5 entries; candidate rule ids: context_chto_by, context_nesmotrya, context_tak_zhe, context_to_zhe, context_vsledstvie, context_za_to.
 
 ## Blocked Or Deferred
 
 - `comparative_turnovers`: 2 blocked/deferred entries.
-- `asyndetic_complex_sentence`: 1 blocked/deferred entries.
 - `punctuation_combinations`: 11 blocked/deferred entries.
 - `ne_with_parts_of_speech`: 8 blocked/deferred entries.
 - `context_pairs`: 17 blocked/deferred entries.

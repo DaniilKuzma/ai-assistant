@@ -11637,29 +11637,31 @@ punctuation:
     order: 4
     source_url: https://orfogrammka.ru/пунктуация/непонятная_точка/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: candidate_only
+      executable: true
+      rule_ids:
+      - punctuation_delete_replace
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -11676,29 +11678,31 @@ punctuation:
     order: 5
     source_url: https://orfogrammka.ru/пунктуация/запятая_между_подлежащим_и_сказуемым/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - subject_predicate_dash
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -11715,29 +11719,31 @@ punctuation:
     order: 6
     source_url: https://orfogrammka.ru/пунктуация/лишняя-запятая-в-управлении/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: candidate_only
+      executable: true
+      rule_ids:
+      - punctuation_delete_replace
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -11828,29 +11834,31 @@ punctuation:
     order: 9
     source_url: https://orfogrammka.ru/пунктуация/тире_при_подлежащем_и_сказуемом_в_именительном_падеже/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - subject_predicate_dash
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -11909,29 +11917,31 @@ punctuation:
     order: 11
     source_url: https://orfogrammka.ru/пунктуация/подлежащее_или_сказуемое_выражены_инфинитивом/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - subject_predicate_dash
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -11949,29 +11959,31 @@ punctuation:
     order: 12
     source_url: https://orfogrammka.ru/пунктуация/сказуемое_выражено_числительным/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - subject_predicate_dash
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -11989,29 +12001,31 @@ punctuation:
     order: 13
     source_url: https://orfogrammka.ru/пунктуация/тире_при_фразеологическом_обороте/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - subject_predicate_dash
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -12029,29 +12043,31 @@ punctuation:
     order: 14
     source_url: https://orfogrammka.ru/пунктуация/тире_при_личном_или_указательном_местоимении/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - subject_predicate_dash
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -12069,29 +12085,31 @@ punctuation:
     order: 15
     source_url: https://orfogrammka.ru/пунктуация/отсутствие_тире_при_вопросительном_местоимении/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - subject_predicate_dash
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -12109,29 +12127,31 @@ punctuation:
     order: 16
     source_url: https://orfogrammka.ru/пунктуация/тире_при_существительном_с_отрицанием/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - subject_predicate_dash
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -12149,29 +12169,31 @@ punctuation:
     order: 17
     source_url: https://orfogrammka.ru/пунктуация/тире_перед_прилагательным_или_причастием/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - subject_predicate_dash
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -12189,29 +12211,31 @@ punctuation:
     order: 18
     source_url: https://orfogrammka.ru/пунктуация/тире_перед_оборотом_со_сравнительными_частицами/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - subject_predicate_dash
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -12229,29 +12253,31 @@ punctuation:
     order: 19
     source_url: https://orfogrammka.ru/пунктуация/отсутствие_тире_при_вводном_слове_обстоятельстве_или_дополнении_союзе_или_частице/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - subject_predicate_dash
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -12268,29 +12294,31 @@ punctuation:
     order: 20
     source_url: https://orfogrammka.ru/пунктуация/тире_в_неполном_предложении/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - subject_predicate_dash
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -12384,29 +12412,32 @@ punctuation:
     order: 23
     source_url: https://orfogrammka.ru/пунктуация/запятые_при_однородных_членах_предложения_не_соединенных_союзами/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - homogeneous_comma
+      - enumeration_colon
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -12463,29 +12494,31 @@ punctuation:
     order: 25
     source_url: https://orfogrammka.ru/пунктуация/однородные_члены_предложения_соединенные_противительными_союзами/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - comma_conjunction
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -12502,29 +12535,32 @@ punctuation:
     order: 26
     source_url: https://orfogrammka.ru/пунктуация/однородные_члены_предложения_соединенные_одиночными_союзами/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - homogeneous_comma
+      - enumeration_colon
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -12541,29 +12577,32 @@ punctuation:
     order: 27
     source_url: https://orfogrammka.ru/пунктуация/запятая_при_составных_союзах/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - homogeneous_comma
+      - enumeration_colon
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -12620,29 +12659,32 @@ punctuation:
     order: 29
     source_url: https://orfogrammka.ru/пунктуация/тире_перед_обобщающим_словом_стоящим_после_однородных_членов/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - enumeration_colon
+      - enumeration_dash
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -12659,29 +12701,32 @@ punctuation:
     order: 30
     source_url: https://orfogrammka.ru/пунктуация/запятая_при_однородных_и_неоднородных_определениях/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - homogeneous_comma
+      - enumeration_colon
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -12698,29 +12743,32 @@ punctuation:
     order: 31
     source_url: https://orfogrammka.ru/пунктуация/запятая_при_сочетании_определения_прилагательного_с_причастным_оборотом/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - homogeneous_comma
+      - enumeration_colon
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -12737,29 +12785,32 @@ punctuation:
     order: 32
     source_url: https://orfogrammka.ru/пунктуация/знаки_препинания_при_повторяющихся_членах_предложения/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - homogeneous_comma
+      - enumeration_colon
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -12889,29 +12940,31 @@ punctuation:
     order: 36
     source_url: https://orfogrammka.ru/пунктуация/оборот_после_определяемым_существительным/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - detached_participial_comma
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -12930,29 +12983,31 @@ punctuation:
     order: 37
     source_url: https://orfogrammka.ru/пунктуация/оборот_перед_определяемым_существительным/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - detached_participial_comma
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -12970,29 +13025,31 @@ punctuation:
     order: 38
     source_url: https://orfogrammka.ru/пунктуация/определительный_оборот_при_личном_местоимении/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - detached_participial_comma
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -13010,29 +13067,31 @@ punctuation:
     order: 39
     source_url: https://orfogrammka.ru/пунктуация/нераспространённое-согласованное-определение/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - detached_participial_comma
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -13049,29 +13108,31 @@ punctuation:
     order: 40
     source_url: https://orfogrammka.ru/пунктуация/знаки-препинания-при-приложениях/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - apposition_comma
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -13167,29 +13228,31 @@ punctuation:
     order: 43
     source_url: https://orfogrammka.ru/пунктуация/ограничительные_частицы_перед_деепричастным_оборотом/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - detached_adverbial_comma
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -13207,29 +13270,31 @@ punctuation:
     order: 44
     source_url: https://orfogrammka.ru/пунктуация/обособленное_одиночное_деепричастие/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - detached_adverbial_comma
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -13247,29 +13312,31 @@ punctuation:
     order: 45
     source_url: https://orfogrammka.ru/пунктуация/обстоятельственные_члены_предложения_с_производными_предлогами_и_предложными_сочетаниями/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - detached_adverbial_comma
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -13287,29 +13354,31 @@ punctuation:
     order: 46
     source_url: https://orfogrammka.ru/пунктуация/деепричастие_утратившее_глагольное_значение/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - detached_adverbial_comma
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -13327,29 +13396,31 @@ punctuation:
     order: 47
     source_url: https://orfogrammka.ru/пунктуация/деепричастие_в_составе_устойчивого_оборота/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - detached_adverbial_comma
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -13367,29 +13438,31 @@ punctuation:
     order: 48
     source_url: https://orfogrammka.ru/пунктуация/деепричастие_с_зависимым_словом_который/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - detached_adverbial_comma
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -13407,29 +13480,31 @@ punctuation:
     order: 49
     source_url: https://orfogrammka.ru/пунктуация/необособленное_одиночное_деепричастие/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - detached_adverbial_comma
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -13447,29 +13522,31 @@ punctuation:
     order: 50
     source_url: https://orfogrammka.ru/пунктуация/обстоятельство_выраженное_наречием/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - detached_adverbial_comma
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -13486,67 +13563,32 @@ punctuation:
     order: 51
     source_url: https://orfogrammka.ru/пунктуация/знаки_препинания_при_ограничительно-выделительных_оборотах/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - clarification_comma
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
-      needs_before_training:
-      - none
-  ? punctuation_group_znaki_prepinaniya_pri_obosoblennyh_chlenah_predlozheniya_znaki_prepinaniya_pri_utochnyayuschih_poyasnitelnyh_i_prisoedinitelnyh_chlenah_predlozheniya
-  : source_section: punctuation
-    orfogrammka_id: null
-    title: Знаки препинания при уточняющих, пояснительных и присоединительных членах предложения
-    normalized_title: знаки препинания при уточняющих, пояснительных и присоединительных членах предложения
-    entry_type: group
-    parent_key: punctuation_group_znaki_prepinaniya_pri_obosoblennyh_chlenah_predlozheniya
-    parent_path:
-    - Знаки препинания при обособленных членах предложения
-    depth: 2
-    order: 52
-    source_url: https://orfogrammka.ru/пунктуация/
-    implementation:
-      status: metadata_only
-      executable: false
-      rule_ids: []
-      aliases: []
-      requires: []
-      notes: Group heading from Orfogrammka taxonomy; not an executable rule.
-    dataset:
-      eligible_now: false
-      reason: metadata_only
-      last_known_candidate_recall: null
-      last_known_eval_count: null
-      production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_METADATA_ONLY
-      training_eligibility_reason: metadata_only
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
-      risk_level: low
       needs_before_training:
       - none
   punctuation_5_6_2:
@@ -13563,29 +13605,31 @@ punctuation:
     order: 53
     source_url: https://orfogrammka.ru/пунктуация/пояснительные_члены_предложения/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - clarification_comma
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -13603,29 +13647,31 @@ punctuation:
     order: 54
     source_url: https://orfogrammka.ru/пунктуация/присоединительные_члены_предложения/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - clarification_comma
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -14158,29 +14204,31 @@ punctuation:
     order: 68
     source_url: https://orfogrammka.ru/пунктуация/указательное_слово_в_основной_части_предложения/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - comparative_turnover_comma
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -14198,29 +14246,31 @@ punctuation:
     order: 69
     source_url: https://orfogrammka.ru/пунктуация/оборот_типа_как_и/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - comparative_turnover_comma
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -14238,29 +14288,31 @@ punctuation:
     order: 70
     source_url: https://orfogrammka.ru/пунктуация/оборот_в_составе_сказуемого/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - comparative_turnover_comma
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -14358,29 +14410,31 @@ punctuation:
     order: 73
     source_url: https://orfogrammka.ru/пунктуация/частица_или_наречие_перед_союзом_в_сравнительном_обороте/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - comparative_turnover_comma
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -14398,29 +14452,31 @@ punctuation:
     order: 74
     source_url: https://orfogrammka.ru/пунктуация/повторение_сравниваемого_слова/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - comparative_turnover_comma
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -14552,29 +14608,31 @@ punctuation:
     order: 78
     source_url: https://orfogrammka.ru/пунктуация/вводные_слова_омонимичные_членам_предложения_или_союзам/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - introductory_comma
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -14592,29 +14650,31 @@ punctuation:
     order: 79
     source_url: https://orfogrammka.ru/пунктуация/запятые_при_вводных_словах_с_распространением/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - introductory_comma
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -14632,29 +14692,31 @@ punctuation:
     order: 80
     source_url: https://orfogrammka.ru/пунктуация/cлова_не_являющиеся_вводными/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - introductory_comma
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -14672,29 +14734,31 @@ punctuation:
     order: 81
     source_url: https://orfogrammka.ru/пунктуация/вставки/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - introductory_comma
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -14712,67 +14776,32 @@ punctuation:
     order: 82
     source_url: https://orfogrammka.ru/пунктуация/вводные_предложения/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - introductory_comma
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
-      needs_before_training:
-      - none
-  ? punctuation_group_slova_i_sochetaniya_slov_grammaticheski_ne_svyazannye_s_chlenami_predlozheniya_znaki_prepinaniya_pri_obrascheniyah
-  : source_section: punctuation
-    orfogrammka_id: null
-    title: Знаки препинания при обращениях
-    normalized_title: знаки препинания при обращениях
-    entry_type: group
-    parent_key: punctuation_group_slova_i_sochetaniya_slov_grammaticheski_ne_svyazannye_s_chlenami_predlozheniya
-    parent_path:
-    - Слова и сочетания слов, грамматически не связанные с членами предложения
-    depth: 2
-    order: 83
-    source_url: https://orfogrammka.ru/пунктуация/
-    implementation:
-      status: metadata_only
-      executable: false
-      rule_ids: []
-      aliases: []
-      requires: []
-      notes: Group heading from Orfogrammka taxonomy; not an executable rule.
-    dataset:
-      eligible_now: false
-      reason: metadata_only
-      last_known_candidate_recall: null
-      last_known_eval_count: null
-      production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_METADATA_ONLY
-      training_eligibility_reason: metadata_only
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
-      risk_level: low
       needs_before_training:
       - none
   punctuation_6_2_1:
@@ -14829,29 +14858,31 @@ punctuation:
     order: 85
     source_url: https://orfogrammka.ru/пунктуация/знаки_препинания_при_междометиях_междометных_предложениях_и_частицах/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - introductory_comma
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -14868,29 +14899,31 @@ punctuation:
     order: 86
     source_url: https://orfogrammka.ru/пунктуация/знаки_препинания_при_частицах/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - introductory_comma
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -14907,29 +14940,31 @@ punctuation:
     order: 87
     source_url: https://orfogrammka.ru/пунктуация/знаки_препинания_при_утвердительных_отрицательных_и_вопросительно_восклицательных_словах/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - introductory_comma
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -15180,29 +15215,31 @@ punctuation:
     order: 94
     source_url: https://orfogrammka.ru/пунктуация/отсутствие_запятой_между_частями_сложноподчинённого_предложения/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - comma_subordinate
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -15220,68 +15257,32 @@ punctuation:
     order: 95
     source_url: https://orfogrammka.ru/пунктуация/усилительные_частицы_перед_подчинительным_союзом/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - comma_subordinate
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
-      needs_before_training:
-      - none
-  ? punctuation_group_znaki_prepinaniya_v_slozhnom_predlozhenii_slozhnopodchinennoe_predlozhenie_zapyataya_pri_slozhnyh_soyuzah
-  : source_section: punctuation
-    orfogrammka_id: null
-    title: Запятая при сложных союзах
-    normalized_title: запятая при сложных союзах
-    entry_type: group
-    parent_key: punctuation_group_znaki_prepinaniya_v_slozhnom_predlozhenii_slozhnopodchinennoe_predlozhenie
-    parent_path:
-    - Знаки препинания в сложном предложении
-    - Сложноподчиненное предложение
-    depth: 3
-    order: 96
-    source_url: https://orfogrammka.ru/пунктуация/
-    implementation:
-      status: metadata_only
-      executable: false
-      rule_ids: []
-      aliases: []
-      requires: []
-      notes: Group heading from Orfogrammka taxonomy; not an executable rule.
-    dataset:
-      eligible_now: false
-      reason: metadata_only
-      last_known_candidate_recall: null
-      last_known_eval_count: null
-      production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_METADATA_ONLY
-      training_eligibility_reason: metadata_only
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
-      risk_level: low
       needs_before_training:
       - none
   punctuation_7_2_4_1:
@@ -15299,29 +15300,31 @@ punctuation:
     order: 97
     source_url: https://orfogrammka.ru/пунктуация/расчленение_сложного_союза/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - comma_subordinate
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -15340,29 +15343,31 @@ punctuation:
     order: 98
     source_url: https://orfogrammka.ru/пунктуация/нерасчленение_сложного_союза/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - comma_subordinate
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -15417,29 +15422,34 @@ punctuation:
     order: 100
     source_url: https://orfogrammka.ru/пунктуация/запятая_в_бессоюзном_сложном_предложении/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - asyndetic_dash
+      - consequence_dash
+      - explanation_colon
+      - semicolon
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -15613,29 +15623,33 @@ punctuation:
     order: 105
     source_url: https://orfogrammka.ru/пунктуация/разрыв_прямой_речи/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - direct_speech_colon
+      - direct_speech_dash
+      - direct_speech_quotes
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -15653,29 +15667,33 @@ punctuation:
     order: 106
     source_url: https://orfogrammka.ru/пунктуация/прямая_речь_внутри_слов_автора/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - direct_speech_colon
+      - direct_speech_dash
+      - direct_speech_quotes
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -15693,29 +15711,33 @@ punctuation:
     order: 107
     source_url: https://orfogrammka.ru/пунктуация/реплики_с_особой_строки/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - direct_speech_colon
+      - direct_speech_dash
+      - direct_speech_quotes
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -15732,29 +15754,33 @@ punctuation:
     order: 108
     source_url: https://orfogrammka.ru/пунктуация/знаки_препинания_при_цитатах/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - direct_speech_colon
+      - direct_speech_dash
+      - direct_speech_quotes
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -15807,29 +15833,31 @@ punctuation:
     order: 110
     source_url: https://orfogrammka.ru/пунктуация/вопросительный_и_восклицательный_знаки/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: candidate_only
+      executable: true
+      rule_ids:
+      - punctuation_delete_replace
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -15846,29 +15874,31 @@ punctuation:
     order: 111
     source_url: https://orfogrammka.ru/пунктуация/вопросительный_или_восклицательный_знак_с_многоточием/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: candidate_only
+      executable: true
+      rule_ids:
+      - punctuation_delete_replace
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -15885,29 +15915,31 @@ punctuation:
     order: 112
     source_url: https://orfogrammka.ru/пунктуация/запятая_и_тире/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: candidate_only
+      executable: true
+      rule_ids:
+      - punctuation_delete_replace
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -15924,29 +15956,31 @@ punctuation:
     order: 113
     source_url: https://orfogrammka.ru/пунктуация/многоточие_и_двоеточие_вместо_запятой/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: candidate_only
+      executable: true
+      rule_ids:
+      - punctuation_delete_replace
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none
@@ -15969,18 +16003,19 @@ punctuation:
       - bracket_pair_balance
       aliases: []
       requires:
+      - syntax
       - model
-      notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
+      - validator
+      notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: eligible_but_needs_threshold
-      last_known_candidate_recall: null
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
       training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: candidate path verified; validator guards and hard negatives are required before dataset
-        build
+      training_eligibility_reason: syntax_candidate_backed
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -15989,8 +16024,7 @@ punctuation:
       current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
-      - validator
-      - hard_negatives
+      - none
   punctuation_9_6:
     source_section: punctuation
     orfogrammka_id: '9.6'
@@ -16012,18 +16046,19 @@ punctuation:
       - quote_pair_balance
       aliases: []
       requires:
+      - syntax
       - model
-      notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
+      - validator
+      notes: syntax_candidate_backed
     dataset:
       eligible_now: true
-      reason: eligible_but_needs_threshold
-      last_known_candidate_recall: null
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
       training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: candidate path verified; validator guards and hard negatives are required before dataset
-        build
+      training_eligibility_reason: syntax_candidate_backed
       current_candidate_path: true
       current_synthetic_support: true
       current_hard_negative_support: true
@@ -16032,8 +16067,7 @@ punctuation:
       current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
-      - validator
-      - hard_negatives
+      - none
   punctuation_9_7:
     source_section: punctuation
     orfogrammka_id: '9.7'
@@ -16086,29 +16120,31 @@ punctuation:
     order: 117
     source_url: https://orfogrammka.ru/пунктуация/несколько_тире_в_предложении/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: candidate_only
+      executable: true
+      rule_ids:
+      - punctuation_delete_replace
       aliases: []
       requires:
-      - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      - model
+      - validator
+      notes: syntax_candidate_backed
     dataset:
-      eligible_now: false
-      reason: needs_syntax
-      last_known_candidate_recall: null
+      eligible_now: true
+      reason: syntax_candidate_backed
+      last_known_candidate_recall: 1.0
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_SYNTAX
-      training_eligibility_reason: requires syntax-backed candidate path
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
-      current_validator_support: false
-      current_candidate_recall: null
-      current_gap_coverage: null
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
+      training_eligibility_reason: syntax_candidate_backed
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
+      current_validator_support: true
+      current_candidate_recall: 1.0
+      current_gap_coverage: 1.0
       risk_level: high
       needs_before_training:
       - none

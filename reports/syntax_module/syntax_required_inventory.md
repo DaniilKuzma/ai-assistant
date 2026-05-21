@@ -4,37 +4,37 @@ This audit reads `configs/rules.yaml` only. It does not build a dataset, train, 
 
 ## Summary
 
-- total syntax_required entries: 122
-- total leaf syntax_required entries: 122
-- syntax families: 25 total, 17 nonzero
-- IMPLEMENT_NOW: 1
-- IMPLEMENT_WITH_BOUNDED_PATTERN: 75
-- blocked/deferred: 46
-- expected training_eligible gain: 76
+- total syntax_required entries: 57
+- total leaf syntax_required entries: 57
+- syntax families: 25 total, 5 nonzero
+- IMPLEMENT_NOW: 0
+- IMPLEMENT_WITH_BOUNDED_PATTERN: 12
+- blocked/deferred: 45
+- expected training_eligible gain: 12
 
 ## Family Summary
 
 | syntax_family | total | implement_now | bounded | blocked | priority |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| subordinate_clause_comma | 4 | 0 | 4 | 0 | 1 |
-| coordinating_conjunction_comma | 1 | 1 | 0 | 0 | 2 |
-| introductory_words | 8 | 0 | 8 | 0 | 1 |
+| subordinate_clause_comma | 0 | 0 | 0 | 0 | 4 |
+| coordinating_conjunction_comma | 0 | 0 | 0 | 0 | 4 |
+| introductory_words | 0 | 0 | 0 | 0 | 4 |
 | address_comma | 0 | 0 | 0 | 0 | 4 |
-| homogeneous_members | 6 | 0 | 6 | 0 | 1 |
-| detached_adverbial_phrases | 8 | 0 | 8 | 0 | 1 |
-| detached_participial_phrases | 4 | 0 | 4 | 0 | 2 |
-| detached_applications | 1 | 0 | 1 | 0 | 4 |
-| clarification_members | 3 | 0 | 3 | 0 | 2 |
-| comparative_turnovers | 7 | 0 | 5 | 2 | 3 |
-| subject_predicate_dash | 12 | 0 | 12 | 0 | 1 |
-| asyndetic_complex_sentence | 1 | 0 | 0 | 1 | 4 |
+| homogeneous_members | 0 | 0 | 0 | 0 | 4 |
+| detached_adverbial_phrases | 0 | 0 | 0 | 0 | 4 |
+| detached_participial_phrases | 0 | 0 | 0 | 0 | 4 |
+| detached_applications | 0 | 0 | 0 | 0 | 4 |
+| clarification_members | 0 | 0 | 0 | 0 | 4 |
+| comparative_turnovers | 2 | 0 | 0 | 2 | 4 |
+| subject_predicate_dash | 0 | 0 | 0 | 0 | 4 |
+| asyndetic_complex_sentence | 0 | 0 | 0 | 0 | 4 |
 | consequence_dash | 0 | 0 | 0 | 0 | 4 |
 | explanation_colon | 0 | 0 | 0 | 0 | 4 |
-| enumeration_colon_dash | 1 | 0 | 1 | 0 | 2 |
+| enumeration_colon_dash | 0 | 0 | 0 | 0 | 4 |
 | semicolon | 0 | 0 | 0 | 0 | 4 |
-| direct_speech_syntax | 4 | 0 | 4 | 0 | 2 |
+| direct_speech_syntax | 0 | 0 | 0 | 0 | 4 |
 | quote_bracket_balance | 0 | 0 | 0 | 0 | 4 |
-| punctuation_combinations | 18 | 0 | 7 | 11 | 3 |
+| punctuation_combinations | 11 | 0 | 0 | 11 | 4 |
 | ne_with_parts_of_speech | 15 | 0 | 7 | 8 | 3 |
 | ni_stable_and_context | 0 | 0 | 0 | 0 | 4 |
 | n_nn_context | 0 | 0 | 0 | 0 | 4 |
@@ -90,44 +90,6 @@ This audit reads `configs/rules.yaml` only. It does not build a dataset, train, 
 | orthography_3_7_2_9 | Конструкции, усиливающие отрицание | ne_with_parts_of_speech | IMPLEMENT_WITH_BOUNDED_PATTERN | ne_with_parts_of_speech can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
 | orthography_3_7_2_10 | Сочетания «едва ли не…, чуть ли не…, разве не…, не далее как…, не позже чем…, не раньше чем…» | ne_with_parts_of_speech | IMPLEMENT_WITH_BOUNDED_PATTERN | ne_with_parts_of_speech can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
 | orthography_4_11_2 | Местоимения «Вы», «Ваш» | grammatical_endings_context | BLOCK_FOR_NOW | This capitalization choice is stylistic/formality-sensitive and is not safe as strict spelling or punctuation correction. |
-| punctuation_1_3_5 | Непонятная точка | punctuation_combinations | IMPLEMENT_WITH_BOUNDED_PATTERN | punctuation_combinations can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_1_4 | Запятая между подлежащим и сказуемым | subject_predicate_dash | IMPLEMENT_WITH_BOUNDED_PATTERN | subject_predicate_dash can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_1_5 | Лишняя запятая в управлении | punctuation_combinations | IMPLEMENT_WITH_BOUNDED_PATTERN | punctuation_combinations can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_2_1_1 | Тире при подлежащем и сказуемом в именительном падеже | subject_predicate_dash | IMPLEMENT_WITH_BOUNDED_PATTERN | subject_predicate_dash can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_2_1_3 | Подлежащее и/или сказуемое выражены инфинитивом | subject_predicate_dash | IMPLEMENT_WITH_BOUNDED_PATTERN | subject_predicate_dash can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_2_1_4 | Сказуемое выражено числительным | subject_predicate_dash | IMPLEMENT_WITH_BOUNDED_PATTERN | subject_predicate_dash can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_2_1_5 | Тире при фразеологическом обороте | subject_predicate_dash | IMPLEMENT_WITH_BOUNDED_PATTERN | subject_predicate_dash can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_2_1_6 | Тире при личном или указательном местоимении | subject_predicate_dash | IMPLEMENT_WITH_BOUNDED_PATTERN | subject_predicate_dash can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_2_1_7 | Отсутствие тире при вопросительном местоимении | subject_predicate_dash | IMPLEMENT_WITH_BOUNDED_PATTERN | subject_predicate_dash can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_2_1_8 | Тире при существительном с отрицанием | subject_predicate_dash | IMPLEMENT_WITH_BOUNDED_PATTERN | subject_predicate_dash can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_2_1_9 | Тире перед прилагательным или причастием | subject_predicate_dash | IMPLEMENT_WITH_BOUNDED_PATTERN | subject_predicate_dash can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_2_1_10 | Тире перед оборотом со сравнительными частицами | subject_predicate_dash | IMPLEMENT_WITH_BOUNDED_PATTERN | subject_predicate_dash can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_2_1_11 | Отсутствие тире при вводном слове, обстоятельстве или дополнении, союзе или частице | subject_predicate_dash | IMPLEMENT_WITH_BOUNDED_PATTERN | subject_predicate_dash can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_2_2 | Тире в неполном предложении | subject_predicate_dash | IMPLEMENT_WITH_BOUNDED_PATTERN | subject_predicate_dash can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_4_1 | Запятые при однородных членах предложения, не соединенных союзами | homogeneous_members | IMPLEMENT_WITH_BOUNDED_PATTERN | homogeneous_members can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_4_3 | Однородные члены предложения, соединенные противительными союзами | coordinating_conjunction_comma | IMPLEMENT_NOW | Existing adversative-comma candidate shape can be extended with bounded syntax guards and model scoring. |
-| punctuation_4_4 | Однородные члены предложения, соединенные одиночными союзами | homogeneous_members | IMPLEMENT_WITH_BOUNDED_PATTERN | homogeneous_members can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_4_5 | Запятая при составных союзах | homogeneous_members | IMPLEMENT_WITH_BOUNDED_PATTERN | homogeneous_members can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_4_8 | Тире перед обобщающим словом, стоящим после однородных членов | enumeration_colon_dash | IMPLEMENT_WITH_BOUNDED_PATTERN | enumeration_colon_dash can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_4_10 | Запятая при однородных и неоднородных определениях | homogeneous_members | IMPLEMENT_WITH_BOUNDED_PATTERN | homogeneous_members can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_4_11 | Запятая при сочетании определения-прилагательного с причастным оборотом | homogeneous_members | IMPLEMENT_WITH_BOUNDED_PATTERN | homogeneous_members can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_4_14 | Знаки препинания при повторяющихся членах предложения | homogeneous_members | IMPLEMENT_WITH_BOUNDED_PATTERN | homogeneous_members can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_5_1_1_1 | Оборот после определяемого существительного | detached_participial_phrases | IMPLEMENT_WITH_BOUNDED_PATTERN | detached_participial_phrases can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_5_1_1_2 | Оборот перед определяемым существительным | detached_participial_phrases | IMPLEMENT_WITH_BOUNDED_PATTERN | detached_participial_phrases can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_5_1_2 | Определительный оборот при личном местоимении | detached_participial_phrases | IMPLEMENT_WITH_BOUNDED_PATTERN | detached_participial_phrases can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_5_1_3 | Нераспространенное согласованное определение | detached_participial_phrases | IMPLEMENT_WITH_BOUNDED_PATTERN | detached_participial_phrases can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_5_3 | Знаки препинания при приложениях | detached_applications | IMPLEMENT_WITH_BOUNDED_PATTERN | detached_applications can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_5_4_2 | Ограничительные частицы перед деепричастным оборотом | detached_adverbial_phrases | IMPLEMENT_WITH_BOUNDED_PATTERN | detached_adverbial_phrases can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_5_4_3 | Обособленное одиночное деепричастие | detached_adverbial_phrases | IMPLEMENT_WITH_BOUNDED_PATTERN | detached_adverbial_phrases can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_5_4_5 | Обстоятельственные члены предложения с производными предлогами и предложными сочетаниями | detached_adverbial_phrases | IMPLEMENT_WITH_BOUNDED_PATTERN | detached_adverbial_phrases can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_5_4_6 | Деепричастие, утратившее глагольное значение | detached_adverbial_phrases | IMPLEMENT_WITH_BOUNDED_PATTERN | detached_adverbial_phrases can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_5_4_7 | Деепричастие в составе устойчивого оборота | detached_adverbial_phrases | IMPLEMENT_WITH_BOUNDED_PATTERN | detached_adverbial_phrases can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_5_4_8 | Деепричастие с зависимым словом «который» | detached_adverbial_phrases | IMPLEMENT_WITH_BOUNDED_PATTERN | detached_adverbial_phrases can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_5_4_9 | Необособленное одиночное деепричастие | detached_adverbial_phrases | IMPLEMENT_WITH_BOUNDED_PATTERN | detached_adverbial_phrases can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_5_4_10 | Обстоятельство, выраженное наречием | detached_adverbial_phrases | IMPLEMENT_WITH_BOUNDED_PATTERN | detached_adverbial_phrases can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_5_5 | Знаки препинания при ограничительно-выделительных оборотах | clarification_members | IMPLEMENT_WITH_BOUNDED_PATTERN | clarification_members can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_5_6_2 | Пояснительные члены предложения | clarification_members | IMPLEMENT_WITH_BOUNDED_PATTERN | clarification_members can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_5_6_3 | Присоединительные члены предложения | clarification_members | IMPLEMENT_WITH_BOUNDED_PATTERN | clarification_members can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
 | punctuation_5_7_1 | Неразложимые сочетания с подчинительными союзами и союзными словами | punctuation_combinations | NEEDS_DICTIONARY | Syntax alone is insufficient; safe candidates require a lexical, stable-expression, or morphology dictionary first. |
 | punctuation_5_7_2 | Неразложимые сочетания с частицами | punctuation_combinations | NEEDS_DICTIONARY | Syntax alone is insufficient; safe candidates require a lexical, stable-expression, or morphology dictionary first. |
 | punctuation_5_7_3 | Выражения с глаголом «хотеть» | punctuation_combinations | NEEDS_DICTIONARY | Syntax alone is insufficient; safe candidates require a lexical, stable-expression, or morphology dictionary first. |
@@ -138,33 +100,6 @@ This audit reads `configs/rules.yaml` only. It does not build a dataset, train, 
 | punctuation_5_7_8 | Сочетания типа «кто ни на есть» | punctuation_combinations | NEEDS_DICTIONARY | Syntax alone is insufficient; safe candidates require a lexical, stable-expression, or morphology dictionary first. |
 | punctuation_5_7_9 | Союз «что» в выражении «только и…что» | punctuation_combinations | NEEDS_DICTIONARY | Syntax alone is insufficient; safe candidates require a lexical, stable-expression, or morphology dictionary first. |
 | punctuation_5_7_10 | Тире в цельных по смыслу сочетаниях | punctuation_combinations | NEEDS_DICTIONARY | Syntax alone is insufficient; safe candidates require a lexical, stable-expression, or morphology dictionary first. |
-| punctuation_5_8_3 | Указательное слово в основной части предложения | comparative_turnovers | IMPLEMENT_WITH_BOUNDED_PATTERN | comparative_turnovers can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_5_8_5 | Оборот типа «как и» | comparative_turnovers | IMPLEMENT_WITH_BOUNDED_PATTERN | comparative_turnovers can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_5_8_6 | Оборот в составе сказуемого | comparative_turnovers | IMPLEMENT_WITH_BOUNDED_PATTERN | comparative_turnovers can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
 | punctuation_5_8_7 | Сравнительный оборот с «как» | comparative_turnovers | NEEDS_SEMANTIC_MODEL | Local syntax can propose probes, but production candidates need semantic disambiguation beyond bounded patterns. |
 | punctuation_5_8_10 | Устойчивые сочетания с союзом «как» | comparative_turnovers | NEEDS_SEMANTIC_MODEL | Local syntax can propose probes, but production candidates need semantic disambiguation beyond bounded patterns. |
-| punctuation_5_8_11 | Частица или наречие перед союзом в сравнительном обороте | comparative_turnovers | IMPLEMENT_WITH_BOUNDED_PATTERN | comparative_turnovers can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_5_8_12 | Повторение сравниваемого слова | comparative_turnovers | IMPLEMENT_WITH_BOUNDED_PATTERN | comparative_turnovers can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_6_1_2 | Вводные слова, омонимичные членам предложения или союзам | introductory_words | IMPLEMENT_WITH_BOUNDED_PATTERN | introductory_words can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_6_1_3 | Запятые при вводных словах с распространением | introductory_words | IMPLEMENT_WITH_BOUNDED_PATTERN | introductory_words can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_6_1_5 | Слова, не являющиеся вводными | introductory_words | IMPLEMENT_WITH_BOUNDED_PATTERN | introductory_words can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_6_1_6 | Вставки | introductory_words | IMPLEMENT_WITH_BOUNDED_PATTERN | introductory_words can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_6_1_7 | Вводные предложения | introductory_words | IMPLEMENT_WITH_BOUNDED_PATTERN | introductory_words can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_6_3 | Знаки препинания при междометиях, междометных предложениях и частицах | introductory_words | IMPLEMENT_WITH_BOUNDED_PATTERN | introductory_words can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_6_4 | Знаки препинания при частицах | introductory_words | IMPLEMENT_WITH_BOUNDED_PATTERN | introductory_words can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_6_5 | Знаки препинания при утвердительных, отрицательных и вопросительно-восклицательных словах | introductory_words | IMPLEMENT_WITH_BOUNDED_PATTERN | introductory_words can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_7_2_2 | Отсутствие запятой между частями сложноподчинённого предложения | subordinate_clause_comma | IMPLEMENT_WITH_BOUNDED_PATTERN | subordinate_clause_comma can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_7_2_3 | Запятая перед усилительно-ограничительными словами | subordinate_clause_comma | IMPLEMENT_WITH_BOUNDED_PATTERN | subordinate_clause_comma can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_7_2_4_1 | Расчленение сложного союза | subordinate_clause_comma | IMPLEMENT_WITH_BOUNDED_PATTERN | subordinate_clause_comma can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_7_2_4_2 | Нерасчленение сложного союза | subordinate_clause_comma | IMPLEMENT_WITH_BOUNDED_PATTERN | subordinate_clause_comma can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_7_3_1 | Запятая в бессоюзном сложном предложении | asyndetic_complex_sentence | NEEDS_SEMANTIC_MODEL | Local syntax can propose probes, but production candidates need semantic disambiguation beyond bounded patterns. |
-| punctuation_8_1_3 | Разрыв прямой речи | direct_speech_syntax | IMPLEMENT_WITH_BOUNDED_PATTERN | direct_speech_syntax can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_8_1_4 | Прямая речь внутри слов автора | direct_speech_syntax | IMPLEMENT_WITH_BOUNDED_PATTERN | direct_speech_syntax can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_8_1_6 | Реплики с особой строки | direct_speech_syntax | IMPLEMENT_WITH_BOUNDED_PATTERN | direct_speech_syntax can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_8_2 | Знаки препинания при цитатах | direct_speech_syntax | IMPLEMENT_WITH_BOUNDED_PATTERN | direct_speech_syntax can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_9_1 | Вопросительный и восклицательный знаки | punctuation_combinations | IMPLEMENT_WITH_BOUNDED_PATTERN | punctuation_combinations can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_9_2 | Вопросительный или восклицательный знак с многоточием | punctuation_combinations | IMPLEMENT_WITH_BOUNDED_PATTERN | punctuation_combinations can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_9_3 | Запятая и тире | punctuation_combinations | IMPLEMENT_WITH_BOUNDED_PATTERN | punctuation_combinations can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
-| punctuation_9_4 | Многоточие и двоеточие вместо запятой | punctuation_combinations | IMPLEMENT_WITH_BOUNDED_PATTERN | punctuation_combinations can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |
 | punctuation_9_7 | Оформление сноски | punctuation_combinations | KEEP_METADATA_ONLY | Footnote formatting is document-layout metadata and should remain outside the spelling/punctuation correction path. |
-| punctuation_9_8 | Несколько тире в предложении | punctuation_combinations | IMPLEMENT_WITH_BOUNDED_PATTERN | punctuation_combinations can be represented as candidate-backed local edits with explicit syntax features, model scoring, validator guards, and no broad rewrite. |

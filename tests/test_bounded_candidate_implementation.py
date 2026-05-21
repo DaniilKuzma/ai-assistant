@@ -101,4 +101,4 @@ def test_validator_accepts_balance_repairs_and_rejects_created_imbalance():
     )
 
     assert accepted.apply_accepted() == "Он сказал: «Проект готов»."
-    assert any(edit.reason == "unbalanced_pairs" for edit in rejected.edits)
+    assert any(edit.reason == "unbalanced_bracket" for edit in rejected.edits)

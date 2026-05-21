@@ -164,7 +164,7 @@ def test_validator_rejects_repeated_comma_colon_semicolon_noise():
     semicolon_result = validator.validate("Первая часть; вторая часть.", "Первая часть;; вторая часть.")
 
     for result in (comma_result, colon_result, semicolon_result):
-        assert any(edit.status == "rejected" and edit.reason == "punctuation_noise" for edit in result.edits)
+        assert any(edit.status == "rejected" and edit.reason == "duplicate_punctuation" for edit in result.edits)
         assert result.apply_accepted() == result.source
 
 
@@ -354,7 +354,7 @@ def test_validator_rejects_repeated_punctuation_noise(source, target):
 def test_validator_rejects_edits_creating_unbalanced_quotes_or_brackets(source, target, trusted):
     result = StrictValidator().validate(source, target, trusted_edits=[trusted])
 
-    assert any(edit.status == "rejected" and edit.reason == "unbalanced_pairs" for edit in result.edits)
+    assert any(edit.status == "rejected" and edit.reason in {"unbalanced_quote", "unbalanced_bracket"} for edit in result.edits)
     assert result.apply_accepted() == source
 
 
@@ -520,7 +520,68 @@ def test_validator_rejects_direct_speech_dash_inside_closing_quote():
 
     result = StrictValidator().validate(source, target, trusted_edits=[trusted])
 
-    assert any(edit.status == "rejected" and edit.reason == "direct_speech_dash_inside_quotes" for edit in result.edits)
+    assert any(edit.status == "rejected" and edit.reason == "unsafe_direct_speech_span" for edit in result.edits)
+    assert result.apply_accepted() == source
+
+
+def test_validator_rejects_unsafe_comparative_as_candidate():
+    source = "Он работает как инженер."
+    target = "Он работает, как инженер."
+    trusted = Candidate(
+        "",
+        ",",
+        "punctuation_insert",
+        start=len("Он работает"),
+        end=len("Он работает"),
+        confidence=0.99,
+        requires_model=True,
+        rule_id="comparative_turnover_comma",
+    )
+
+    result = StrictValidator().validate(source, target, trusted_edits=[trusted])
+
+    assert any(edit.status == "rejected" and edit.reason == "unsafe_comparative_as" for edit in result.edits)
+    assert result.apply_accepted() == source
+
+
+def test_validator_rejects_unsafe_asyndetic_without_clause_evidence():
+    source = "Документ важный отчет готов."
+    target = "Документ важный — отчет готов."
+    trusted = Candidate(
+        "",
+        "—",
+        "punctuation_insert",
+        start=len("Документ важный"),
+        end=len("Документ важный"),
+        confidence=0.99,
+        requires_model=True,
+        rule_id="asyndetic_dash",
+    )
+
+    result = StrictValidator().validate(source, target, trusted_edits=[trusted])
+
+    assert any(edit.status == "rejected" and edit.reason == "unsafe_asyndetic" for edit in result.edits)
+    assert result.apply_accepted() == source
+
+
+def test_validator_rejects_low_confidence_syntax_candidate():
+    source = "Я думаю что проект готов."
+    target = "Я думаю, что проект готов."
+    trusted = Candidate(
+        "",
+        ",",
+        "punctuation_insert",
+        start=len("Я думаю"),
+        end=len("Я думаю"),
+        confidence=0.49,
+        requires_model=True,
+        rule_id="comma_subordinate",
+        syntax_family="subordinate_clause_comma",
+    )
+
+    result = StrictValidator().validate(source, target, trusted_edits=[trusted])
+
+    assert any(edit.status == "rejected" and edit.reason == "syntax_low_confidence" for edit in result.edits)
     assert result.apply_accepted() == source
 
 

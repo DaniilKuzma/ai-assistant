@@ -8,6 +8,7 @@ from typing import Callable, Sequence
 from src.preprocessing.protected_spans import find_protected_spans
 from src.preprocessing.tokenizer import Token, tokenize_words
 from src.rules.base import RuleEdit, RuleMode, RuleSpec
+from src.rules.syntax_punctuation import PunctuationGapCandidate, generate_syntax_punctuation_candidates
 
 
 PUNCTUATION_CHARS = set(",.!?:;—…\"'()«»[]")
@@ -115,24 +116,6 @@ DASH_DISCOURSE_MARKERS = frozenset({"получается", "значит"})
 
 
 @dataclass(frozen=True)
-class PunctuationGapCandidate:
-    source: str
-    replacement: str
-    edit_type: str
-    start: int
-    end: int
-    confidence: float
-    requires_model: bool
-    rule_id: str
-    mode: RuleMode
-    action: str
-    label: str
-    gap_index: int
-    requires: tuple[str, ...]
-    group: str = ""
-
-
-@dataclass(frozen=True)
 class RegexPunctuationRule:
     spec: RuleSpec
     pattern: str
@@ -201,38 +184,29 @@ def generate_punctuation_candidates(
 
     for candidate in _final_punctuation_candidates(text, words, protected):
         _append_punctuation_candidate(candidates, seen, candidate)
-    for candidate in _subordinate_comma_candidates(text, words, protected):
-        _append_punctuation_candidate(candidates, seen, candidate)
-    for candidate in _conjunction_comma_candidates(text, words, protected):
-        _append_punctuation_candidate(candidates, seen, candidate)
-    for candidate in _introductory_comma_candidates(text, words, protected):
-        _append_punctuation_candidate(candidates, seen, candidate)
-    for candidate in _address_comma_candidates(text, words, protected, syntax_tokens, syntax_provider):
-        _append_punctuation_candidate(candidates, seen, candidate)
-    for candidate in _homogeneous_comma_candidates(text, words, protected):
-        _append_punctuation_candidate(candidates, seen, candidate)
-    for candidate in _detached_adverbial_comma_candidates(text, words, protected):
-        _append_punctuation_candidate(candidates, seen, candidate)
-    for candidate in _comparative_turnover_comma_candidates(text, words, protected):
-        _append_punctuation_candidate(candidates, seen, candidate)
-    for candidate in _subject_predicate_dash_candidates(text, words, protected):
-        _append_punctuation_candidate(candidates, seen, candidate)
-    for candidate in _direct_speech_candidates(text, words, protected):
-        _append_punctuation_candidate(candidates, seen, candidate)
-    for candidate in _quote_bracket_balance_candidates(text, words, protected):
-        _append_punctuation_candidate(candidates, seen, candidate)
-    for candidate in _colon_dash_semicolon_candidates(text, words, protected):
+    for candidate in generate_syntax_punctuation_candidates(
+        text,
+        words,
+        protected,
+        _spec_by_id,
+        syntax_tokens=syntax_tokens,
+        syntax_provider=syntax_provider,
+    ):
         _append_punctuation_candidate(candidates, seen, candidate)
 
     for rule in PUNCTUATION_RULES:
         if rule.spec.id in {
             "final_punctuation_default",
+            "punctuation_delete_replace",
             "comma_subordinate",
             "comma_conjunction",
             "introductory_comma",
             "address_comma",
             "homogeneous_comma",
             "detached_adverbial_comma",
+            "detached_participial_comma",
+            "apposition_comma",
+            "clarification_comma",
             "comparative_turnover_comma",
             "subject_predicate_dash",
             "direct_speech_colon",
@@ -243,6 +217,7 @@ def generate_punctuation_candidates(
             "quote_pair_balance",
             "bracket_pair_balance",
             "enumeration_colon",
+            "enumeration_dash",
             "explanation_colon",
             "consequence_dash",
             "asyndetic_dash",
@@ -1534,6 +1509,19 @@ PUNCTUATION_RULES: tuple[object, ...] = (
     ),
     FunctionPunctuationRule(
         RuleSpec(
+            id="enumeration_dash",
+            group="dash",
+            scope="punctuation_gap",
+            edit_type="punctuation",
+            mode="model_required",
+            confidence=0.82,
+            requires=("syntax", "model"),
+            description="Generate bounded enumeration dash edits for model scoring.",
+        ),
+        _identity,
+    ),
+    FunctionPunctuationRule(
+        RuleSpec(
             id="explanation_colon",
             group="colon",
             scope="punctuation_gap",
@@ -1663,6 +1651,45 @@ PUNCTUATION_RULES: tuple[object, ...] = (
             confidence=0.8,
             requires=("syntax", "model"),
             description="Generate bounded comma candidates for clear sentence-initial gerundial turnovers.",
+        ),
+        _identity,
+    ),
+    FunctionPunctuationRule(
+        RuleSpec(
+            id="detached_participial_comma",
+            group="detached_members",
+            scope="punctuation_gap",
+            edit_type="punctuation",
+            mode="model_required",
+            confidence=0.8,
+            requires=("syntax", "model"),
+            description="Generate bounded comma candidates for participial phrases after nouns.",
+        ),
+        _identity,
+    ),
+    FunctionPunctuationRule(
+        RuleSpec(
+            id="apposition_comma",
+            group="detached_members",
+            scope="punctuation_gap",
+            edit_type="punctuation",
+            mode="model_required",
+            confidence=0.78,
+            requires=("syntax", "model"),
+            description="Generate conservative apposition comma repairs when one paired boundary is already present.",
+        ),
+        _identity,
+    ),
+    FunctionPunctuationRule(
+        RuleSpec(
+            id="clarification_comma",
+            group="clarification_members",
+            scope="punctuation_gap",
+            edit_type="punctuation",
+            mode="model_required",
+            confidence=0.82,
+            requires=("syntax", "model"),
+            description="Generate bounded comma candidates before explicit clarification markers.",
         ),
         _identity,
     ),

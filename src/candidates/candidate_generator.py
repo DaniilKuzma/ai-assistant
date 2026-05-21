@@ -44,6 +44,19 @@ class Candidate:
     gap_index: int | None = None
     requires: tuple[str, ...] = ()
     group: str = ""
+    edit_domain: str = ""
+    syntax_family: str = ""
+    subtype: str = ""
+    trigger_text: str = ""
+    trigger_lemma: str = ""
+    trigger_pos: str = ""
+    gap_kind: str = ""
+    evidence: str = ""
+    confidence_source: str = ""
+    implementation_group: str = ""
+    constraint_group: str = ""
+    bundle_id: str = ""
+    metadata: dict[str, Any] | None = None
 
     @property
     def requires_scoring(self) -> bool:
@@ -254,6 +267,19 @@ class CandidateGenerator:
                     spec.gap_index,
                     spec.requires,
                     spec.group,
+                    spec.edit_domain,
+                    spec.syntax_family,
+                    spec.subtype,
+                    spec.trigger_text,
+                    spec.trigger_lemma,
+                    spec.trigger_pos,
+                    spec.gap_kind,
+                    spec.evidence,
+                    spec.confidence_source,
+                    spec.implementation_group,
+                    spec.constraint_group,
+                    spec.bundle_id,
+                    spec.metadata,
                 ),
             )
 

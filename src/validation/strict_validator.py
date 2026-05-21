@@ -118,6 +118,31 @@ N_NN_RULE_IDS = frozenset({"n_nn_adjective", "n_nn_participle", "n_nn_deverbal_a
 PROTECTED_N_NN_CLEAN_FORMS = frozenset({("намерены", "намеренны")})
 NE_SPLIT_JOIN_RULE_IDS = frozenset({"ne_verb", "ne_adjective", "ne_adverb", "ne_participle"})
 DIRECT_SPEECH_RULE_IDS = frozenset({"direct_speech_colon", "direct_speech_quotes", "direct_speech_dash"})
+SYNTAX_PUNCTUATION_RULE_IDS = frozenset(
+    {
+        "comma_subordinate",
+        "comma_conjunction",
+        "introductory_comma",
+        "address_comma",
+        "homogeneous_comma",
+        "detached_adverbial_comma",
+        "detached_participial_comma",
+        "apposition_comma",
+        "clarification_comma",
+        "comparative_turnover_comma",
+        "subject_predicate_dash",
+        "enumeration_colon",
+        "enumeration_dash",
+        "explanation_colon",
+        "consequence_dash",
+        "asyndetic_dash",
+        "semicolon",
+        "direct_speech_colon",
+        "direct_speech_quotes",
+        "direct_speech_dash",
+    }
+)
+ASYNDETIC_RULE_IDS = frozenset({"asyndetic_dash", "consequence_dash", "explanation_colon", "semicolon"})
 DISCOURSE_DASH_BLOCKERS = frozenset({"получается", "значит"})
 CAPITALIZATION_NER_MIN_CONFIDENCE = 0.999999
 PROTECTED_ACRONYMS = frozenset({"УФСБ", "РИА", "США", "РФ", "НББ", "ООО", "АО", "ИП"})
@@ -198,10 +223,13 @@ def _guard_rejection_reason(
         return "unsafe_hyphen_po_adverb"
     if _is_unsafe_colon_candidate(source, edit):
         return "unsafe_colon_candidate"
+    syntax_reason = _syntax_punctuation_rejection_reason(source, target, edit)
+    if syntax_reason:
+        return syntax_reason
     if _creates_direct_speech_dash_inside_quotes(target, edit):
-        return "direct_speech_dash_inside_quotes"
+        return "unsafe_direct_speech_span"
     if _is_unsafe_direct_speech_punctuation(source, edit):
-        return "weak_direct_speech_pattern"
+        return "unsafe_direct_speech_span"
     if _is_unsafe_discourse_dash(source, edit):
         return "unsafe_discourse_dash"
     if _is_tsya_pair(edit.source.lower(), edit.replacement.lower()):
@@ -213,10 +241,13 @@ def _guard_rejection_reason(
         return "dangerous_tsya"
     if _breaks_protected_span(edit, protected):
         return "protected_span"
+    if _creates_duplicate_punctuation(source, target, edit):
+        return "duplicate_punctuation"
     if _creates_repeated_punctuation_noise(source, target, edit):
         return "punctuation_noise"
-    if _creates_unbalanced_pairs(source, target, edit):
-        return "unbalanced_pairs"
+    pair_reason = _unbalanced_pair_rejection_reason(source, target, edit)
+    if pair_reason:
+        return pair_reason
     return ""
 
 
@@ -275,9 +306,24 @@ def _creates_repeated_punctuation_noise(source: str, target: str, edit: Edit) ->
     return not _has_punctuation_noise(source) and _has_punctuation_noise(target)
 
 
+def _creates_duplicate_punctuation(source: str, target: str, edit: Edit) -> bool:
+    del edit
+    return not re.search(r"([,;:])\s*\1", source) and bool(re.search(r"([,;:])\s*\1", target))
+
+
 def _creates_unbalanced_pairs(source: str, target: str, edit: Edit) -> bool:
     del edit
     return _paired_punctuation_imbalance_score(target) > _paired_punctuation_imbalance_score(source)
+
+
+def _unbalanced_pair_rejection_reason(source: str, target: str, edit: Edit) -> str:
+    del edit
+    if _ordered_pair_imbalance(target, "«", "»") > _ordered_pair_imbalance(source, "«", "»") or target.count('"') % 2 > source.count('"') % 2:
+        return "unbalanced_quote"
+    for open_char, close_char in (("(", ")"), ("[", "]")):
+        if _ordered_pair_imbalance(target, open_char, close_char) > _ordered_pair_imbalance(source, open_char, close_char):
+            return "unbalanced_bracket"
+    return ""
 
 
 def _paired_punctuation_imbalance_score(text: str) -> int:
@@ -796,6 +842,44 @@ def _is_unsafe_colon_candidate(source_text: str, edit: Edit) -> bool:
 
 def _is_unsafe_direct_speech_punctuation(source_text: str, edit: Edit) -> bool:
     return edit.rule_id in DIRECT_SPEECH_RULE_IDS and not _passes_direct_speech_punctuation_guard(source_text, edit)
+
+
+def _syntax_punctuation_rejection_reason(source_text: str, target_text: str, edit: Edit) -> str:
+    del target_text
+    if edit.rule_id in SYNTAX_PUNCTUATION_RULE_IDS and float(edit.confidence or 0.0) < 0.5:
+        return "syntax_low_confidence"
+    if edit.rule_id == "comparative_turnover_comma" and _is_unsafe_comparative_as(source_text, edit):
+        return "unsafe_comparative_as"
+    if edit.rule_id in ASYNDETIC_RULE_IDS and not _has_asyndetic_clause_evidence(source_text, edit):
+        return "unsafe_asyndetic"
+    return ""
+
+
+def _is_unsafe_comparative_as(source_text: str, edit: Edit) -> bool:
+    suffix = source_text[edit.end : edit.end + 48].lower()
+    if not re.match(r"\s+как\s+[а-яё-]+", suffix):
+        return False
+    previous = _previous_word_before(source_text, edit.start)
+    return previous in {"работает", "работал", "работала", "известен", "известна", "используется", "служит"}
+
+
+def _has_asyndetic_clause_evidence(source_text: str, edit: Edit) -> bool:
+    prefix = source_text[: edit.start]
+    suffix = source_text[edit.end :]
+    if any(marker in suffix.lower().split()[:2] for marker in {"и", "а", "но", "что", "если", "когда"}):
+        return False
+    return _contains_finite_predicate(prefix) and _contains_finite_predicate(suffix)
+
+
+def _contains_finite_predicate(text: str) -> bool:
+    words = re.findall(r"[А-Яа-яЁё-]+", text.lower())
+    return any(
+        re.search(
+            r"(л|ла|ло|ли|ет|ит|ют|ут|ат|ят|ется|ится|ются|утся|ался|алась|ались|или|ила|ило|али)$",
+            word,
+        )
+        for word in words
+    )
 
 
 def _passes_direct_speech_punctuation_guard(source_text: str, edit: Edit) -> bool:

@@ -1,23 +1,23 @@
 syntax_family,total_entries,leaf_entries,current_candidate_backed,implement_now_count,bounded_pattern_count,blocked_count,expected_new_candidate_rule_ids,expected_training_eligible_gain,priority
-subordinate_clause_comma,4,4,0,0,4,0,"[""comma_subordinate""]",4,1
-coordinating_conjunction_comma,1,1,0,1,0,0,"[""comma_conjunction""]",1,2
-introductory_words,8,8,0,0,8,0,"[""introductory_comma""]",8,1
+subordinate_clause_comma,0,0,0,0,0,0,[],0,4
+coordinating_conjunction_comma,0,0,0,0,0,0,[],0,4
+introductory_words,0,0,0,0,0,0,[],0,4
 address_comma,0,0,0,0,0,0,[],0,4
-homogeneous_members,6,6,0,0,6,0,"[""homogeneous_comma"", ""enumeration_colon""]",6,1
-detached_adverbial_phrases,8,8,0,0,8,0,"[""detached_adverbial_comma""]",8,1
-detached_participial_phrases,4,4,0,0,4,0,"[""detached_participial_comma""]",4,2
-detached_applications,1,1,0,0,1,0,"[""detached_application_comma""]",1,4
-clarification_members,3,3,0,0,3,0,"[""clarification_comma""]",3,2
-comparative_turnovers,7,7,0,0,5,2,"[""comparative_turnover_comma""]",5,3
-subject_predicate_dash,12,12,0,0,12,0,"[""subject_predicate_dash""]",12,1
-asyndetic_complex_sentence,1,1,0,0,0,1,[],0,4
+homogeneous_members,0,0,0,0,0,0,[],0,4
+detached_adverbial_phrases,0,0,0,0,0,0,[],0,4
+detached_participial_phrases,0,0,0,0,0,0,[],0,4
+detached_applications,0,0,0,0,0,0,[],0,4
+clarification_members,0,0,0,0,0,0,[],0,4
+comparative_turnovers,2,2,0,0,0,2,[],0,4
+subject_predicate_dash,0,0,0,0,0,0,[],0,4
+asyndetic_complex_sentence,0,0,0,0,0,0,[],0,4
 consequence_dash,0,0,0,0,0,0,[],0,4
 explanation_colon,0,0,0,0,0,0,[],0,4
-enumeration_colon_dash,1,1,0,0,1,0,"[""enumeration_colon""]",1,2
+enumeration_colon_dash,0,0,0,0,0,0,[],0,4
 semicolon,0,0,0,0,0,0,[],0,4
-direct_speech_syntax,4,4,0,0,4,0,"[""direct_speech_colon"", ""direct_speech_dash"", ""direct_speech_quotes""]",4,2
+direct_speech_syntax,0,0,0,0,0,0,[],0,4
 quote_bracket_balance,0,0,0,0,0,0,[],0,4
-punctuation_combinations,18,18,0,0,7,11,"[""punctuation_delete_replace""]",7,3
+punctuation_combinations,11,11,0,0,0,11,[],0,4
 ne_with_parts_of_speech,15,15,0,0,7,8,"[""ne_adjective"", ""ne_adverb"", ""ne_participle"", ""ne_verb""]",7,3
 ni_stable_and_context,0,0,0,0,0,0,[],0,4
 n_nn_context,0,0,0,0,0,0,[],0,4
