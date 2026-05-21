@@ -163,8 +163,8 @@ class TorchCandidateModelBackend:
     def from_config(cls, config: dict[str, Any]) -> "TorchCandidateModelBackend":
         model_config = config.get("model", {})
         paths = config.get("paths", {})
-        adapter_dir = Path(paths.get("adapter_output_dir", "models/adapters/latest"))
-        heads_path = Path(paths.get("heads_output_dir", "models/heads/latest")) / "heads.pt"
+        adapter_dir = Path(paths.get("adapter_output_dir", "models/current/adapters"))
+        heads_path = Path(paths.get("heads_output_dir", "models/current/heads")) / "heads.pt"
         if not adapter_dir.exists():
             raise FileNotFoundError(f"Trained adapter directory not found: {adapter_dir}")
         if not heads_path.exists():

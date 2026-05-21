@@ -9,7 +9,7 @@
 - Seq2seq/generative correction intentionally absent.
 - Strict validator остается обязательной защитой после model scoring.
 - Plain fallback corrector применяет только deterministic safe edits.
-- Trained inference грузит adapters из `models/adapters/latest` и heads из `models/heads/latest/heads.pt`.
+- Trained inference грузит adapters из `models/current/adapters` и heads из `models/current/heads/heads.pt`.
 - `configs/rules.yaml` используется как coverage matrix, а не только список executable rules.
 - `AI_INDEX.md` заменяет старый README как package readme и AI entrypoint.
 

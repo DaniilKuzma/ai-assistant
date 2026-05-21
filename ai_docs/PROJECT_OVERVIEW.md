@@ -37,8 +37,8 @@ Seq2seq и готовые generative correction-модели намеренно 
 ## Главные Артефакты
 
 - dataset: `data/processed/correction_dataset.csv.gz`
-- model adapters: `models/adapters/latest`
-- custom heads: `models/heads/latest/heads.pt`
+- model adapters: `models/current/adapters`
+- custom heads: `models/current/heads/heads.pt`
 - reports: `reports/`
 - notebook pipeline: `notebooks/main_pipeline.ipynb`
 

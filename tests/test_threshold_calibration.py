@@ -14,20 +14,20 @@ from scripts.calibrate_thresholds import (
 
 
 def test_default_output_dir_uses_timestamped_subdir_inside_config_reports_dir(tmp_path: Path):
-    config = {"paths": {"reports_dir": str(tmp_path / "reports" / "short_dataset_v2")}}
+    config = {"paths": {"reports_dir": str(tmp_path / "reports" / "training_dataset_core")}}
 
     output_dir = default_output_dir(config, timestamp="20260520_153012")
 
-    assert output_dir == tmp_path / "reports" / "short_dataset_v2" / "threshold_calibration" / "20260520_153012"
+    assert output_dir == tmp_path / "reports" / "training_dataset_core" / "threshold_calibration" / "20260520_153012"
 
 
-def test_threshold_calibration_writes_reports_and_latest_pointers(tmp_path: Path):
-    output_dir = tmp_path / "reports" / "short_dataset_v2" / "threshold_calibration" / "20260520_153012"
-    latest_dir = output_dir.parent
+def test_threshold_calibration_writes_reports_and_current_pointers(tmp_path: Path):
+    output_dir = tmp_path / "reports" / "training_dataset_core" / "threshold_calibration" / "20260520_153012"
+    current_dir = output_dir.parent
 
     write_calibration_reports(
         output_dir=output_dir,
-        latest_dir=latest_dir,
+        current_dir=current_dir,
         sweep_rows=[
             {
                 "rule_id": "dictionary_fuzzy",
@@ -59,8 +59,8 @@ def test_threshold_calibration_writes_reports_and_latest_pointers(tmp_path: Path
     ]:
         assert (output_dir / name).exists()
 
-    assert (latest_dir / "latest_manifest.json").exists()
-    assert (latest_dir / "latest_recommended_thresholds.yaml").exists()
+    assert (current_dir / "current_manifest.json").exists()
+    assert (current_dir / "current_recommended_thresholds.yaml").exists()
     assert yaml.safe_load((output_dir / "recommended_thresholds.yaml").read_text(encoding="utf-8")) == {
         "dictionary_fuzzy_threshold": 0.80
     }

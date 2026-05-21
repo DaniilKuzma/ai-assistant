@@ -1,4 +1,0 @@
-split,total,synthetic_augmented_from_open_clean,real_error_pair,clean_identity_from_open_clean,hard_negative_from_open_clean
-train,50000,36149,851,6500,6500
-val,5000,3615,85,650,650
-test,5000,3615,85,650,650

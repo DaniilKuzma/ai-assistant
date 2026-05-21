@@ -43,9 +43,10 @@ INVENTORY_COLUMNS = [
 
 ALIAS_AUDIT_COLUMNS = ["raw_rule_id", "canonical_rule_id", "source", "action", "notes"]
 
-EXECUTABLE_YAML_STATUSES = {"implemented", "partial", "deterministic", "candidate_only"}
+EXECUTABLE_YAML_STATUSES = {"implemented", "partial", "candidate_only", "model_required"}
 PLANNED_YAML_STATUSES = {"planned"}
-METADATA_YAML_STATUSES = {"model_required", "syntax_required", "dictionary_model_required", "ner_required"}
+METADATA_YAML_STATUSES = {"metadata_only", "syntax_required", "dictionary_model_required", "ner_required"}
+DISABLED_YAML_STATUSES = {"disabled"}
 REGISTRY_EXECUTABLE_MODES = {"deterministic", "candidate_only", "model_required"}
 DICT_CANDIDATE_IDS = {
     "dictionary_fuzzy",
@@ -77,9 +78,9 @@ VALIDATOR_GUARD_RULE_IDS = {
 def build_rule_matrix_inventory(
     *,
     rules_config_path: str | Path = "configs/rules.yaml",
-    reports_dir: str | Path = "reports/eval_test_calibrated_v3_short_v2",
-    dataset_manifest_path: str | Path = "reports/short_dataset_v2/dataset_manifest.json",
-    current_dataset_path: str | Path = "data/processed/short_dataset_v2/correction_dataset.csv.gz",
+    reports_dir: str | Path = "reports/eval_test_calibrated_canonical_short_core",
+    dataset_manifest_path: str | Path = "reports/dataset_manifest.json",
+    current_dataset_path: str | Path = "data/processed/correction_dataset.csv.gz",
 ) -> pd.DataFrame:
     """Build a non-production inventory for every coverage matrix group."""
 
@@ -151,9 +152,9 @@ def write_rule_matrix_inventory_outputs(
     *,
     output_dir: str | Path = "reports/matrix_eval",
     rules_config_path: str | Path = "configs/rules.yaml",
-    reports_dir: str | Path = "reports/eval_test_calibrated_v3_short_v2",
-    dataset_manifest_path: str | Path = "reports/short_dataset_v2/dataset_manifest.json",
-    current_dataset_path: str | Path = "data/processed/short_dataset_v2/correction_dataset.csv.gz",
+    reports_dir: str | Path = "reports/eval_test_calibrated_canonical_short_core",
+    dataset_manifest_path: str | Path = "reports/dataset_manifest.json",
+    current_dataset_path: str | Path = "data/processed/correction_dataset.csv.gz",
 ) -> dict[str, str]:
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
@@ -311,6 +312,8 @@ def _classify_inventory_row(
     current_dataset_count: int,
     metrics: dict[str, Any],
 ) -> tuple[str, str, str]:
+    if status in DISABLED_YAML_STATUSES:
+        return "DISABLED", "BACKLOG_DATA", "taxonomy row is intentionally disabled"
     if status in PLANNED_YAML_STATUSES:
         if "dictionary" in requires or "morphology" in requires:
             return "PLANNED_ONLY", "BACKLOG_IMPLEMENTATION", "planned taxonomy row needs implementation/data path"
@@ -340,7 +343,7 @@ def _classify_inventory_row(
         return executable, "EVALUATE_AFTER_BACKFILL", "candidate path exists but synthetic/eval coverage is missing"
     inactive = (set(rule_ids) & excluded_ids) or (active_ids and not (set(rule_ids) & active_ids))
     if inactive:
-        return "EXECUTABLE_INACTIVE", "EVALUATE_AFTER_BACKFILL", "candidate path exists but current short-v2 target is inactive/excluded"
+        return "EXECUTABLE_INACTIVE", "EVALUATE_AFTER_BACKFILL", "candidate path exists but current short-core target is inactive/excluded"
     if float(metrics.get("current_candidate_recall", 0.0)) < 0.85 and int(metrics.get("current_eval_count", 0)) > 0:
         return "EXECUTABLE_ACTIVE", "EVALUATE_NOW", "candidate path exists but current recall needs matrix audit"
     return "EXECUTABLE_ACTIVE", "EVALUATE_NOW", "candidate-backed executable rule group"

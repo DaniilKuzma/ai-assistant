@@ -6,16 +6,17 @@ from src.candidates.candidate_generator import CandidateGenerator
 from src.config.dictionary import dictionary_provider_from_config, load_dictionary_lexicon
 
 
-def test_main_config_is_full_train_profile_for_450k_dataset():
+def test_main_config_is_canonical_train_profile_for_100k_dataset():
     config = yaml.safe_load(Path("configs/config.yaml").read_text(encoding="utf-8"))
 
-    assert config["training"]["mode"] == "full-train"
+    assert config["training"]["mode"] == "train"
     assert config["training"]["run_model_training"] is True
-    assert 10_000 <= config["training"]["max_train_examples"] <= 405_000
-    assert 1_000 <= config["training"]["max_val_examples"] <= 22_500
-    assert 1_000 <= config["training"]["max_test_examples"] <= 22_500
-    assert config["data"]["target_total_examples"] == 450000
+    assert config["training"]["max_train_examples"] == 80000
+    assert config["training"]["max_val_examples"] == 10000
+    assert config["training"]["max_test_examples"] == 10000
+    assert config["data"]["target_total_examples"] == 100000
     assert config["data"]["processed_train_path"] == "data/processed/correction_dataset.csv.gz"
+    assert config["data"]["manifest_path"] == "data/processed/dataset_manifest.json"
     assert config["data"]["clean_corpus"]["enabled"] is True
     assert config["data"]["external_local_files_only"] is True
     assert config["data"]["punctuation_hard_negative_clean_ratio"] > 0.0
@@ -36,12 +37,11 @@ def test_main_config_is_full_train_profile_for_450k_dataset():
         "ud_russian_taiga",
         "opencorpora",
         "tatoeba_russian",
-        "russian_wikipedia_dump",
     }
     assert isinstance(config["model"]["local_files_only"], bool)
     assert config["model"]["max_sequence_length"] == 128
-    assert 1 <= config["training"]["batch_size"] <= 4
-    assert config["training"]["gradient_accumulation_steps"] >= 4
+    assert config["training"]["batch_size"] == 128
+    assert config["training"]["gradient_accumulation_steps"] == 1
     assert config["training"]["show_progress"] is True
     assert config["training"]["progress_log_every_steps"] == 1000
 

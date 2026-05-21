@@ -7,12 +7,10 @@ sources:
     cache_dir: data/external
     fail_if_insufficient_sources: true
     never_commit_downloaded_data: true
-
 pool:
   min_clean_sentences: 150000
   max_source_share: 0.45
   max_subcorpus_share: 0.35
-
 clean_sources:
   lenta_news:
     enabled: true
@@ -25,8 +23,7 @@ clean_sources:
     max_download_mb: 800
     max_sentences: 150000
     min_accepted_sentences: 30000
-    license_note: "Public Lenta.ru news dataset; verify before production use."
-
+    license_note: Public Lenta.ru news dataset; verify before production use.
   nerus_news:
     enabled: true
     type: nerus_conllu
@@ -38,8 +35,7 @@ clean_sources:
     max_download_mb: 2000
     max_sentences: 120000
     min_accepted_sentences: 30000
-    license_note: "Nerus Lenta annotated corpus; verify before production use."
-
+    license_note: Nerus Lenta annotated corpus; verify before production use.
   opencorpora:
     enabled: true
     type: opencorpora_xml
@@ -52,21 +48,7 @@ clean_sources:
     max_download_mb: 300
     max_sentences: 50000
     min_accepted_sentences: 5000
-    license_note: "OpenCorpora annotated corpus; verify terms before production use."
-
-  ruwiki:
-    enabled: false
-    type: wikipedia_dump
-    priority: 3
-    domain: encyclopedic
-    style: neutral
-    local_path: data/external/ruwiki/ruwiki-latest-pages-articles.xml.bz2
-    url: https://dumps.wikimedia.org/ruwiki/latest/ruwiki-latest-pages-articles.xml.bz2
-    max_download_mb: 2500
-    max_sentences: 50000
-    min_accepted_sentences: 5000
-    license_note: "Optional. Huge. Enable only if needed."
-
+    license_note: OpenCorpora annotated corpus; verify terms before production use.
   taiga_news_wiki:
     enabled: false
     type: taiga
@@ -77,21 +59,21 @@ clean_sources:
     max_download_mb: 1500
     max_sentences: 50000
     allowed_subcorpora:
-      - news
-      - wiki
-      - wiki_2017
-      - wiki_2018
-      - wiki_2019
-      - wiki_2020
-      - GramEval_news
-      - GramEval_wiki
+    - news
+    - wiki
+    - wiki_2017
+    - wiki_2018
+    - wiki_2019
+    - wiki_2020
+    - GramEval_news
+    - GramEval_wiki
     forbidden_subcorpora:
-      - proza
-      - fiction
-      - stihi
-      - poetry
-      - social
-      - subtitles
-      - lj
-      - livejournal
-    license_note: "Optional/local-preferred. Do not use fiction/social/poetry/subtitles."
+    - proza
+    - fiction
+    - stihi
+    - poetry
+    - social
+    - subtitles
+    - lj
+    - livejournal
+    license_note: Optional/local-preferred. Do not use fiction/social/poetry/subtitles.

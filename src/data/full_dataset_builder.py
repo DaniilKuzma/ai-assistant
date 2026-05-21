@@ -37,7 +37,7 @@ from src.rules.synthetic import (
 from src.validation.diff_analyzer import DiffAnalyzer, Edit
 from src.validation.edit_classifier import coarse_error_type, is_allowed_edit_type, is_context_dependent_pair
 
-SPLIT_STRATEGY = "normalized_target_v2"
+SPLIT_STRATEGY = "normalized_target_core"
 DATASET_COLUMNS = [
     "source",
     "target",
@@ -696,29 +696,33 @@ def write_dataset(
 
 def build_dataset_from_config(config: dict[str, Any], force: bool = False) -> dict[str, Any]:
     data_config = config.get("data", {})
-    if bool((data_config.get("short_dataset_v3") or {}).get("enabled", False)):
-        from src.data.short_dataset_v3 import build_short_dataset_v3_from_config
+    if bool((data_config.get("training_dataset_core") or {}).get("enabled", False)) and "training_dataset_core" in str(data_config.get("processed_train_path", "")):
+        from src.data._training_dataset_builder import build_training_dataset_core_from_config
 
-        return build_short_dataset_v3_from_config(config, force=force)
-    if bool((data_config.get("short_dataset_v2") or {}).get("enabled", False)):
-        from src.data.short_dataset_v2 import build_short_dataset_v2_from_config
+        return build_training_dataset_core_from_config(config, force=force)
+    if bool((data_config.get("training_dataset") or {}).get("enabled", False)) and _uses_canonical_training_dataset_paths(data_config):
+        from src.data.training_dataset import build_training_dataset_from_config
 
-        return build_short_dataset_v2_from_config(config, force=force)
+        return build_training_dataset_from_config(config, force=force)
+    if bool((data_config.get("training_dataset_core") or {}).get("enabled", False)):
+        from src.data._training_dataset_builder import build_training_dataset_core_from_config
+
+        return build_training_dataset_core_from_config(config, force=force)
     output_path = Path(data_config.get("processed_train_path") or "data/processed/correction_dataset.csv.gz")
     manifest_path = Path(data_config.get("manifest_path") or "reports/dataset_manifest.json")
     configured_target_total = int(data_config.get("target_total_examples", 450_000))
-    short_config = data_config.get("short_dataset", {}) or {}
+    short_config = data_config.get("training_dataset", {}) or {}
     exact_split_sizes = _exact_split_sizes_from_config(data_config)
     source_type_targets = _source_type_targets_from_config(short_config)
     split_source_type_targets = _split_source_type_targets_from_config(short_config)
     synthetic_error_type_targets = _synthetic_error_type_targets_from_config(short_config)
-    is_exact_short_dataset = bool(short_config.get("enabled", False) or exact_split_sizes or source_type_targets)
+    is_exact_training_dataset = bool(short_config.get("enabled", False) or exact_split_sizes or source_type_targets)
     if exact_split_sizes:
         configured_target_total = sum(exact_split_sizes.values())
     target_total = configured_target_total
     env_limit = _env_int("RUSSIAN_CORRECTOR_DATASET_LIMIT")
     if env_limit is not None:
-        if is_exact_short_dataset and env_limit != configured_target_total:
+        if is_exact_training_dataset and env_limit != configured_target_total:
             raise ValueError(
                 f"RUSSIAN_CORRECTOR_DATASET_LIMIT={env_limit} conflicts with exact short dataset total {configured_target_total}"
             )
@@ -768,7 +772,7 @@ def build_dataset_from_config(config: dict[str, Any], force: bool = False) -> di
         source_type_targets=source_type_targets or None,
         split_source_type_targets=split_source_type_targets or None,
         synthetic_error_type_targets=synthetic_error_type_targets or None,
-        candidate_generator=CandidateGenerator.from_config(config) if is_exact_short_dataset else None,
+        candidate_generator=CandidateGenerator.from_config(config) if is_exact_training_dataset else None,
     )
     rows = build_dataset_rows(build_config)
     composition = dataset_composition(rows)
@@ -783,14 +787,14 @@ def build_dataset_from_config(config: dict[str, Any], force: bool = False) -> di
     }
     if external_cap_reason:
         build_metadata["external_cap_reason"] = external_cap_reason
-    if is_exact_short_dataset:
+    if is_exact_training_dataset:
         build_metadata.update(
-            _write_short_dataset_artifacts(
+            _write_training_dataset_artifacts(
                 rows,
                 config=config,
                 output_path=output_path,
                 reports_dir=Path(config.get("paths", {}).get("reports_dir") or manifest_path.parent),
-                config_path=str(data_config.get("config_path", "configs/config.short_dataset.yaml")),
+                config_path=str(data_config.get("config_path", "configs/config.yaml")),
             )
         )
     report_path = _dataset_report_path(config, manifest_path)
@@ -810,6 +814,13 @@ def build_dataset_from_config(config: dict[str, Any], force: bool = False) -> di
             "source_counts": clean_corpus.source_counts,
         },
     }
+
+
+def _uses_canonical_training_dataset_paths(data_config: dict[str, Any]) -> bool:
+    return (
+        str(data_config.get("processed_train_path") or "") == "data/processed/correction_dataset.csv.gz"
+        and str(data_config.get("manifest_path") or "") == "data/processed/dataset_manifest.json"
+    )
 
 
 def _exact_split_sizes_from_config(data_config: dict[str, Any]) -> dict[str, int]:
@@ -849,7 +860,7 @@ def _synthetic_error_type_targets_from_config(short_config: dict[str, Any]) -> d
     return {str(error_type): int(count) for error_type, count in raw.items()}
 
 
-def _write_short_dataset_artifacts(
+def _write_training_dataset_artifacts(
     rows: list[dict[str, Any]],
     *,
     config: dict[str, Any],
@@ -866,18 +877,18 @@ def _write_short_dataset_artifacts(
     recall_reports["gap_label_coverage_by_rule"].to_csv(reports_dir / "gap_label_coverage_by_rule.csv", index=False)
 
     _write_short_balance_reports(normalized_rows, reports_dir)
-    metadata = _short_dataset_metadata(
+    metadata = _training_dataset_metadata(
         normalized_rows,
         config=config,
         recall_reports=recall_reports,
         reports_dir=reports_dir,
         config_path=config_path,
     )
-    audit_errors = _short_dataset_audit_errors(normalized_rows, config=config, metadata=metadata)
+    audit_errors = _training_dataset_audit_errors(normalized_rows, config=config, metadata=metadata)
     metadata["audit_errors"] = audit_errors
     metadata["final_verdict"] = "BLOCKED" if audit_errors else "READY_FOR_SHORT_TRAINING_DATASET"
     _write_short_generation_report(normalized_rows, reports_dir / "dataset_generation_report.md", metadata)
-    _enforce_short_dataset_audit(normalized_rows, config=config, metadata=metadata)
+    _enforce_training_dataset_audit(normalized_rows, config=config, metadata=metadata)
     return metadata
 
 
@@ -1058,7 +1069,7 @@ def _row_rule_ids_for_balance(row: dict[str, Any]) -> list[str]:
     return deduped or ["unknown"]
 
 
-def _short_dataset_metadata(
+def _training_dataset_metadata(
     rows: list[dict[str, Any]],
     *,
     config: dict[str, Any],
@@ -1270,15 +1281,15 @@ def _max_count_item(counts: dict[str, int]) -> tuple[str, int]:
     return max(counts.items(), key=lambda item: (item[1], item[0]))
 
 
-def _enforce_short_dataset_audit(rows: list[dict[str, Any]], *, config: dict[str, Any], metadata: dict[str, Any]) -> None:
+def _enforce_training_dataset_audit(rows: list[dict[str, Any]], *, config: dict[str, Any], metadata: dict[str, Any]) -> None:
     errors = metadata.get("audit_errors")
     if errors is None:
-        errors = _short_dataset_audit_errors(rows, config=config, metadata=metadata)
+        errors = _training_dataset_audit_errors(rows, config=config, metadata=metadata)
     if errors:
         raise ValueError("short dataset audit failed: " + "; ".join(str(error) for error in errors))
 
 
-def _short_dataset_audit_errors(
+def _training_dataset_audit_errors(
     rows: list[dict[str, Any]],
     *,
     config: dict[str, Any],
@@ -1286,7 +1297,7 @@ def _short_dataset_audit_errors(
 ) -> list[str]:
     errors: list[str] = []
     data_config = config.get("data", {})
-    short_config = data_config.get("short_dataset", {}) or {}
+    short_config = data_config.get("training_dataset", {}) or {}
     total = len(rows)
 
     expected_splits = _exact_split_sizes_from_config(data_config)

@@ -1,4 +1,0 @@
-split,total,synthetic,real,clean,hard_negative,spelling,punctuation,final_punctuation,split_join,hyphen,clean_identity,unknown
-train,50000,43750,1250,2500,2500,17496,12917,2084,7501,5002,2500,0
-val,5000,4375,125,250,250,1752,1292,208,749,499,250,0
-test,5000,4375,125,250,250,1752,1291,208,750,499,250,0

@@ -17,8 +17,8 @@ class FakeTrainedCorrector:
 
 
 def test_streamlit_corrector_prefers_trained_model_when_artifacts_exist(tmp_path: Path, monkeypatch):
-    adapter_dir = tmp_path / "models" / "adapters" / "latest"
-    heads_dir = tmp_path / "models" / "heads" / "latest"
+    adapter_dir = tmp_path / "models" / "adapters" / "current"
+    heads_dir = tmp_path / "models" / "heads" / "current"
     adapter_dir.mkdir(parents=True)
     heads_dir.mkdir(parents=True)
     (heads_dir / "heads.pt").write_bytes(b"unit")

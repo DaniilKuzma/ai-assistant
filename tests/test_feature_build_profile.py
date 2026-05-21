@@ -112,7 +112,7 @@ def test_training_report_includes_feature_cache_and_dataset_manifest_metadata(tm
         ]
     ).to_csv(processed_path, index=False)
     manifest_path.write_text(
-        '{"verdict":"READY_FOR_SHORT_TRAINING_DATASET_V2","total":1,"split_sizes":{"train":1}}',
+        '{"verdict":"READY_FOR_TRAINING_DATASET","total":1,"split_sizes":{"train":1}}',
         encoding="utf-8",
     )
     config = {
@@ -148,6 +148,6 @@ def test_training_report_includes_feature_cache_and_dataset_manifest_metadata(tm
     assert "- feature_cache_hit: False" in report
     assert f"- dataset_path: {processed_path}" in report
     assert f"- manifest_path: {manifest_path}" in report
-    assert "- manifest_verdict: READY_FOR_SHORT_TRAINING_DATASET_V2" in report
+    assert "- manifest_verdict: READY_FOR_TRAINING_DATASET" in report
     assert "- dataset_rows: 1" in report
     assert "- split_counts: {'train': 1}" in report

@@ -18,7 +18,7 @@
 
 - `TrainedModelCorrector.from_config(config)` — загрузить tokenizer, encoder, LoRA adapters и heads.
 - `correct(text)` — score candidates, apply thresholds, validate, return `CorrectionResult`.
-- Требует `models/adapters/latest` и `models/heads/latest/heads.pt`.
+- Требует `models/current/adapters` и `models/current/heads/heads.pt`.
 
 ### Candidate Generator
 

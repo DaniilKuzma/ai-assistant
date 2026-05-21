@@ -104,7 +104,7 @@ def test_build_dataset_from_config_scales_external_rows_and_writes_reports(tmp_p
     assert set(frame["split"]) == {"train", "val", "test"}
 
 
-def test_short_dataset_config_writes_exact_splits_metadata_and_reports(tmp_path: Path, monkeypatch):
+def test_training_dataset_config_writes_exact_splits_metadata_and_reports(tmp_path: Path, monkeypatch):
     external_rows = [_minimal_external_row(index) for index in range(40)]
 
     def fake_external_rows(_data_config):
@@ -114,20 +114,20 @@ def test_short_dataset_config_writes_exact_splits_metadata_and_reports(tmp_path:
     config = _short_build_config(tmp_path)
 
     result = full_dataset_builder.build_dataset_from_config(config, force=True)
-    frame = pd.read_csv(tmp_path / "data" / "short_dataset" / "correction_dataset.csv.gz")
-    manifest = json.loads((tmp_path / "reports" / "short_dataset" / "dataset_manifest.json").read_text(encoding="utf-8"))
+    frame = pd.read_csv(tmp_path / "data" / "training_dataset" / "correction_dataset.csv.gz")
+    manifest = json.loads((tmp_path / "reports" / "training_dataset" / "dataset_manifest.json").read_text(encoding="utf-8"))
 
     assert result["total"] == 120
     assert result["splits"] == {"train": 100, "val": 10, "test": 10}
     assert frame["split"].value_counts().to_dict() == {"train": 100, "val": 10, "test": 10}
-    assert (tmp_path / "data" / "short_dataset" / "train.csv").exists()
-    assert (tmp_path / "data" / "short_dataset" / "val.csv").exists()
-    assert (tmp_path / "data" / "short_dataset" / "test.csv").exists()
-    assert (tmp_path / "reports" / "short_dataset" / "dataset_balance_by_rule.csv").exists()
-    assert (tmp_path / "reports" / "short_dataset" / "dataset_balance_by_error_type.csv").exists()
-    assert (tmp_path / "reports" / "short_dataset" / "dataset_balance_by_split.csv").exists()
-    assert (tmp_path / "reports" / "short_dataset" / "candidate_recall_by_rule.csv").exists()
-    assert (tmp_path / "reports" / "short_dataset" / "gap_label_coverage_by_rule.csv").exists()
+    assert (tmp_path / "data" / "training_dataset" / "train.csv").exists()
+    assert (tmp_path / "data" / "training_dataset" / "val.csv").exists()
+    assert (tmp_path / "data" / "training_dataset" / "test.csv").exists()
+    assert (tmp_path / "reports" / "training_dataset" / "dataset_balance_by_rule.csv").exists()
+    assert (tmp_path / "reports" / "training_dataset" / "dataset_balance_by_error_type.csv").exists()
+    assert (tmp_path / "reports" / "training_dataset" / "dataset_balance_by_split.csv").exists()
+    assert (tmp_path / "reports" / "training_dataset" / "candidate_recall_by_rule.csv").exists()
+    assert (tmp_path / "reports" / "training_dataset" / "gap_label_coverage_by_rule.csv").exists()
 
     new_columns = {"source_type", "error_type", "rule_id", "rule_ids", "edits", "metadata", "is_hard_negative"}
     assert new_columns <= set(frame.columns)
@@ -143,7 +143,7 @@ def test_short_dataset_config_writes_exact_splits_metadata_and_reports(tmp_path:
     assert set(manifest["excluded_rule_ids"]) >= SHORT_EXCLUDED_SYNTHETIC_RULE_IDS
 
 
-def test_short_dataset_rejects_conflicting_env_limit(tmp_path: Path, monkeypatch):
+def test_training_dataset_rejects_conflicting_env_limit(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("RUSSIAN_CORRECTOR_DATASET_LIMIT", "119")
 
     with pytest.raises(ValueError, match="exact short dataset"):
@@ -853,8 +853,8 @@ def _short_build_config(base_path: Path) -> dict[str, object]:
         },
         "model": {"max_candidates": 16},
         "data": {
-            "processed_train_path": str(base_path / "data" / "short_dataset" / "correction_dataset.csv.gz"),
-            "manifest_path": str(base_path / "reports" / "short_dataset" / "dataset_manifest.json"),
+            "processed_train_path": str(base_path / "data" / "training_dataset" / "correction_dataset.csv.gz"),
+            "manifest_path": str(base_path / "reports" / "training_dataset" / "dataset_manifest.json"),
             "target_total_examples": 120,
             "train_examples": 100,
             "val_examples": 10,
@@ -865,7 +865,7 @@ def _short_build_config(base_path: Path) -> dict[str, object]:
             "max_external_examples": 8,
             "clean_corpus": {"enabled": False},
             "debug_clean_texts": _clean_texts(160),
-            "short_dataset": {
+            "training_dataset": {
                 "enabled": True,
                 "source_type_targets": {
                     "synthetic": 96,
@@ -891,5 +891,5 @@ def _short_build_config(base_path: Path) -> dict[str, object]:
             },
         },
         "thresholds": {"mode": "conservative"},
-        "paths": {"reports_dir": str(base_path / "reports" / "short_dataset")},
+        "paths": {"reports_dir": str(base_path / "reports" / "training_dataset")},
     }

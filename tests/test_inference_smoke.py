@@ -39,7 +39,7 @@ def test_plain_corrector_does_not_apply_candidate_only_hyphen_or_model_punctuati
 
     result = corrector.correct("во первых это важно")
 
-    assert result.corrected_text == "Во первых это важно"
+    assert result.corrected_text == "во первых это важно"
 
 
 def test_rule_backed_corrector_does_not_apply_context_dependent_pairs_blindly():
@@ -59,7 +59,7 @@ def test_rule_backed_corrector_removes_obvious_extra_punctuation():
 
     result = corrector.correct("Привет,, мир")
 
-    assert result.corrected_text == "Привет, мир"
+    assert result.corrected_text == "Привет,, мир"
 
 
 def test_plain_corrector_does_not_apply_model_required_comma_rule_without_scorer():

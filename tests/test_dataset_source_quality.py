@@ -7,7 +7,7 @@ from src.config.load_config import load_config
 from src.data.full_dataset_builder import build_dataset_from_config
 
 
-def test_short_dataset_v2_builds_from_open_clean_sources_without_meta_templates(tmp_path: Path):
+def test_training_dataset_core_builds_from_open_clean_sources_without_meta_templates(tmp_path: Path):
     clean_path = tmp_path / "clean.txt"
     clean_path.write_text("\n".join(_clean_sentences(120)) + "\n", encoding="utf-8")
     real_path = tmp_path / "real.jsonl"
@@ -16,21 +16,21 @@ def test_short_dataset_v2_builds_from_open_clean_sources_without_meta_templates(
         encoding="utf-8",
     )
 
-    config = load_config("configs/config.short_dataset_v2.yaml")
-    config["data"]["processed_train_path"] = str(tmp_path / "data" / "short_dataset_v2" / "correction_dataset.csv.gz")
-    config["data"]["manifest_path"] = str(tmp_path / "reports" / "short_dataset_v2" / "dataset_manifest.json")
-    config["paths"]["reports_dir"] = str(tmp_path / "reports" / "short_dataset_v2")
+    config = load_config("configs/config.yaml")
+    config["data"]["processed_train_path"] = str(tmp_path / "data" / "training_dataset_core" / "correction_dataset.csv.gz")
+    config["data"]["manifest_path"] = str(tmp_path / "reports" / "training_dataset_core" / "dataset_manifest.json")
+    config["paths"]["reports_dir"] = str(tmp_path / "reports" / "training_dataset_core")
     config["data"]["target_total_examples"] = 80
     config["data"]["train_examples"] = 60
     config["data"]["val_examples"] = 10
     config["data"]["test_examples"] = 10
-    config["data"]["short_dataset_v2"]["source_type_targets"] = {
+    config["data"]["training_dataset_core"]["source_type_targets"] = {
         "synthetic_augmented_from_open_clean": 48,
         "real_error_pair": 1,
         "clean_identity_from_open_clean": 15,
         "hard_negative_from_open_clean": 16,
     }
-    config["data"]["short_dataset_v2"]["split_source_type_targets"] = {
+    config["data"]["training_dataset_core"]["split_source_type_targets"] = {
         "train": {
             "synthetic_augmented_from_open_clean": 36,
             "real_error_pair": 1,
@@ -50,13 +50,13 @@ def test_short_dataset_v2_builds_from_open_clean_sources_without_meta_templates(
             "hard_negative_from_open_clean": 2,
         },
     }
-    config["data"]["short_dataset_v2"]["min_clean_pool_for_ready"] = 40
-    config["data"]["short_dataset_v2"]["pool"]["min_clean_sentences"] = 40
-    config["data"]["short_dataset_v2"]["pool"]["max_source_share"] = 1.0
-    config["data"]["short_dataset_v2"]["pool"]["max_subcorpus_share"] = 1.0
-    config["data"]["short_dataset_v2"]["audit"]["min_active_rule_count"] = 0
-    config["data"]["short_dataset_v2"]["audit"]["require_all_source_types"] = False
-    config["data"]["short_dataset_v2"]["open_corpora_sources"] = {
+    config["data"]["training_dataset_core"]["min_clean_pool_for_ready"] = 40
+    config["data"]["training_dataset_core"]["pool"]["min_clean_sentences"] = 40
+    config["data"]["training_dataset_core"]["pool"]["max_source_share"] = 1.0
+    config["data"]["training_dataset_core"]["pool"]["max_subcorpus_share"] = 1.0
+    config["data"]["training_dataset_core"]["audit"]["min_active_rule_count"] = 0
+    config["data"]["training_dataset_core"]["audit"]["require_all_source_types"] = False
+    config["data"]["training_dataset_core"]["open_corpora_sources"] = {
         "clean_sources": {
             "unit_news": {
                 "enabled": True,
@@ -71,7 +71,7 @@ def test_short_dataset_v2_builds_from_open_clean_sources_without_meta_templates(
         },
         "download_policy": {"mode": "local_first"},
     }
-    config["data"]["short_dataset_v2"]["real_error_sources"] = {
+    config["data"]["training_dataset_core"]["real_error_sources"] = {
         "real_sources": {
             "unit_pairs": {
                 "enabled": True,
@@ -84,8 +84,8 @@ def test_short_dataset_v2_builds_from_open_clean_sources_without_meta_templates(
     }
 
     result = build_dataset_from_config(config, force=True)
-    frame = pd.read_csv(tmp_path / "data" / "short_dataset_v2" / "correction_dataset.csv.gz")
-    manifest = json.loads((tmp_path / "reports" / "short_dataset_v2" / "dataset_manifest.json").read_text(encoding="utf-8"))
+    frame = pd.read_csv(tmp_path / "data" / "training_dataset_core" / "correction_dataset.csv.gz")
+    manifest = json.loads((tmp_path / "reports" / "training_dataset_core" / "dataset_manifest.json").read_text(encoding="utf-8"))
 
     assert result["total"] == 80
     assert frame["split"].value_counts().to_dict() == {"train": 60, "val": 10, "test": 10}
@@ -97,7 +97,7 @@ def test_short_dataset_v2_builds_from_open_clean_sources_without_meta_templates(
     }
     assert not frame["source"].str.contains("правило|серии|семейство|context-pairs", case=False, regex=True).any()
     assert not frame["target"].str.contains("правило|серии|семейство|context-pairs", case=False, regex=True).any()
-    assert manifest["verdict"] == "READY_FOR_SHORT_TRAINING_DATASET_V2"
+    assert manifest["verdict"] == "READY_FOR_TRAINING_DATASET"
     assert manifest["composition"]["synthetic_augmented_from_open_clean"] == 48
     assert manifest["composition"]["real_error_pair"] == 1
     assert manifest["clean_source_counts"]["unit_news"] >= 40

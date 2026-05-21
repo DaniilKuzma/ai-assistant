@@ -1,9 +1,8 @@
 project:
   name: russian-edit-corrector
   strict_scope:
-    - spelling
-    - punctuation
-
+  - spelling
+  - punctuation
 model:
   primary_encoder: ai-forever/ruRoberta-large
   fallback_encoder: ai-forever/ruRoberta-large
@@ -15,7 +14,6 @@ model:
     r: 8
     alpha: 16
     dropout: 0.05
-
 dictionary:
   enabled: true
   lexicon_path: data/processed/russian_lexicon.txt
@@ -31,9 +29,8 @@ dictionary:
     mode: model_required
     require_lexicon_support: true
     require_model_scoring: true
-
 training:
-  mode: short-v3-train
+  mode: train
   run_model_training: true
   evaluation_split: val
   checkpoint_metric: combined_score
@@ -43,7 +40,7 @@ training:
   batch_size: 128
   gradient_accumulation_steps: 1
   epochs: 1
-  learning_rate: 0.00005
+  learning_rate: 5.0e-05
   mixed_precision: true
   show_progress: true
   progress_log_every_steps: 1000
@@ -52,8 +49,26 @@ training:
   punctuation_action_loss_weight: 0.8
   punctuation_focal_gamma: 1.5
   punctuation_action_focal_gamma: 1.0
-  punctuation_label_weights: [0.25, 2.0, 1.2, 3.0, 3.0, 4.0, 4.0, 5.0, 4.0, 4.0, 4.0, 4.0, 4.0]
-  punctuation_action_weights: [0.25, 0.5, 2.0, 3.0, 3.0]
+  punctuation_label_weights:
+  - 0.25
+  - 2.0
+  - 1.2
+  - 3.0
+  - 3.0
+  - 4.0
+  - 4.0
+  - 5.0
+  - 4.0
+  - 4.0
+  - 4.0
+  - 4.0
+  - 4.0
+  punctuation_action_weights:
+  - 0.25
+  - 0.5
+  - 2.0
+  - 3.0
+  - 3.0
   confidence_loss_weight: 0.3
   error_type_loss_weight: 0.5
   feature_build:
@@ -64,11 +79,10 @@ training:
     dictionary_for_hard_negative_rows: false
   feature_cache:
     enabled: true
-    cache_dir: data/processed/short_dataset_v3/features_cache
+    cache_dir: data/processed/features_cache
     include_dataset_hash: true
     include_config_hash: true
     compression: false
-
 evaluation:
   batch_size: 256
   fast_during_training: true
@@ -79,67 +93,66 @@ evaluation:
   write_accepted_rejected_during_training: false
   write_score_distribution_during_training: false
   write_rule_worse_examples_during_training: false
-
 data:
   synthetic_seed: 13
-  processed_train_path: data/processed/short_dataset_v3/correction_dataset.csv.gz
-  manifest_path: reports/short_dataset_v3/dataset_manifest.json
+  processed_train_path: data/processed/correction_dataset.csv.gz
+  manifest_path: data/processed/dataset_manifest.json
   target_total_examples: 100000
   total_examples: 100000
   train_examples: 80000
   val_examples: 10000
   test_examples: 10000
-  clean_identity_ratio: 0.10
+  clean_identity_ratio: 0.1
   punctuation_hard_negative_clean_ratio: 0.25
   val_ratio: 0.05
   test_ratio: 0.05
-  domain: synthetic_general
+  domain: training_dataset
   use_external_sources: true
   external_local_files_only: true
   max_external_examples: 10000
   external_sources:
-    - name: rus_spell_gold
-      type: hf_jsonl
-      repo: RussianNLP/RuSpellGold
-      files:
-        - data/complete_test/test.json
-      max_examples: 2000
-    - name: ai_forever_spellcheck_punctuation
-      type: hf_jsonl
-      repo: ai-forever/spellcheck_punctuation_benchmark
-      files:
-        - data/RUSpellRU/train.json
-        - data/RUSpellRU/test.json
-        - data/MultidomainGold/train.json
-        - data/MultidomainGold/test.json
-      max_examples: 6000
-    - name: lorugec_val
-      type: m2
-      path: data/raw/external/LORuGEC.val.m2
-      url: https://raw.githubusercontent.com/ReginaNasyrova/LORuGEC/main/LORuGEC.val.m2
-      max_examples: 1000
-    - name: lorugec_test
-      type: m2
-      path: data/raw/external/LORuGEC.test.m2
-      url: https://raw.githubusercontent.com/ReginaNasyrova/LORuGEC/main/LORuGEC.test.m2
-      max_examples: 1000
-    - name: github_typo_corpus_ru
-      type: github_typo_jsonl_gz
-      path: data/raw/external/github-typo-corpus.v1.0.0.jsonl.gz
-      url: https://github-typo-corpus.s3.amazonaws.com/data/github-typo-corpus.v1.0.0.jsonl.gz
-      max_examples: 500
-    - name: mendeley_russian_spelling_test
-      type: csv
-      path: data/raw/external/test_pairs.csv
-      url: https://data.mendeley.com/public-files/datasets/mpwdrr6y3v/files/1ca956a8-3bf7-46e6-8478-04f29856f4e8/file_downloaded
-      trusted_word_pairs: true
-      max_examples: 5000
-    - name: mendeley_russian_spelling_train
-      type: csv
-      path: data/raw/external/train_pairs.csv
-      url: https://data.mendeley.com/public-files/datasets/mpwdrr6y3v/files/d7763910-8ea7-459b-8ec1-946c39e03ef9/file_downloaded
-      trusted_word_pairs: true
-      max_examples: 5000
+  - name: rus_spell_gold
+    type: hf_jsonl
+    repo: RussianNLP/RuSpellGold
+    files:
+    - data/complete_test/test.json
+    max_examples: 2000
+  - name: ai_forever_spellcheck_punctuation
+    type: hf_jsonl
+    repo: ai-forever/spellcheck_punctuation_benchmark
+    files:
+    - data/RUSpellRU/train.json
+    - data/RUSpellRU/test.json
+    - data/MultidomainGold/train.json
+    - data/MultidomainGold/test.json
+    max_examples: 6000
+  - name: lorugec_val
+    type: m2
+    path: data/raw/external/LORuGEC.val.m2
+    url: https://raw.githubusercontent.com/ReginaNasyrova/LORuGEC/main/LORuGEC.val.m2
+    max_examples: 1000
+  - name: lorugec_test
+    type: m2
+    path: data/raw/external/LORuGEC.test.m2
+    url: https://raw.githubusercontent.com/ReginaNasyrova/LORuGEC/main/LORuGEC.test.m2
+    max_examples: 1000
+  - name: github_typo_corpus_ru
+    type: github_typo_jsonl_gz
+    path: data/raw/external/github-typo-corpus.v1.0.0.jsonl.gz
+    url: https://github-typo-corpus.s3.amazonaws.com/data/github-typo-corpus.v1.0.0.jsonl.gz
+    max_examples: 500
+  - name: mendeley_russian_spelling_test
+    type: csv
+    path: data/raw/external/test_pairs.csv
+    url: https://data.mendeley.com/public-files/datasets/mpwdrr6y3v/files/1ca956a8-3bf7-46e6-8478-04f29856f4e8/file_downloaded
+    trusted_word_pairs: true
+    max_examples: 5000
+  - name: mendeley_russian_spelling_train
+    type: csv
+    path: data/raw/external/train_pairs.csv
+    url: https://data.mendeley.com/public-files/datasets/mpwdrr6y3v/files/d7763910-8ea7-459b-8ec1-946c39e03ef9/file_downloaded
+    trusted_word_pairs: true
+    max_examples: 5000
   clean_corpus:
     enabled: true
     cache_path: data/raw/clean_corpus_sentences.txt.gz
@@ -147,73 +160,246 @@ data:
     min_cached_sentences: 10000
     max_source_sentences: 1200000
     sources:
-      - name: leipzig_news
-        type: leipzig
-        corpus_ids:
-          - rus_news_2022_1M
-          - rus_news_2021_1M
-          - rus_news_2020_1M
-        max_sentences: 180000
-      - name: leipzig_wikipedia
-        type: leipzig
-        corpus_ids:
-          - rus_wikipedia_2021_1M
-          - rus_wikipedia_2016_1M
-        max_sentences: 90000
-      - name: taiga_rest
-        type: hf_dataset
-        repo: cointegrated/taiga_stripped_rest
-        splits:
-          - Interfax
-          - Lenta
-          - NPlus1
-          - Fontanka
-          - Arzamas
-          - KP
-        text_fields:
-          - text
-        max_sentences: 90000
-      - name: taiga_proza_filtered
-        type: hf_dataset
-        repo: cointegrated/taiga_stripped_proza
-        splits:
-          - train
-        text_fields:
-          - text
-        max_sentences: 15000
-        strict_formal_filter: true
-      - name: ud_russian_taiga
-        type: ud_conllu
-        urls:
-          - https://raw.githubusercontent.com/UniversalDependencies/UD_Russian-Taiga/master/ru_taiga-ud-train.conllu
-          - https://raw.githubusercontent.com/UniversalDependencies/UD_Russian-Taiga/master/ru_taiga-ud-dev.conllu
-          - https://raw.githubusercontent.com/UniversalDependencies/UD_Russian-Taiga/master/ru_taiga-ud-test.conllu
-        max_sentences: 25000
-      - name: opencorpora
-        type: opencorpora_xml_zip
-        url: https://opencorpora.org/files/export/annot/annot.opcorpora.xml.zip
-        max_sentences: 40000
-      - name: tatoeba_russian
-        type: tatoeba_tsv
-        url: https://downloads.tatoeba.org/exports/sentences.tar.bz2
-        max_sentences: 30000
-      - name: russian_wikipedia_dump
-        type: mediawiki_xml_bz2
-        url: https://dumps.wikimedia.org/ruwiki/latest/ruwiki-latest-pages-articles-multistream.xml.bz2
-        max_sentences: 50000
-        enabled: false
+    - name: leipzig_news
+      type: leipzig
+      corpus_ids:
+      - rus_news_2022_1M
+      - rus_news_2021_1M
+      - rus_news_2020_1M
+      max_sentences: 180000
+    - name: leipzig_wikipedia
+      type: leipzig
+      corpus_ids:
+      - rus_wikipedia_2021_1M
+      - rus_wikipedia_2016_1M
+      max_sentences: 90000
+    - name: taiga_rest
+      type: hf_dataset
+      repo: cointegrated/taiga_stripped_rest
+      splits:
+      - Interfax
+      - Lenta
+      - NPlus1
+      - Fontanka
+      - Arzamas
+      - KP
+      text_fields:
+      - text
+      max_sentences: 90000
+    - name: taiga_proza_filtered
+      type: hf_dataset
+      repo: cointegrated/taiga_stripped_proza
+      splits:
+      - train
+      text_fields:
+      - text
+      max_sentences: 15000
+      strict_formal_filter: true
+    - name: ud_russian_taiga
+      type: ud_conllu
+      urls:
+      - https://raw.githubusercontent.com/UniversalDependencies/UD_Russian-Taiga/master/ru_taiga-ud-train.conllu
+      - https://raw.githubusercontent.com/UniversalDependencies/UD_Russian-Taiga/master/ru_taiga-ud-dev.conllu
+      - https://raw.githubusercontent.com/UniversalDependencies/UD_Russian-Taiga/master/ru_taiga-ud-test.conllu
+      max_sentences: 25000
+    - name: opencorpora
+      type: opencorpora_xml_zip
+      url: https://opencorpora.org/files/export/annot/annot.opcorpora.xml.zip
+      max_sentences: 40000
+    - name: tatoeba_russian
+      type: tatoeba_tsv
+      url: https://downloads.tatoeba.org/exports/sentences.tar.bz2
+      max_sentences: 30000
   debug_clean_texts:
-    - Я не знаю, что делать.
-    - Во-первых, это важно.
-    - Чистый текст.
-
+  - Я не знаю, что делать.
+  - Во-первых, это важно.
+  - Чистый текст.
+  config_path: configs/config.yaml
+  exact_split_sizes:
+    train: 80000
+    val: 10000
+    test: 10000
+  training_dataset:
+    enabled: true
+    requested_total: 100000
+    expected_total: 100000
+    smoke:
+      enabled: false
+      requested_total: 60000
+      split_sizes:
+        train: 50000
+        val: 5000
+        test: 5000
+      verdict: READY_FOR_SMOKE_ONLY
+    min_clean_pool_for_ready: 150000
+    min_clean_pool_hard_min: 60000
+    open_corpora_sources_path: configs/open_corpora_sources.yaml
+    real_error_sources_path: configs/real_error_sources.yaml
+    source_type_targets:
+      synthetic_augmented_from_open_clean: 72000
+      real_error_pair: 4000
+      clean_identity_from_open_clean: 12000
+      hard_negative_from_open_clean: 12000
+    split_source_type_targets:
+      train:
+        synthetic_augmented_from_open_clean: 57600
+        real_error_pair: 3200
+        clean_identity_from_open_clean: 9600
+        hard_negative_from_open_clean: 9600
+      val:
+        synthetic_augmented_from_open_clean: 7200
+        real_error_pair: 400
+        clean_identity_from_open_clean: 1200
+        hard_negative_from_open_clean: 1200
+      test:
+        synthetic_augmented_from_open_clean: 7200
+        real_error_pair: 400
+        clean_identity_from_open_clean: 1200
+        hard_negative_from_open_clean: 1200
+    active_rule_quota:
+      enabled: true
+      strategy: tiered_canonical
+      min_total_per_active_rule: 200
+      preferred_total_per_active_rule: 1000
+      split_minimums: {}
+      tiers:
+        stable_core:
+          min_total_per_rule: 300
+          preferred_total_per_rule: 700
+          max_total_per_rule: 2500
+        activation:
+          min_total_per_rule: 500
+          preferred_total_per_rule: 1000
+          max_total_per_rule: 2500
+        bounded_activation:
+          min_total_per_rule: 200
+          preferred_total_per_rule: 500
+          max_total_per_rule: 1500
+      risky_lexical:
+        rule_ids:
+        - dictionary_fuzzy
+        - swapped_letters_candidate
+        - double_consonant_candidate
+        - missing_letter_candidate
+        - extra_letter_candidate
+        - keyboard_typo_candidate
+        min_total_per_rule: 200
+        preferred_total_per_rule: 500
+        max_total_per_rule: 1200
+    rule_caps:
+      max_total_per_rule_id: 2500
+      max_train_per_rule_id: 2000
+      max_rule_share_train: 0.1
+      max_error_type_share_train: 0.35
+    pool:
+      min_clean_sentences: 150000
+      max_source_share: 0.6
+      max_subcorpus_share: 0.7
+    audit:
+      candidate_recall_min: 0.85
+      gap_coverage_min: 0.85
+      synthetic_min: 70000
+      min_active_rule_count: 1
+      min_clean_identity_eval_split: 500
+      min_hard_negative_eval_split: 500
+      min_rows_for_template_gates: 1000
+      min_rows_for_candidate_gates: 1000
+      min_rows_for_eval_source_split_gates: 1000
+      require_all_source_types: true
+  training_dataset_core:
+    enabled: true
+    requested_total: 100000
+    expected_total: 100000
+    smoke:
+      enabled: false
+      requested_total: 60000
+      split_sizes:
+        train: 50000
+        val: 5000
+        test: 5000
+      verdict: READY_FOR_SMOKE_ONLY
+    min_clean_pool_for_ready: 150000
+    min_clean_pool_hard_min: 60000
+    open_corpora_sources_path: configs/open_corpora_sources.yaml
+    real_error_sources_path: configs/real_error_sources.yaml
+    source_type_targets:
+      synthetic_augmented_from_open_clean: 72000
+      real_error_pair: 4000
+      clean_identity_from_open_clean: 12000
+      hard_negative_from_open_clean: 12000
+    split_source_type_targets:
+      train:
+        synthetic_augmented_from_open_clean: 57600
+        real_error_pair: 3200
+        clean_identity_from_open_clean: 9600
+        hard_negative_from_open_clean: 9600
+      val:
+        synthetic_augmented_from_open_clean: 7200
+        real_error_pair: 400
+        clean_identity_from_open_clean: 1200
+        hard_negative_from_open_clean: 1200
+      test:
+        synthetic_augmented_from_open_clean: 7200
+        real_error_pair: 400
+        clean_identity_from_open_clean: 1200
+        hard_negative_from_open_clean: 1200
+    active_rule_quota:
+      enabled: true
+      strategy: tiered_canonical
+      min_total_per_active_rule: 200
+      preferred_total_per_active_rule: 1000
+      split_minimums: {}
+      tiers:
+        stable_core:
+          min_total_per_rule: 300
+          preferred_total_per_rule: 700
+          max_total_per_rule: 2500
+        activation:
+          min_total_per_rule: 500
+          preferred_total_per_rule: 1000
+          max_total_per_rule: 2500
+        bounded_activation:
+          min_total_per_rule: 200
+          preferred_total_per_rule: 500
+          max_total_per_rule: 1500
+      risky_lexical:
+        rule_ids:
+        - dictionary_fuzzy
+        - swapped_letters_candidate
+        - double_consonant_candidate
+        - missing_letter_candidate
+        - extra_letter_candidate
+        - keyboard_typo_candidate
+        min_total_per_rule: 200
+        preferred_total_per_rule: 500
+        max_total_per_rule: 1200
+    rule_caps:
+      max_total_per_rule_id: 2500
+      max_train_per_rule_id: 2000
+      max_rule_share_train: 0.1
+      max_error_type_share_train: 0.35
+    pool:
+      min_clean_sentences: 150000
+      max_source_share: 0.6
+      max_subcorpus_share: 0.7
+    audit:
+      candidate_recall_min: 0.85
+      gap_coverage_min: 0.85
+      synthetic_min: 70000
+      min_active_rule_count: 1
+      min_clean_identity_eval_split: 500
+      min_hard_negative_eval_split: 500
+      min_rows_for_template_gates: 1000
+      min_rows_for_candidate_gates: 1000
+      min_rows_for_eval_source_split_gates: 1000
+      require_all_source_types: true
 thresholds:
-  mode: calibrated_val_guarded_v3
+  mode: calibrated_guarded
   conservative:
-    default_threshold: 0.90
+    default_threshold: 0.9
     spelling_threshold: 0.92
-    punctuation_threshold: 0.90
-    comma_threshold: 0.90
+    punctuation_threshold: 0.9
+    comma_threshold: 0.9
     final_punctuation_threshold: 0.88
     colon_threshold: 0.92
     dash_threshold: 0.94
@@ -233,7 +419,7 @@ thresholds:
     introductory_comma_threshold: 0.97
     dash_subject_predicate_threshold: 0.96
     hyphen_threshold: 0.95
-    case_threshold: 0.90
+    case_threshold: 0.9
     quote_open_threshold: 0.99999
     quote_close_threshold: 0.99999
     quote_pair_balance_threshold: 0.995
@@ -248,11 +434,57 @@ thresholds:
     direct_speech_quotes_threshold: 0.995
     comma_conjunction_threshold: 0.995
     punctuation_delete_replace_threshold: 0.9999
-  calibrated_val_guarded_v3:
-    default_threshold: 0.90
+  balanced:
+    default_threshold: 0.85
+    spelling_threshold: 0.78
+    punctuation_threshold: 0.86
+    comma_threshold: 0.86
+    final_punctuation_threshold: 0.84
+    colon_threshold: 0.88
+    dash_threshold: 0.9
+    semicolon_threshold: 0.92
+    quote_threshold: 0.9
+    bracket_threshold: 0.9
+    punctuation_delete_threshold: 0.95
+    split_join_threshold: 0.84
+    dictionary_threshold: 0.92
+    context_pair_threshold: 0.98
+    tsya_threshold: 0.97
+    ne_adjective_threshold: 0.96
+    ne_participle_threshold: 0.98
+    comma_subordinate_threshold: 0.88
+    introductory_word_threshold: 0.92
+    dash_subject_predicate_threshold: 0.93
+    hyphen_threshold: 0.84
+    case_threshold: 0.85
+  aggressive:
+    default_threshold: 0.8
+    spelling_threshold: 0.75
+    punctuation_threshold: 0.72
+    comma_threshold: 0.72
+    final_punctuation_threshold: 0.7
+    colon_threshold: 0.76
+    dash_threshold: 0.8
+    semicolon_threshold: 0.84
+    quote_threshold: 0.82
+    bracket_threshold: 0.82
+    punctuation_delete_threshold: 0.9
+    split_join_threshold: 0.8
+    dictionary_threshold: 0.88
+    context_pair_threshold: 0.97
+    tsya_threshold: 0.97
+    ne_adjective_threshold: 0.94
+    ne_participle_threshold: 0.96
+    comma_subordinate_threshold: 0.82
+    introductory_word_threshold: 0.86
+    dash_subject_predicate_threshold: 0.9
+    hyphen_threshold: 0.8
+    case_threshold: 0.78
+  calibrated_guarded:
+    default_threshold: 0.9
     spelling_threshold: 0.92
-    punctuation_threshold: 0.90
-    comma_threshold: 0.90
+    punctuation_threshold: 0.9
+    comma_threshold: 0.9
     final_punctuation_threshold: 0.95
     colon_threshold: 0.92
     dash_threshold: 0.94
@@ -272,7 +504,7 @@ thresholds:
     introductory_comma_threshold: 0.97
     dash_subject_predicate_threshold: 0.96
     hyphen_threshold: 0.95
-    case_threshold: 0.90
+    case_threshold: 0.9
     quote_open_threshold: 0.99999
     quote_close_threshold: 0.99999
     quote_pair_balance_threshold: 0.995
@@ -287,63 +519,15 @@ thresholds:
     direct_speech_quotes_threshold: 0.995
     comma_conjunction_threshold: 0.995
     punctuation_delete_replace_threshold: 0.9999
-    hyphen_particles_threshold: 0.50
+    hyphen_particles_threshold: 0.5
     hyphen_koe_koy_threshold: 0.45
     dictionary_fuzzy_threshold: 0.95
     cy_exception_threshold: 0.58
     swapped_letters_candidate_threshold: 0.84
     double_consonant_candidate_threshold: 0.84
     hyphen_po_adverbs_threshold: 0.88
-  balanced:
-    default_threshold: 0.85
-    spelling_threshold: 0.78
-    punctuation_threshold: 0.86
-    comma_threshold: 0.86
-    final_punctuation_threshold: 0.84
-    colon_threshold: 0.88
-    dash_threshold: 0.90
-    semicolon_threshold: 0.92
-    quote_threshold: 0.90
-    bracket_threshold: 0.90
-    punctuation_delete_threshold: 0.95
-    split_join_threshold: 0.84
-    dictionary_threshold: 0.92
-    context_pair_threshold: 0.98
-    tsya_threshold: 0.97
-    ne_adjective_threshold: 0.96
-    ne_participle_threshold: 0.98
-    comma_subordinate_threshold: 0.88
-    introductory_word_threshold: 0.92
-    dash_subject_predicate_threshold: 0.93
-    hyphen_threshold: 0.84
-    case_threshold: 0.85
-  aggressive:
-    default_threshold: 0.80
-    spelling_threshold: 0.75
-    punctuation_threshold: 0.72
-    comma_threshold: 0.72
-    final_punctuation_threshold: 0.70
-    colon_threshold: 0.76
-    dash_threshold: 0.80
-    semicolon_threshold: 0.84
-    quote_threshold: 0.82
-    bracket_threshold: 0.82
-    punctuation_delete_threshold: 0.90
-    split_join_threshold: 0.80
-    dictionary_threshold: 0.88
-    context_pair_threshold: 0.97
-    tsya_threshold: 0.97
-    ne_adjective_threshold: 0.94
-    ne_participle_threshold: 0.96
-    comma_subordinate_threshold: 0.82
-    introductory_word_threshold: 0.86
-    dash_subject_predicate_threshold: 0.90
-    hyphen_threshold: 0.80
-    case_threshold: 0.78
-
 decoder:
   max_passes: 3
-
 labels:
   punctuation:
     NONE: 0
@@ -373,7 +557,6 @@ labels:
     hyphen: 4
     case: 5
     final_punctuation: 6
-
 metrics:
   combined_score_weights:
     exact_match: 1.0
@@ -383,8 +566,7 @@ metrics:
     dirty_improved_rate: 1.0
     dirty_worse_rate: -2.0
     clean_overcorrection_rate: -3.0
-
 paths:
-  adapter_output_dir: models/adapters/latest
-  heads_output_dir: models/heads/latest
-  reports_dir: reports/short_dataset_v3
+  adapter_output_dir: models/current/adapters
+  heads_output_dir: models/current/heads
+  reports_dir: reports

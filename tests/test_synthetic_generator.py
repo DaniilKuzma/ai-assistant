@@ -170,7 +170,7 @@ def test_dictionary_fuzzy_synthetic_corruption_can_be_repaired_by_dictionary_can
     assert any(candidate.replacement == "Библиотека" and candidate.rule_id == "dictionary_fuzzy" for candidate in candidates)
 
 
-def test_targeted_backfill_has_enough_unique_v3_underfilled_rule_examples():
+def test_targeted_backfill_has_enough_unique_canonical_underfilled_rule_examples():
     generator = TargetedBackfillGenerator(CandidateGenerator(), seed=23)
 
     expected_minimums = {

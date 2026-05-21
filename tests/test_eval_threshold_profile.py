@@ -41,8 +41,8 @@ def test_eval_only_existing_checkpoint_uses_configured_threshold_profile(monkeyp
         {
             "paths": _checkpoint_paths(tmp_path),
             "thresholds": {
-                "mode": "calibrated_val_guarded",
-                "calibrated_val_guarded": {"spelling_threshold": 0.75},
+                "mode": "calibrated_guarded",
+                "calibrated_guarded": {"spelling_threshold": 0.75},
                 "conservative": {"spelling_threshold": 0.95},
             },
         },
@@ -50,11 +50,11 @@ def test_eval_only_existing_checkpoint_uses_configured_threshold_profile(monkeyp
         model_training_disabled_source="RUSSIAN_CORRECTOR_DISABLE_MODEL_TRAINING",
     )
 
-    assert seen_modes == ["calibrated_val_guarded"]
+    assert seen_modes == ["calibrated_guarded"]
     assert metadata["evaluation_backend"] == "existing_checkpoint"
-    assert metadata["threshold_profile_used"] == "calibrated_val_guarded"
+    assert metadata["threshold_profile_used"] == "calibrated_guarded"
     assert metadata["threshold_profile_source"] == "config"
-    assert metadata["threshold_mode_from_config"] == "calibrated_val_guarded"
+    assert metadata["threshold_mode_from_config"] == "calibrated_guarded"
     assert metadata["thresholds_mode_fallback_used"] is False
 
 
@@ -94,7 +94,7 @@ def test_eval_only_missing_named_threshold_profile_fails_clearly(tmp_path: Path)
             {
                 "paths": _checkpoint_paths(tmp_path),
                 "thresholds": {
-                    "mode": "calibrated_val_guarded",
+                    "mode": "calibrated_guarded",
                     "conservative": {"spelling_threshold": 0.95},
                 },
             },
@@ -133,8 +133,8 @@ def test_eval_only_report_includes_threshold_profile_metadata_and_does_not_overw
             "error_types": {"keep": 0, "punctuation": 1},
         },
         "thresholds": {
-            "mode": "calibrated_val_guarded",
-            "calibrated_val_guarded": {"spelling_threshold": 0.75},
+            "mode": "calibrated_guarded",
+            "calibrated_guarded": {"spelling_threshold": 0.75},
             "conservative": {"spelling_threshold": 0.95},
         },
         "paths": {
@@ -149,9 +149,9 @@ def test_eval_only_report_includes_threshold_profile_metadata_and_does_not_overw
 
     training_report = (tmp_path / "reports" / "training_report.md").read_text(encoding="utf-8")
     summary = pd.read_csv(tmp_path / "reports" / "evaluation_summary.csv")
-    assert result["threshold_profile_used"] == "calibrated_val_guarded"
-    assert "- threshold_profile_used: calibrated_val_guarded" in training_report
+    assert result["threshold_profile_used"] == "calibrated_guarded"
+    assert "- threshold_profile_used: calibrated_guarded" in training_report
     assert "- threshold_profile_source: config" in training_report
     assert bool(summary.loc[0, "thresholds_mode_fallback_used"]) is False
-    assert summary.loc[0, "threshold_profile_used"] == "calibrated_val_guarded"
+    assert summary.loc[0, "threshold_profile_used"] == "calibrated_guarded"
     assert artifact_thresholds.read_text(encoding="utf-8") == '{"mode": "conservative"}\n'

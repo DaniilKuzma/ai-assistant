@@ -41,8 +41,8 @@
 
 - `data/raw/` — raw/external corpora.
 - `data/processed/correction_dataset.csv.gz` — processed correction dataset.
-- `models/adapters/latest/` — LoRA adapter/config/labels/thresholds.
-- `models/heads/latest/heads.pt` — custom heads checkpoint.
+- `models/current/adapters/` — LoRA adapter/config/labels/thresholds.
+- `models/current/heads/heads.pt` — custom heads checkpoint.
 - `reports/` — generated evaluation/training/dataset reports.
 
 Некоторые файлы в `reports/`, `models/` и `data/processed/` уже изменены в рабочем дереве; не откатывай их без явной просьбы.

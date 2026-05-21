@@ -340,7 +340,7 @@ def assert_matrix_eval_audit(
 ) -> dict[str, Any]:
     root = Path(root_dir)
     data = Path(data_dir) if data_dir is not None else root
-    eval_base = Path(eval_dir) if eval_dir is not None else root / "working_v1_eval"
+    eval_base = Path(eval_dir) if eval_dir is not None else root / "working_eval"
     missing: list[str] = []
     errors: list[str] = []
 
@@ -350,7 +350,7 @@ def assert_matrix_eval_audit(
             missing.append(name)
     for name in REQUIRED_WORKING_EVAL_OUTPUTS:
         if not (eval_base / name).exists():
-            missing.append(f"working_v1_eval/{name}")
+            missing.append(f"working_eval/{name}")
 
     inventory_path = _first_existing(root / "rule_matrix_inventory.csv", data / "rule_matrix_inventory.csv")
     if inventory_path:

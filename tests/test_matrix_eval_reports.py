@@ -17,7 +17,7 @@ from src.evaluation.matrix_eval_reports import (
 def test_matrix_rule_eval_summary_classifies_ready_and_validator_rules(tmp_path: Path):
     dataset_path = _write_dataset(tmp_path)
     inventory_path = _write_inventory(tmp_path)
-    eval_dir = tmp_path / "working_v1_eval"
+    eval_dir = tmp_path / "working_eval"
     eval_dir.mkdir()
     pd.DataFrame(
         [
@@ -104,7 +104,7 @@ def test_matrix_rule_eval_summary_classifies_ready_and_validator_rules(tmp_path:
 def test_backlog_activation_plan_and_audit_outputs(tmp_path: Path):
     dataset_path = _write_dataset(tmp_path)
     inventory_path = _write_inventory(tmp_path)
-    eval_dir = tmp_path / "working_v1_eval"
+    eval_dir = tmp_path / "working_eval"
     eval_dir.mkdir()
     summary_path = eval_dir / "matrix_rule_eval_summary.csv"
     pd.DataFrame(
@@ -125,9 +125,9 @@ def test_backlog_activation_plan_and_audit_outputs(tmp_path: Path):
         target.parent.mkdir(parents=True, exist_ok=True)
         if not target.exists():
             target.write_text("placeholder\n", encoding="utf-8")
-    (tmp_path / "working_v1_eval").mkdir(exist_ok=True)
+    (tmp_path / "working_eval").mkdir(exist_ok=True)
     for name in ["evaluation_summary.csv", "rule_precision_recall.csv", "error_by_rule.csv", "accepted_edits.csv", "rejected_edits.csv", "clean_overcorrection_examples.csv", "dirty_worse_examples.csv", "matrix_rule_eval_summary.csv"]:
-        path = tmp_path / "working_v1_eval" / name
+        path = tmp_path / "working_eval" / name
         if not path.exists():
             pd.DataFrame([{"ok": 1}]).to_csv(path, index=False)
     pd.DataFrame([{"decision": "EVALUATE_NOW"}]).to_csv(tmp_path / "rule_matrix_inventory.csv", index=False)

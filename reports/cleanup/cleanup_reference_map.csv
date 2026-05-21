@@ -1,0 +1,28 @@
+source_path,canonical_path,reason
+data/processed/correction_dataset.csv.gz,data/processed/correction_dataset.csv.gz,final 100k dataset promoted
+data/processed/test.csv,data/processed/test.csv,final 100k dataset promoted
+data/processed/train.csv,data/processed/train.csv,final 100k dataset promoted
+data/processed/val.csv,data/processed/val.csv,final 100k dataset promoted
+reports/candidate_recall_by_rule.csv,reports/candidate_recall_by_rule.csv,final dataset report promoted
+reports/dataset_balance_by_error_type.csv,reports/dataset_balance_by_error_type.csv,final dataset report promoted
+reports/dataset_balance_by_rule.csv,reports/dataset_balance_by_rule.csv,final dataset report promoted
+reports/dataset_balance_by_split.csv,reports/dataset_balance_by_split.csv,final dataset report promoted
+reports/dataset_generation_report.md,reports/dataset_generation_report.md,final dataset report promoted
+reports/dataset_manifest.json,reports/dataset_manifest.json,final dataset report promoted
+reports/gap_label_coverage_by_rule.csv,reports/gap_label_coverage_by_rule.csv,final dataset report promoted
+reports/template_leakage_report.csv,reports/template_leakage_report.csv,final dataset report promoted
+reports/template_quality_report.md,reports/template_quality_report.md,final dataset report promoted
+scripts/build_training_dataset.py,scripts/build_dataset.py,canonical dataset CLI
+scripts/evaluate_cached.py,scripts/evaluate_model.py,canonical evaluation CLI
+scripts/threshold_safety_core.py,scripts/threshold_safety.py,threshold safety CLI without version suffix
+src/data/training_dataset_core.py,src/data/_training_dataset_builder.py,reusable core helpers kept behind canonical internal module
+src/data/training_dataset.py,src/data/training_dataset.py,final dataset builder becomes canonical
+src/evaluation/matrix_eval.py,src/evaluation/matrix_eval.py,matrix eval implementation becomes canonical
+src/evaluation/activation_expansion.py,src/evaluation/activation_plan.py,activation planning helpers become canonical
+tests/test_matrix_eval.py,tests/test_matrix_eval.py,canonical test name
+tests/test_matrix_eval.py,tests/test_matrix_eval_completion.py,canonical test name
+tests/test_training_dataset_core_quotas.py,tests/test_dataset_quotas.py,canonical test name
+tests/test_training_dataset.py,tests/test_training_dataset.py,canonical test name
+tests/test_threshold_safety_core.py,tests/test_threshold_safety.py,canonical test name
+tests/test_activation_activation_plan.py,tests/test_activation_plan.py,canonical test name
+tests/test_working_vs_canonical_report.py,tests/test_model_comparison_report.py,canonical test name

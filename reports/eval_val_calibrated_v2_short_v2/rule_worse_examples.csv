@@ -1,2 +1,0 @@
-rule_id,source,target,prediction,edit,reason,confidence
-final_punctuation_default,Служил в армии в авиации,"Служил в армии, в авиации.",Служил в армии в авиации.,final_punctuation@24:24: '' -> '.',trusted bounded candidate,0.98681640625

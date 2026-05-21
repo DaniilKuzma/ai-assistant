@@ -1,0 +1,607 @@
+path,size,category,reason,referenced_by,replacement_path,safe_to_delete
+.gitattributes,79,REVIEW_MANUAL,not matched by cleanup rules,,,false
+.gitignore,317,REVIEW_MANUAL,not matched by cleanup rules,,,false
+AGENTS.md,1364,REVIEW_MANUAL,not matched by cleanup rules,,,false
+AI_INDEX.md,3131,REVIEW_MANUAL,not matched by cleanup rules,,,false
+ai_docs/API.md,2644,REVIEW_MANUAL,not matched by cleanup rules,,,false
+ai_docs/ARCHITECTURE.md,2863,REVIEW_MANUAL,not matched by cleanup rules,,,false
+ai_docs/CHANGELOG_AI.md,807,REVIEW_MANUAL,not matched by cleanup rules,,,false
+ai_docs/CODING_RULES.md,2469,REVIEW_MANUAL,not matched by cleanup rules,,,false
+ai_docs/DECISIONS.md,1626,REVIEW_MANUAL,not matched by cleanup rules,,,false
+ai_docs/DEPLOYMENT.md,2307,REVIEW_MANUAL,not matched by cleanup rules,,,false
+ai_docs/FILE_MAP.md,2570,REVIEW_MANUAL,not matched by cleanup rules,,,false
+ai_docs/FUNCTIONS_MAP.md,4986,REVIEW_MANUAL,not matched by cleanup rules,,,false
+ai_docs/OPEN_TASKS.md,2531,REVIEW_MANUAL,not matched by cleanup rules,,,false
+ai_docs/PROJECT_OVERVIEW.md,2131,REVIEW_MANUAL,not matched by cleanup rules,,,false
+configs/config.yaml,4577,REVIEW_MANUAL,not matched by cleanup rules,./configs/config.yaml;./src/data/full_dataset_builder.py;./reports/dataset_manifest.json,,false
+configs/config.yaml,3539,DELETE_OLD_CONFIG,versioned/backup config superseded by configs/config.yaml,./tests/test_dataset_source_quality.py;./tests/test_training_dataset_core_quotas.py;./configs/config.yaml;./scripts/prepare_training_dataset_core_sources.py;./src/data/training_dataset_core.py;./reports/dataset_manifest.json,,true
+configs/config.yaml,4427,DELETE_OLD_CONFIG,versioned/backup config superseded by configs/config.yaml,./scripts/build_training_dataset.py;./scripts/run_activation_canonical_training.py;./tests/test_training_dataset.py;./configs/config.yaml;./src/data/training_dataset.py;./reports/dataset_manifest.json,,true
+configs/config.yaml,2349,DELETE_OLD_CONFIG,versioned/backup config superseded by configs/config.yaml,./tests/test_training_dataset.py;./scripts/run_activation_canonical_training.py;./scripts/build_training_dataset.py,,true
+configs/config.yaml,2349,DELETE_OLD_CONFIG,versioned/backup config superseded by configs/config.yaml,./scripts/run_activation_canonical_training.py;./scripts/build_training_dataset.py;./tests/test_training_dataset.py,,true
+configs/config.yaml,12274,REVIEW_MANUAL,not matched by cleanup rules,./tests/test_config_profile.py;./AI_INDEX.md;./tests/test_feature_build_profile.py;./tests/test_eval_threshold_profile.py;./ai_docs/ARCHITECTURE.md;./ai_docs/API.md;./ai_docs/DEPLOYMENT.md;./notebooks/main_pipeline.ipynb;./tests/test_notebook_pipeline.py;./ai_docs/FILE_MAP.md;./tests/test_streamlit_app.py;./tests/test_training_pipeline.py;./tests/test_train_entrypoint.py;./src/training/train.py;./reports/pretraining_readiness_report.md;./src/data/matrix_eval_dataset.py;./docs/superpowers/plans/2026-05-15-russian-edit-corrector.md;./src/app/streamlit_app.py;./src/config/load_config.py;./scripts/threshold_safety_core.py,,false
+configs/config.yaml.backup_before_threshold_update_canonical_20260520_214323,10570,DELETE_OLD_CONFIG,versioned/backup config superseded by configs/config.yaml,./reports/final_threshold_update_report_canonical.md,,true
+configs/config_threshold_calibrated_gui_spelling_core.yaml,13967,DELETE_OLD_CONFIG,versioned/backup config superseded by configs/config.yaml,,,true
+configs/config_threshold_calibrated_gui_spelling_canonical.yaml,15879,DELETE_OLD_CONFIG,versioned/backup config superseded by configs/config.yaml,,,true
+configs/open_corpora_sources.yaml,2877,REVIEW_MANUAL,not matched by cleanup rules,,,false
+configs/real_error_sources.yaml,2776,REVIEW_MANUAL,not matched by cleanup rules,,,false
+configs/rules.yaml,44677,REVIEW_MANUAL,not matched by cleanup rules,./AI_INDEX.md;./ai_docs/DECISIONS.md;./ai_docs/OPEN_TASKS.md;./docs/rule_expansion_plan.md;./tests/test_candidate_recall.py;./ai_docs/FUNCTIONS_MAP.md;./ai_docs/CODING_RULES.md;./ai_docs/FILE_MAP.md;./tests/test_matrix_rule_inventory.py;./tests/test_rules_coverage.py;./tests/test_rule_metrics.py;./scripts/run_matrix_eval.py;./src/rules/coverage_matrix.py;./src/training/feature_cache.py;./src/evaluation/rule_metrics.py;./src/evaluation/matrix_inventory.py;./src/evaluation/candidate_recall.py;./src/data/training_dataset.py;./src/data/training_dataset_core.py;./src/data/matrix_eval_dataset.py,,false
+data/processed/.gitkeep,0,REVIEW_MANUAL,not matched by cleanup rules,,,false
+data/processed/correction_dataset.csv.gz,2628452,REVIEW_MANUAL,not matched by cleanup rules,,,false
+data/processed/matrix_eval/features_cache/matrix_eval_msl128_mc16_36582ef21aa836fb.pkl,27539562,DELETE_OLD_DATASET,old generated dataset/cache,,,true
+data/processed/matrix_eval/matrix_eval.csv.gz,634077,DELETE_OLD_DATASET,old generated dataset/cache,,,true
+data/processed/matrix_eval/matrix_eval_by_rule.csv,2545,DELETE_OLD_DATASET,old generated dataset/cache,,,true
+data/processed/matrix_eval/matrix_eval_manifest.json,5613,DELETE_OLD_DATASET,old generated dataset/cache,,,true
+data/processed/matrix_eval/features_cache/matrix_eval_msl128_mc16_1c30cd622fdb029d.pkl,21901077,DELETE_OLD_DATASET,old generated dataset/cache,./reports/matrix_eval/working_eval/training_report.md,,true
+data/processed/matrix_eval/matrix_eval.csv.gz,1931804,DELETE_OLD_DATASET,old generated dataset/cache,./scripts/run_matrix_eval.py;./tests/test_matrix_eval.py;./tests/test_matrix_eval.py;./tests/test_matrix_eval_reports.py;./src/evaluation/activation_expansion.py;./src/data/matrix_eval_dataset.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/matrix_eval.py;./reports/matrix_eval/working_eval/training_report.md;./reports/matrix_eval/working_eval/training_report.md;./reports/matrix_eval/working_eval/training_report.md,,true
+data/processed/matrix_eval/matrix_eval_by_rule.csv,2575,DELETE_OLD_DATASET,old generated dataset/cache,./src/evaluation/matrix_eval_reports.py;./src/data/matrix_eval_dataset.py,,true
+data/processed/matrix_eval/matrix_eval_manifest.json,5292,DELETE_OLD_DATASET,old generated dataset/cache,./tests/test_matrix_eval.py;./tests/test_matrix_eval_reports.py;./tests/test_matrix_eval.py;./scripts/run_matrix_eval.py;./src/evaluation/activation_expansion.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/matrix_eval.py;./reports/matrix_eval/working_eval/training_report.md;./src/data/matrix_eval_dataset.py;./reports/matrix_eval/working_eval/training_report.md;./reports/matrix_eval/working_eval/training_report.md,,true
+data/processed/matrix_eval/features_cache/matrix_eval_msl128_mc16_5dff0d7f7a7f95c8.pkl,21888786,DELETE_OLD_DATASET,old generated dataset/cache,./reports/matrix_eval/working_eval/training_report.md,,true
+data/processed/matrix_eval/features_cache/matrix_eval_msl128_mc16_902b8bc233ab5cca.pkl,21894160,DELETE_OLD_DATASET,old generated dataset/cache,,,true
+data/processed/matrix_eval/matrix_eval.csv.gz,508790,DELETE_OLD_DATASET,old generated dataset/cache,./tests/test_matrix_eval_reports.py;./tests/test_matrix_eval.py;./tests/test_matrix_eval.py;./scripts/run_matrix_eval.py;./src/evaluation/activation_expansion.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/matrix_eval.py;./src/data/matrix_eval_dataset.py;./reports/matrix_eval/working_eval/training_report.md;./reports/matrix_eval/working_eval/training_report.md;./reports/matrix_eval/working_eval/training_report.md,,true
+data/processed/matrix_eval/matrix_eval_by_rule.csv,2484,DELETE_OLD_DATASET,old generated dataset/cache,./src/evaluation/matrix_eval_reports.py;./src/data/matrix_eval_dataset.py,,true
+data/processed/matrix_eval/matrix_eval_manifest.json,5142,DELETE_OLD_DATASET,old generated dataset/cache,./tests/test_matrix_eval.py;./tests/test_matrix_eval.py;./tests/test_matrix_eval_reports.py;./scripts/run_matrix_eval.py;./src/evaluation/activation_expansion.py;./src/data/matrix_eval_dataset.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/matrix_eval.py;./reports/matrix_eval/working_eval/training_report.md;./reports/matrix_eval/working_eval/training_report.md;./reports/matrix_eval/working_eval/training_report.md,,true
+data/processed/russian_lexicon.txt,75872715,REVIEW_MANUAL,not matched by cleanup rules,,,false
+data/processed/training_dataset/correction_dataset.csv.gz,4809788,DELETE_OLD_DATASET,old generated dataset/cache,,,true
+data/processed/training_dataset/test.csv,6198221,DELETE_OLD_DATASET,old generated dataset/cache,,,true
+data/processed/training_dataset/train.csv,62113355,DELETE_OLD_DATASET,old generated dataset/cache,,,true
+data/processed/training_dataset/val.csv,6200250,DELETE_OLD_DATASET,old generated dataset/cache,,,true
+data/processed/clean_sentence_pool.csv.gz,31997686,DELETE_OLD_DATASET,old generated dataset/cache,./tests/test_open_corpora_sources.py;./src/data/training_dataset_core.py;./src/data/matrix_eval_dataset.py;./src/data/clean_sentence_pool.py;./scripts/run_matrix_eval.py;./scripts/prepare_training_dataset_core_sources.py,,true
+data/processed/correction_dataset.csv.gz,13018447,DELETE_OLD_DATASET,old generated dataset/cache,./tests/test_dataset_source_quality.py;./tests/test_config_profile.py;./ai_docs/PROJECT_OVERVIEW.md;./configs/config_threshold_calibrated_gui_spelling_canonical.yaml;./configs/config_threshold_calibrated_gui_spelling_core.yaml;./configs/config.yaml.backup_before_threshold_update_canonical_20260520_214323;./tests/test_full_dataset_builder.py;./ai_docs/FILE_MAP.md;./configs/config.yaml;./models/current/adapters/config.json;./configs/config.yaml;./configs/config.yaml;./configs/config.yaml;./configs/config.yaml;./configs/config.yaml;./reports/eval_test_calibrated_short_core/training_report.md;./reports/final_threshold_update_report.md;./tests/test_training_dataset.py;./reports/eval_test_calibrated_canonical_short_core/training_report.md;./tests/test_training_dataset_core_quotas.py,,true
+data/processed/features_cache/test_msl128_mc16_4fffd8b1dbfea6d3.pkl,31558470,DELETE_OLD_DATASET,old generated dataset/cache,./reports/eval_test_calibrated_short_core/training_report.md;./reports/eval_test_calibrated_canonical_short_core/training_report.md;./reports/eval_test_calibrated_core_short_core/training_report.md,,true
+data/processed/features_cache/train_msl128_mc16_901c5dfbc7b66cb4.pkl,31117284,DELETE_OLD_DATASET,old generated dataset/cache,,,true
+data/processed/features_cache/train_msl128_mc16_e338435a0ce50cf3.pkl,6097000,DELETE_OLD_DATASET,old generated dataset/cache,,,true
+data/processed/features_cache/val_msl128_mc16_652eced7dbe132a0.pkl,646131,DELETE_OLD_DATASET,old generated dataset/cache,,,true
+data/processed/features_cache/val_msl128_mc16_c6f2693b93221585.pkl,7392,DELETE_OLD_DATASET,old generated dataset/cache,,,true
+data/processed/features_cache/val_msl128_mc16_e96b7edc3105d031.pkl,31433193,DELETE_OLD_DATASET,old generated dataset/cache,./reports/eval_val_calibrated_short_core/training_report.md;./reports/eval_val_calibrated_core_short_core/training_report.md;./reports/eval_val_calibrated_canonical_short_core/training_report.md;./reports/threshold_calibration/current_manifest.json;./reports/threshold_calibration/20260520_173850/calibration_manifest.json,,true
+data/processed/features_cache/val_msl128_mc16_f29d4ca0e0188414.pkl,6284704,DELETE_OLD_DATASET,old generated dataset/cache,,,true
+data/processed/real_error_pairs_validated.csv.gz,121236,DELETE_OLD_DATASET,old generated dataset/cache,./tests/test_real_error_sources.py;./scripts/prepare_training_dataset_core_sources.py;./src/data/training_dataset_core.py;./src/data/real_error_sources.py,,true
+data/processed/test.csv,8494701,DELETE_OLD_DATASET,old generated dataset/cache,./tests/test_full_dataset_builder.py,,true
+data/processed/train.csv,99001739,DELETE_OLD_DATASET,old generated dataset/cache,./tests/test_full_dataset_builder.py,,true
+data/processed/val.csv,8441926,DELETE_OLD_DATASET,old generated dataset/cache,./tests/test_matrix_eval.py;./tests/test_full_dataset_builder.py;./tests/test_matrix_eval_reports.py;./tests/test_matrix_eval.py;./scripts/run_matrix_eval.py;./src/evaluation/activation_expansion.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/matrix_eval.py;./reports/matrix_eval/working_eval/training_report.md;./reports/matrix_eval/working_eval/training_report.md;./src/data/matrix_eval_dataset.py;./reports/matrix_eval/working_eval/training_report.md,,true
+data/processed/correction_dataset.csv.gz,21363395,RENAME_TO_CANONICAL,final 100k dataset promoted,./scripts/threshold_safety_core.py;./scripts/run_matrix_eval.py;./ai_docs/PROJECT_OVERVIEW.md;./scripts/calibrate_thresholds_large.py;./ai_docs/FILE_MAP.md;./models/current/adapters/config.json;./configs/config.yaml;./configs/config.yaml;./tests/test_notebook_pipeline.py;./configs/config.yaml;./tests/test_full_dataset_builder.py;./configs/config_threshold_calibrated_gui_spelling_canonical.yaml;./configs/config.yaml;./configs/config_threshold_calibrated_gui_spelling_core.yaml;./configs/config.yaml.backup_before_threshold_update_canonical_20260520_214323;./configs/config.yaml;./configs/config.yaml;./tests/test_dataset_source_quality.py;./tests/test_config_profile.py;./tests/test_training_dataset_core_quotas.py,data/processed/correction_dataset.csv.gz,false
+data/processed/test.csv,17185741,RENAME_TO_CANONICAL,final 100k dataset promoted,./tests/test_full_dataset_builder.py,data/processed/test.csv,false
+data/processed/train.csv,160069525,RENAME_TO_CANONICAL,final 100k dataset promoted,./tests/test_full_dataset_builder.py,data/processed/train.csv,false
+data/processed/val.csv,17243581,RENAME_TO_CANONICAL,final 100k dataset promoted,./tests/test_full_dataset_builder.py;./scripts/run_matrix_eval.py;./tests/test_matrix_eval_reports.py;./tests/test_matrix_eval.py;./tests/test_matrix_eval.py;./src/evaluation/activation_expansion.py;./src/data/matrix_eval_dataset.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/matrix_eval.py;./reports/matrix_eval/working_eval/training_report.md;./reports/matrix_eval/working_eval/training_report.md;./reports/matrix_eval/working_eval/training_report.md,data/processed/val.csv,false
+data/raw/.gitkeep,0,KEEP_EXTERNAL_SOURCE,external/raw source retained for rebuild,,,false
+data/raw/clean_corpus_sentences.txt.gz,6471868,KEEP_EXTERNAL_SOURCE,external/raw source retained for rebuild,,,false
+data/raw/external/LORuGEC.test.m2,149460,KEEP_EXTERNAL_SOURCE,external/raw source retained for rebuild,,,false
+data/raw/external/LORuGEC.val.m2,83882,KEEP_EXTERNAL_SOURCE,external/raw source retained for rebuild,,,false
+data/raw/external/github-typo-corpus.v1.0.0.jsonl.gz,43769081,KEEP_EXTERNAL_SOURCE,external/raw source retained for rebuild,,,false
+data/raw/external/test_pairs.csv,671685,KEEP_EXTERNAL_SOURCE,external/raw source retained for rebuild,,,false
+data/raw/external/train_pairs.csv,2620187,KEEP_EXTERNAL_SOURCE,external/raw source retained for rebuild,,,false
+data/synthetic/.gitkeep,0,REVIEW_MANUAL,not matched by cleanup rules,,,false
+docs/rule_expansion_plan.md,8145,REVIEW_MANUAL,not matched by cleanup rules,,,false
+docs/superpowers/plans/2026-05-15-russian-edit-corrector.md,2608,REVIEW_MANUAL,not matched by cleanup rules,,,false
+docs/superpowers/specs/2026-05-15-russian-edit-corrector-design.md,3219,REVIEW_MANUAL,not matched by cleanup rules,,,false
+models/adapters/.gitkeep,0,REVIEW_MANUAL,not matched by cleanup rules,,,false
+models/current/adapters/README.md,5381,DELETE_DUPLICATE,old non-final checkpoint pointing at legacy dataset,./ai_docs/CHANGELOG_AI.md;./docs/superpowers/plans/2026-05-15-russian-edit-corrector.md;./src/data/sage_sources.py;./reports/rejected_real_pairs.csv;./reports/rejected_real_pairs.csv,,true
+models/current/adapters/adapter_config.json,1102,DELETE_DUPLICATE,old non-final checkpoint pointing at legacy dataset,,,true
+models/current/adapters/adapter_model.safetensors,14194792,DELETE_DUPLICATE,old non-final checkpoint pointing at legacy dataset,,,true
+models/current/adapters/config.json,12631,DELETE_DUPLICATE,old non-final checkpoint pointing at legacy dataset,./src/training/save_load.py,,true
+models/current/adapters/label_mappings.json,593,DELETE_DUPLICATE,old non-final checkpoint pointing at legacy dataset,./src/training/save_load.py,,true
+models/current/adapters/thresholds.json,3123,DELETE_DUPLICATE,old non-final checkpoint pointing at legacy dataset,./tests/test_eval_threshold_profile.py;./reports/final_threshold_update_report.md;./src/training/save_load.py,,true
+models/heads/.gitkeep,0,REVIEW_MANUAL,not matched by cleanup rules,,,false
+models/current/heads/heads.pt,29517693,DELETE_DUPLICATE,old non-final checkpoint pointing at legacy dataset,./tests/test_encoder_loading.py;./ai_docs/PROJECT_OVERVIEW.md;./tests/test_eval_threshold_profile.py;./ai_docs/FILE_MAP.md;./ai_docs/DECISIONS.md;./ai_docs/ARCHITECTURE.md;./ai_docs/API.md;./notebooks/main_pipeline.ipynb;./tests/test_train_entrypoint.py;./src/training/train.py;./tests/test_streamlit_app.py;./src/app/streamlit_app.py;./src/inference/model_corrector.py,,true
+notebooks/main_pipeline.ipynb,40013,REVIEW_MANUAL,not matched by cleanup rules,,,false
+pyproject.toml,363,REVIEW_MANUAL,not matched by cleanup rules,,,false
+pytest.ini,43,REVIEW_MANUAL,not matched by cleanup rules,,,false
+reports/.gitkeep,0,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/accepted_edits.csv,113342,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/candidate_recall_by_rule.csv,20583,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/clean_overcorrection_examples.csv,88,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/dataset_manifest.json,2551,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/dataset_report.md,329,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/dirty_worse_examples.csv,32536,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/error_by_rule.csv,2633,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/error_by_type.csv,109,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_test_calibrated_short_core/accepted_edits.csv,142678,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_test_calibrated_short_core/candidate_recall_by_rule.csv,28892,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_test_calibrated_short_core/candidate_score_distribution_by_rule.csv,12054,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_test_calibrated_short_core/clean_overcorrection_examples.csv,14770,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_test_calibrated_short_core/dataset_report.md,329,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_test_calibrated_short_core/dirty_worse_examples.csv,3423,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_test_calibrated_short_core/error_by_rule.csv,2797,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_test_calibrated_short_core/error_by_type.csv,109,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_test_calibrated_short_core/evaluation_profile.csv,431,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_test_calibrated_short_core/evaluation_profile_summary.md,521,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_test_calibrated_short_core/evaluation_summary.csv,2370,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_test_calibrated_short_core/feature_build_profile.csv,483972,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_test_calibrated_short_core/feature_build_profile_summary.md,9404,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_test_calibrated_short_core/gap_label_coverage_by_rule.csv,29379,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_test_calibrated_short_core/loss_curves.png,11911,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_test_calibrated_short_core/rejected_edits.csv,53832,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_test_calibrated_short_core/rule_precision_recall.csv,3985,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_test_calibrated_short_core/rule_worse_examples.csv,40657,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_test_calibrated_short_core/test_regression_by_rule.csv,3318,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_test_calibrated_short_core/test_regression_examples_by_rule.csv,22617,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_test_calibrated_short_core/threshold_precision_recall.png,16102,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_test_calibrated_short_core/training_report.md,4436,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_test_calibrated_core_short_core/accepted_edits.csv,111597,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_core_short_core/candidate_recall_by_rule.csv,28892,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_core_short_core/candidate_score_distribution_by_rule.csv,11923,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_core_short_core/clean_fp_dictionary_swapped_audit.csv,5245,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_core_short_core/clean_overcorrection_examples.csv,7748,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_core_short_core/dataset_report.md,329,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_core_short_core/dirty_worse_examples.csv,3065,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_core_short_core/error_by_rule.csv,2790,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_core_short_core/error_by_type.csv,109,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_core_short_core/evaluation_profile.csv,428,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_core_short_core/evaluation_profile_summary.md,518,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_core_short_core/evaluation_summary.csv,2372,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_core_short_core/gap_label_coverage_by_rule.csv,29379,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_core_short_core/loss_curves.png,11911,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_core_short_core/rejected_edits.csv,38498,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_core_short_core/rule_precision_recall.csv,3856,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_core_short_core/rule_worse_examples.csv,16554,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_core_short_core/test_regression_by_rule.csv,3209,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_core_short_core/test_regression_examples_by_rule.csv,13347,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_core_short_core/threshold_precision_recall.png,13740,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_core_short_core/training_report.md,4432,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_canonical_short_core/accepted_edits.csv,110543,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_canonical_short_core/candidate_recall_by_rule.csv,28892,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_canonical_short_core/candidate_score_distribution_by_rule.csv,12220,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_canonical_short_core/clean_overcorrection_examples.csv,1700,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_canonical_short_core/dataset_report.md,329,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_canonical_short_core/dirty_worse_examples.csv,3065,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_canonical_short_core/error_by_rule.csv,2790,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_canonical_short_core/error_by_type.csv,109,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_canonical_short_core/evaluation_profile.csv,429,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_canonical_short_core/evaluation_profile_summary.md,519,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_canonical_short_core/evaluation_summary.csv,2372,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_canonical_short_core/gap_label_coverage_by_rule.csv,29379,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_canonical_short_core/loss_curves.png,11911,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_canonical_short_core/rejected_edits.csv,39539,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_canonical_short_core/rule_precision_recall.csv,3856,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_canonical_short_core/rule_worse_examples.csv,9740,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_canonical_short_core/threshold_precision_recall.png,13485,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_test_calibrated_canonical_short_core/training_report.md,4432,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_val_calibrated_short_core/accepted_edits.csv,148994,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_val_calibrated_short_core/candidate_recall_by_rule.csv,43245,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_val_calibrated_short_core/candidate_score_distribution_by_rule.csv,12108,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_val_calibrated_short_core/clean_overcorrection_examples.csv,6382,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_val_calibrated_short_core/dataset_report.md,329,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_val_calibrated_short_core/dirty_worse_examples.csv,818,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_val_calibrated_short_core/error_by_rule.csv,3047,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_val_calibrated_short_core/error_by_type.csv,102,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_val_calibrated_short_core/evaluation_profile.csv,429,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_val_calibrated_short_core/evaluation_profile_summary.md,519,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_val_calibrated_short_core/evaluation_summary.csv,2339,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_val_calibrated_short_core/gap_label_coverage_by_rule.csv,46196,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_val_calibrated_short_core/loss_curves.png,11911,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_val_calibrated_short_core/rejected_edits.csv,54656,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_val_calibrated_short_core/rule_precision_recall.csv,3723,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_val_calibrated_short_core/rule_worse_examples.csv,44456,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_val_calibrated_short_core/threshold_precision_recall.png,15409,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_val_calibrated_short_core/training_report.md,4399,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/eval_val_calibrated_core_short_core/accepted_edits.csv,119442,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_val_calibrated_core_short_core/candidate_recall_by_rule.csv,43245,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_val_calibrated_core_short_core/candidate_score_distribution_by_rule.csv,12039,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_val_calibrated_core_short_core/clean_overcorrection_examples.csv,88,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_val_calibrated_core_short_core/dataset_report.md,329,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_val_calibrated_core_short_core/dirty_worse_examples.csv,88,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_val_calibrated_core_short_core/error_by_rule.csv,3041,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_val_calibrated_core_short_core/error_by_type.csv,102,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_val_calibrated_core_short_core/evaluation_profile.csv,429,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_val_calibrated_core_short_core/evaluation_profile_summary.md,519,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_val_calibrated_core_short_core/evaluation_summary.csv,2168,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_val_calibrated_core_short_core/gap_label_coverage_by_rule.csv,46196,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_val_calibrated_core_short_core/loss_curves.png,11911,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_val_calibrated_core_short_core/rejected_edits.csv,35148,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_val_calibrated_core_short_core/rule_precision_recall.csv,3670,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_val_calibrated_core_short_core/rule_worse_examples.csv,299,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_val_calibrated_core_short_core/threshold_precision_recall.png,12969,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_val_calibrated_core_short_core/training_report.md,4227,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_val_calibrated_canonical_short_core/accepted_edits.csv,119671,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_val_calibrated_canonical_short_core/candidate_recall_by_rule.csv,43245,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_val_calibrated_canonical_short_core/candidate_score_distribution_by_rule.csv,12048,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_val_calibrated_canonical_short_core/clean_overcorrection_examples.csv,88,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_val_calibrated_canonical_short_core/dataset_report.md,329,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_val_calibrated_canonical_short_core/dirty_worse_examples.csv,88,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_val_calibrated_canonical_short_core/error_by_rule.csv,3041,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_val_calibrated_canonical_short_core/error_by_type.csv,102,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_val_calibrated_canonical_short_core/evaluation_profile.csv,425,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_val_calibrated_canonical_short_core/evaluation_profile_summary.md,515,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_val_calibrated_canonical_short_core/evaluation_summary.csv,2197,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_val_calibrated_canonical_short_core/gap_label_coverage_by_rule.csv,46196,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_val_calibrated_canonical_short_core/loss_curves.png,11911,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_val_calibrated_canonical_short_core/rejected_edits.csv,34917,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_val_calibrated_canonical_short_core/rule_precision_recall.csv,3670,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_val_calibrated_canonical_short_core/rule_worse_examples.csv,2077,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_val_calibrated_canonical_short_core/threshold_precision_recall.png,12934,DELETE_OLD_REPORT,old generated report history,,,true
+reports/eval_val_calibrated_canonical_short_core/training_report.md,4251,DELETE_OLD_REPORT,old generated report history,,,true
+reports/evaluation_summary.csv,2169,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/final_threshold_update_report.md,9465,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/final_threshold_update_report_core.md,7690,DELETE_OLD_REPORT,old generated report history,,,true
+reports/final_threshold_update_report_canonical.md,2801,DELETE_OLD_REPORT,old generated report history,,,true
+reports/gap_label_coverage_by_rule.csv,11699,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/loss_curves.png,11911,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/matrix_eval/hard_negative_matrix_coverage.csv,609,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/matrix_eval/matrix_eval_candidate_recall_by_rule.csv,3852,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/matrix_eval/matrix_eval_dataset_report.md,1016,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/matrix_eval/matrix_eval_gap_coverage_by_rule.csv,934,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/matrix_eval/next_dataset_activation_plan.md,2917,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/matrix_eval/rule_expansion_backlog.csv,35866,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/matrix_eval/rule_id_alias_audit.csv,15291,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/matrix_eval/rule_matrix_inventory.csv,29945,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/matrix_eval/rule_matrix_inventory_summary.md,1017,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/matrix_eval/working_eval/accepted_edits.csv,110749,KEEP_CANONICAL,canonical report if still referenced by final layout,./ai_docs/DEPLOYMENT.md;./tests/test_evaluation_reports.py;./tests/test_matrix_eval.py;./tests/test_matrix_eval_reports.py;./tests/test_threshold_safety_core.py;./tests/test_training_pipeline.py;./tests/test_train_entrypoint.py;./scripts/run_matrix_eval.py;./scripts/threshold_safety_core.py;./src/evaluation/reports.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/matrix_eval.py;./src/training/train.py,,false
+reports/matrix_eval/working_eval/candidate_recall_by_rule.csv,3852,KEEP_CANONICAL,canonical report if still referenced by final layout,./tests/test_evaluation_reports.py;./tests/test_candidate_recall.py;./tests/test_matrix_eval_dataset.py;./tests/test_full_dataset_builder.py;./ai_docs/DEPLOYMENT.md;./scripts/run_matrix_eval.py;./tests/test_matrix_eval_reports.py;./src/evaluation/matrix_inventory.py;./tests/test_training_pipeline.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/candidate_recall.py;./src/training/train.py;./src/data/training_dataset.py;./src/data/training_dataset_core.py;./src/data/matrix_eval_dataset.py;./src/data/full_dataset_builder.py,,false
+reports/matrix_eval/working_eval/candidate_score_distribution_by_rule.csv,16133,KEEP_CANONICAL,canonical report if still referenced by final layout,./tests/test_evaluation_reports.py;./scripts/threshold_safety_core.py;./tests/test_threshold_safety_core.py;./src/evaluation/score_distribution.py;./src/training/train.py,,false
+reports/matrix_eval/working_eval/clean_overcorrection_examples.csv,88,KEEP_CANONICAL,canonical report if still referenced by final layout,./scripts/threshold_safety_core.py;./tests/test_evaluation_reports.py;./scripts/run_matrix_eval.py;./tests/test_matrix_eval_reports.py;./src/training/train.py;./tests/test_threshold_safety_core.py;./ai_docs/DEPLOYMENT.md;./ai_docs/OPEN_TASKS.md;./reports/pretraining_readiness_report.md;./src/evaluation/reports.py;./src/evaluation/matrix_eval_reports.py,,false
+reports/matrix_eval/working_eval/dataset_report.md,260,KEEP_CANONICAL,canonical report if still referenced by final layout,./notebooks/main_pipeline.ipynb;./ai_docs/DEPLOYMENT.md;./tests/test_train_entrypoint.py;./tests/test_training_pipeline.py;./tests/test_matrix_eval_dataset.py;./tests/test_full_dataset_builder.py;./src/training/train.py;./src/data/matrix_eval_dataset.py;./src/data/full_dataset_builder.py;./src/evaluation/matrix_eval_reports.py,,false
+reports/matrix_eval/working_eval/dirty_worse_examples.csv,20139,KEEP_CANONICAL,canonical report if still referenced by final layout,./ai_docs/DEPLOYMENT.md;./tests/test_evaluation_reports.py;./tests/test_matrix_eval_reports.py;./tests/test_threshold_safety_core.py;./scripts/threshold_safety_core.py;./src/evaluation/reports.py;./src/evaluation/matrix_eval_reports.py;./src/training/train.py,,false
+reports/matrix_eval/working_eval/error_by_rule.csv,2779,KEEP_CANONICAL,canonical report if still referenced by final layout,./tests/test_matrix_eval.py;./tests/test_evaluation_reports.py;./tests/test_matrix_eval_reports.py;./tests/test_rule_metrics.py;./src/training/train.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/matrix_eval.py;./src/evaluation/rule_metrics.py;./src/evaluation/matrix_inventory.py,,false
+reports/matrix_eval/working_eval/error_by_type.csv,102,KEEP_CANONICAL,canonical report if still referenced by final layout,./ai_docs/DEPLOYMENT.md;./tests/test_evaluation_reports.py;./tests/test_training_pipeline.py;./src/training/train.py;./src/evaluation/reports.py,,false
+reports/matrix_eval/working_eval/evaluation_profile.csv,428,KEEP_CANONICAL,canonical report if still referenced by final layout,./src/training/train.py;./src/evaluation/fast_eval.py,,false
+reports/matrix_eval/working_eval/evaluation_profile_summary.md,518,KEEP_CANONICAL,canonical report if still referenced by final layout,./src/training/train.py;./src/evaluation/fast_eval.py,,false
+reports/matrix_eval/working_eval/evaluation_summary.csv,2210,KEEP_CANONICAL,canonical report if still referenced by final layout,./tests/test_matrix_eval_reports.py;./tests/test_matrix_eval.py;./tests/test_evaluation_reports.py;./tests/test_notebook_pipeline.py;./tests/test_eval_threshold_profile.py;./scripts/threshold_safety_core.py;./tests/test_training_pipeline.py;./tests/test_train_entrypoint.py;./scripts/calibrate_thresholds.py;./src/training/train.py;./ai_docs/DEPLOYMENT.md;./src/evaluation/reports.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/matrix_eval.py,,false
+reports/matrix_eval/working_eval/feature_build_profile.csv,519992,KEEP_CANONICAL,canonical report if still referenced by final layout,./scripts/build_feature_cache.py;./tests/test_feature_build_profile.py;./src/training/train.py,,false
+reports/matrix_eval/working_eval/feature_build_profile_summary.md,9085,KEEP_CANONICAL,canonical report if still referenced by final layout,./tests/test_feature_build_profile.py;./src/training/train.py;./scripts/build_feature_cache.py,,false
+reports/matrix_eval/working_eval/gap_label_coverage_by_rule.csv,934,KEEP_CANONICAL,canonical report if still referenced by final layout,./ai_docs/DEPLOYMENT.md;./tests/test_candidate_recall.py;./tests/test_matrix_eval_reports.py;./tests/test_evaluation_reports.py;./tests/test_full_dataset_builder.py;./scripts/run_matrix_eval.py;./tests/test_training_pipeline.py;./src/data/training_dataset.py;./src/data/training_dataset_core.py;./src/data/full_dataset_builder.py;./src/training/train.py;./src/evaluation/matrix_inventory.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/candidate_recall.py,,false
+reports/matrix_eval/working_eval/loss_curves.png,11911,KEEP_CANONICAL,canonical report if still referenced by final layout,./src/training/train.py;./tests/test_train_entrypoint.py;./tests/test_report_plots.py,,false
+reports/matrix_eval/working_eval/matrix_rule_eval_summary.csv,11999,KEEP_CANONICAL,canonical report if still referenced by final layout,./scripts/build_training_dataset.py;./scripts/run_matrix_eval.py;./scripts/run_matrix_eval.py;./tests/test_matrix_eval_reports.py;./tests/test_matrix_eval.py;./tests/test_matrix_eval.py;./tests/test_activation_activation_plan.py;./src/evaluation/matrix_eval.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/activation_expansion.py,,false
+reports/matrix_eval/working_eval/rejected_edits.csv,41150,KEEP_CANONICAL,canonical report if still referenced by final layout,./tests/test_evaluation_reports.py;./tests/test_matrix_eval_reports.py;./tests/test_matrix_eval.py;./ai_docs/DEPLOYMENT.md;./tests/test_train_entrypoint.py;./tests/test_threshold_safety_core.py;./tests/test_training_pipeline.py;./scripts/threshold_safety_core.py;./scripts/run_matrix_eval.py;./src/training/train.py;./src/evaluation/reports.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/matrix_eval.py,,false
+reports/matrix_eval/working_eval/rule_precision_recall.csv,4868,KEEP_CANONICAL,canonical report if still referenced by final layout,./tests/test_evaluation_reports.py;./tests/test_matrix_eval_reports.py;./tests/test_matrix_eval.py;./ai_docs/DEPLOYMENT.md;./tests/test_rule_metrics.py;./tests/test_train_entrypoint.py;./src/training/train.py;./src/evaluation/rule_metrics.py;./src/evaluation/matrix_inventory.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/matrix_eval.py,,false
+reports/matrix_eval/working_eval/rule_worse_examples.csv,28650,KEEP_CANONICAL,canonical report if still referenced by final layout,./src/training/train.py;./tests/test_evaluation_reports.py;./tests/test_rule_metrics.py;./src/evaluation/rule_metrics.py,,false
+reports/matrix_eval/working_eval/threshold_precision_recall.png,14545,KEEP_CANONICAL,canonical report if still referenced by final layout,./ai_docs/DEPLOYMENT.md;./tests/test_train_entrypoint.py;./tests/test_report_plots.py;./src/training/train.py,,false
+reports/matrix_eval/working_eval/training_report.md,4241,KEEP_CANONICAL,canonical report if still referenced by final layout,./tests/test_eval_threshold_profile.py;./tests/test_feature_build_profile.py;./ai_docs/DEPLOYMENT.md;./tests/test_train_entrypoint.py;./tests/test_training_pipeline.py;./src/training/train.py;./src/evaluation/matrix_eval.py,,false
+reports/matrix_eval/hard_negative_matrix_coverage.csv,609,DELETE_OLD_REPORT,old generated report history,./tests/test_matrix_eval_reports.py;./scripts/run_matrix_eval.py;./src/evaluation/matrix_eval_reports.py,,true
+reports/matrix_eval/matrix_eval_candidate_recall_by_rule.csv,3968,DELETE_OLD_REPORT,old generated report history,./scripts/run_matrix_eval.py;./tests/test_matrix_eval_dataset.py;./src/evaluation/matrix_eval_reports.py;./src/data/matrix_eval_dataset.py,,true
+reports/matrix_eval/matrix_eval_dataset_report.md,740,DELETE_OLD_REPORT,old generated report history,./tests/test_matrix_eval_dataset.py;./src/data/matrix_eval_dataset.py;./src/evaluation/matrix_eval_reports.py,,true
+reports/matrix_eval/matrix_eval_gap_coverage_by_rule.csv,936,DELETE_OLD_REPORT,old generated report history,./tests/test_matrix_eval_dataset.py;./src/evaluation/matrix_eval_reports.py;./src/data/matrix_eval_dataset.py;./scripts/run_matrix_eval.py,,true
+reports/matrix_eval/matrix_eval_manifest.json,5292,DELETE_OLD_REPORT,old generated report history,./tests/test_matrix_eval.py;./tests/test_matrix_eval.py;./tests/test_matrix_eval_reports.py;./src/evaluation/activation_expansion.py;./scripts/run_matrix_eval.py;./src/evaluation/matrix_eval_reports.py;./src/data/matrix_eval_dataset.py;./src/evaluation/matrix_eval.py;./reports/matrix_eval/working_eval/training_report.md;./reports/matrix_eval/working_eval/training_report.md;./reports/matrix_eval/working_eval/training_report.md,,true
+reports/matrix_eval/matrix_audit_summary.json,91,DELETE_OLD_REPORT,old generated report history,./src/evaluation/matrix_eval.py,,true
+reports/matrix_eval/matrix_final_report.md,2211,DELETE_OLD_REPORT,old generated report history,./src/evaluation/matrix_eval.py,,true
+reports/matrix_eval/rule_expansion_backlog_core.csv,39634,DELETE_OLD_REPORT,old generated report history,./tests/test_matrix_eval.py;./scripts/run_matrix_eval.py;./scripts/run_matrix_eval.py;./src/evaluation/matrix_eval.py,,true
+reports/matrix_eval/rule_expansion_backlog_core.md,9163,DELETE_OLD_REPORT,old generated report history,./tests/test_matrix_eval.py;./scripts/run_matrix_eval.py;./docs/rule_expansion_plan.md,,true
+reports/matrix_eval/rule_id_alias_audit.csv,15291,DELETE_OLD_REPORT,old generated report history,./src/evaluation/matrix_inventory.py;./src/evaluation/matrix_eval_reports.py,,true
+reports/matrix_eval/rule_matrix_inventory.csv,29945,DELETE_OLD_REPORT,old generated report history,./tests/test_matrix_eval_reports.py;./scripts/run_matrix_eval.py;./src/evaluation/matrix_inventory.py;./src/evaluation/matrix_eval_reports.py,,true
+reports/matrix_eval/rule_matrix_inventory_summary.md,1017,DELETE_OLD_REPORT,old generated report history,./src/evaluation/matrix_inventory.py;./src/evaluation/matrix_eval_reports.py,,true
+reports/matrix_eval/under_quota_rule_audit.csv,5285,DELETE_OLD_REPORT,old generated report history,./scripts/build_training_dataset.py;./tests/test_matrix_eval.py;./scripts/run_matrix_eval.py;./tests/test_activation_activation_plan.py;./src/evaluation/matrix_eval.py,,true
+reports/matrix_eval/validator_fix_report.md,908,DELETE_OLD_REPORT,old generated report history,./tests/test_matrix_eval.py;./scripts/run_matrix_eval.py;./src/evaluation/matrix_eval.py,,true
+reports/matrix_eval/activation_activation_plan.csv,10741,DELETE_OLD_REPORT,old generated report history,./tests/test_matrix_eval.py;./scripts/run_matrix_eval.py;./scripts/run_matrix_eval.py;./scripts/build_training_dataset.py;./tests/test_activation_activation_plan.py;./src/evaluation/matrix_eval.py,,true
+reports/matrix_eval/activation_activation_plan.md,1712,DELETE_OLD_REPORT,old generated report history,./tests/test_matrix_eval.py;./docs/rule_expansion_plan.md;./scripts/run_matrix_eval.py,,true
+reports/matrix_eval/working_eval/accepted_edits.csv,58819,DELETE_OLD_REPORT,old generated report history,./ai_docs/DEPLOYMENT.md;./scripts/threshold_safety_core.py;./scripts/run_matrix_eval.py;./src/training/train.py;./src/evaluation/reports.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/matrix_eval.py;./tests/test_train_entrypoint.py;./tests/test_training_pipeline.py;./tests/test_threshold_safety_core.py;./tests/test_matrix_eval_reports.py;./tests/test_matrix_eval.py;./tests/test_evaluation_reports.py,,true
+reports/matrix_eval/working_eval/candidate_recall_by_rule.csv,3886,DELETE_OLD_REPORT,old generated report history,./tests/test_candidate_recall.py;./tests/test_full_dataset_builder.py;./tests/test_evaluation_reports.py;./tests/test_matrix_eval_reports.py;./tests/test_matrix_eval_dataset.py;./ai_docs/DEPLOYMENT.md;./tests/test_training_pipeline.py;./src/training/train.py;./src/data/training_dataset.py;./src/data/training_dataset_core.py;./src/data/matrix_eval_dataset.py;./src/data/full_dataset_builder.py;./scripts/run_matrix_eval.py;./src/evaluation/matrix_inventory.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/candidate_recall.py,,true
+reports/matrix_eval/working_eval/candidate_score_distribution_by_rule.csv,16672,DELETE_OLD_REPORT,old generated report history,./tests/test_evaluation_reports.py;./tests/test_threshold_safety_core.py;./src/training/train.py;./src/evaluation/score_distribution.py;./scripts/threshold_safety_core.py,,true
+reports/matrix_eval/working_eval/clean_overcorrection_examples.csv,88,DELETE_OLD_REPORT,old generated report history,./ai_docs/OPEN_TASKS.md;./ai_docs/DEPLOYMENT.md;./tests/test_matrix_eval_reports.py;./tests/test_evaluation_reports.py;./tests/test_threshold_safety_core.py;./src/training/train.py;./src/evaluation/reports.py;./src/evaluation/matrix_eval_reports.py;./reports/pretraining_readiness_report.md;./scripts/threshold_safety_core.py;./scripts/run_matrix_eval.py,,true
+reports/matrix_eval/working_eval/dataset_report.md,258,DELETE_OLD_REPORT,old generated report history,./ai_docs/DEPLOYMENT.md;./tests/test_matrix_eval_dataset.py;./tests/test_full_dataset_builder.py;./tests/test_training_pipeline.py;./src/training/train.py;./tests/test_train_entrypoint.py;./src/data/matrix_eval_dataset.py;./src/data/full_dataset_builder.py;./src/evaluation/matrix_eval_reports.py;./notebooks/main_pipeline.ipynb,,true
+reports/matrix_eval/working_eval/dirty_worse_examples.csv,18558,DELETE_OLD_REPORT,old generated report history,./tests/test_evaluation_reports.py;./ai_docs/DEPLOYMENT.md;./tests/test_matrix_eval_reports.py;./src/evaluation/reports.py;./src/evaluation/matrix_eval_reports.py;./scripts/threshold_safety_core.py;./tests/test_threshold_safety_core.py;./src/training/train.py,,true
+reports/matrix_eval/working_eval/error_by_rule.csv,2786,DELETE_OLD_REPORT,old generated report history,./tests/test_evaluation_reports.py;./tests/test_rule_metrics.py;./tests/test_matrix_eval_reports.py;./tests/test_matrix_eval.py;./src/training/train.py;./src/evaluation/matrix_inventory.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/matrix_eval.py;./src/evaluation/rule_metrics.py,,true
+reports/matrix_eval/working_eval/error_by_type.csv,100,DELETE_OLD_REPORT,old generated report history,./ai_docs/DEPLOYMENT.md;./tests/test_evaluation_reports.py;./tests/test_training_pipeline.py;./src/evaluation/reports.py;./src/training/train.py,,true
+reports/matrix_eval/working_eval/evaluation_profile.csv,435,DELETE_OLD_REPORT,old generated report history,./src/training/train.py;./src/evaluation/fast_eval.py,,true
+reports/matrix_eval/working_eval/evaluation_profile_summary.md,525,DELETE_OLD_REPORT,old generated report history,./src/training/train.py;./src/evaluation/fast_eval.py,,true
+reports/matrix_eval/working_eval/evaluation_summary.csv,2213,DELETE_OLD_REPORT,old generated report history,./ai_docs/DEPLOYMENT.md;./tests/test_eval_threshold_profile.py;./tests/test_evaluation_reports.py;./tests/test_matrix_eval.py;./tests/test_matrix_eval_reports.py;./tests/test_notebook_pipeline.py;./tests/test_training_pipeline.py;./tests/test_train_entrypoint.py;./src/training/train.py;./src/evaluation/reports.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/matrix_eval.py;./scripts/threshold_safety_core.py;./scripts/calibrate_thresholds.py,,true
+reports/matrix_eval/working_eval/feature_build_profile.csv,525730,DELETE_OLD_REPORT,old generated report history,./tests/test_feature_build_profile.py;./scripts/build_feature_cache.py;./src/training/train.py,,true
+reports/matrix_eval/working_eval/feature_build_profile_summary.md,10264,DELETE_OLD_REPORT,old generated report history,./src/training/train.py;./scripts/build_feature_cache.py;./tests/test_feature_build_profile.py,,true
+reports/matrix_eval/working_eval/gap_label_coverage_by_rule.csv,908,DELETE_OLD_REPORT,old generated report history,./tests/test_full_dataset_builder.py;./tests/test_candidate_recall.py;./tests/test_evaluation_reports.py;./tests/test_matrix_eval_reports.py;./ai_docs/DEPLOYMENT.md;./src/training/train.py;./tests/test_training_pipeline.py;./scripts/run_matrix_eval.py;./src/data/training_dataset.py;./src/data/training_dataset_core.py;./src/data/full_dataset_builder.py;./src/evaluation/candidate_recall.py;./src/evaluation/matrix_inventory.py;./src/evaluation/matrix_eval_reports.py,,true
+reports/matrix_eval/working_eval/loss_curves.png,11911,DELETE_OLD_REPORT,old generated report history,./tests/test_report_plots.py;./tests/test_train_entrypoint.py;./src/training/train.py,,true
+reports/matrix_eval/working_eval/matrix_rule_eval_summary.csv,12007,DELETE_OLD_REPORT,old generated report history,./scripts/run_matrix_eval.py;./scripts/run_matrix_eval.py;./scripts/build_training_dataset.py;./tests/test_matrix_eval.py;./tests/test_matrix_eval_reports.py;./tests/test_matrix_eval.py;./tests/test_activation_activation_plan.py;./src/evaluation/activation_expansion.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/matrix_eval.py,,true
+reports/matrix_eval/working_eval/rejected_edits.csv,28117,DELETE_OLD_REPORT,old generated report history,./ai_docs/DEPLOYMENT.md;./tests/test_matrix_eval.py;./tests/test_matrix_eval_reports.py;./tests/test_evaluation_reports.py;./tests/test_threshold_safety_core.py;./tests/test_training_pipeline.py;./tests/test_train_entrypoint.py;./src/training/train.py;./scripts/threshold_safety_core.py;./scripts/run_matrix_eval.py;./src/evaluation/reports.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/matrix_eval.py,,true
+reports/matrix_eval/working_eval/rule_precision_recall.csv,4831,DELETE_OLD_REPORT,old generated report history,./ai_docs/DEPLOYMENT.md;./tests/test_matrix_eval.py;./tests/test_matrix_eval_reports.py;./tests/test_evaluation_reports.py;./src/training/train.py;./tests/test_train_entrypoint.py;./tests/test_rule_metrics.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/matrix_eval.py;./src/evaluation/matrix_inventory.py;./src/evaluation/rule_metrics.py,,true
+reports/matrix_eval/working_eval/rule_worse_examples.csv,32688,DELETE_OLD_REPORT,old generated report history,./tests/test_evaluation_reports.py;./tests/test_rule_metrics.py;./src/training/train.py;./src/evaluation/rule_metrics.py,,true
+reports/matrix_eval/working_eval/threshold_precision_recall.png,14538,DELETE_OLD_REPORT,old generated report history,./ai_docs/DEPLOYMENT.md;./tests/test_report_plots.py;./tests/test_train_entrypoint.py;./src/training/train.py,,true
+reports/matrix_eval/working_eval/training_report.md,4275,DELETE_OLD_REPORT,old generated report history,./ai_docs/DEPLOYMENT.md;./tests/test_eval_threshold_profile.py;./tests/test_feature_build_profile.py;./tests/test_train_entrypoint.py;./tests/test_training_pipeline.py;./src/training/train.py;./src/evaluation/matrix_eval.py,,true
+reports/matrix_eval/candidate_recall_by_rule.csv,4193,DELETE_OLD_REPORT,old generated report history,./tests/test_evaluation_reports.py;./tests/test_matrix_eval_reports.py;./tests/test_full_dataset_builder.py;./tests/test_candidate_recall.py;./tests/test_matrix_eval_dataset.py;./scripts/run_matrix_eval.py;./ai_docs/DEPLOYMENT.md;./tests/test_training_pipeline.py;./src/training/train.py;./src/evaluation/matrix_inventory.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/candidate_recall.py;./src/data/training_dataset.py;./src/data/training_dataset_core.py;./src/data/matrix_eval_dataset.py;./src/data/full_dataset_builder.py,,true
+reports/matrix_eval/gap_label_coverage_by_rule.csv,1068,DELETE_OLD_REPORT,old generated report history,./scripts/run_matrix_eval.py;./ai_docs/DEPLOYMENT.md;./tests/test_candidate_recall.py;./tests/test_matrix_eval_reports.py;./tests/test_full_dataset_builder.py;./tests/test_evaluation_reports.py;./src/training/train.py;./tests/test_training_pipeline.py;./src/evaluation/matrix_inventory.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/candidate_recall.py;./src/data/training_dataset.py;./src/data/training_dataset_core.py;./src/data/full_dataset_builder.py,,true
+reports/matrix_eval/hard_negative_matrix_coverage.csv,609,DELETE_OLD_REPORT,old generated report history,./scripts/run_matrix_eval.py;./tests/test_matrix_eval_reports.py;./src/evaluation/matrix_eval_reports.py,,true
+reports/matrix_eval/matrix_eval_candidate_recall_by_rule.csv,4193,DELETE_OLD_REPORT,old generated report history,./tests/test_matrix_eval_dataset.py;./scripts/run_matrix_eval.py;./src/evaluation/matrix_eval_reports.py;./src/data/matrix_eval_dataset.py,,true
+reports/matrix_eval/matrix_eval_dataset_report.md,644,DELETE_OLD_REPORT,old generated report history,./tests/test_matrix_eval_dataset.py;./src/data/matrix_eval_dataset.py;./src/evaluation/matrix_eval_reports.py,,true
+reports/matrix_eval/matrix_eval_gap_coverage_by_rule.csv,1068,DELETE_OLD_REPORT,old generated report history,./tests/test_matrix_eval_dataset.py;./scripts/run_matrix_eval.py;./src/evaluation/matrix_eval_reports.py;./src/data/matrix_eval_dataset.py,,true
+reports/matrix_eval/matrix_eval_manifest.json,5142,DELETE_OLD_REPORT,old generated report history,./scripts/run_matrix_eval.py;./src/evaluation/activation_expansion.py;./tests/test_matrix_eval_reports.py;./tests/test_matrix_eval.py;./tests/test_matrix_eval.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/matrix_eval.py;./src/data/matrix_eval_dataset.py;./reports/matrix_eval/working_eval/training_report.md;./reports/matrix_eval/working_eval/training_report.md;./reports/matrix_eval/working_eval/training_report.md,,true
+reports/matrix_eval/matrix_rule_eval_summary.csv,13337,DELETE_OLD_REPORT,old generated report history,./scripts/run_matrix_eval.py;./scripts/run_matrix_eval.py;./scripts/build_training_dataset.py;./tests/test_matrix_eval_reports.py;./tests/test_matrix_eval.py;./tests/test_matrix_eval.py;./src/evaluation/activation_expansion.py;./tests/test_activation_activation_plan.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/matrix_eval.py,,true
+reports/matrix_eval/next_dataset_activation_plan_canonical.csv,10635,DELETE_OLD_REPORT,old generated report history,./scripts/run_matrix_eval.py;./src/data/training_dataset.py,,true
+reports/matrix_eval/next_dataset_activation_plan_canonical.md,89,DELETE_OLD_REPORT,old generated report history,./scripts/run_matrix_eval.py,,true
+reports/matrix_eval/matrix_audit_summary.json,91,DELETE_OLD_REPORT,old generated report history,./src/evaluation/matrix_eval.py,,true
+reports/matrix_eval/matrix_final_report.md,2129,DELETE_OLD_REPORT,old generated report history,./src/evaluation/matrix_eval.py,,true
+reports/matrix_eval/activation_final_report.md,298,DELETE_OLD_REPORT,old generated report history,./tests/test_matrix_eval.py;./src/evaluation/activation_expansion.py,,true
+reports/matrix_eval/rule_expansion_backlog_core.csv,39790,DELETE_OLD_REPORT,old generated report history,./scripts/run_matrix_eval.py;./scripts/run_matrix_eval.py;./tests/test_matrix_eval.py;./src/evaluation/matrix_eval.py,,true
+reports/matrix_eval/rule_expansion_backlog_core.md,9203,DELETE_OLD_REPORT,old generated report history,./tests/test_matrix_eval.py;./docs/rule_expansion_plan.md;./scripts/run_matrix_eval.py,,true
+reports/matrix_eval/rule_expansion_backlog_canonical.csv,39790,DELETE_OLD_REPORT,old generated report history,./scripts/run_matrix_eval.py,,true
+reports/matrix_eval/rule_id_alias_audit.csv,15291,DELETE_OLD_REPORT,old generated report history,./src/evaluation/matrix_inventory.py;./src/evaluation/matrix_eval_reports.py,,true
+reports/matrix_eval/rule_matrix_inventory.csv,29945,DELETE_OLD_REPORT,old generated report history,./tests/test_matrix_eval_reports.py;./scripts/run_matrix_eval.py;./src/evaluation/matrix_inventory.py;./src/evaluation/matrix_eval_reports.py,,true
+reports/matrix_eval/rule_matrix_inventory_summary.md,1017,DELETE_OLD_REPORT,old generated report history,./src/evaluation/matrix_eval_reports.py;./src/evaluation/matrix_inventory.py,,true
+reports/matrix_eval/under_quota_rule_audit.csv,5190,DELETE_OLD_REPORT,old generated report history,./scripts/run_matrix_eval.py;./scripts/build_training_dataset.py;./tests/test_matrix_eval.py;./tests/test_activation_activation_plan.py;./src/evaluation/matrix_eval.py,,true
+reports/matrix_eval/validator_fix_report.md,908,DELETE_OLD_REPORT,old generated report history,./tests/test_matrix_eval.py;./scripts/run_matrix_eval.py;./src/evaluation/matrix_eval.py,,true
+reports/matrix_eval/activation_activation_plan.csv,10635,DELETE_OLD_REPORT,old generated report history,./tests/test_matrix_eval.py;./tests/test_activation_activation_plan.py;./src/evaluation/matrix_eval.py;./scripts/run_matrix_eval.py;./scripts/run_matrix_eval.py;./scripts/build_training_dataset.py,,true
+reports/matrix_eval/activation_activation_plan.md,1712,DELETE_OLD_REPORT,old generated report history,./docs/rule_expansion_plan.md;./tests/test_matrix_eval.py;./scripts/run_matrix_eval.py,,true
+reports/matrix_eval/working_eval/accepted_edits.csv,58949,DELETE_OLD_REPORT,old generated report history,./tests/test_evaluation_reports.py;./tests/test_matrix_eval.py;./tests/test_matrix_eval_reports.py;./ai_docs/DEPLOYMENT.md;./scripts/threshold_safety_core.py;./scripts/run_matrix_eval.py;./tests/test_threshold_safety_core.py;./tests/test_training_pipeline.py;./tests/test_train_entrypoint.py;./src/training/train.py;./src/evaluation/matrix_eval.py;./src/evaluation/reports.py;./src/evaluation/matrix_eval_reports.py,,true
+reports/matrix_eval/working_eval/candidate_recall_by_rule.csv,4193,DELETE_OLD_REPORT,old generated report history,./ai_docs/DEPLOYMENT.md;./tests/test_evaluation_reports.py;./tests/test_matrix_eval_dataset.py;./tests/test_full_dataset_builder.py;./tests/test_matrix_eval_reports.py;./tests/test_candidate_recall.py;./tests/test_training_pipeline.py;./src/training/train.py;./scripts/run_matrix_eval.py;./src/data/training_dataset.py;./src/data/training_dataset_core.py;./src/data/matrix_eval_dataset.py;./src/data/full_dataset_builder.py;./src/evaluation/matrix_inventory.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/candidate_recall.py,,true
+reports/matrix_eval/working_eval/candidate_score_distribution_by_rule.csv,16735,DELETE_OLD_REPORT,old generated report history,./tests/test_evaluation_reports.py;./tests/test_threshold_safety_core.py;./scripts/threshold_safety_core.py;./src/training/train.py;./src/evaluation/score_distribution.py,,true
+reports/matrix_eval/working_eval/clean_overcorrection_examples.csv,88,DELETE_OLD_REPORT,old generated report history,./tests/test_matrix_eval_reports.py;./tests/test_evaluation_reports.py;./ai_docs/OPEN_TASKS.md;./ai_docs/DEPLOYMENT.md;./scripts/threshold_safety_core.py;./tests/test_threshold_safety_core.py;./scripts/run_matrix_eval.py;./src/training/train.py;./reports/pretraining_readiness_report.md;./src/evaluation/reports.py;./src/evaluation/matrix_eval_reports.py,,true
+reports/matrix_eval/working_eval/dataset_report.md,280,DELETE_OLD_REPORT,old generated report history,./ai_docs/DEPLOYMENT.md;./notebooks/main_pipeline.ipynb;./tests/test_full_dataset_builder.py;./tests/test_matrix_eval_dataset.py;./tests/test_training_pipeline.py;./tests/test_train_entrypoint.py;./src/training/train.py;./src/evaluation/matrix_eval_reports.py;./src/data/matrix_eval_dataset.py;./src/data/full_dataset_builder.py,,true
+reports/matrix_eval/working_eval/dirty_worse_examples.csv,18558,DELETE_OLD_REPORT,old generated report history,./tests/test_evaluation_reports.py;./ai_docs/DEPLOYMENT.md;./scripts/threshold_safety_core.py;./tests/test_matrix_eval_reports.py;./tests/test_threshold_safety_core.py;./src/training/train.py;./src/evaluation/reports.py;./src/evaluation/matrix_eval_reports.py,,true
+reports/matrix_eval/working_eval/error_by_rule.csv,2922,DELETE_OLD_REPORT,old generated report history,./tests/test_evaluation_reports.py;./tests/test_matrix_eval.py;./tests/test_matrix_eval_reports.py;./tests/test_rule_metrics.py;./src/training/train.py;./src/evaluation/rule_metrics.py;./src/evaluation/matrix_inventory.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/matrix_eval.py,,true
+reports/matrix_eval/working_eval/error_by_type.csv,108,DELETE_OLD_REPORT,old generated report history,./ai_docs/DEPLOYMENT.md;./tests/test_training_pipeline.py;./src/evaluation/reports.py;./src/training/train.py;./tests/test_evaluation_reports.py,,true
+reports/matrix_eval/working_eval/evaluation_profile.csv,429,DELETE_OLD_REPORT,old generated report history,./src/evaluation/fast_eval.py;./src/training/train.py,,true
+reports/matrix_eval/working_eval/evaluation_profile_summary.md,519,DELETE_OLD_REPORT,old generated report history,./src/training/train.py;./src/evaluation/fast_eval.py,,true
+reports/matrix_eval/working_eval/evaluation_summary.csv,2214,DELETE_OLD_REPORT,old generated report history,./scripts/threshold_safety_core.py;./tests/test_eval_threshold_profile.py;./ai_docs/DEPLOYMENT.md;./scripts/calibrate_thresholds.py;./tests/test_matrix_eval.py;./tests/test_matrix_eval_reports.py;./tests/test_evaluation_reports.py;./tests/test_notebook_pipeline.py;./tests/test_train_entrypoint.py;./tests/test_training_pipeline.py;./src/training/train.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/matrix_eval.py;./src/evaluation/reports.py,,true
+reports/matrix_eval/working_eval/feature_build_profile.csv,524562,DELETE_OLD_REPORT,old generated report history,./tests/test_feature_build_profile.py;./scripts/build_feature_cache.py;./src/training/train.py,,true
+reports/matrix_eval/working_eval/feature_build_profile_summary.md,9764,DELETE_OLD_REPORT,old generated report history,./scripts/build_feature_cache.py;./tests/test_feature_build_profile.py;./src/training/train.py,,true
+reports/matrix_eval/working_eval/gap_label_coverage_by_rule.csv,1068,DELETE_OLD_REPORT,old generated report history,./tests/test_evaluation_reports.py;./tests/test_matrix_eval_reports.py;./tests/test_candidate_recall.py;./tests/test_full_dataset_builder.py;./tests/test_training_pipeline.py;./scripts/run_matrix_eval.py;./ai_docs/DEPLOYMENT.md;./src/training/train.py;./src/data/training_dataset.py;./src/data/training_dataset_core.py;./src/evaluation/matrix_inventory.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/candidate_recall.py;./src/data/full_dataset_builder.py,,true
+reports/matrix_eval/working_eval/loss_curves.png,11911,DELETE_OLD_REPORT,old generated report history,./tests/test_report_plots.py;./tests/test_train_entrypoint.py;./src/training/train.py,,true
+reports/matrix_eval/working_eval/matrix_rule_eval_summary.csv,12043,DELETE_OLD_REPORT,old generated report history,./tests/test_matrix_eval_reports.py;./tests/test_matrix_eval.py;./tests/test_matrix_eval.py;./scripts/run_matrix_eval.py;./scripts/run_matrix_eval.py;./tests/test_activation_activation_plan.py;./scripts/build_training_dataset.py;./src/evaluation/activation_expansion.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/matrix_eval.py,,true
+reports/matrix_eval/working_eval/rejected_edits.csv,28117,DELETE_OLD_REPORT,old generated report history,./ai_docs/DEPLOYMENT.md;./tests/test_evaluation_reports.py;./tests/test_train_entrypoint.py;./tests/test_training_pipeline.py;./tests/test_threshold_safety_core.py;./tests/test_matrix_eval_reports.py;./tests/test_matrix_eval.py;./src/training/train.py;./src/evaluation/reports.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/matrix_eval.py;./scripts/threshold_safety_core.py;./scripts/run_matrix_eval.py,,true
+reports/matrix_eval/working_eval/rule_precision_recall.csv,5025,DELETE_OLD_REPORT,old generated report history,./ai_docs/DEPLOYMENT.md;./tests/test_matrix_eval_reports.py;./tests/test_matrix_eval.py;./tests/test_evaluation_reports.py;./tests/test_train_entrypoint.py;./tests/test_rule_metrics.py;./src/training/train.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/matrix_eval.py;./src/evaluation/rule_metrics.py;./src/evaluation/matrix_inventory.py,,true
+reports/matrix_eval/working_eval/rule_worse_examples.csv,32688,DELETE_OLD_REPORT,old generated report history,./tests/test_evaluation_reports.py;./tests/test_rule_metrics.py;./src/training/train.py;./src/evaluation/rule_metrics.py,,true
+reports/matrix_eval/working_eval/threshold_precision_recall.png,14620,DELETE_OLD_REPORT,old generated report history,./ai_docs/DEPLOYMENT.md;./tests/test_report_plots.py;./tests/test_train_entrypoint.py;./src/training/train.py,,true
+reports/matrix_eval/working_eval/training_report.md,4265,DELETE_OLD_REPORT,old generated report history,./ai_docs/DEPLOYMENT.md;./tests/test_feature_build_profile.py;./tests/test_eval_threshold_profile.py;./tests/test_training_pipeline.py;./tests/test_train_entrypoint.py;./src/training/train.py;./src/evaluation/matrix_eval.py,,true
+reports/pretraining_readiness_report.md,5000,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/rejected_edits.csv,51357,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/rule_precision_recall.csv,3696,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/rule_worse_examples.csv,72812,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/candidate_recall_by_rule.csv,8277,DELETE_OLD_REPORT,old generated report history,,,true
+reports/dataset_balance_by_error_type.csv,800,DELETE_OLD_REPORT,old generated report history,,,true
+reports/dataset_balance_by_rule.csv,9061,DELETE_OLD_REPORT,old generated report history,,,true
+reports/dataset_balance_by_split.csv,307,DELETE_OLD_REPORT,old generated report history,,,true
+reports/dataset_generation_report.md,2068,DELETE_OLD_REPORT,old generated report history,,,true
+reports/dataset_manifest.json,13824,DELETE_OLD_REPORT,old generated report history,,,true
+reports/dataset_report.md,305,DELETE_OLD_REPORT,old generated report history,,,true
+reports/gap_label_coverage_by_rule.csv,899,DELETE_OLD_REPORT,old generated report history,,,true
+reports/accepted_edits.csv,85115,DELETE_OLD_REPORT,old generated report history,./scripts/threshold_safety_core.py;./tests/test_evaluation_reports.py;./scripts/run_matrix_eval.py;./ai_docs/DEPLOYMENT.md;./tests/test_train_entrypoint.py;./tests/test_training_pipeline.py;./tests/test_threshold_safety_core.py;./tests/test_matrix_eval_reports.py;./tests/test_matrix_eval.py;./src/training/train.py;./src/evaluation/reports.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/matrix_eval.py,,true
+reports/active_rule_quota_report.csv,5852,DELETE_OLD_REPORT,old generated report history,./tests/test_training_dataset_core_quotas.py;./src/data/training_dataset_core.py,,true
+reports/candidate_recall_by_rule.csv,43050,DELETE_OLD_REPORT,old generated report history,./tests/test_candidate_recall.py;./ai_docs/DEPLOYMENT.md;./scripts/run_matrix_eval.py;./src/evaluation/candidate_recall.py;./src/training/train.py;./tests/test_full_dataset_builder.py;./tests/test_evaluation_reports.py;./src/evaluation/matrix_inventory.py;./src/evaluation/matrix_eval_reports.py;./tests/test_matrix_eval_reports.py;./tests/test_matrix_eval_dataset.py;./tests/test_training_pipeline.py;./src/data/training_dataset.py;./src/data/training_dataset_core.py;./src/data/matrix_eval_dataset.py;./src/data/full_dataset_builder.py,,true
+reports/candidate_score_distribution_by_rule.csv,11562,DELETE_OLD_REPORT,old generated report history,./tests/test_evaluation_reports.py;./tests/test_threshold_safety_core.py;./src/training/train.py;./src/evaluation/score_distribution.py;./scripts/threshold_safety_core.py,,true
+reports/clean_overcorrection_examples.csv,11170,DELETE_OLD_REPORT,old generated report history,./ai_docs/OPEN_TASKS.md;./ai_docs/DEPLOYMENT.md;./tests/test_evaluation_reports.py;./tests/test_matrix_eval_reports.py;./scripts/threshold_safety_core.py;./scripts/run_matrix_eval.py;./tests/test_threshold_safety_core.py;./src/training/train.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/reports.py;./reports/pretraining_readiness_report.md,,true
+reports/clean_source_filter_report.csv,47500,DELETE_OLD_REPORT,old generated report history,./tests/test_open_corpora_sources.py;./src/data/clean_sentence_pool.py,,true
+reports/dataset_balance_by_error_type.csv,1690,DELETE_OLD_REPORT,old generated report history,./tests/test_full_dataset_builder.py;./src/data/training_dataset_core.py;./src/data/full_dataset_builder.py,,true
+reports/dataset_balance_by_rule.csv,16357,DELETE_OLD_REPORT,old generated report history,./tests/test_full_dataset_builder.py;./src/data/training_dataset_core.py;./src/data/full_dataset_builder.py,,true
+reports/dataset_balance_by_split.csv,212,DELETE_OLD_REPORT,old generated report history,./tests/test_full_dataset_builder.py;./src/data/training_dataset_core.py;./src/data/full_dataset_builder.py,,true
+reports/dataset_generation_report.md,3390,DELETE_OLD_REPORT,old generated report history,./src/data/training_dataset.py;./src/data/training_dataset_core.py;./src/data/full_dataset_builder.py,,true
+reports/dataset_manifest.json,22216,DELETE_OLD_REPORT,old generated report history,./configs/config.yaml;./configs/config.yaml;./configs/config_threshold_calibrated_gui_spelling_canonical.yaml;./configs/config_threshold_calibrated_gui_spelling_core.yaml;./configs/config.yaml.backup_before_threshold_update_canonical_20260520_214323;./configs/config.yaml;./configs/config.yaml;./configs/config.yaml;./tests/test_dataset_source_quality.py;./configs/config.yaml;./tests/test_notebook_pipeline.py;./models/current/adapters/config.json;./tests/test_full_dataset_builder.py;./tests/test_feature_build_profile.py;./scripts/run_matrix_eval.py;./tests/test_training_dataset.py;./tests/test_training_dataset_core_quotas.py;./reports/eval_test_calibrated_canonical_short_core/training_report.md;./reports/eval_test_calibrated_core_short_core/training_report.md;./reports/final_threshold_update_report.md,,true
+reports/dataset_report.md,329,DELETE_OLD_REPORT,old generated report history,./tests/test_full_dataset_builder.py;./ai_docs/DEPLOYMENT.md;./notebooks/main_pipeline.ipynb;./tests/test_matrix_eval_dataset.py;./src/training/train.py;./tests/test_train_entrypoint.py;./tests/test_training_pipeline.py;./src/data/full_dataset_builder.py;./src/data/matrix_eval_dataset.py;./src/evaluation/matrix_eval_reports.py,,true
+reports/dirty_worse_examples.csv,3061,DELETE_OLD_REPORT,old generated report history,./ai_docs/DEPLOYMENT.md;./src/training/train.py;./scripts/threshold_safety_core.py;./src/evaluation/reports.py;./tests/test_matrix_eval_reports.py;./src/evaluation/matrix_eval_reports.py;./tests/test_threshold_safety_core.py;./tests/test_evaluation_reports.py,,true
+reports/error_by_rule.csv,3040,DELETE_OLD_REPORT,old generated report history,./tests/test_evaluation_reports.py;./tests/test_matrix_eval.py;./tests/test_rule_metrics.py;./tests/test_matrix_eval_reports.py;./src/training/train.py;./src/evaluation/rule_metrics.py;./src/evaluation/matrix_inventory.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/matrix_eval.py,,true
+reports/error_by_type.csv,102,DELETE_OLD_REPORT,old generated report history,./tests/test_evaluation_reports.py;./ai_docs/DEPLOYMENT.md;./tests/test_training_pipeline.py;./src/training/train.py;./src/evaluation/reports.py,,true
+reports/evaluation_profile.csv,426,DELETE_OLD_REPORT,old generated report history,./src/training/train.py;./src/evaluation/fast_eval.py,,true
+reports/evaluation_profile_summary.md,516,DELETE_OLD_REPORT,old generated report history,./src/training/train.py;./src/evaluation/fast_eval.py,,true
+reports/evaluation_summary.csv,1991,DELETE_OLD_REPORT,old generated report history,./tests/test_eval_threshold_profile.py;./tests/test_evaluation_reports.py;./tests/test_matrix_eval_reports.py;./ai_docs/DEPLOYMENT.md;./tests/test_matrix_eval.py;./tests/test_notebook_pipeline.py;./tests/test_training_pipeline.py;./tests/test_train_entrypoint.py;./scripts/calibrate_thresholds.py;./scripts/threshold_safety_core.py;./src/training/train.py;./src/evaluation/reports.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/matrix_eval.py,,true
+reports/excluded_active_rules_report.csv,3439,DELETE_OLD_REPORT,old generated report history,./src/data/training_dataset_core.py,,true
+reports/feature_build_candidate_recall_by_rule.csv,154080,DELETE_OLD_REPORT,old generated report history,./src/training/train.py,,true
+reports/feature_build_gap_label_coverage_by_rule.csv,165814,DELETE_OLD_REPORT,old generated report history,./src/training/train.py,,true
+reports/feature_build_profile.csv,618,DELETE_OLD_REPORT,old generated report history,./tests/test_feature_build_profile.py;./scripts/build_feature_cache.py;./src/training/train.py,,true
+reports/feature_build_profile_summary.md,929,DELETE_OLD_REPORT,old generated report history,./tests/test_feature_build_profile.py;./src/training/train.py;./scripts/build_feature_cache.py,,true
+reports/gap_label_coverage_by_rule.csv,40873,DELETE_OLD_REPORT,old generated report history,./tests/test_evaluation_reports.py;./tests/test_candidate_recall.py;./tests/test_full_dataset_builder.py;./ai_docs/DEPLOYMENT.md;./tests/test_matrix_eval_reports.py;./tests/test_training_pipeline.py;./scripts/run_matrix_eval.py;./src/training/train.py;./src/data/full_dataset_builder.py;./src/data/training_dataset.py;./src/data/training_dataset_core.py;./src/evaluation/candidate_recall.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/matrix_inventory.py,,true
+reports/loss_curves.png,12763,DELETE_OLD_REPORT,old generated report history,./tests/test_report_plots.py;./tests/test_train_entrypoint.py;./src/training/train.py,,true
+reports/real_error_source_report.md,1835,DELETE_OLD_REPORT,old generated report history,./scripts/prepare_training_dataset_core_sources.py;./tests/test_real_error_sources.py;./src/data/real_error_sources.py,,true
+reports/real_pair_filter_report.csv,3413,DELETE_OLD_REPORT,old generated report history,./scripts/prepare_training_dataset_core_sources.py;./tests/test_real_error_sources.py;./src/data/real_error_sources.py,,true
+reports/rejected_backfill_templates.csv,384774,DELETE_OLD_REPORT,old generated report history,./tests/test_training_dataset_core_quotas.py;./src/data/training_dataset_core.py,,true
+reports/rejected_edits.csv,31741,DELETE_OLD_REPORT,old generated report history,./tests/test_evaluation_reports.py;./tests/test_matrix_eval.py;./tests/test_matrix_eval_reports.py;./ai_docs/DEPLOYMENT.md;./scripts/threshold_safety_core.py;./tests/test_train_entrypoint.py;./scripts/run_matrix_eval.py;./tests/test_training_pipeline.py;./tests/test_threshold_safety_core.py;./src/training/train.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/matrix_eval.py;./src/evaluation/reports.py,,true
+reports/rejected_real_pairs.csv,11737045,DELETE_OLD_REPORT,old generated report history,./scripts/prepare_training_dataset_core_sources.py;./tests/test_real_error_sources.py;./src/data/real_error_sources.py,,true
+reports/rule_precision_recall.csv,3703,DELETE_OLD_REPORT,old generated report history,./tests/test_evaluation_reports.py;./tests/test_train_entrypoint.py;./ai_docs/DEPLOYMENT.md;./tests/test_rule_metrics.py;./src/training/train.py;./tests/test_matrix_eval_reports.py;./tests/test_matrix_eval.py;./src/evaluation/matrix_eval.py;./src/evaluation/matrix_inventory.py;./src/evaluation/matrix_eval_reports.py;./src/evaluation/rule_metrics.py,,true
+reports/rule_worse_examples.csv,19843,DELETE_OLD_REPORT,old generated report history,./tests/test_evaluation_reports.py;./tests/test_rule_metrics.py;./src/evaluation/rule_metrics.py;./src/training/train.py,,true
+reports/source_ingestion_report.md,1515,DELETE_OLD_REPORT,old generated report history,./tests/test_open_corpora_sources.py;./scripts/prepare_training_dataset_core_sources.py;./src/data/clean_sentence_pool.py,,true
+reports/template_leakage_report.csv,130,DELETE_OLD_REPORT,old generated report history,./src/data/training_dataset_core.py,,true
+reports/template_quality_report.md,1347,DELETE_OLD_REPORT,old generated report history,./src/data/training_dataset_core.py,,true
+reports/threshold_calibration/20260520_173850/calibration_manifest.json,1432,DELETE_OLD_REPORT,old generated report history,./scripts/calibrate_thresholds.py;./tests/test_threshold_calibration.py,,true
+reports/threshold_calibration/20260520_173850/recommended_thresholds.yaml,1982,DELETE_OLD_REPORT,old generated report history,./tests/test_threshold_calibration.py;./scripts/threshold_safety_core.py;./scripts/calibrate_thresholds.py;./reports/threshold_calibration/current_manifest.json;./reports/threshold_calibration/20260520_173850/calibration_manifest.json;./reports/final_threshold_update_report.md,,true
+reports/threshold_calibration/20260520_173850/threshold_calibration_decision_by_rule.csv,3174,DELETE_OLD_REPORT,old generated report history,./tests/test_threshold_calibration.py;./scripts/threshold_safety_core.py;./scripts/calibrate_thresholds.py,,true
+reports/threshold_calibration/20260520_173850/threshold_sweep_by_rule.csv,54258,DELETE_OLD_REPORT,old generated report history,./scripts/threshold_safety_core.py;./scripts/calibrate_thresholds.py;./tests/test_threshold_calibration.py,,true
+reports/threshold_calibration/20260520_173850/threshold_sweep_summary.md,7324,DELETE_OLD_REPORT,old generated report history,./scripts/calibrate_thresholds.py;./tests/test_threshold_calibration.py,,true
+reports/threshold_calibration/current_manifest.json,1432,DELETE_OLD_REPORT,old generated report history,./tests/test_threshold_calibration.py;./scripts/calibrate_thresholds.py;./reports/final_threshold_update_report.md,,true
+reports/threshold_calibration/current_recommended_thresholds.yaml,1982,DELETE_OLD_REPORT,old generated report history,./reports/final_threshold_update_report.md;./tests/test_threshold_calibration.py;./scripts/threshold_safety_core.py;./scripts/calibrate_thresholds.py,,true
+reports/threshold_precision_recall.png,13785,DELETE_OLD_REPORT,old generated report history,./ai_docs/DEPLOYMENT.md;./tests/test_report_plots.py;./tests/test_train_entrypoint.py;./src/training/train.py,,true
+reports/training_label_distribution_by_rule.csv,9342,DELETE_OLD_REPORT,old generated report history,./tests/test_training_features.py;./src/training/train.py,,true
+reports/training_report.md,3824,DELETE_OLD_REPORT,old generated report history,./src/training/train.py;./ai_docs/DEPLOYMENT.md;./tests/test_train_entrypoint.py;./tests/test_training_pipeline.py;./tests/test_feature_build_profile.py;./tests/test_eval_threshold_profile.py;./src/evaluation/matrix_eval.py,,true
+reports/active_rule_quota_report.csv,3697,DELETE_OLD_REPORT,non-canonical generated dataset report,./tests/test_training_dataset_core_quotas.py;./src/data/training_dataset_core.py,,true
+reports/candidate_recall_by_rule.csv,2573,RENAME_TO_CANONICAL,final dataset report promoted,./tests/test_candidate_recall.py;./ai_docs/DEPLOYMENT.md;./tests/test_evaluation_reports.py;./tests/test_full_dataset_builder.py;./tests/test_matrix_eval_dataset.py;./scripts/run_matrix_eval.py;./tests/test_matrix_eval_reports.py;./src/evaluation/candidate_recall.py;./src/data/full_dataset_builder.py;./src/data/matrix_eval_dataset.py;./src/data/training_dataset_core.py;./src/evaluation/matrix_inventory.py;./src/training/train.py;./src/evaluation/matrix_eval_reports.py;./src/data/training_dataset.py;./tests/test_training_pipeline.py,reports/candidate_recall_by_rule.csv,false
+reports/candidate_recall_gate_report.csv,4898,DELETE_OLD_REPORT,non-canonical generated dataset report,./src/data/training_dataset.py,,true
+reports/clean_source_filter_report.csv,47503,DELETE_OLD_REPORT,non-canonical generated dataset report,./tests/test_open_corpora_sources.py;./src/data/clean_sentence_pool.py,,true
+reports/dataset_balance_by_error_type.csv,1726,RENAME_TO_CANONICAL,final dataset report promoted,./tests/test_full_dataset_builder.py;./src/data/training_dataset_core.py;./src/data/full_dataset_builder.py,reports/dataset_balance_by_error_type.csv,false
+reports/dataset_balance_by_rule.csv,19418,RENAME_TO_CANONICAL,final dataset report promoted,./tests/test_full_dataset_builder.py;./src/data/training_dataset_core.py;./src/data/full_dataset_builder.py,reports/dataset_balance_by_rule.csv,false
+reports/dataset_balance_by_split.csv,221,RENAME_TO_CANONICAL,final dataset report promoted,./tests/test_full_dataset_builder.py;./src/data/full_dataset_builder.py;./src/data/training_dataset_core.py,reports/dataset_balance_by_split.csv,false
+reports/dataset_generation_report.md,778,RENAME_TO_CANONICAL,final dataset report promoted,./src/data/full_dataset_builder.py;./src/data/training_dataset_core.py;./src/data/training_dataset.py,reports/dataset_generation_report.md,false
+reports/dataset_manifest.json,24596,RENAME_TO_CANONICAL,final dataset report promoted,./tests/test_dataset_source_quality.py;./scripts/run_matrix_eval.py;./tests/test_full_dataset_builder.py;./tests/test_feature_build_profile.py;./configs/config_threshold_calibrated_gui_spelling_canonical.yaml;./configs/config_threshold_calibrated_gui_spelling_core.yaml;./reports/final_threshold_update_report.md;./configs/config.yaml.backup_before_threshold_update_canonical_20260520_214323;./tests/test_notebook_pipeline.py;./tests/test_training_dataset.py;./configs/config.yaml;./tests/test_training_dataset_core_quotas.py;./models/current/adapters/config.json;./configs/config.yaml;./configs/config.yaml;./configs/config.yaml;./configs/config.yaml;./configs/config.yaml;./src/evaluation/matrix_inventory.py;./reports/eval_val_calibrated_canonical_short_core/training_report.md,reports/dataset_manifest.json,false
+reports/excluded_active_rules_report.csv,195,DELETE_OLD_REPORT,non-canonical generated dataset report,./src/data/training_dataset_core.py,,true
+reports/gap_label_coverage_by_rule.csv,893,RENAME_TO_CANONICAL,final dataset report promoted,./ai_docs/DEPLOYMENT.md;./tests/test_full_dataset_builder.py;./tests/test_candidate_recall.py;./tests/test_evaluation_reports.py;./tests/test_matrix_eval_reports.py;./scripts/run_matrix_eval.py;./tests/test_training_pipeline.py;./src/evaluation/candidate_recall.py;./src/evaluation/matrix_inventory.py;./src/evaluation/matrix_eval_reports.py;./src/training/train.py;./src/data/training_dataset.py;./src/data/training_dataset_core.py;./src/data/full_dataset_builder.py,reports/gap_label_coverage_by_rule.csv,false
+reports/hard_negative_coverage_report.csv,146,DELETE_OLD_REPORT,non-canonical generated dataset report,,,true
+reports/real_error_source_report.md,1838,DELETE_OLD_REPORT,non-canonical generated dataset report,./tests/test_real_error_sources.py;./scripts/prepare_training_dataset_core_sources.py;./src/data/real_error_sources.py,,true
+reports/real_pair_filter_report.csv,3417,DELETE_OLD_REPORT,non-canonical generated dataset report,./scripts/prepare_training_dataset_core_sources.py;./tests/test_real_error_sources.py;./src/data/real_error_sources.py,,true
+reports/rejected_backfill_templates.csv,417553,DELETE_OLD_REPORT,non-canonical generated dataset report,./tests/test_training_dataset_core_quotas.py;./src/data/training_dataset_core.py,,true
+reports/rejected_real_pairs.csv,10435305,DELETE_OLD_REPORT,non-canonical generated dataset report,./tests/test_real_error_sources.py;./scripts/prepare_training_dataset_core_sources.py;./src/data/real_error_sources.py,,true
+reports/source_ingestion_report.md,1515,DELETE_OLD_REPORT,non-canonical generated dataset report,./scripts/prepare_training_dataset_core_sources.py;./tests/test_open_corpora_sources.py;./src/data/clean_sentence_pool.py,,true
+reports/template_leakage_report.csv,130,RENAME_TO_CANONICAL,final dataset report promoted,./src/data/training_dataset_core.py,reports/template_leakage_report.csv,false
+reports/template_quality_report.md,4973,RENAME_TO_CANONICAL,final dataset report promoted,./src/data/training_dataset_core.py,reports/template_quality_report.md,false
+reports/under_quota_canonical_report.csv,2014,DELETE_OLD_REPORT,non-canonical generated dataset report,./src/data/training_dataset.py,,true
+reports/canonical_active_target_rules.csv,7262,DELETE_OLD_REPORT,non-canonical generated dataset report,./src/data/training_dataset.py,,true
+reports/activation_rule_coverage_report.csv,870,DELETE_OLD_REPORT,non-canonical generated dataset report,./src/data/training_dataset.py,,true
+reports/test_audit_report.md,3476,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/threshold_calibration_gui_spelling/baseline_candidate_decisions.csv,182719,DELETE_OLD_REPORT,old generated report history,,,true
+reports/threshold_calibration_gui_spelling/baseline_candidate_decisions_core_labels.csv,185707,DELETE_OLD_REPORT,old generated report history,,,true
+reports/threshold_calibration_gui_spelling/baseline_config_snapshot.yaml,12266,DELETE_OLD_REPORT,old generated report history,,,true
+reports/threshold_calibration_gui_spelling/baseline_eval.csv,132401,DELETE_OLD_REPORT,old generated report history,,,true
+reports/threshold_calibration_gui_spelling/calibration_set.csv,78398,DELETE_OLD_REPORT,old generated report history,,,true
+reports/threshold_calibration_gui_spelling/comparison_by_category_core.csv,1936,DELETE_OLD_REPORT,old generated report history,,,true
+reports/threshold_calibration_gui_spelling/comparison_report_core.md,3035,DELETE_OLD_REPORT,old generated report history,,,true
+reports/threshold_calibration_gui_spelling/comparison_summary_core.json,1617,DELETE_OLD_REPORT,old generated report history,,,true
+reports/threshold_calibration_gui_spelling/threshold_search_summary_core.csv,1101,DELETE_OLD_REPORT,old generated report history,,,true
+reports/threshold_calibration_gui_spelling/tuned_eval_core.csv,122647,DELETE_OLD_REPORT,old generated report history,,,true
+reports/threshold_calibration_gui_spelling/tuned_thresholds_core.json,594,DELETE_OLD_REPORT,old generated report history,,,true
+reports/threshold_calibration_large_canonical/comparison_report_large_canonical.md,3225,DELETE_OLD_REPORT,old generated report history,,,true
+reports/threshold_calibration_large_canonical/comparison_summary_large_canonical.json,5985,DELETE_OLD_REPORT,old generated report history,,,true
+reports/threshold_calibration_large_canonical/decision_summary_by_threshold.csv,6768,DELETE_OLD_REPORT,old generated report history,,,true
+reports/threshold_calibration_large_canonical/interesting_samples.csv,466914,DELETE_OLD_REPORT,old generated report history,,,true
+reports/threshold_calibration_large_canonical/large_calibration_rows.csv,3676639,DELETE_OLD_REPORT,old generated report history,,,true
+reports/threshold_calibration_large_canonical/profile_comparison_by_category.csv,21393,DELETE_OLD_REPORT,old generated report history,,,true
+reports/threshold_calibration_large_canonical/profile_eval_rows.csv,17523986,DELETE_OLD_REPORT,old generated report history,,,true
+reports/threshold_calibration_large_canonical/threshold_search_large_canonical.csv,2536,DELETE_OLD_REPORT,old generated report history,,,true
+reports/threshold_calibration_large_canonical_run.log,126035,DELETE_OLD_REPORT,old generated report history,,,true
+reports/threshold_precision_recall.png,14558,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/threshold_safety_set_report.md,792,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/threshold_safety_core/recommended_thresholds_core.yaml,1918,DELETE_OLD_REPORT,old generated report history,./scripts/threshold_safety_core.py;./reports/final_threshold_update_report_core.md,,true
+reports/threshold_safety_core/risky_threshold_impact_core.csv,736,DELETE_OLD_REPORT,old generated report history,./scripts/threshold_safety_core.py,,true
+reports/threshold_safety_core/threshold_safety_decision_core.csv,1023,DELETE_OLD_REPORT,old generated report history,./scripts/threshold_safety_core.py;./reports/final_threshold_update_report_core.md,,true
+reports/threshold_safety_core/threshold_safety_summary_core.md,645,DELETE_OLD_REPORT,old generated report history,./scripts/threshold_safety_core.py,,true
+reports/threshold_safety_core/threshold_safety_sweep_core.csv,2,DELETE_OLD_REPORT,old generated report history,./scripts/threshold_safety_core.py,,true
+reports/training_report.md,2710,KEEP_CANONICAL,canonical report if still referenced by final layout,,,false
+reports/activation_expansion/bounded_candidate_implementation_report.md,2023,DELETE_OLD_REPORT,old generated report history,,,true
+reports/activation_expansion/next_implementation_sprint_plan.csv,4438,DELETE_OLD_REPORT,old generated report history,./reports/activation_expansion/next_implementation_sprint_plan.md,,true
+reports/activation_expansion/next_implementation_sprint_plan.md,1595,DELETE_OLD_REPORT,old generated report history,,,true
+reports/activation_expansion/activation_activation_plan_verified.csv,10347,DELETE_OLD_REPORT,old generated report history,./scripts/build_training_dataset.py;./tests/test_activation_activation_plan.py;./src/data/training_dataset.py,,true
+reports/activation_expansion/activation_activation_plan_verified.md,1568,DELETE_OLD_REPORT,old generated report history,./tests/test_activation_activation_plan.py;./scripts/build_training_dataset.py,,true
+reports/activation_expansion/working_vs_canonical_comparison.csv,408,DELETE_OLD_REPORT,old generated report history,,,true
+reports/activation_expansion/working_vs_canonical_comparison.md,871,DELETE_OLD_REPORT,old generated report history,,,true
+requirements.txt,285,REVIEW_MANUAL,not matched by cleanup rules,,,false
+scripts/build_feature_cache.py,4061,KEEP_SOURCE_CODE,active source/script,,,false
+scripts/build_russian_lexicon.py,2083,KEEP_SOURCE_CODE,active source/script,,,false
+scripts/build_training_dataset.py,4817,RENAME_TO_CANONICAL,canonical dataset CLI,./scripts/run_activation_canonical_training.py,scripts/build_dataset.py,false
+scripts/calibrate_thresholds.py,35171,KEEP_SOURCE_CODE,active source/script,,,false
+scripts/calibrate_thresholds_large.py,32262,KEEP_SOURCE_CODE,active source/script,,,false
+scripts/evaluate_cached.py,4825,RENAME_TO_CANONICAL,canonical evaluation CLI,,scripts/evaluate_model.py,false
+scripts/prepare_training_dataset_core_sources.py,9792,DELETE_DUPLICATE,legacy experiment script superseded by canonical scripts,,,true
+scripts/run_matrix_eval.py,18190,KEEP_SOURCE_CODE,active source/script,,,false
+scripts/run_matrix_eval.py,4484,DELETE_DUPLICATE,legacy experiment script superseded by canonical scripts,,,true
+scripts/run_activation_canonical_training.py,4863,DELETE_DUPLICATE,legacy experiment script superseded by canonical scripts,./scripts/run_activation_canonical_training.py,,true
+scripts/threshold_safety_core.py,42792,RENAME_TO_CANONICAL,threshold safety CLI without version suffix,./reports/final_threshold_update_report_core.md,scripts/threshold_safety.py,false
+src/__init__.py,116,KEEP_SOURCE_CODE,active source/script,,,false
+src/alignment/__init__.py,104,KEEP_SOURCE_CODE,active source/script,,,false
+src/alignment/aligner.py,931,KEEP_SOURCE_CODE,active source/script,,,false
+src/alignment/edit_label_builder.py,440,KEEP_SOURCE_CODE,active source/script,,,false
+src/alignment/punctuation_label_builder.py,4786,KEEP_SOURCE_CODE,active source/script,,,false
+src/app/__init__.py,38,KEEP_SOURCE_CODE,active source/script,,,false
+src/app/streamlit_app.py,6477,KEEP_SOURCE_CODE,active source/script,,,false
+src/candidates/__init__.py,314,KEEP_SOURCE_CODE,active source/script,,,false
+src/candidates/candidate_generator.py,20151,KEEP_SOURCE_CODE,active source/script,,,false
+src/candidates/candidate_ranking.py,852,KEEP_SOURCE_CODE,active source/script,,,false
+src/candidates/dictionary_candidates.py,12002,KEEP_SOURCE_CODE,active source/script,,,false
+src/candidates/frequent_errors.py,5548,KEEP_SOURCE_CODE,active source/script,,,false
+src/candidates/hyphen_rules.py,95,KEEP_SOURCE_CODE,active source/script,,,false
+src/candidates/matching.py,1449,KEEP_SOURCE_CODE,active source/script,,,false
+src/candidates/morphology.py,1263,KEEP_SOURCE_CODE,active source/script,,,false
+src/candidates/orthography_rules.py,1734,KEEP_SOURCE_CODE,active source/script,,,false
+src/candidates/spelling_rules.py,1640,KEEP_SOURCE_CODE,active source/script,,,false
+src/candidates/split_join_rules.py,163,KEEP_SOURCE_CODE,active source/script,,,false
+src/config/__init__.py,305,KEEP_SOURCE_CODE,active source/script,,,false
+src/config/dictionary.py,1698,KEEP_SOURCE_CODE,active source/script,,,false
+src/config/load_config.py,376,KEEP_SOURCE_CODE,active source/script,,,false
+src/config/thresholds.py,6923,KEEP_SOURCE_CODE,active source/script,,,false
+src/data/__init__.py,317,KEEP_SOURCE_CODE,active source/script,,,false
+src/data/clean_corpus_sources.py,17738,KEEP_SOURCE_CODE,active source/script,,,false
+src/data/clean_sentence_pool.py,17114,KEEP_SOURCE_CODE,active source/script,,,false
+src/data/dataset_builder.py,596,KEEP_SOURCE_CODE,active source/script,,,false
+src/data/dataset_stats.py,1876,KEEP_SOURCE_CODE,active source/script,,,false
+src/data/external_sources.py,16378,KEEP_SOURCE_CODE,active source/script,,,false
+src/data/full_dataset_builder.py,146589,KEEP_SOURCE_CODE,active source/script,,,false
+src/data/load_external.py,288,KEEP_SOURCE_CODE,active source/script,,,false
+src/data/matrix_eval_dataset.py,34676,KEEP_SOURCE_CODE,active source/script,,,false
+src/data/open_corpora_sources.py,18931,KEEP_SOURCE_CODE,active source/script,,,false
+src/data/real_error_sources.py,32399,KEEP_SOURCE_CODE,active source/script,,,false
+src/data/sage_sources.py,23186,KEEP_SOURCE_CODE,active source/script,,,false
+src/data/training_dataset_core.py,104112,RENAME_TO_CANONICAL,reusable core helpers kept behind canonical internal module,,src/data/_training_dataset_builder.py,false
+src/data/training_dataset.py,35759,RENAME_TO_CANONICAL,final dataset builder becomes canonical,./scripts/run_activation_canonical_training.py,src/data/training_dataset.py,false
+src/data/source_downloads.py,12611,KEEP_SOURCE_CODE,active source/script,,,false
+src/data/splits.py,561,KEEP_SOURCE_CODE,active source/script,,,false
+src/data/strict_filter.py,202,KEEP_SOURCE_CODE,active source/script,,,false
+src/data/synthetic_generator.py,30888,KEEP_SOURCE_CODE,active source/script,,,false
+src/docx/__init__.py,80,KEEP_SOURCE_CODE,active source/script,,,false
+src/docx/docx_corrector.py,1081,KEEP_SOURCE_CODE,active source/script,,,false
+src/docx/docx_reader.py,247,KEEP_SOURCE_CODE,active source/script,,,false
+src/docx/docx_writer.py,3010,KEEP_SOURCE_CODE,active source/script,,,false
+src/evaluation/__init__.py,119,KEEP_SOURCE_CODE,active source/script,,,false
+src/evaluation/candidate_recall.py,13362,KEEP_SOURCE_CODE,active source/script,,,false
+src/evaluation/evaluate.py,7592,KEEP_SOURCE_CODE,active source/script,,,false
+src/evaluation/fast_eval.py,21610,KEEP_SOURCE_CODE,active source/script,,,false
+src/evaluation/matrix_eval.py,32561,RENAME_TO_CANONICAL,matrix eval implementation becomes canonical,,src/evaluation/matrix_eval.py,false
+src/evaluation/matrix_eval_reports.py,29610,KEEP_SOURCE_CODE,active source/script,,,false
+src/evaluation/matrix_inventory.py,25297,KEEP_SOURCE_CODE,active source/script,,,false
+src/evaluation/metrics.py,12150,KEEP_SOURCE_CODE,active source/script,,,false
+src/evaluation/reports.py,4636,KEEP_SOURCE_CODE,active source/script,,,false
+src/evaluation/rule_metrics.py,14188,KEEP_SOURCE_CODE,active source/script,,,false
+src/evaluation/score_distribution.py,7974,KEEP_SOURCE_CODE,active source/script,,,false
+src/evaluation/threshold_sweep.py,934,KEEP_SOURCE_CODE,active source/script,,,false
+src/evaluation/activation_expansion.py,14398,RENAME_TO_CANONICAL,activation planning helpers become canonical,,src/evaluation/activation_plan.py,false
+src/inference/__init__.py,112,KEEP_SOURCE_CODE,active source/script,,,false
+src/inference/corrector.py,4306,KEEP_SOURCE_CODE,active source/script,,,false
+src/inference/edit_realizer.py,831,KEEP_SOURCE_CODE,active source/script,,,false
+src/inference/iterative_decoder.py,354,KEEP_SOURCE_CODE,active source/script,,,false
+src/inference/model_corrector.py,35682,KEEP_SOURCE_CODE,active source/script,,,false
+src/inference/postprocess.py,1109,KEEP_SOURCE_CODE,active source/script,,,false
+src/model/__init__.py,83,KEEP_SOURCE_CODE,active source/script,,,false
+src/model/edit_model.py,10075,KEEP_SOURCE_CODE,active source/script,,,false
+src/model/encoder.py,1944,KEEP_SOURCE_CODE,active source/script,,,false
+src/model/heads.py,803,KEEP_SOURCE_CODE,active source/script,,,false
+src/model/losses.py,5771,KEEP_SOURCE_CODE,active source/script,,,false
+src/nlp/__init__.py,199,KEEP_SOURCE_CODE,active source/script,,,false
+src/nlp/syntax.py,5572,KEEP_SOURCE_CODE,active source/script,,,false
+src/preprocessing/__init__.py,250,KEEP_SOURCE_CODE,active source/script,,,false
+src/preprocessing/protected_spans.py,1977,KEEP_SOURCE_CODE,active source/script,,,false
+src/preprocessing/punctuation_gaps.py,2544,KEEP_SOURCE_CODE,active source/script,,,false
+src/preprocessing/sentence_splitter.py,333,KEEP_SOURCE_CODE,active source/script,,,false
+src/preprocessing/tokenizer.py,1020,KEEP_SOURCE_CODE,active source/script,,,false
+src/rules/__init__.py,467,KEEP_SOURCE_CODE,active source/script,,,false
+src/rules/base.py,2306,KEEP_SOURCE_CODE,active source/script,,,false
+src/rules/coverage_matrix.py,9700,KEEP_SOURCE_CODE,active source/script,,,false
+src/rules/orthography.py,77173,KEEP_SOURCE_CODE,active source/script,,,false
+src/rules/punctuation.py,58538,KEEP_SOURCE_CODE,active source/script,,,false
+src/rules/registry.py,1820,KEEP_SOURCE_CODE,active source/script,,,false
+src/rules/rule_ids.py,629,KEEP_SOURCE_CODE,active source/script,,,false
+src/rules/synthetic.py,41894,KEEP_SOURCE_CODE,active source/script,,,false
+src/training/__init__.py,144,KEEP_SOURCE_CODE,active source/script,,,false
+src/training/callbacks.py,506,KEEP_SOURCE_CODE,active source/script,,,false
+src/training/diagnostics.py,5008,KEEP_SOURCE_CODE,active source/script,,,false
+src/training/feature_cache.py,10050,KEEP_SOURCE_CODE,active source/script,,,false
+src/training/feature_profile.py,6648,KEEP_SOURCE_CODE,active source/script,,,false
+src/training/save_load.py,1089,KEEP_SOURCE_CODE,active source/script,,,false
+src/training/tensorization.py,21971,KEEP_SOURCE_CODE,active source/script,,,false
+src/training/train.py,42962,KEEP_SOURCE_CODE,active source/script,,,false
+src/training/trainer.py,3547,KEEP_SOURCE_CODE,active source/script,,,false
+src/validation/__init__.py,217,KEEP_SOURCE_CODE,active source/script,,,false
+src/validation/diff_analyzer.py,16041,KEEP_SOURCE_CODE,active source/script,,,false
+src/validation/edit_classifier.py,1202,KEEP_SOURCE_CODE,active source/script,,,false
+src/validation/strict_validator.py,46695,KEEP_SOURCE_CODE,active source/script,,,false
+tests/conftest.py,214,KEEP_TEST,active test,,,false
+tests/test_alignment.py,2147,KEEP_TEST,active test,,,false
+tests/test_bounded_candidate_implementation.py,5484,KEEP_TEST,active test,,,false
+tests/test_candidate_generator.py,27069,KEEP_TEST,active test,,,false
+tests/test_candidate_recall.py,7645,KEEP_TEST,active test,,,false
+tests/test_clean_corpus_sources.py,2456,KEEP_TEST,active test,,,false
+tests/test_config_profile.py,8958,KEEP_TEST,active test,,,false
+tests/test_dataset_source_quality.py,6269,KEEP_TEST,active test,,,false
+tests/test_dataset_stats.py,678,KEEP_TEST,active test,,,false
+tests/test_dictionary_candidates.py,3786,KEEP_TEST,active test,,,false
+tests/test_diff_analyzer.py,3050,KEEP_TEST,active test,,,false
+tests/test_docx_io.py,4948,KEEP_TEST,active test,,,false
+tests/test_encoder_loading.py,4089,KEEP_TEST,active test,,,false
+tests/test_eval_threshold_profile.py,6099,KEEP_TEST,active test,,,false
+tests/test_evaluation_reports.py,11901,KEEP_TEST,active test,,,false
+tests/test_evaluation_speed_config.py,7057,KEEP_TEST,active test,,,false
+tests/test_external_sources.py,3381,KEEP_TEST,active test,,,false
+tests/test_feature_build_cache.py,6447,KEEP_TEST,active test,,,false
+tests/test_feature_build_profile.py,6317,KEEP_TEST,active test,,,false
+tests/test_full_dataset_builder.py,34933,KEEP_TEST,active test,,,false
+tests/test_inference_smoke.py,5311,KEEP_TEST,active test,,,false
+tests/test_matrix_eval_dataset.py,2557,KEEP_TEST,active test,,,false
+tests/test_matrix_eval.py,10966,RENAME_TO_CANONICAL,canonical test name,,tests/test_matrix_eval.py,false
+tests/test_matrix_eval.py,1998,RENAME_TO_CANONICAL,canonical test name,,tests/test_matrix_eval_completion.py,false
+tests/test_matrix_eval_reports.py,9427,KEEP_TEST,active test,,,false
+tests/test_matrix_rule_inventory.py,2855,KEEP_TEST,active test,,,false
+tests/test_metrics.py,5960,KEEP_TEST,active test,,,false
+tests/test_model_corrector.py,26037,KEEP_TEST,active test,,,false
+tests/test_model_training.py,8852,KEEP_TEST,active test,,,false
+tests/test_negative_rule_suites.py,22363,KEEP_TEST,active test,,,false
+tests/test_notebook_pipeline.py,1995,KEEP_TEST,active test,,,false
+tests/test_open_corpora_sources.py,10484,KEEP_TEST,active test,,,false
+tests/test_orthography_rule_generation.py,12990,KEEP_TEST,active test,,,false
+tests/test_punctuation_dataset_balance.py,6459,KEEP_TEST,active test,,,false
+tests/test_punctuation_rules.py,17539,KEEP_TEST,active test,,,false
+tests/test_real_error_sources.py,13766,KEEP_TEST,active test,,,false
+tests/test_report_plots.py,724,KEEP_TEST,active test,,,false
+tests/test_rule_metrics.py,14271,KEEP_TEST,active test,,,false
+tests/test_rules_coverage.py,15055,KEEP_TEST,active test,,,false
+tests/test_training_dataset_core_quotas.py,9028,RENAME_TO_CANONICAL,canonical test name,,tests/test_dataset_quotas.py,false
+tests/test_training_dataset.py,8719,RENAME_TO_CANONICAL,canonical test name,,tests/test_training_dataset.py,false
+tests/test_streamlit_app.py,2634,KEEP_TEST,active test,,,false
+tests/test_strict_validator.py,39270,KEEP_TEST,active test,,,false
+tests/test_syntax_layer.py,2564,KEEP_TEST,active test,,,false
+tests/test_synthetic_generator.py,14041,KEEP_TEST,active test,,,false
+tests/test_template_disjoint_split.py,3524,KEEP_TEST,active test,,,false
+tests/test_threshold_calibration.py,4220,KEEP_TEST,active test,,,false
+tests/test_threshold_safety_core.py,7043,RENAME_TO_CANONICAL,canonical test name,./reports/final_threshold_update_report_core.md,tests/test_threshold_safety.py,false
+tests/test_thresholds.py,2045,KEEP_TEST,active test,,,false
+tests/test_train_entrypoint.py,15489,KEEP_TEST,active test,,,false
+tests/test_training_features.py,16096,KEEP_TEST,active test,,,false
+tests/test_training_pipeline.py,7277,KEEP_TEST,active test,,,false
+tests/test_training_trainer.py,2528,KEEP_TEST,active test,,,false
+tests/test_validator_needed_rules.py,3825,KEEP_TEST,active test,,,false
+tests/test_activation_activation_plan.py,1284,RENAME_TO_CANONICAL,canonical test name,,tests/test_activation_plan.py,false
+tests/test_working_vs_canonical_report.py,1175,RENAME_TO_CANONICAL,canonical test name,,tests/test_model_comparison_report.py,false

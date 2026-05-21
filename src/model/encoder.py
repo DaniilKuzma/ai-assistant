@@ -52,12 +52,17 @@ def load_encoder(config: EncoderLoadConfig) -> Any:
 
 
 def _load_auto_model(auto_model: Any, model_name: str, config: EncoderLoadConfig) -> Any:
-    return auto_model.from_pretrained(
-        model_name,
-        local_files_only=config.local_files_only,
-        trust_remote_code=config.trust_remote_code,
-        add_pooling_layer=config.add_pooling_layer,
-    )
+    try:
+        return auto_model.from_pretrained(
+            model_name,
+            local_files_only=config.local_files_only,
+            trust_remote_code=config.trust_remote_code,
+            add_pooling_layer=config.add_pooling_layer,
+        )
+    except AttributeError as exc:
+        if config.local_files_only and "endswith" in str(exc):
+            raise OSError(f"{model_name} weights are not available in the local Hugging Face cache") from exc
+        raise
 
 
 def _disable_unused_transformers_backends() -> None:

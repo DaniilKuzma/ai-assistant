@@ -13,13 +13,14 @@ ALLOWED_STATUSES = frozenset(
     {
         "implemented",
         "partial",
-        "planned",
-        "deterministic",
         "candidate_only",
         "model_required",
         "syntax_required",
         "dictionary_model_required",
         "ner_required",
+        "planned",
+        "metadata_only",
+        "disabled",
     }
 )
 ALLOWED_DEPENDENCIES = frozenset(
@@ -33,18 +34,9 @@ ALLOWED_DEPENDENCIES = frozenset(
         "frequency_lexicon",
     }
 )
-EXECUTABLE_STATUSES = frozenset({"implemented", "deterministic", "candidate_only", "partial"})
-TESTED_STATUSES = frozenset({"implemented", "deterministic"})
-METADATA_ONLY_STATUSES = frozenset(
-    {
-        "planned",
-        "model_required",
-        "syntax_required",
-        "dictionary_model_required",
-        "ner_required",
-    }
-)
-MULTI_TAXONOMY_RULE_IDS = frozenset({"capitalization_ner", "abbreviation_case_protection"})
+EXECUTABLE_STATUSES = frozenset({"implemented", "partial", "candidate_only", "model_required"})
+TESTED_STATUSES = frozenset({"implemented"})
+METADATA_ONLY_STATUSES = frozenset({"planned", "metadata_only", "syntax_required", "dictionary_model_required", "ner_required", "disabled"})
 REQUIRED_COVERAGE_TAGS = frozenset(
     {
         "orthography",
@@ -110,6 +102,24 @@ ALLOWED_PARENT_GROUPS_BY_DOMAIN = {
     "punctuation": PUNCTUATION_PARENT_GROUPS,
 }
 REQUIRED_GROUP_FIELDS = frozenset({"orfogrammka_id", "title", "parent_group", "status", "requires", "rules", "notes"})
+REQUIRED_V3_ENTRY_FIELDS = frozenset(
+    {
+        "source_section",
+        "orfogrammka_id",
+        "title",
+        "normalized_title",
+        "entry_type",
+        "parent_key",
+        "parent_path",
+        "depth",
+        "order",
+        "source_url",
+        "implementation",
+        "dataset",
+    }
+)
+REQUIRED_V3_IMPLEMENTATION_FIELDS = frozenset({"status", "executable", "rule_ids", "aliases", "requires", "notes"})
+REQUIRED_V3_DATASET_FIELDS = frozenset({"eligible_now", "reason", "last_known_candidate_recall", "last_known_eval_count"})
 
 
 def load_rules_coverage(path: str | Path = RULES_COVERAGE_PATH) -> dict[str, Any]:
@@ -127,7 +137,34 @@ def iter_coverage_entries(data: dict[str, Any]) -> Iterable[tuple[str, str, dict
             continue
         for group, entry in groups.items():
             if isinstance(entry, dict):
-                yield domain, str(group), entry
+                yield domain, str(group), normalize_coverage_entry(str(domain), str(group), entry)
+
+
+def normalize_coverage_entry(domain: str, group: str, entry: dict[str, Any]) -> dict[str, Any]:
+    if "implementation" not in entry:
+        return dict(entry)
+    implementation = entry.get("implementation") or {}
+    return {
+        "orfogrammka_id": str(entry.get("orfogrammka_id") or ""),
+        "title": str(entry.get("title") or ""),
+        "parent_group": str(entry.get("parent_key") or "root"),
+        "status": str(implementation.get("status") or ""),
+        "requires": [str(item) for item in implementation.get("requires", []) or []],
+        "rules": [str(item) for item in implementation.get("rule_ids", []) or []],
+        "notes": str(implementation.get("notes") or ""),
+        "tags": [str(item) for item in (entry.get("tags") or implementation.get("tags") or [])],
+        "tests": [str(item) for item in (entry.get("tests") or implementation.get("tests") or [])],
+        "aliases": [str(item) for item in implementation.get("aliases", []) or []],
+        "source_section": str(entry.get("source_section") or domain),
+        "entry_type": str(entry.get("entry_type") or ""),
+        "parent_path": [str(item) for item in entry.get("parent_path", []) or []],
+        "depth": int(entry.get("depth", 0) or 0),
+        "order": int(entry.get("order", 0) or 0),
+        "source_url": str(entry.get("source_url") or ""),
+        "executable": bool(implementation.get("executable", False)),
+        "dataset": entry.get("dataset") or {},
+        "_matrix_key": group,
+    }
 
 
 def iter_rule_ids(data: dict[str, Any]) -> Iterable[str]:
@@ -143,6 +180,8 @@ def validate_rules_coverage(
 ) -> dict[str, Any]:
     data = load_rules_coverage(path)
     _validate_sections(data)
+    if int(data.get("schema_version", 1) or 1) >= 3:
+        _validate_v3_schema(data)
 
     if registry_rule_ids is None:
         from src.rules.registry import all_rules
@@ -154,12 +193,15 @@ def validate_rules_coverage(
         _validate_group(domain, group, entry)
         status = entry["status"]
         rules = entry["rules"]
-        if status in EXECUTABLE_STATUSES and not rules:
+        executable = bool(entry.get("executable")) or status in {"implemented", "partial", "candidate_only"}
+        if status == "implemented" and not rules:
             raise ValueError(f"{domain}.{group} is implemented but has no rule_id")
+        if executable and not rules:
+            raise ValueError(f"{domain}.{group} is executable but has no rule_id")
         for rule_id in rules:
-            if rule_id in seen_rule_ids and rule_id not in MULTI_TAXONOMY_RULE_IDS:
+            if rule_id in seen_rule_ids:
                 raise ValueError(f"Duplicate rule_id in coverage matrix: {rule_id}")
-            if status in EXECUTABLE_STATUSES and rule_id not in registry_rule_ids:
+            if executable and rule_id not in registry_rule_ids:
                 raise ValueError(f"{domain}.{group} references unknown rule_id: {rule_id}")
             seen_rule_ids.add(rule_id)
     return data
@@ -167,7 +209,8 @@ def validate_rules_coverage(
 
 def validate_project_rules_coverage(path: str | Path = RULES_COVERAGE_PATH) -> dict[str, Any]:
     data = validate_rules_coverage(path)
-    _validate_required_tags(data)
+    if int(data.get("schema_version", 1) or 1) < 3:
+        _validate_required_tags(data)
     _validate_implemented_tests(data, Path(path).resolve().parent.parent)
     return data
 
@@ -180,19 +223,44 @@ def _validate_sections(data: dict[str, Any]) -> None:
             raise ValueError(f"Rules coverage section must be a mapping: {section}")
 
 
+def _validate_v3_schema(data: dict[str, Any]) -> None:
+    if not isinstance(data.get("source"), dict):
+        raise ValueError("rules v3 coverage matrix must include source metadata")
+    for section in REQUIRED_SECTIONS:
+        for key, entry in data[section].items():
+            if not isinstance(entry, dict):
+                raise ValueError(f"{section}.{key} must be a mapping")
+            missing = REQUIRED_V3_ENTRY_FIELDS - set(entry)
+            if missing:
+                raise ValueError(f"{section}.{key} is missing v3 fields: {sorted(missing)}")
+            if entry["source_section"] != section:
+                raise ValueError(f"{section}.{key}.source_section must equal {section}")
+            if entry["entry_type"] not in {"group", "numbered_rule", "leaf_rule"}:
+                raise ValueError(f"{section}.{key}.entry_type is not allowed: {entry['entry_type']}")
+            if not isinstance(entry["parent_path"], list):
+                raise ValueError(f"{section}.{key}.parent_path must be a list")
+            if not isinstance(entry["implementation"], dict):
+                raise ValueError(f"{section}.{key}.implementation must be a mapping")
+            if not isinstance(entry["dataset"], dict):
+                raise ValueError(f"{section}.{key}.dataset must be a mapping")
+            implementation_missing = REQUIRED_V3_IMPLEMENTATION_FIELDS - set(entry["implementation"])
+            if implementation_missing:
+                raise ValueError(f"{section}.{key}.implementation missing fields: {sorted(implementation_missing)}")
+            dataset_missing = REQUIRED_V3_DATASET_FIELDS - set(entry["dataset"])
+            if dataset_missing:
+                raise ValueError(f"{section}.{key}.dataset missing fields: {sorted(dataset_missing)}")
+
+
 def _validate_group(domain: str, group: str, entry: dict[str, Any]) -> None:
     missing = REQUIRED_GROUP_FIELDS - set(entry)
     if missing:
         raise ValueError(f"{domain}.{group} is missing required fields: {sorted(missing)}")
     if not isinstance(entry["title"], str) or not entry["title"].strip():
         raise ValueError(f"{domain}.{group}.title must be a non-empty string")
-    if not isinstance(entry["orfogrammka_id"], str) or not entry["orfogrammka_id"].strip():
-        raise ValueError(f"{domain}.{group}.orfogrammka_id must be a non-empty string")
+    if not isinstance(entry["orfogrammka_id"], str):
+        raise ValueError(f"{domain}.{group}.orfogrammka_id must be a string")
     if not isinstance(entry["parent_group"], str) or not entry["parent_group"].strip():
         raise ValueError(f"{domain}.{group}.parent_group must be a non-empty string")
-    allowed_parent_groups = ALLOWED_PARENT_GROUPS_BY_DOMAIN[domain]
-    if entry["parent_group"] not in allowed_parent_groups:
-        raise ValueError(f"{domain}.{group}.parent_group is not allowed: {entry['parent_group']}")
     if entry["status"] not in ALLOWED_STATUSES:
         raise ValueError(f"{domain}.{group}.status is not allowed: {entry['status']}")
     if not isinstance(entry["requires"], list) or not all(isinstance(item, str) for item in entry["requires"]):

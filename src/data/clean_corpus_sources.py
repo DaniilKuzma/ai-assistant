@@ -66,13 +66,6 @@ DEFAULT_CLEAN_CORPUS_SOURCES: list[dict[str, Any]] = [
         "url": "https://downloads.tatoeba.org/exports/sentences.tar.bz2",
         "max_sentences": 30_000,
     },
-    {
-        "name": "russian_wikipedia_dump",
-        "type": "mediawiki_xml_bz2",
-        "url": "https://dumps.wikimedia.org/ruwiki/latest/ruwiki-latest-pages-articles-multistream.xml.bz2",
-        "max_sentences": 50_000,
-        "enabled": False,
-    },
 ]
 
 

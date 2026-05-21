@@ -1,2 +1,0 @@
-rule_id,reason,previous_status,new_status,why_not_generated
-direct_speech_quotes,no_existing_candidate_backed_pattern,active,excluded_from_synthetic_target,no_existing_candidate_backed_pattern

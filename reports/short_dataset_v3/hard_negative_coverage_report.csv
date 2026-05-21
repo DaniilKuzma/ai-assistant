@@ -1,4 +1,0 @@
-split,source_type,count
-test,hard_negative_from_open_clean,600
-train,hard_negative_from_open_clean,6000
-val,hard_negative_from_open_clean,600

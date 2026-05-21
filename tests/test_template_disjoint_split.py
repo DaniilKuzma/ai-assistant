@@ -1,4 +1,4 @@
-from src.data.short_dataset_v2 import assign_template_disjoint_splits, normalized_pair_hash, template_id_for_pair
+from src.data._training_dataset_builder import assign_template_disjoint_splits, normalized_pair_hash, template_id_for_pair
 
 
 def test_template_id_normalizes_numbers_quotes_and_case():

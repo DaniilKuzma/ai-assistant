@@ -12,7 +12,7 @@ import pandas as pd
 from src.candidates.candidate_generator import Candidate, CandidateGenerator
 from src.candidates.matching import candidate_edit_type_for_labels, candidate_matches_edit
 from src.config.load_config import load_config
-from src.data.short_dataset_v2 import detect_hard_negative_traps
+from src.data._training_dataset_builder import detect_hard_negative_traps
 from src.data.synthetic_generator import TargetedBackfillGenerator
 from src.evaluation.candidate_recall import build_candidate_recall_reports
 from src.rules.coverage_matrix import iter_coverage_entries, load_rules_coverage
@@ -205,8 +205,8 @@ def build_matrix_eval_dataset(
     preferred_examples_per_rule: int = DEFAULT_PREFERRED_EXAMPLES_PER_EXECUTABLE_RULE,
     max_examples_per_rule: int = DEFAULT_MAX_EXAMPLES_PER_RULE,
     hard_negative_count: int = 100,
-    current_dataset_path: str | Path = "data/processed/short_dataset_v2/correction_dataset.csv.gz",
-    clean_pool_path: str | Path = "data/processed/short_dataset_v2/clean_sentence_pool.csv.gz",
+    current_dataset_path: str | Path = "data/processed/correction_dataset.csv.gz",
+    clean_pool_path: str | Path = "data/processed/clean_sentence_pool.csv.gz",
     extended_backfill_rule_ids: Iterable[str] | None = None,
 ) -> MatrixEvalBuildResult:
     del output_dir, reports_dir
@@ -301,8 +301,8 @@ def write_matrix_eval_dataset(
     preferred_examples_per_rule: int = DEFAULT_PREFERRED_EXAMPLES_PER_EXECUTABLE_RULE,
     max_examples_per_rule: int = DEFAULT_MAX_EXAMPLES_PER_RULE,
     hard_negative_count: int = 100,
-    current_dataset_path: str | Path = "data/processed/short_dataset_v2/correction_dataset.csv.gz",
-    clean_pool_path: str | Path = "data/processed/short_dataset_v2/clean_sentence_pool.csv.gz",
+    current_dataset_path: str | Path = "data/processed/correction_dataset.csv.gz",
+    clean_pool_path: str | Path = "data/processed/clean_sentence_pool.csv.gz",
     extended_backfill_rule_ids: Iterable[str] | None = None,
 ) -> dict[str, str]:
     output = Path(output_dir)
@@ -372,7 +372,7 @@ def _candidate_sources_for_rule(
         if source and target and source != target:
             existing_attempts += 1
             yielded += 1
-            yield source, target, "matrix_existing_dataset", str(row.get("template_id", "")), "short_dataset_v2"
+            yield source, target, "matrix_existing_dataset", str(row.get("template_id", "")), "training_dataset_core"
     for index, (source, target) in enumerate(STATIC_PROBES.get(rule_id, ())):
         if not extended_backfill and yielded >= quota:
             break

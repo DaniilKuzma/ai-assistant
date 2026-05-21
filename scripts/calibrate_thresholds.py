@@ -116,7 +116,7 @@ def select_best_safe_threshold(
 def write_calibration_reports(
     *,
     output_dir: Path,
-    latest_dir: Path,
+    current_dir: Path,
     sweep_rows: list[dict[str, Any]],
     decision_rows: list[dict[str, Any]],
     summary: str,
@@ -124,7 +124,7 @@ def write_calibration_reports(
     manifest: dict[str, Any],
 ) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
-    latest_dir.mkdir(parents=True, exist_ok=True)
+    current_dir.mkdir(parents=True, exist_ok=True)
 
     pd.DataFrame(sweep_rows).to_csv(output_dir / "threshold_sweep_by_rule.csv", index=False)
     pd.DataFrame(decision_rows).to_csv(output_dir / "threshold_calibration_decision_by_rule.csv", index=False)
@@ -137,11 +137,11 @@ def write_calibration_reports(
         json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
-    (latest_dir / "latest_manifest.json").write_text(
+    (current_dir / "current_manifest.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
-    (latest_dir / "latest_recommended_thresholds.yaml").write_text(
+    (current_dir / "current_recommended_thresholds.yaml").write_text(
         yaml.safe_dump(recommended_thresholds, allow_unicode=True, sort_keys=False),
         encoding="utf-8",
     )
@@ -162,7 +162,7 @@ def run_calibration(
         config = _config_with_threshold_mode(config, baseline_mode)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     run_dir = Path(output_dir) if output_dir is not None else default_output_dir(config, timestamp=timestamp)
-    latest_dir = run_dir.parent
+    current_dir = run_dir.parent
 
     rows = _load_rows_for_split(_config_with_limit(config, split, limit), split=split, fallback_rows=[])
     if limit is not None:
@@ -315,8 +315,8 @@ def run_calibration(
     manifest = {
         "timestamp": timestamp,
         "config_path": str(config_path),
-        "adapter_output_dir": str(config.get("paths", {}).get("adapter_output_dir", "models/adapters/latest")),
-        "heads_output_dir": str(config.get("paths", {}).get("heads_output_dir", "models/heads/latest")),
+        "adapter_output_dir": str(config.get("paths", {}).get("adapter_output_dir", "models/current/adapters")),
+        "heads_output_dir": str(config.get("paths", {}).get("heads_output_dir", "models/current/heads")),
         "dataset_path": str(config.get("data", {}).get("processed_train_path", "")),
         "evaluation_split": split,
         "baseline_thresholds_mode": _threshold_mode(config),
@@ -342,7 +342,7 @@ def run_calibration(
     )
     write_calibration_reports(
         output_dir=run_dir,
-        latest_dir=latest_dir,
+        current_dir=current_dir,
         sweep_rows=sweep_rows,
         decision_rows=decision_rows,
         summary=summary,
@@ -620,9 +620,9 @@ def _recommended_thresholds_payload(
     baseline_mode: str | None,
 ) -> dict[str, Any]:
     return {
-        "mode": "calibrated_val_guarded",
+        "mode": "calibrated_guarded",
         "baseline_mode": baseline_mode or _threshold_mode(config),
-        "calibrated_val_guarded": thresholds,
+        "calibrated_guarded": thresholds,
         "accepted_changes": accepted_changes,
     }
 

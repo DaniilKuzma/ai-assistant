@@ -27,7 +27,7 @@ def _candidate(source: str, replacement: str, rule_id: str, text: str, candidate
         ("скачок", "скачек", "pattern_чо_че", "known_source_lexical_guard"),
     ],
 )
-def test_validator_rejects_phase2_observed_lexical_false_positives(source, replacement, rule_id, reason):
+def test_validator_rejects_matrix_observed_lexical_false_positives(source, replacement, rule_id, reason):
     text = f"В тексте есть {source}."
     target = text.replace(source, replacement, 1)
 
@@ -47,7 +47,7 @@ def test_validator_rejects_phase2_observed_lexical_false_positives(source, repla
         ("молокко", "молоко", "extra_letter_candidate"),
     ],
 )
-def test_validator_allows_phase2_obvious_unknown_typo_repairs(source, replacement, rule_id):
+def test_validator_allows_matrix_obvious_unknown_typo_repairs(source, replacement, rule_id):
     text = f"Это {source}."
     target = text.replace(source, replacement, 1)
 

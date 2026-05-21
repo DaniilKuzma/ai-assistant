@@ -136,7 +136,7 @@ def train(config_path: str | Path = "configs/config.yaml") -> dict[str, Any]:
             reports_dir / "training_label_distribution_by_rule.csv",
         )
         feature_metadata.update(training_positive_counts(features))
-    output_dir = config.get("paths", {}).get("adapter_output_dir", "models/adapters/latest")
+    output_dir = config.get("paths", {}).get("adapter_output_dir", "models/current/adapters")
 
     result: dict[str, Any] = {
         "status": "evaluation_prepared" if skip_feature_build else "features_prepared",
@@ -549,8 +549,8 @@ def _select_evaluation_corrector(
 
 def _configured_model_artifacts_exist(config: dict[str, Any]) -> bool:
     paths = config.get("paths", {})
-    adapter_dir = Path(paths.get("adapter_output_dir", "models/adapters/latest"))
-    heads_path = Path(paths.get("heads_output_dir", "models/heads/latest")) / "heads.pt"
+    adapter_dir = Path(paths.get("adapter_output_dir", "models/current/adapters"))
+    heads_path = Path(paths.get("heads_output_dir", "models/current/heads")) / "heads.pt"
     return adapter_dir.exists() and heads_path.exists()
 
 
@@ -952,11 +952,11 @@ def _run_model_training(
                 f"{len(fast_eval_rows)} examples, "
                 f"combined_score={fast_evaluation_metrics.get('combined_score', 0.0):.6f}"
             )
-    heads_output_dir = Path(config.get("paths", {}).get("heads_output_dir", "models/heads/latest"))
+    heads_output_dir = Path(config.get("paths", {}).get("heads_output_dir", "models/current/heads"))
     heads_output_dir.mkdir(parents=True, exist_ok=True)
     torch.save(module.heads.state_dict(), heads_output_dir / "heads.pt")
     if hasattr(module.encoder, "save_pretrained"):
-        module.encoder.save_pretrained(config.get("paths", {}).get("adapter_output_dir", "models/adapters/latest"))
+        module.encoder.save_pretrained(config.get("paths", {}).get("adapter_output_dir", "models/current/adapters"))
     components = trainer.last_epoch_loss_components
     return {
         "status": "trained",

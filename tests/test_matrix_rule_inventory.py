@@ -10,6 +10,13 @@ from src.evaluation.matrix_inventory import (
 )
 
 
+def _rules_yaml_entry_count() -> int:
+    import yaml
+
+    data = yaml.safe_load(Path("configs/rules.yaml").read_text(encoding="utf-8"))
+    return len(data["orthography"]) + len(data["punctuation"])
+
+
 def test_rule_matrix_inventory_covers_every_yaml_group_and_decides(tmp_path: Path):
     inventory = build_rule_matrix_inventory(
         rules_config_path="configs/rules.yaml",
@@ -19,7 +26,7 @@ def test_rule_matrix_inventory_covers_every_yaml_group_and_decides(tmp_path: Pat
     )
 
     assert list(inventory.columns) == INVENTORY_COLUMNS
-    assert len(inventory) == 72
+    assert len(inventory) == _rules_yaml_entry_count()
     assert set(inventory["section"]) == {"orthography", "punctuation"}
     assert inventory["decision"].ne("").all()
 
@@ -50,7 +57,7 @@ def test_rule_matrix_inventory_outputs_include_summary(tmp_path: Path):
     assert alias_path.exists()
 
     inventory = pd.read_csv(inventory_path)
-    assert len(inventory) == 72
+    assert len(inventory) == _rules_yaml_entry_count()
     text = summary_path.read_text(encoding="utf-8")
     assert "total matrix groups" in text
     assert "groups eligible for next dataset cycle" in text

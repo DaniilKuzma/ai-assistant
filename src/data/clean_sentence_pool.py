@@ -201,7 +201,7 @@ def build_clean_sentence_pool(
     output.parent.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(rows, columns=CLEAN_POOL_COLUMNS).to_csv(output, index=False)
 
-    report_dir = Path(reports_dir or "reports/short_dataset_v2")
+    report_dir = Path(reports_dir or "reports")
     report_dir.mkdir(parents=True, exist_ok=True)
     _write_clean_filter_report(report_dir / "clean_source_filter_report.csv", source_filter_counts, sample_rejections)
     _write_source_ingestion_report(

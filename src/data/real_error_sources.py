@@ -269,7 +269,7 @@ def load_real_error_pairs(
     output = Path(output_path or "data/processed/real_error_pairs_validated.csv.gz")
     output.parent.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(rows, columns=REAL_PAIR_COLUMNS).to_csv(output, index=False)
-    report_dir = Path(reports_dir or "reports/short_dataset_v2")
+    report_dir = Path(reports_dir or "reports")
     report_dir.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(_real_pair_filter_rows(source_reports, rejection_counts)).to_csv(report_dir / "real_pair_filter_report.csv", index=False)
     pd.DataFrame(rejected_rows, columns=["source_dataset", "source", "target", "reason", "edit_summary", "detected_error_types", "candidate_present"]).to_csv(

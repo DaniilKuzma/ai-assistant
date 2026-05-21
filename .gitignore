@@ -11,3 +11,11 @@ data/processed/clean_sentence_pool*.csv.gz
 data/processed/real_error_pairs_validated*.csv.gz
 data/processed/**/clean_sentence_pool*.csv.gz
 data/processed/**/real_error_pairs_validated*.csv.gz
+*.py[cod]
+.mypy_cache/
+data/processed/features_cache/
+models/current/
+reports/cleanup/*.tmp
+*.bak
+*.tmp
+*-pycharm-support-libs/

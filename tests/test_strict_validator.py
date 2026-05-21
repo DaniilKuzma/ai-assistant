@@ -839,7 +839,7 @@ def test_acronym_and_capitalized_entity_protection_for_dictionary_fuzzy(source, 
         ("приемлет", "примелет", "swapped_letters_candidate"),
     ],
 )
-def test_observed_v2_probable_clean_lexical_regressions_are_rejected(source, replacement, rule_id):
+def test_observed_core_probable_clean_lexical_regressions_are_rejected(source, replacement, rule_id):
     text = f"В тексте есть {source}."
     start = text.index(source)
     target = text[:start] + replacement + text[start + len(source) :]

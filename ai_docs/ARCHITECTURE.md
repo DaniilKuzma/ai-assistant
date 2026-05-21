@@ -21,8 +21,8 @@ Plain fallback:
 Model-backed path:
 
 - `src.inference.model_corrector.TrainedModelCorrector`
-- грузит adapters из `models/adapters/latest`;
-- грузит heads из `models/heads/latest/heads.pt`;
+- грузит adapters из `models/current/adapters`;
+- грузит heads из `models/current/heads/heads.pt`;
 - выбирает candidates по thresholds;
 - передает trusted edits в validator.
 

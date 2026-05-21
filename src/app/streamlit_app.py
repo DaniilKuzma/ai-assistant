@@ -103,8 +103,8 @@ def main() -> None:
 
 def _trained_artifacts_exist(config: dict[str, Any]) -> bool:
     paths = config.get("paths", {})
-    adapter_dir = _resolve_project_path(paths.get("adapter_output_dir", "models/adapters/latest"))
-    heads_path = _resolve_project_path(paths.get("heads_output_dir", "models/heads/latest")) / "heads.pt"
+    adapter_dir = _resolve_project_path(paths.get("adapter_output_dir", "models/current/adapters"))
+    heads_path = _resolve_project_path(paths.get("heads_output_dir", "models/current/heads")) / "heads.pt"
     return adapter_dir.exists() and heads_path.exists()
 
 

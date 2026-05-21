@@ -52,9 +52,9 @@
 - Full matrix audit artifacts are under `reports/matrix_eval/`.
 - Dedicated eval corpus is under `data/processed/matrix_eval/`.
 - Use `reports/matrix_eval/next_dataset_activation_plan.md` for the next dataset cycle.
-## Matrix Eval Phase 2 Findings
+## Matrix Eval Matrix Findings
 
-- Phase 2 artifacts are under `reports/matrix_eval_phase2/`.
-- Phase 2 eval corpus is under `data/processed/matrix_eval_phase2/`.
-- Use `reports/matrix_eval_phase2/wave1_activation_plan.md` and `reports/matrix_eval_phase2/rule_expansion_backlog_v2.md` for `short_dataset_v3` planning.
+- Matrix artifacts are under `reports/matrix_eval/`.
+- Matrix eval corpus is under `data/processed/matrix_eval/`.
+- Use `reports/matrix_eval/activation_activation_plan.md` and `reports/matrix_eval/rule_expansion_backlog_core.md` for `training_dataset` planning.
 - Planned and metadata-only matrix entries remain backlog items until executable support exists.
