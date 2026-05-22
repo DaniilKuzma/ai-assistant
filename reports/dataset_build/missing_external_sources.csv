@@ -1,0 +1,3 @@
+source_name,type,local_path,archive_path,reason
+corus_loader,python_loader,,,missing_local_path
+taiga_news_wiki,taiga,data\external\taiga,,missing_local_path

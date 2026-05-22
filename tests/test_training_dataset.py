@@ -30,46 +30,53 @@ def _load_canonical_config() -> dict:
 
 def test_training_dataset_config_is_canonical_single_artifact():
     config = _load_canonical_config()
+    manifest = json.loads(Path(config["data"]["manifest_path"]).read_text(encoding="utf-8"))
     canonical_config = config["data"]["training_dataset"]
+    total = manifest["total"]
+    split_sizes = manifest["split_sizes"]
 
     assert config["data"]["processed_train_path"] == "data/processed/correction_dataset.csv.gz"
     assert config["data"]["manifest_path"] == "data/processed/dataset_manifest.json"
-    assert config["data"]["target_total_examples"] == 100000
-    assert config["data"]["train_examples"] == 80000
-    assert config["data"]["val_examples"] == 10000
-    assert config["data"]["test_examples"] == 10000
+    assert config["data"]["target_total_examples"] == total
+    assert config["data"]["total_examples"] == total
+    assert total >= 200000
+    assert config["data"]["train_examples"] == split_sizes["train"]
+    assert config["data"]["val_examples"] == split_sizes["val"]
+    assert config["data"]["test_examples"] == split_sizes["test"]
+    assert config["training"]["max_train_examples"] == split_sizes["train"]
+    assert config["training"]["max_val_examples"] == split_sizes["val"]
+    assert config["training"]["max_test_examples"] == split_sizes["test"]
+    assert split_sizes["train"] == int(total * 0.8)
+    assert split_sizes["val"] == int(total * 0.1)
+    assert split_sizes["test"] == total - split_sizes["train"] - split_sizes["val"]
     assert "fallback_split_sizes" not in canonical_config
     assert canonical_config["smoke"]["enabled"] is False
     assert canonical_config["smoke"]["verdict"] == "READY_FOR_SMOKE_ONLY"
 
 
-def test_canonical_100k_exact_sizes():
+def test_canonical_broad_exact_sizes():
     config = _load_canonical_config()
+    manifest = json.loads(Path(config["data"]["manifest_path"]).read_text(encoding="utf-8"))
     data = config["data"]
     targets = data["training_dataset"]["source_type_targets"]
     split_targets = data["training_dataset"]["split_source_type_targets"]
+    split_sizes = manifest["split_sizes"]
+    composition = manifest["composition"]
 
-    assert data["target_total_examples"] == 100000
-    assert data["exact_split_sizes"] == {"train": 80000, "val": 10000, "test": 10000}
-    assert targets == {
-        "synthetic_augmented_from_open_clean": 72000,
-        "real_error_pair": 4000,
-        "clean_identity_from_open_clean": 12000,
-        "hard_negative_from_open_clean": 12000,
-    }
-    assert split_targets["train"] == {
-        "synthetic_augmented_from_open_clean": 57600,
-        "real_error_pair": 3200,
-        "clean_identity_from_open_clean": 9600,
-        "hard_negative_from_open_clean": 9600,
-    }
-    assert split_targets["val"] == {
-        "synthetic_augmented_from_open_clean": 7200,
-        "real_error_pair": 400,
-        "clean_identity_from_open_clean": 1200,
-        "hard_negative_from_open_clean": 1200,
-    }
-    assert split_targets["test"] == split_targets["val"]
+    assert data["target_total_examples"] == manifest["total"]
+    assert data["exact_split_sizes"] == split_sizes
+    assert sum(targets.values()) == manifest["total"]
+    assert targets["synthetic_augmented_from_open_clean"] == composition["synthetic_augmented_from_open_clean"]
+    assert targets["real_error_pair"] == composition["real_error_pair"]
+    assert targets["clean_identity_from_open_clean"] == composition["clean_identity_from_open_clean"]
+    assert targets["hard_negative_from_open_clean"] == composition["hard_negative_from_open_clean"]
+    assert targets["synthetic_augmented_from_open_clean"] >= 150000
+    assert targets["real_error_pair"] > 0
+
+    for split, split_source_targets in split_targets.items():
+        assert sum(split_source_targets.values()) == split_sizes[split]
+    for source_type, target_count in targets.items():
+        assert sum(split_targets[split][source_type] for split in ("train", "val", "test")) == target_count
 
 
 def test_canonical_no_60k_ready_fallback(monkeypatch, tmp_path: Path):
@@ -110,26 +117,21 @@ def test_canonical_no_60k_ready_fallback(monkeypatch, tmp_path: Path):
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
 
     assert len(calls) == 1
-    assert result["verdict"] == "BLOCKED"
-    assert manifest["verdict"] == "BLOCKED"
+    assert result["verdict"] == "DATASET_BLOCKED"
+    assert manifest["verdict"] == "DATASET_BLOCKED"
     assert manifest["fallback_used"] is False
-    assert manifest["requested_total"] == 100000
+    assert manifest["requested_total"] == config["data"]["target_total_examples"]
     assert manifest["actual_total"] == 48687
 
 
-def test_canonical_preserves_stable_core_rules():
+def test_canonical_resolves_broad_active_rules():
     rows = training.resolve_active_target_rules(_load_canonical_config())
     active = {row["rule_id"]: row for row in rows if row["include_in_dataset"]}
-    core_stable = {
-        row["rule_id"]
-        for row in rows
-        if row["tier"] == "stable_core" and row["source"] == "core" and float(row["candidate_recall"]) >= 0.85
-    }
 
-    assert core_stable
-    assert core_stable <= set(active)
-    assert all(active[rule_id]["quota_min"] == 300 for rule_id in core_stable - training.RISKY_LEXICAL_RULE_IDS)
-    assert all(active[rule_id]["quota_preferred"] == 700 for rule_id in core_stable - training.RISKY_LEXICAL_RULE_IDS)
+    assert len(active) == 76
+    assert active["comma_subordinate"]["quota_min"] == 1500
+    assert active["dictionary_fuzzy"]["quota_preferred"] == 1800
+    assert active["final_punctuation_default"]["quota_preferred"] == 3000
 
 
 def test_canonical_includes_activation_rules():
@@ -137,20 +139,23 @@ def test_canonical_includes_activation_rules():
     by_rule = {row["rule_id"]: row for row in rows}
 
     assert ACTIVATION_INCLUDED_RULES <= {rule_id for rule_id, row in by_rule.items() if row["include_in_dataset"]}
-    assert all(by_rule[rule_id]["tier"] in {"activation", "stable_core"} for rule_id in ACTIVATION_INCLUDED_RULES)
-    assert all(by_rule[rule_id]["quota_min"] in {300, 500} for rule_id in ACTIVATION_INCLUDED_RULES)
-    assert all(by_rule[rule_id]["quota_preferred"] in {700, 1000} for rule_id in ACTIVATION_INCLUDED_RULES)
+    assert all(by_rule[rule_id]["tier"] in {"syntax_supported", "legacy_stable", "current_capability"} for rule_id in ACTIVATION_INCLUDED_RULES)
+    assert all(by_rule[rule_id]["quota_min"] >= 1000 for rule_id in ACTIVATION_INCLUDED_RULES)
+    assert all(by_rule[rule_id]["quota_preferred"] >= 2500 for rule_id in ACTIVATION_INCLUDED_RULES)
     if "hyphen_whitelist" in by_rule:
-        assert by_rule["hyphen_whitelist"]["include_in_dataset"] is False
-        assert by_rule["hyphen_whitelist"]["reason"] == "under_quota_nonblocking"
+        assert by_rule["hyphen_whitelist"]["include_in_dataset"] is True
+        assert by_rule["hyphen_whitelist"]["reason"] == "legacy_candidate_backed_current_capability"
 
 
 def test_canonical_synthetic_min_70000():
     config = _load_canonical_config()
+    manifest = json.loads(Path(config["data"]["manifest_path"]).read_text(encoding="utf-8"))
     canonical_config = config["data"]["training_dataset"]
+    synthetic_target = canonical_config["source_type_targets"]["synthetic_augmented_from_open_clean"]
 
-    assert canonical_config["source_type_targets"]["synthetic_augmented_from_open_clean"] == 72000
-    assert canonical_config["audit"]["synthetic_min"] == 70000
+    assert synthetic_target == manifest["composition"]["synthetic_augmented_from_open_clean"]
+    assert synthetic_target >= 150000
+    assert canonical_config["audit"]["synthetic_min"] <= synthetic_target + 10000
 
 
 def test_canonical_candidate_recall_active_only():

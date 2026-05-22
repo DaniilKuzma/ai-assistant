@@ -35,6 +35,17 @@ TARGETED_BACKFILL_DICTIONARY_RULE_IDS = frozenset(
     }
 )
 
+TARGETED_BACKFILL_CONTEXTS = (
+    " \u0432 \u0440\u0430\u0431\u043e\u0447\u0435\u043c \u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u0435 \u043e \u0442\u0435\u043c\u0435 «{topic}»",
+    " \u043f\u0440\u0438 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043a\u0435 \u0440\u0430\u0437\u0434\u0435\u043b\u0430 «{topic}»",
+    " \u0434\u043b\u044f \u043f\u0440\u043e\u0442\u043e\u043a\u043e\u043b\u0430 \u043f\u043e \u0442\u0435\u043c\u0435 «{topic}»",
+    " \u0432 \u0441\u043b\u0443\u0436\u0435\u0431\u043d\u043e\u043c \u043f\u0438\u0441\u044c\u043c\u0435 \u043e \u0442\u0435\u043c\u0435 «{topic}»",
+    " \u0432 \u043a\u0440\u0430\u0442\u043a\u043e\u0439 \u0441\u0432\u043e\u0434\u043a\u0435 \u043f\u043e \u0442\u0435\u043c\u0435 «{topic}»",
+    " \u0432 \u0438\u0442\u043e\u0433\u043e\u0432\u043e\u043c \u043e\u0442\u0447\u0435\u0442\u0435 \u043e \u0442\u0435\u043c\u0435 «{topic}»",
+    " \u0432 \u0441\u043f\u0440\u0430\u0432\u043a\u0435 \u043f\u043e \u0442\u0435\u043c\u0435 «{topic}»",
+    " \u0432 \u043d\u043e\u0432\u043e\u043c \u0440\u0430\u0437\u0434\u0435\u043b\u0435 «{topic}»",
+)
+
 
 @dataclass(frozen=True)
 class SyntheticExample:
@@ -215,10 +226,11 @@ class TargetedBackfillGenerator:
         templates = TARGETED_BACKFILL_PAIR_TEMPLATES.get(rule_id, ())
         if templates:
             source_template, target_template = templates[index % len(templates)]
-            topic = TARGETED_BACKFILL_TOPICS[(index // max(1, len(templates))) % len(TARGETED_BACKFILL_TOPICS)]
+            topic = _safe_topic_for_index((index // max(1, len(templates))) % len(TARGETED_BACKFILL_TOPICS))
+            context_index = index // max(1, len(templates) * len(TARGETED_BACKFILL_TOPICS))
             source = source_template.format(topic=topic)
             target = target_template.format(topic=topic)
-            pairs.append(_with_natural_tail(source, target, index))
+            pairs.append(_with_topic_context(source, target, topic, context_index))
         pairs.extend(self._term_pairs(rule_id, index))
         return pairs
 
@@ -227,7 +239,7 @@ class TargetedBackfillGenerator:
         if not terms:
             return []
         term = terms[index % len(terms)]
-        topic = TARGETED_BACKFILL_TOPICS[(index // max(1, len(terms))) % len(TARGETED_BACKFILL_TOPICS)]
+        topic = _safe_topic_for_index((index // max(1, len(terms))) % len(TARGETED_BACKFILL_TOPICS))
         target = _term_target_sentence(term, topic, index)
         dirty = _dirty_term_for_rule(rule_id, term)
         if dirty:
@@ -352,7 +364,7 @@ def _overlaps(left: SyntheticTransformation, right: SyntheticTransformation) -> 
 def _attempt_limit_for_rule(rule_id: str, required_count: int) -> int:
     template_count = len(TARGETED_BACKFILL_PAIR_TEMPLATES.get(rule_id, ()))
     term_count = len(TARGETED_BACKFILL_TERM_BANK.get(rule_id, ()))
-    estimated_unique = template_count * len(TARGETED_BACKFILL_TOPICS)
+    estimated_unique = template_count * len(TARGETED_BACKFILL_TOPICS) * len(TARGETED_BACKFILL_CONTEXTS)
     estimated_unique += term_count * len(TARGETED_BACKFILL_TOPICS) * 6
     return max(required_count * 6, min(estimated_unique * 2, 600), 64)
 
@@ -363,6 +375,26 @@ def _apply_candidate(source: str, candidate: Any) -> str:
     if start < 0 or end < start:
         return source
     return source[:start] + str(getattr(candidate, "replacement", "")) + source[end:]
+
+
+def _safe_topic_for_index(index: int) -> str:
+    for offset in range(len(TARGETED_BACKFILL_TOPICS)):
+        topic = TARGETED_BACKFILL_TOPICS[(index + offset) % len(TARGETED_BACKFILL_TOPICS)]
+        if "\u043c\u0435\u0442\u043a\u0430" not in topic.lower():
+            return topic
+    return "\u0440\u0430\u0431\u043e\u0447\u0438\u0439 \u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442"
+
+
+def _with_topic_context(source: str, target: str, topic: str, index: int) -> tuple[str, str]:
+    phrase = TARGETED_BACKFILL_CONTEXTS[index % len(TARGETED_BACKFILL_CONTEXTS)].format(topic=topic)
+    return _append_before_terminal(source, phrase), _append_before_terminal(target, phrase)
+
+
+def _append_before_terminal(sentence: str, phrase: str) -> str:
+    stripped = sentence.strip()
+    if stripped.endswith((".", "!", "?")):
+        return f"{stripped[:-1]}{phrase}{stripped[-1]}"
+    return f"{stripped}{phrase}"
 
 
 def _with_natural_tail(source: str, target: str, index: int) -> tuple[str, str]:
@@ -547,15 +579,34 @@ def _append_tail(sentence: str, tail: str) -> str:
 
 
 def _term_target_sentence(term: str, topic: str, index: int) -> str:
-    templates = (
-        "Редактор проверил {term}, когда готовил {topic}.",
-        "Команда внесла {term} в {topic} перед встречей.",
-        "Автор увидел {term} и открыл {topic} утром.",
-        "Секретарь сохранил {term}, потому что {topic} был важен.",
-        "Эксперт отметил {term}, когда читал {topic}.",
-        "Аналитик записал {term} и обновил {topic} вечером.",
+    contexts = (
+        "\u0420\u0435\u0434\u0430\u043a\u0442\u043e\u0440 \u0438\u0441\u043f\u0440\u0430\u0432\u0438\u043b \u0441\u043b\u043e\u0432\u043e {term} \u0432 \u0440\u0430\u0431\u043e\u0447\u0435\u043c \u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u0435.",
+        "\u0412 \u043e\u0442\u0447\u0435\u0442\u0435 \u043e \u0442\u0435\u043c\u0435 «{topic}» \u0432\u0441\u0442\u0440\u0435\u0442\u0438\u043b\u043e\u0441\u044c \u0441\u043b\u043e\u0432\u043e {term}.",
+        "\u042d\u043a\u0441\u043f\u0435\u0440\u0442 \u0437\u0430\u043c\u0435\u0442\u0438\u043b \u043e\u0448\u0438\u0431\u043a\u0443 \u0432 \u0441\u043b\u043e\u0432\u0435 {term} \u0432 \u0441\u043b\u0443\u0436\u0435\u0431\u043d\u043e\u0439 \u0437\u0430\u043f\u0438\u0441\u0438.",
+        "\u0412 \u043f\u0438\u0441\u044c\u043c\u0435 \u043e \u0442\u0435\u043c\u0435 «{topic}» \u0431\u044b\u043b\u0430 \u0444\u0440\u0430\u0437\u0430 \u0441\u043e \u0441\u043b\u043e\u0432\u043e\u043c {term}.",
+        "\u0412 \u0437\u0430\u044f\u0432\u043b\u0435\u043d\u0438\u0438 \u043f\u043e \u0442\u0435\u043c\u0435 «{topic}» \u0443\u043a\u0430\u0437\u0430\u043b\u0438 \u0441\u043b\u043e\u0432\u043e {term}.",
+        "\u041a\u043e\u0440\u0440\u0435\u043a\u0442\u043e\u0440 \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u043b \u043d\u0430\u043f\u0438\u0441\u0430\u043d\u0438\u0435 \u0441\u043b\u043e\u0432\u0430 {term} \u0432 \u0441\u043f\u0440\u0430\u0432\u043a\u0435.",
+        "\u0412 \u043f\u0440\u043e\u0442\u043e\u043a\u043e\u043b\u0435 \u043f\u043e \u0442\u0435\u043c\u0435 «{topic}» \u043e\u0441\u0442\u0430\u0432\u0438\u043b\u0438 \u0441\u043b\u043e\u0432\u043e {term}.",
+        "\u0412 \u0440\u0430\u0437\u0434\u0435\u043b\u0435 \u043f\u0440\u043e \u0442\u0435\u043c\u0443 «{topic}» \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u043b\u0438 \u0441\u043b\u043e\u0432\u043e {term}.",
     )
-    return templates[index % len(templates)].format(term=term, topic=topic)
+    return contexts[index % len(contexts)].format(term=term, topic=topic)
+    templates = (
+        "Редактор исправил слово {term} в документе {marker}.",
+        "В отчете {marker} встретилось слово {term}.",
+        "Эксперт заметил ошибку в слове {term} в записи {marker}.",
+        "В письме {marker} была фраза со словом {term}.",
+        "В заявлении {marker} указали слово {term}.",
+        "Корректор проверил написание слова {term} в файле {marker}.",
+    )
+    del topic
+    return templates[index % len(templates)].format(term=term, marker=_letter_marker(index))
+
+
+def _letter_marker(index: int) -> str:
+    alphabet = "абвгдежзиклмнопрстуфхцчшщэюя"
+    left = alphabet[index % len(alphabet)]
+    right = alphabet[(index // len(alphabet)) % len(alphabet)]
+    return left + right
 
 
 def _dirty_term_for_rule(rule_id: str, term: str) -> str:

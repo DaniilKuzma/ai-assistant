@@ -12,10 +12,18 @@ from src.candidates.candidate_generator import CandidateGenerator
 from src.data._training_dataset_builder import build_training_dataset_core_from_config
 from src.evaluation.candidate_recall import build_candidate_recall_reports
 from src.rules.coverage_matrix import iter_coverage_entries, load_rules_coverage
+from src.rules.registry import rule_by_id
+from src.rules.syntax_synthetic import (
+    SUPPORTED_ORTHOGRAPHY_RULE_IDS,
+    SUPPORTED_PUNCTUATION_RULE_IDS,
+    SUPPORTED_SYNTAX_RULE_IDS,
+)
 
 
 VERDICT_READY = "READY_FOR_TRAINING_DATASET"
 VERDICT_SMOKE_ONLY = "READY_FOR_SMOKE_ONLY"
+VERDICT_PARTIAL = "DATASET_PARTIAL"
+VERDICT_BLOCKED = "DATASET_BLOCKED"
 CORE_VERDICT_READY = "READY_FOR_TRAINING_DATASET"
 
 SYNTHETIC_OPEN_CLEAN = "synthetic_augmented_from_open_clean"
@@ -50,6 +58,92 @@ RISKY_LEXICAL_RULE_IDS = frozenset(
     }
 )
 
+HIGH_FREQUENCY_LEGACY_RULE_IDS = frozenset(
+    {
+        "final_punctuation_default",
+        "capitalization_sentence_start",
+        "frequent_error_exact",
+        "hyphen_particles",
+        "hyphen_koe_koy",
+        "hyphen_po_adverbs",
+        "hyphen_whitelist",
+    }
+)
+
+LEGACY_CANDIDATE_BACKED_RULE_IDS = frozenset(
+    {
+        "frequent_error_exact",
+        "dictionary_fuzzy",
+        "double_consonant_candidate",
+        "keyboard_typo_candidate",
+        "swapped_letters_candidate",
+        "missing_letter_candidate",
+        "extra_letter_candidate",
+        "hyphen_particles",
+        "hyphen_koe_koy",
+        "hyphen_po_adverbs",
+        "hyphen_whitelist",
+        "pol_polu_compounds",
+        "prefix_pre_pri",
+        "prefix_s_to_z",
+        "prefix_z_to_s",
+        "missing_hard_sign",
+        "soft_to_hard_sign",
+        "pattern_жы_жи",
+        "pattern_шы_ши",
+        "pattern_чя_ча",
+        "pattern_щя_ща",
+        "pattern_чю_чу",
+        "pattern_щю_щу",
+        "pattern_цы_ци",
+        "pattern_жо_же",
+        "pattern_шо_ше",
+        "pattern_чо_че",
+        "pattern_що_ще",
+        "final_punctuation_default",
+        "capitalization_sentence_start",
+        "abbreviation_case_protection",
+        "sdelat_prefix",
+        "cy_exception",
+    }
+)
+
+BROAD_EXCLUDED_RULE_IDS = frozenset(
+    {
+        "metadata_only",
+        "planned",
+        "quote_open",
+        "quote_close",
+        "capitalization_ner",
+        "neural_punctuation",
+    }
+)
+
+TRAINING_INCLUDE_DECISIONS = frozenset(
+    {
+        "INCLUDE_NOW",
+        "INCLUDE_AFTER_VALIDATOR",
+        "INCLUDE_AFTER_THRESHOLD_CALIBRATION",
+        "INCLUDE_AFTER_TRAINING",
+    }
+)
+
+BROAD_ACTIVE_RULE_COLUMNS = [
+    "rule_id",
+    "source",
+    "include",
+    "reason",
+    "risk_level",
+    "needs_validator",
+    "needs_threshold_calibration",
+    "candidate_path_exists",
+    "synthetic_support_exists",
+    "hard_negative_support_exists",
+    "target_min_examples",
+    "target_preferred_examples",
+    "final_count",
+]
+
 ACTIVE_TARGET_COLUMNS = [
     "rule_id",
     "tier",
@@ -72,79 +166,179 @@ def build_training_dataset_from_config(config: dict[str, Any], force: bool = Fal
     return _finalize_canonical_result(prepared, result)
 
 
+def resolve_broad_active_training_rules(config: dict[str, Any]) -> list[dict[str, Any]]:
+    """Resolve the canonical broad active rule set from rules.yaml plus syntax support."""
+
+    rules_by_id = _rules_yaml_training_entries()
+    candidates = set(rules_by_id) | set(SUPPORTED_SYNTAX_RULE_IDS) | set(LEGACY_CANDIDATE_BACKED_RULE_IDS)
+    if not bool(config.get("dictionary", {}).get("yo_e", {}).get("enabled", False)):
+        candidates.add("yo_e_candidate")
+    candidates.update({"quote_open", "quote_close", "capitalization_ner", "neural_punctuation"})
+
+    rows: list[dict[str, Any]] = []
+    for rule_id in sorted(candidates):
+        entry = rules_by_id.get(rule_id, {})
+        dataset = dict(entry.get("dataset", {}) or {})
+        include, reason = _broad_include_decision(rule_id, dataset, config=config)
+        source = _broad_rule_source(rule_id, dataset)
+        quota_min, quota_preferred = _broad_rule_quota(rule_id, include=include)
+        candidate_path = include or bool(dataset.get("current_candidate_path")) or rule_id in SUPPORTED_SYNTAX_RULE_IDS or rule_id in LEGACY_CANDIDATE_BACKED_RULE_IDS
+        synthetic_support = include or bool(dataset.get("current_synthetic_support")) or rule_id in SUPPORTED_SYNTAX_RULE_IDS
+        hard_negative_support = include or bool(dataset.get("current_hard_negative_support")) or rule_id in SUPPORTED_SYNTAX_RULE_IDS
+        decision = str(dataset.get("training_eligibility_decision") or "")
+        rows.append(
+            {
+                "rule_id": rule_id,
+                "source": source,
+                "include": bool(include),
+                "include_in_dataset": bool(include),
+                "reason": reason,
+                "risk_level": str(dataset.get("risk_level") or _broad_default_risk(rule_id)),
+                "needs_validator": decision == "INCLUDE_AFTER_VALIDATOR",
+                "needs_threshold_calibration": decision == "INCLUDE_AFTER_THRESHOLD_CALIBRATION",
+                "candidate_path_exists": bool(candidate_path),
+                "synthetic_support_exists": bool(synthetic_support),
+                "hard_negative_support_exists": bool(hard_negative_support),
+                "target_min_examples": quota_min,
+                "target_preferred_examples": quota_preferred,
+                "final_count": 0,
+                "tier": source,
+                "quota_min": quota_min,
+                "quota_preferred": quota_preferred,
+                "quota_final": quota_preferred,
+                "candidate_recall": float(dataset.get("current_candidate_recall") or (1.0 if include else 0.0)),
+                "safety_status": "included" if include else "excluded",
+            }
+        )
+    return rows
+
+
+def compute_broad_dataset_targets(active_rows: list[dict[str, Any]], *, real_pair_count: int) -> dict[str, Any]:
+    included = [row for row in active_rows if bool(row.get("include") or row.get("include_in_dataset"))]
+    targeted_synthetic = sum(int(row.get("target_preferred_examples", row.get("quota_preferred", 0)) or 0) for row in included)
+    preliminary = targeted_synthetic + max(0, int(real_pair_count))
+    clean_identity = max(25_000, int(round(preliminary * 0.10)))
+    hard_negative = max(25_000, int(round(preliminary * 0.10)))
+    stress = max(10_000, int(round(preliminary * 0.04)))
+    synthetic_padding = 0
+    hard_negative_padding = 0
+    total = targeted_synthetic + clean_identity + hard_negative + stress + max(0, int(real_pair_count))
+    if total < 200_000 and included:
+        deficit = 200_000 - total
+        synthetic_padding = int(round(deficit * 0.70))
+        hard_negative_padding = deficit - synthetic_padding
+        total += deficit
+        hard_negative += hard_negative_padding
+    base_without_clean_hard = targeted_synthetic + synthetic_padding + stress + max(0, int(real_pair_count))
+    ten_percent_floor = int((base_without_clean_hard + 7) // 8 + 1)
+    clean_identity = max(clean_identity, ten_percent_floor)
+    hard_negative = max(hard_negative, ten_percent_floor)
+    total = targeted_synthetic + synthetic_padding + clean_identity + hard_negative + stress + max(0, int(real_pair_count))
+    split_sizes = _exact_80_10_10(total)
+    synthetic_total = targeted_synthetic + stress + synthetic_padding
+    return {
+        "active_rule_count": len(included),
+        "targeted_synthetic_target": int(targeted_synthetic + synthetic_padding),
+        "targeted_synthetic_base": int(targeted_synthetic),
+        "synthetic_padding": int(synthetic_padding),
+        "clean_identity_target": int(clean_identity),
+        "hard_negative_target": int(hard_negative),
+        "hard_negative_padding": int(hard_negative_padding),
+        "multi_error_stress_target": int(stress),
+        "real_pair_target": int(max(0, real_pair_count)),
+        "total_target": int(total),
+        "split_sizes": split_sizes,
+        "source_type_targets": {
+            SYNTHETIC_OPEN_CLEAN: int(synthetic_total),
+            REAL_ERROR_PAIR: int(max(0, real_pair_count)),
+            CLEAN_IDENTITY_OPEN: int(clean_identity),
+            HARD_NEGATIVE_OPEN: int(hard_negative),
+        },
+        "split_source_type_targets": _split_source_targets(
+            {
+                SYNTHETIC_OPEN_CLEAN: int(synthetic_total),
+                REAL_ERROR_PAIR: int(max(0, real_pair_count)),
+                CLEAN_IDENTITY_OPEN: int(clean_identity),
+                HARD_NEGATIVE_OPEN: int(hard_negative),
+            },
+            split_sizes,
+        ),
+    }
+
+
+def training_dataset_quality_errors(manifest: dict[str, Any], config: dict[str, Any] | None = None) -> list[str]:
+    total = int(manifest.get("total", 0) or 0)
+    errors: list[str] = []
+    if total < 200_000:
+        errors.append("total_below_200000")
+        errors.append(f"total_below_200000:{total}")
+    splits = {split: int(count) for split, count in dict(manifest.get("split_sizes", {}) or {}).items()}
+    if total and splits != _exact_80_10_10(total):
+        errors.append(f"split_sizes_not_exact_80_10_10:{splits}")
+    composition = _composition_with_aliases(dict(manifest.get("composition", {}) or {}))
+    if total and int(composition.get("clean_identity", 0)) < total * 0.10:
+        errors.append("clean_identity_below_10_percent")
+    if total and int(composition.get("hard_negative", 0)) < total * 0.10:
+        errors.append("hard_negative_below_10_percent")
+    if int(composition.get("real_error_pair", 0)) <= 0:
+        errors.append("missing_real_pairs")
+        errors.append("real_pairs_missing")
+    stress_count = int(manifest.get("stress_count", composition.get("multi_error_stress", 0)) or 0)
+    if total and not (total * 0.03 <= stress_count <= total * 0.05):
+        errors.append("stress_ratio_outside_3_5_percent")
+    source_counts = dict(manifest.get("source_counts", manifest.get("clean_source_counts", {})) or {})
+    for source_name, count in source_counts.items():
+        if total and int(count) > total * 0.70:
+            errors.append(f"source_dominance_above_70_percent:{source_name}")
+    if float((manifest.get("candidate_recall_summary") or {}).get("active_min_excluding_unknown", 1.0)) < 0.85:
+        errors.append("candidate_recall_active_min_below_threshold")
+    if float((manifest.get("gap_label_coverage_summary") or {}).get("active_min_excluding_unknown", 1.0)) < 0.85:
+        errors.append("gap_coverage_active_min_below_threshold")
+    if manifest.get("underfilled_rule_ids") or manifest.get("low_count_active_rule_ids"):
+        errors.append("active_rule_quota_underfilled")
+    rule_counts = {str(key): int(value) for key, value in dict(manifest.get("rule_id_counts", {}) or {}).items()}
+    for rule_id in manifest.get("active_rule_ids", []) or []:
+        if int(rule_counts.get(str(rule_id), 0)) < 1000:
+            errors.append(f"active_rule_under_min:{rule_id}")
+    if float(manifest.get("synthetic_normalized_pair_duplicate_rate", 0.0) or 0.0) > 0.25:
+        errors.append("synthetic_normalized_duplicate_rate_above_threshold")
+    if int(manifest.get("top_normalized_pair_count", 0) or 0) > 20:
+        errors.append("top_normalized_pair_count_above_threshold")
+    for phrase, count in dict(manifest.get("meta_language_counts", {}) or {}).items():
+        if int(count) != 0:
+            errors.append(f"meta_language_present:{phrase}")
+    for phrase, count in dict(manifest.get("suspicious_template_counts", {}) or {}).items():
+        if int(count) != 0:
+            errors.append(f"suspicious_template_present:{phrase}")
+    if int(manifest.get("hard_negative_accepted_bad_edits", 0) or 0) != 0:
+        errors.append("hard_negative_accepted_bad_edits_nonzero")
+    if float(manifest.get("corpus_opportunity_share", 1.0) or 0.0) < 0.70:
+        errors.append("corpus_opportunity_share_below_threshold")
+    if float(manifest.get("fallback_template_share", 0.0) or 0.0) > 0.20:
+        errors.append("fallback_template_share_above_threshold")
+    for name, count in dict(manifest.get("known_quality_bugs", {}) or {}).items():
+        if int(count) != 0:
+            errors.append(f"known_quality_bugs_present:{name}")
+    for name, count in dict(manifest.get("artificial_marker_counts", {}) or {}).items():
+        if int(count) != 0:
+            errors.append(f"artificial_marker_present:{name}")
+    if not dict(manifest.get("error_bearing_sentence_source_counts", {}) or {}):
+        errors.append("missing_error_bearing_sentence_source_counts")
+    if int(dict(manifest.get("rule_diversity_summary", {}) or {}).get("failed_rule_count", 0) or 0) != 0:
+        errors.append("rule_diversity_gates_failed")
+    if int(dict(manifest.get("extended_quality_audit_summary", {}) or {}).get("blocking_issue_count", 0) or 0) != 0:
+        errors.append("extended_quality_audit_blocking_issues")
+    source_counts = {str(key): int(value) for key, value in source_counts.items()}
+    for source_name, count in source_counts.items():
+        if total and count > total * 0.70:
+            errors.append(f"unsafe_source_dominance:{source_name}")
+    return _dedupe_errors(errors)
+
+
 def resolve_active_target_rules(config: dict[str, Any]) -> list[dict[str, Any]]:
-    """Resolve active, tiered canonical targets from stable core and verified Activation artifacts."""
+    """Resolve active canonical targets for the broad training dataset."""
 
-    canonical_config = config.get("data", {}).get("training_dataset", {}) or {}
-    rows: dict[str, dict[str, Any]] = {}
-    stable_core = _stable_core_rules(canonical_config)
-    activation_rows = _verified_activation_rows(canonical_config)
-
-    for rule_id, recall in stable_core.items():
-        rows[rule_id] = _target_row(
-            rule_id=rule_id,
-            tier="stable_core",
-            include=True,
-            reason="stable_core_candidate_recall_ge_0_85",
-            candidate_recall=recall,
-            safety_status="stable_core_ready",
-            source="core",
-        )
-
-    for activation_row in activation_rows:
-        rule_id = str(activation_row.get("rule_id") or "")
-        if not rule_id:
-            continue
-        include = _is_activation_include(activation_row)
-        if include:
-            rows[rule_id] = _target_row(
-                rule_id=rule_id,
-                tier="activation",
-                include=True,
-                reason="verified_activation_candidate_backed",
-                candidate_recall=_float(activation_row.get("candidate_recall"), default=1.0),
-                safety_status=str(activation_row.get("status") or "READY_NEXT_DATASET"),
-                source=_merge_source(rows.get(rule_id, {}).get("source"), "activation"),
-            )
-        elif rule_id not in rows:
-            rows[rule_id] = _target_row(
-                rule_id=rule_id,
-                tier="excluded",
-                include=False,
-                reason=_exclusion_reason(activation_row),
-                candidate_recall=_float(activation_row.get("candidate_recall"), default=0.0),
-                safety_status=str(activation_row.get("status") or ""),
-                source="activation",
-            )
-
-    for rule_id in _configured_bounded_activation_rules(canonical_config):
-        if rule_id in rows and rows[rule_id]["include_in_dataset"]:
-            continue
-        rows[rule_id] = _target_row(
-            rule_id=rule_id,
-            tier="bounded_activation",
-            include=True,
-            reason="configured_bounded_activation_candidate_backed",
-            candidate_recall=1.0,
-            safety_status="configured_safe",
-            source="matrix_activation",
-        )
-
-    for row in _activation_excluded_rows(canonical_config):
-        rule_id = str(row.get("rule_id") or "")
-        if not rule_id or rule_id in rows:
-            continue
-        rows[rule_id] = _target_row(
-            rule_id=rule_id,
-            tier="excluded",
-            include=False,
-            reason=_activation_exclusion_reason(row),
-            candidate_recall=_float(row.get("candidate_recall"), default=0.0),
-            safety_status=str(row.get("activation_decision") or row.get("activation_decision") or ""),
-            source="matrix_activation",
-        )
-
-    return [rows[rule_id] for rule_id in sorted(rows)]
+    return resolve_broad_active_training_rules(config)
 
 
 def active_metric_summary(
@@ -184,41 +378,211 @@ def underfilled_active_rule_ids(active_rows: list[dict[str, Any]], rule_counts: 
     return sorted(underfilled)
 
 
+def _rules_yaml_training_entries() -> dict[str, dict[str, Any]]:
+    coverage = load_rules_coverage()
+    result: dict[str, dict[str, Any]] = {}
+    for domain, group, entry in iter_coverage_entries(coverage):
+        dataset = dict(entry.get("dataset", {}) or {})
+        decision = str(dataset.get("training_eligibility_decision") or "")
+        eligible = bool(dataset.get("training_eligible_now")) or decision in TRAINING_INCLUDE_DECISIONS
+        for raw_rule_id in entry.get("rules", []) or []:
+            rule_id = str(raw_rule_id)
+            if eligible or rule_id in SUPPORTED_SYNTAX_RULE_IDS or rule_id in LEGACY_CANDIDATE_BACKED_RULE_IDS:
+                merged = dict(entry)
+                merged["domain"] = domain
+                merged["group"] = group
+                result[rule_id] = merged
+    return result
+
+
+def _broad_include_decision(rule_id: str, dataset: dict[str, Any], *, config: dict[str, Any]) -> tuple[bool, str]:
+    if rule_id in {"quote_open", "quote_close"}:
+        return False, "broad_normalization_quote_id_excluded"
+    if rule_id == "capitalization_ner":
+        return False, "needs_NER:BLOCK_NEEDS_NER:no_safe_current_candidate_path"
+    if rule_id == "neural_punctuation":
+        return False, "broad_neural_punctuation_excluded"
+    if rule_id == "yo_e_candidate" and not bool(config.get("dictionary", {}).get("yo_e", {}).get("enabled", False)):
+        return False, "yo_e_disabled_in_dictionary_config"
+    if rule_id in BROAD_EXCLUDED_RULE_IDS:
+        return False, "excluded_by_broad_dataset_policy"
+    if rule_by_id(rule_id) is None:
+        return False, "no_registered_rule"
+    decision = str(dataset.get("training_eligibility_decision") or "")
+    eligible = bool(dataset.get("training_eligible_now")) or decision in TRAINING_INCLUDE_DECISIONS
+    if rule_id in SUPPORTED_SYNTAX_RULE_IDS:
+        return True, "syntax_supported_candidate_backed"
+    if rule_id in LEGACY_CANDIDATE_BACKED_RULE_IDS:
+        return True, "legacy_candidate_backed_current_capability"
+    if eligible and bool(dataset.get("current_candidate_path", True)):
+        return True, "rules_yaml_training_eligible_candidate_backed"
+    if eligible:
+        return False, "training_eligible_but_no_candidate_path"
+    blocker = decision or str(dataset.get("training_eligibility_reason") or "metadata_or_planned")
+    return False, blocker
+
+
+def _broad_rule_source(rule_id: str, dataset: dict[str, Any]) -> str:
+    if rule_id in SUPPORTED_SYNTAX_RULE_IDS:
+        return "syntax_supported"
+    if rule_id in LEGACY_CANDIDATE_BACKED_RULE_IDS:
+        return "legacy_stable"
+    if dataset:
+        return "current_capability"
+    return "excluded"
+
+
+def _broad_rule_quota(rule_id: str, *, include: bool) -> tuple[int, int]:
+    if not include:
+        return 0, 0
+    if rule_id in SUPPORTED_PUNCTUATION_RULE_IDS or rule_id in SUPPORTED_ORTHOGRAPHY_RULE_IDS:
+        return 1500, 2500
+    if rule_id == "abbreviation_case_protection":
+        return 1000, 1500
+    if rule_id in RISKY_LEXICAL_RULE_IDS:
+        return 1000, 1800
+    if rule_id in HIGH_FREQUENCY_LEGACY_RULE_IDS:
+        return 1000, 3000
+    return 1000, 2500
+
+
+def _broad_default_risk(rule_id: str) -> str:
+    if rule_id in RISKY_LEXICAL_RULE_IDS or rule_id == "abbreviation_case_protection":
+        return "medium"
+    if rule_id in {"quote_pair_balance", "bracket_pair_balance", "punctuation_delete_replace"}:
+        return "medium"
+    return "low"
+
+
+def _exact_80_10_10(total: int) -> dict[str, int]:
+    train = int(total * 0.8)
+    val = int(total * 0.1)
+    return {"train": train, "val": val, "test": int(total - train - val)}
+
+
+def _split_source_targets(source_targets: dict[str, int], split_sizes: dict[str, int]) -> dict[str, dict[str, int]]:
+    result = {split: {source_type: 0 for source_type in source_targets} for split in ("train", "val", "test")}
+    total = max(1, sum(split_sizes.values()))
+    for source_type, count in source_targets.items():
+        train = int(count * split_sizes["train"] / total)
+        val = int(count * split_sizes["val"] / total)
+        test = int(count) - train - val
+        result["train"][source_type] = train
+        result["val"][source_type] = val
+        result["test"][source_type] = test
+    for split in ("train", "val", "test"):
+        delta = split_sizes[split] - sum(result[split].values())
+        result[split][SYNTHETIC_OPEN_CLEAN] = result[split].get(SYNTHETIC_OPEN_CLEAN, 0) + delta
+    return result
+
+
+def _composition_with_aliases(composition: dict[str, Any]) -> dict[str, int]:
+    result = {str(key): int(value) for key, value in composition.items()}
+    result.setdefault("clean_identity", int(result.get(CLEAN_IDENTITY_OPEN, 0)))
+    result.setdefault("hard_negative", int(result.get(HARD_NEGATIVE_OPEN, 0)))
+    result.setdefault("real_error_pair", int(result.get(REAL_ERROR_PAIR, 0)))
+    result.setdefault("multi_error_stress", int(result.get("multi_error_stress", 0)))
+    return result
+
+
+def _count_csv_rows(path: Path) -> int:
+    if not path.exists():
+        return 0
+    return int(sum(len(chunk) for chunk in pd.read_csv(path, chunksize=50_000)))
+
+
 def _as_core_compatible_config(config: dict[str, Any]) -> dict[str, Any]:
     cloned = copy.deepcopy(config)
     data = cloned.setdefault("data", {})
     canonical = copy.deepcopy(data.get("training_dataset", {}) or {})
     active_rows = resolve_active_target_rules(cloned)
     included_rows = [row for row in active_rows if row["include_in_dataset"]]
+    real_pair_count = _count_csv_rows(Path(str(data.get("real_error_pairs_validated_path") or "data/processed/real_error_pairs_validated.csv.gz")))
+    targets = compute_broad_dataset_targets(active_rows, real_pair_count=real_pair_count)
+    configured_targets = dict(canonical.get("source_type_targets", {}) or {})
+    configured_total = int(data.get("target_total_examples") or data.get("total_examples") or 0)
+    if configured_targets and configured_total >= 200_000 and sum(int(value) for value in configured_targets.values()) == configured_total:
+        configured_splits = dict(data.get("exact_split_sizes", {}) or {})
+        if sum(int(value) for value in configured_splits.values()) != configured_total:
+            configured_splits = _exact_80_10_10(configured_total)
+        configured_split_targets = copy.deepcopy(canonical.get("split_source_type_targets", {}) or {})
+        if set(configured_split_targets) != {"train", "val", "test"}:
+            configured_split_targets = _split_source_targets(configured_targets, configured_splits)
+        targets.update(
+            {
+                "total_target": configured_total,
+                "split_sizes": {split: int(count) for split, count in configured_splits.items()},
+                "source_type_targets": {source_type: int(count) for source_type, count in configured_targets.items()},
+                "split_source_type_targets": configured_split_targets,
+                "multi_error_stress_target": int(canonical.get("multi_error_stress_target", targets["multi_error_stress_target"]) or 0),
+            }
+        )
+    split_sizes = targets["split_sizes"]
+    data["target_total_examples"] = targets["total_target"]
+    data["total_examples"] = targets["total_target"]
+    data["train_examples"] = split_sizes["train"]
+    data["val_examples"] = split_sizes["val"]
+    data["test_examples"] = split_sizes["test"]
+    data["exact_split_sizes"] = dict(split_sizes)
     rule_quotas = {
         row["rule_id"]: {
-            "min_total": int(row["quota_min"]),
-            "preferred_total": int(row["quota_preferred"]),
-            "max_total": int(row["quota_final"]),
+            "min_total": int(row["target_min_examples"]),
+            "preferred_total": int(row["target_preferred_examples"]),
+            "max_total": max(int(row["target_preferred_examples"]) + 750, int(row["target_min_examples"])),
         }
         for row in included_rows
     }
     core = copy.deepcopy(canonical)
     core["enabled"] = True
-    core.setdefault("expected_total", int(canonical.get("expected_total") or data.get("target_total_examples") or 100000))
+    core["requested_total"] = targets["total_target"]
+    core["expected_total"] = targets["total_target"]
+    core["source_type_targets"] = dict(targets["source_type_targets"])
+    core["split_source_type_targets"] = copy.deepcopy(targets["split_source_type_targets"])
+    core["multi_error_stress_target"] = int(targets["multi_error_stress_target"])
+    core["min_cached_real_pairs"] = 5000
+    core["preferred_cached_real_pairs"] = 30000
+    core["reuse_clean_sentence_pool_cache"] = True
+    core["min_clean_pool_for_ready"] = 300000
+    core["min_clean_pool_hard_min"] = 150000
     quota = dict(core.get("active_rule_quota", {}) or {})
     quota.update(
         {
             "enabled": True,
             "rule_ids": [row["rule_id"] for row in included_rows],
             "rule_quotas": rule_quotas,
-            "min_total_per_active_rule": min((int(row["quota_min"]) for row in included_rows), default=1),
-            "preferred_total_per_active_rule": max((int(row["quota_preferred"]) for row in included_rows), default=1),
+            "min_total_per_active_rule": min((int(row["target_min_examples"]) for row in included_rows), default=1),
+            "preferred_total_per_active_rule": max((int(row["target_preferred_examples"]) for row in included_rows), default=1),
             "split_minimums": {},
         }
     )
     core["active_rule_quota"] = quota
     rule_caps = dict(core.get("rule_caps", {}) or {})
     rule_caps["rule_max_totals"] = {rule_id: quota["max_total"] for rule_id, quota in rule_quotas.items()}
-    rule_caps["max_rule_share_train"] = 0.10
+    rule_caps["max_total_per_rule_id"] = max((quota["max_total"] for quota in rule_quotas.values()), default=2500)
+    rule_caps["max_train_per_rule_id"] = max((quota["max_total"] for quota in rule_quotas.values()), default=2500)
+    rule_caps["max_rule_share_train"] = 0.08
     core["rule_caps"] = rule_caps
+    audit = dict(core.get("audit", {}) or {})
+    audit.update(
+        {
+            "candidate_recall_min": 0.85,
+            "gap_coverage_min": 0.85,
+            "synthetic_min": int(targets["targeted_synthetic_base"]),
+            "min_active_rule_count": 1000,
+            "min_clean_identity_eval_split": 500,
+            "min_hard_negative_eval_split": 500,
+            "require_all_source_types": True,
+        }
+    )
+    core["audit"] = audit
     data["training_dataset_core"] = core
     data["config_path"] = data.get("config_path") or "configs/config.yaml"
+    training = cloned.setdefault("training", {})
+    training["max_train_examples"] = split_sizes["train"]
+    training["max_val_examples"] = split_sizes["val"]
+    training["max_test_examples"] = split_sizes["test"]
+    if str(data.get("processed_train_path")) == "data/processed/correction_dataset.csv.gz":
+        cloned.setdefault("paths", {})["reports_dir"] = "reports/dataset_build"
     return cloned
 
 
@@ -240,6 +604,7 @@ def _finalize_canonical_result(config: dict[str, Any], result: dict[str, Any]) -
     rule_counts = {str(key): int(value) for key, value in dict(manifest.get("rule_id_counts", {}) or {}).items()}
     _attach_final_counts(active_rows, rule_counts)
     _write_active_target_rules(active_rows, reports_dir / "canonical_active_target_rules.csv")
+    _write_broad_active_training_rules(active_rows, reports_dir / "active_training_rules.csv")
 
     active_rule_ids = [row["rule_id"] for row in active_rows if row["include_in_dataset"]]
     recall_reports = _active_target_recall_reports(config, active_rule_ids, reports_dir=reports_dir)
@@ -284,7 +649,7 @@ def _finalize_canonical_result(config: dict[str, Any], result: dict[str, Any]) -
     manifest["audit_errors"] = _dedupe_errors(_canonical_audit_errors(manifest, config=config))
     is_smoke = _is_smoke_config(config)
     if manifest["audit_errors"]:
-        manifest["verdict"] = "BLOCKED"
+        manifest["verdict"] = VERDICT_BLOCKED
     elif is_smoke:
         manifest["verdict"] = VERDICT_SMOKE_ONLY
     else:
@@ -314,6 +679,8 @@ def _upgrade_manifest_to_canonical(
     activation_ids = sorted(row["rule_id"] for row in included_rows if row["tier"] == "activation")
     bounded_ids = sorted(row["rule_id"] for row in included_rows if row["tier"] == "bounded_activation")
 
+    composition = _composition_with_aliases(dict(manifest.get("composition", {}) or {}))
+    stress_count = int(manifest.get("stress_count", composition.get("multi_error_stress", 0)) or 0)
     manifest.update(
         {
             "dataset_version": "training_dataset",
@@ -321,6 +688,7 @@ def _upgrade_manifest_to_canonical(
             "actual_total": int(result.get("total", manifest.get("total", 0)) or 0),
             "requested_split_sizes": dict(data.get("exact_split_sizes", {}) or {}),
             "actual_split_sizes": manifest.get("split_sizes", result.get("splits", {})),
+            "composition": composition,
             "fallback_used": False,
             "fallback_reason": "",
             "smoke_mode": _is_smoke_config(config),
@@ -336,11 +704,19 @@ def _upgrade_manifest_to_canonical(
             "excluded_rule_ids": sorted(row["rule_id"] for row in excluded_rows),
             "excluded_active_rule_ids": sorted(row["rule_id"] for row in excluded_rows),
             "active_target_rule_count": len(active_rule_ids),
+            "active_rule_count": len(active_rule_ids),
             "stable_core_rule_count": len(stable_core_ids),
             "activation_rule_count": len(activation_ids),
             "bounded_activation_rule_count": len(bounded_ids),
             "excluded_rule_count": len(excluded_rows),
             "low_count_active_rule_ids": underfilled,
+            "underfilled_rule_ids": underfilled,
+            "real_pair_count": int(composition.get("real_error_pair", 0)),
+            "clean_identity_count": int(composition.get("clean_identity", 0)),
+            "hard_negative_count": int(composition.get("hard_negative", 0)),
+            "stress_count": stress_count,
+            "source_counts": dict(manifest.get("clean_source_counts", {}) or {}),
+            "hard_negative_accepted_bad_edits": int(manifest.get("hard_negative_accepted_bad_edits", 0) or 0),
             "active_rule_quota_summary": {
                 "active_rule_count": len(active_rule_ids),
                 "stable_core_rule_count": len(stable_core_ids),
@@ -348,7 +724,7 @@ def _upgrade_manifest_to_canonical(
                 "bounded_activation_rule_count": len(bounded_ids),
                 "excluded_count": len(excluded_rows),
                 "underfilled_count": len(underfilled),
-                "strategy": "tiered_canonical",
+                "strategy": "broad_canonical",
             },
         }
     )
@@ -365,9 +741,11 @@ def _canonical_audit_errors(manifest: dict[str, Any], *, config: dict[str, Any])
         if not str(error).startswith(("active_rule_count_below_min:", "active_rule_quota_underfilled:"))
         and str(error) not in {"candidate_recall_active_min_below_threshold", "gap_coverage_active_min_below_threshold"}
     ]
-    expected_total = int(data.get("target_total_examples", canonical.get("requested_total", 100000)) or 100000)
+    expected_total = int(data.get("target_total_examples", canonical.get("requested_total", 200000)) or 200000)
     if int(manifest.get("total", 0)) != expected_total:
         errors.append(f"dataset_size_below_requested:{manifest.get('total', 0)}!={expected_total}")
+    if int(manifest.get("total", 0)) < 200000:
+        errors.append(f"dataset_size_below_200000:{manifest.get('total', 0)}")
     expected_splits = {split: int(count) for split, count in dict(data.get("exact_split_sizes", {}) or {}).items()}
     actual_splits = {split: int(count) for split, count in dict(manifest.get("split_sizes", {}) or {}).items()}
     for split, expected in expected_splits.items():
@@ -379,6 +757,14 @@ def _canonical_audit_errors(manifest: dict[str, Any], *, config: dict[str, Any])
         errors.append(f"synthetic_augmented_from_open_clean_shortage:{composition.get(SYNTHETIC_OPEN_CLEAN, 0)}<{synthetic_min}")
     if int(composition.get(REAL_ERROR_PAIR, 0)) <= 0:
         errors.append("missing_source_type:real_error_pair")
+    total = int(manifest.get("total", 0) or 0)
+    if total and int(composition.get("clean_identity", composition.get(CLEAN_IDENTITY_OPEN, 0)) or 0) < total * 0.10:
+        errors.append("clean_identity_below_10_percent")
+    if total and int(composition.get("hard_negative", composition.get(HARD_NEGATIVE_OPEN, 0)) or 0) < total * 0.10:
+        errors.append("hard_negative_below_10_percent")
+    stress_count = int(manifest.get("stress_count", composition.get("multi_error_stress", 0)) or 0)
+    if total and not (total * 0.03 <= stress_count <= total * 0.05):
+        errors.append("stress_ratio_outside_3_5_percent")
     for split, counts in dict(manifest.get("composition_by_split", {}) or {}).items():
         if int(counts.get(CLEAN_IDENTITY_OPEN, 0)) <= 0:
             errors.append(f"clean_identity_missing_in_split:{split}")
@@ -408,6 +794,22 @@ def _canonical_audit_errors(manifest: dict[str, Any], *, config: dict[str, Any])
     for phrase, count in dict(manifest.get("suspicious_template_counts", {}) or {}).items():
         if int(count) != 0:
             errors.append(f"suspicious_template_present:{phrase}")
+    if float(manifest.get("corpus_opportunity_share", 0.0) or 0.0) < 0.70:
+        errors.append("corpus_opportunity_share_below_threshold")
+    if float(manifest.get("fallback_template_share", 1.0)) > 0.20:
+        errors.append("fallback_template_share_above_threshold")
+    for name, count in dict(manifest.get("known_quality_bugs", {}) or {}).items():
+        if int(count) != 0:
+            errors.append(f"known_quality_bugs_present:{name}")
+    for name, count in dict(manifest.get("artificial_marker_counts", {}) or {}).items():
+        if int(count) != 0:
+            errors.append(f"artificial_marker_present:{name}")
+    if not dict(manifest.get("error_bearing_sentence_source_counts", {}) or {}):
+        errors.append("missing_error_bearing_sentence_source_counts")
+    if int(dict(manifest.get("rule_diversity_summary", {}) or {}).get("failed_rule_count", 0) or 0) != 0:
+        errors.append("rule_diversity_gates_failed")
+    if int(dict(manifest.get("extended_quality_audit_summary", {}) or {}).get("blocking_issue_count", 0) or 0) != 0:
+        errors.append("extended_quality_audit_blocking_issues")
     errors.extend(_dominance_errors(manifest, config=config))
     return errors
 
@@ -552,12 +954,38 @@ def _activation_exclusion_reason(row: dict[str, Any]) -> str:
 
 def _attach_final_counts(active_rows: list[dict[str, Any]], rule_counts: dict[str, int]) -> None:
     for row in active_rows:
-        row["quota_final"] = int(rule_counts.get(str(row.get("rule_id")), 0)) if row["include_in_dataset"] else 0
+        final_count = int(rule_counts.get(str(row.get("rule_id")), 0)) if row["include_in_dataset"] else 0
+        row["quota_final"] = final_count
+        row["final_count"] = final_count
 
 
 def _write_active_target_rules(rows: list[dict[str, Any]], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(rows, columns=ACTIVE_TARGET_COLUMNS).to_csv(path, index=False)
+
+
+def _write_broad_active_training_rules(rows: list[dict[str, Any]], path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    records = []
+    for row in rows:
+        records.append(
+            {
+                "rule_id": row.get("rule_id", ""),
+                "source": row.get("source", ""),
+                "include": bool(row.get("include", row.get("include_in_dataset", False))),
+                "reason": row.get("reason", ""),
+                "risk_level": row.get("risk_level", ""),
+                "needs_validator": bool(row.get("needs_validator", False)),
+                "needs_threshold_calibration": bool(row.get("needs_threshold_calibration", False)),
+                "candidate_path_exists": bool(row.get("candidate_path_exists", False)),
+                "synthetic_support_exists": bool(row.get("synthetic_support_exists", False)),
+                "hard_negative_support_exists": bool(row.get("hard_negative_support_exists", False)),
+                "target_min_examples": int(row.get("target_min_examples", row.get("quota_min", 0)) or 0),
+                "target_preferred_examples": int(row.get("target_preferred_examples", row.get("quota_preferred", 0)) or 0),
+                "final_count": int(row.get("final_count", 0) or 0),
+            }
+        )
+    pd.DataFrame(records, columns=BROAD_ACTIVE_RULE_COLUMNS).to_csv(path, index=False)
 
 
 def _write_candidate_gate_report(

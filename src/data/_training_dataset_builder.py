@@ -15,7 +15,9 @@ import pandas as pd
 import yaml
 
 from src.candidates.candidate_generator import CandidateGenerator
+from src.candidates.matching import candidate_matches_edit
 from src.data.clean_sentence_pool import (
+    CleanSentencePoolResult,
     META_LANGUAGE_PATTERNS,
     build_clean_sentence_pool,
     normalize_template_text,
@@ -28,6 +30,15 @@ from src.data.synthetic_generator import (
     SyntheticGenerator,
     TargetedBackfillExample,
     TargetedBackfillGenerator,
+)
+from src.data.training_quality_audit import (
+    audit_training_dataset,
+    artificial_marker_counts,
+    write_extended_quality_reports,
+    write_artificial_marker_reports,
+    write_generation_strategy_report,
+    write_known_quality_bugs_report,
+    write_rule_diversity_report,
 )
 from src.evaluation.candidate_recall import (
     CANDIDATE_RECALL_COLUMNS,
@@ -46,6 +57,25 @@ REAL_ERROR_PAIR = "real_error_pair"
 CLEAN_IDENTITY_OPEN = "clean_identity_from_open_clean"
 HARD_NEGATIVE_OPEN = "hard_negative_from_open_clean"
 CORE_SOURCE_TYPES = (SYNTHETIC_OPEN_CLEAN, REAL_ERROR_PAIR, CLEAN_IDENTITY_OPEN, HARD_NEGATIVE_OPEN)
+ARTIFICIAL_METKA_SUBSTRING = "\u043c\u0435\u0442\u043a\u0430"
+ARTIFICIAL_LATER_EDITOR_PATTERNS = (
+    "\u043f\u043e\u0437\u0436\u0435 \u0440\u0435\u0434\u0430\u043a\u0442\u043e\u0440 "
+    "\u043f\u0440\u043e\u0432\u0435\u0440\u0438\u043b \u0437\u0430\u043f\u0438\u0441\u044c",
+    "\u043f\u043e\u0437\u0436\u0435 \u0440\u0435\u0434\u0430\u043a\u0442\u043e\u0440 "
+    "\u043f\u0440\u043e\u0432\u0435\u0440\u0438\u043b \u043c\u0430\u0442\u0435\u0440\u0438\u0430\u043b",
+)
+ARTIFICIAL_RANDOM_FILLER_RE = re.compile(
+    r"(?:\b(?:\u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u0435|\u0444\u0430\u0439\u043b\u0435)\s+[\u0430-\u044f\u0451]{2}\.)|"
+    r"(?:\b\u043e\u0442\u0447[\u0435\u0451]\u0442\u0435\s+[\u0430-\u044f\u0451]{2}\s+\u0432\u0441\u0442\u0440\u0435\u0442\u0438\u043b\u043e\u0441\u044c)|"
+    r"(?:\b\u0437\u0430\u043f\u0438\u0441\u0438\s+[\u0430-\u044f\u0451]{2}\.)|"
+    r"(?:\b\u043f\u0438\u0441\u044c\u043c\u0435\s+[\u0430-\u044f\u0451]{2}\s+\u0431\u044b\u043b\u0430)|"
+    r"(?:\b\u0437\u0430\u044f\u0432\u043b\u0435\u043d\u0438\u0438\s+[\u0430-\u044f\u0451]{2}\s+\u0443\u043a\u0430\u0437\u0430\u043b\u0438)|"
+    r"(?:\u043f\u043e\u0437\u0436\u0435\s+\u0440\u0435\u0434\u0430\u043a\u0442\u043e\u0440\s+"
+    r"\u043f\u0440\u043e\u0432\u0435\u0440\u0438\u043b\s+"
+    r"(?:\u0437\u0430\u043f\u0438\u0441\u044c|\u043c\u0430\u0442\u0435\u0440\u0438\u0430\u043b)\s+"
+    r"[\u0430-\u044f\u0451]{2}\b)",
+    re.IGNORECASE,
+)
 SOURCE_TYPE_ALIASES = {
     "synthetic_augmented": SYNTHETIC_OPEN_CLEAN,
     SYNTHETIC_OPEN_CLEAN: SYNTHETIC_OPEN_CLEAN,
@@ -127,6 +157,14 @@ ACTIVE_SYNTHETIC_STATUSES = frozenset(
         "syntax_required",
     }
 )
+_CURRENT_ACTIVE_RULE_IDS: set[str] | None = None
+
+
+def _progress(stage: str, **payload: Any) -> None:
+    if os.environ.get("RUSSIAN_CORRECTOR_DATASET_PROGRESS", "1").strip().lower() in {"0", "false", "no", "off"}:
+        return
+    event = {"stage": stage, **payload}
+    print("[dataset-build] " + json.dumps(event, ensure_ascii=False, sort_keys=True), flush=True)
 
 
 def build_training_dataset_core_from_config(config: dict[str, Any], force: bool = False) -> dict[str, Any]:
@@ -145,6 +183,14 @@ def build_training_dataset_core_from_config(config: dict[str, Any], force: bool 
     requested_total = total
     requested_split_sizes = dict(split_sizes)
     source_targets = _source_type_targets(core_config, total)
+    _progress(
+        "start",
+        force=bool(force),
+        output_path=str(output_path),
+        manifest_path=str(manifest_path),
+        requested_total=int(requested_total),
+        split_sizes=requested_split_sizes,
+    )
 
     if output_path.exists() and not force:
         existing = pd.read_csv(output_path)
@@ -160,6 +206,7 @@ def build_training_dataset_core_from_config(config: dict[str, Any], force: bool 
     reports_dir.mkdir(parents=True, exist_ok=True)
     clean_config = _clean_source_config(config, core_config)
     real_config = _real_source_config(config, core_config)
+    clean_pool_path = output_dir / "clean_sentence_pool.csv.gz"
     source_precheck = _precheck_external_sources(clean_config, real_config, reports_dir=reports_dir)
     if not source_precheck["ready"]:
         manifest = _blocked_missing_sources_manifest(
@@ -184,14 +231,21 @@ def build_training_dataset_core_from_config(config: dict[str, Any], force: bool 
     generator = SyntheticGenerator(seed=seed, max_errors_per_sentence=int(core_config.get("max_errors_per_sentence", 2)))
     candidate_generator = CandidateGenerator.from_config(config)
 
-    clean_result = build_clean_sentence_pool(
-        clean_config,
-        output_path=output_dir / "clean_sentence_pool.csv.gz",
-        reports_dir=reports_dir,
-    )
-    clean_rows = _read_records(output_dir / "clean_sentence_pool.csv.gz")
+    if bool(core_config.get("reuse_clean_sentence_pool_cache", True)) and clean_pool_path.exists():
+        clean_rows = _read_records(clean_pool_path)
+        clean_result = _clean_result_from_cache(clean_rows, clean_pool_path, core_config=core_config)
+    else:
+        _progress("clean_pool_build_start", output_path=str(clean_pool_path))
+        clean_result = build_clean_sentence_pool(
+            clean_config,
+            output_path=clean_pool_path,
+            reports_dir=reports_dir,
+        )
+        clean_rows = _read_records(clean_pool_path)
+    _progress("clean_pool_ready", rows=len(clean_rows), path=str(clean_pool_path))
 
     real_output_path = output_dir / "real_error_pairs_validated.csv.gz"
+    _progress("real_pairs_load_start", output_path=str(real_output_path))
     real_result = _load_or_reuse_real_error_pairs(
         real_config,
         candidate_generator=candidate_generator,
@@ -199,6 +253,7 @@ def build_training_dataset_core_from_config(config: dict[str, Any], force: bool 
         reports_dir=reports_dir,
         core_config=core_config,
     )
+    _progress("real_pairs_ready", rows=len(real_result.rows), output_path=str(real_output_path))
 
     rows: list[dict[str, Any]] = []
     used_clean_hashes: set[str] = set()
@@ -219,6 +274,24 @@ def build_training_dataset_core_from_config(config: dict[str, Any], force: bool 
     quota_config = _active_rule_quota_config(core_config)
     cap_config = _rule_cap_config(core_config, split_sizes)
     active_rule_ids = _effective_active_rule_ids(config, core_config, quota_config=quota_config)
+    global _CURRENT_ACTIVE_RULE_IDS
+    _CURRENT_ACTIVE_RULE_IDS = set(active_rule_ids)
+    _progress("active_rules_ready", active_rule_count=len(active_rule_ids))
+    stress_target = int(core_config.get("multi_error_stress_target", 0) or 0)
+    corpus_budget = max(0, int(source_targets.get(SYNTHETIC_OPEN_CLEAN, 0)) - stress_target)
+    _progress("corpus_opportunity_start", budget=corpus_budget, clean_rows=len(strict_clean_rows))
+    corpus_rows, corpus_state = _corpus_opportunity_rows_for_active_rules(
+        existing_rows=rows,
+        clean_rows=strict_clean_rows,
+        active_rule_ids=active_rule_ids,
+        quota_config=quota_config,
+        cap_config=cap_config,
+        seed=seed,
+        synthetic_budget=corpus_budget,
+    )
+    rows.extend(corpus_rows)
+    _progress("corpus_opportunity_done", rows=len(corpus_rows), total_rows=len(rows), state=corpus_state)
+    _progress("quota_backfill_start", synthetic_budget=int(source_targets.get(SYNTHETIC_OPEN_CLEAN, 0)))
     quota_rows, quota_state = _build_active_rule_quota_rows(
         rows,
         clean_rows=strict_clean_rows,
@@ -229,11 +302,26 @@ def build_training_dataset_core_from_config(config: dict[str, Any], force: bool 
         seed=seed,
         synthetic_budget=int(source_targets.get(SYNTHETIC_OPEN_CLEAN, 0)),
     )
+    quota_state["corpus_opportunity_rows"] = len(corpus_rows)
+    quota_state["corpus_opportunity_state"] = corpus_state
     rows.extend(quota_rows)
+    _progress("quota_backfill_done", rows=len(quota_rows), total_rows=len(rows))
+    if stress_target > 0:
+        _progress("stress_start", target=stress_target)
+        stress_rows = _multi_error_stress_rows(
+            existing_rows=rows,
+            clean_rows=strict_clean_rows,
+            target_count=min(stress_target, max(0, int(source_targets.get(SYNTHETIC_OPEN_CLEAN, 0)) - len([row for row in rows if row["source_type"] == SYNTHETIC_OPEN_CLEAN]))),
+            seed=seed + 71,
+            cap_config=cap_config,
+        )
+        rows.extend(stress_rows)
+        _progress("stress_done", rows=len(stress_rows), total_rows=len(rows))
 
     synthetic_target = int(source_targets.get(SYNTHETIC_OPEN_CLEAN, 0))
     synthetic_remaining = max(0, synthetic_target - len([row for row in rows if row["source_type"] == SYNTHETIC_OPEN_CLEAN]))
     general_synthetic_target = min(synthetic_remaining, int(core_config.get("max_general_synthetic_fill", 6000)))
+    _progress("general_synthetic_start", target=general_synthetic_target, synthetic_remaining=synthetic_remaining)
     rule_cap_counts = Counter(_rule_counts_from_rows(rows))
     error_cap_counts = Counter(_error_counts_from_rows(rows))
     synthetic_rows = _synthetic_rows_from_clean_pool(
@@ -249,11 +337,13 @@ def build_training_dataset_core_from_config(config: dict[str, Any], force: bool 
         rule_max_totals=cap_config.get("rule_max_totals", {}),
     )
     rows.extend(synthetic_rows)
+    _progress("general_synthetic_done", rows=len(synthetic_rows), total_rows=len(rows))
     synthetic_remaining = max(0, synthetic_target - len([row for row in rows if row["source_type"] == SYNTHETIC_OPEN_CLEAN]))
     if synthetic_remaining:
+        _progress("targeted_fill_start", target=synthetic_remaining)
         fill_rows, fill_state = _fill_remaining_with_targeted_rows(
             clean_rows=strict_clean_rows,
-            active_rule_ids=quota_state["active_rule_ids"],
+            active_rule_ids=active_rule_ids,
             target_count=synthetic_remaining,
             candidate_generator=candidate_generator,
             seed=seed + 101,
@@ -262,8 +352,10 @@ def build_training_dataset_core_from_config(config: dict[str, Any], force: bool 
         )
         rows.extend(fill_rows)
         quota_state["rejected_templates"].extend(fill_state["rejected_templates"])
+        _progress("targeted_fill_done", rows=len(fill_rows), total_rows=len(rows))
 
     clean_identity_target = int(source_targets.get(CLEAN_IDENTITY_OPEN, 0))
+    _progress("clean_identity_start", target=clean_identity_target)
     rows.extend(
         _identity_rows_from_clean_pool(
             strict_clean_rows,
@@ -272,8 +364,10 @@ def build_training_dataset_core_from_config(config: dict[str, Any], force: bool 
             used_clean_hashes=used_clean_hashes,
         )
     )
+    _progress("clean_identity_done", total_rows=len(rows))
 
     hard_negative_target = int(source_targets.get(HARD_NEGATIVE_OPEN, 0))
+    _progress("hard_negative_start", target=hard_negative_target)
     rows.extend(
         _hard_negative_rows_from_clean_pool(
             clean_rows,
@@ -281,7 +375,11 @@ def build_training_dataset_core_from_config(config: dict[str, Any], force: bool 
             used_clean_hashes=used_clean_hashes,
         )
     )
+    _progress("hard_negative_done", total_rows=len(rows))
 
+    before_marker_filter = len(rows)
+    rows = [row for row in rows if not _row_contains_artificial_marker(row)]
+    _progress("artificial_marker_filter_done", removed=before_marker_filter - len(rows), total_rows=len(rows))
     shortage_errors = _target_shortage_errors(rows, source_targets)
     rows = rows[:total]
     _attach_template_fields(rows)
@@ -294,10 +392,13 @@ def build_training_dataset_core_from_config(config: dict[str, Any], force: bool 
     _attach_template_fields(rows)
 
     frame = pd.DataFrame(rows, columns=CORE_COLUMNS)
+    _progress("write_dataset_start", rows=len(frame), output_path=str(output_path))
     frame.to_csv(output_path, index=False)
     for split in ("train", "val", "test"):
         frame[frame["split"] == split].to_csv(output_dir / f"{split}.csv", index=False)
+    _progress("write_dataset_done", rows=len(frame))
 
+    _progress("recall_reports_start", rows=len(frame))
     recall_reports = build_candidate_recall_reports(
         frame.to_dict("records"),
         candidate_generator=candidate_generator,
@@ -305,13 +406,33 @@ def build_training_dataset_core_from_config(config: dict[str, Any], force: bool 
     )
     recall_reports["candidate_recall_by_rule"].to_csv(reports_dir / "candidate_recall_by_rule.csv", index=False)
     recall_reports["gap_label_coverage_by_rule"].to_csv(reports_dir / "gap_label_coverage_by_rule.csv", index=False)
+    _progress("recall_reports_done")
     _write_balance_reports(frame, reports_dir)
+    _write_source_usage_report(frame, reports_dir / "source_usage_report.csv")
+    _write_real_pair_usage_report(frame, reports_dir / "real_pair_usage_report.csv", real_result=real_result, real_target=real_target)
+    _write_hard_negative_coverage_report(frame, reports_dir / "hard_negative_coverage_report.csv")
     quota_state = _finalize_quota_state(frame, quota_state, quota_config=quota_config, cap_config=cap_config)
     _write_active_rule_quota_report(quota_state["quota_rows"], reports_dir / "active_rule_quota_report.csv")
     _write_excluded_active_rules_report(quota_state["excluded_rows"], reports_dir / "excluded_active_rules_report.csv")
     _write_rejected_backfill_templates(quota_state["rejected_templates"], reports_dir / "rejected_backfill_templates.csv")
     template_leakage = _write_template_leakage_report(frame, reports_dir / "template_leakage_report.csv")
     template_quality = _write_template_quality_report(frame, reports_dir / "template_quality_report.md")
+    _progress("quality_audit_start")
+    quality_audit = audit_training_dataset(frame, quota_state["active_rule_ids"])
+    write_generation_strategy_report(quality_audit, reports_dir / "generation_strategy_report.csv")
+    write_rule_diversity_report(quality_audit, reports_dir / "rule_diversity_report.csv")
+    write_extended_quality_reports(
+        quality_audit,
+        reports_dir / "extended_quality_audit.csv",
+        reports_dir / "extended_quality_audit.md",
+    )
+    write_artificial_marker_reports(
+        quality_audit,
+        reports_dir / "artificial_marker_audit.csv",
+        reports_dir / "artificial_marker_audit.md",
+    )
+    write_known_quality_bugs_report(quality_audit, reports_dir / "known_quality_bugs_report.md")
+    _progress("quality_audit_done", artificial_marker_counts=quality_audit.get("artificial_marker_counts", {}))
 
     manifest = _manifest(
         frame,
@@ -329,10 +450,12 @@ def build_training_dataset_core_from_config(config: dict[str, Any], force: bool 
         requested_split_sizes=requested_split_sizes,
         reports_dir=reports_dir,
         quota_state=quota_state,
+        quality_audit=quality_audit,
     )
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     _write_generation_report(frame, reports_dir / "dataset_generation_report.md", manifest)
+    _progress("done", verdict=manifest["verdict"], total=len(frame), audit_errors=manifest.get("audit_errors", []))
 
     return {
         "status": "built",
@@ -403,11 +526,42 @@ def _precheck_external_sources(clean_config: dict[str, Any], real_config: dict[s
     downloads_allowed = _downloads_allowed(clean_config) or _downloads_allowed(real_config)
     if downloads_allowed:
         _prepare_materialized_real_sources(real_config)
-    missing.extend(_missing_source_specs(clean_config, key="clean_sources"))
-    missing.extend(_missing_source_specs(real_config, key="real_sources"))
+    clean_missing = _missing_source_specs(clean_config, key="clean_sources")
+    real_missing = _missing_source_specs(real_config, key="real_sources")
+    missing.extend(clean_missing)
+    missing.extend(real_missing)
     if missing:
         pd.DataFrame(missing).to_csv(reports_dir / "missing_external_sources.csv", index=False)
-    return {"ready": not missing, "missing": missing, "downloads_allowed": downloads_allowed}
+    clean_policy = dict(clean_config.get("sources", {}).get("download_policy", {}) or clean_config.get("download_policy", {}) or {})
+    clean_pool_policy = dict(clean_config.get("pool", {}) or {})
+    clean_missing_blocks = bool(clean_policy.get("fail_if_insufficient_sources", clean_pool_policy.get("fail_if_insufficient_sources", False)))
+    blocking_missing = list(real_missing) + (list(clean_missing) if clean_missing_blocks else [])
+    return {"ready": not blocking_missing, "missing": missing, "blocking_missing": blocking_missing, "downloads_allowed": downloads_allowed}
+
+
+def _clean_result_from_cache(clean_rows: list[dict[str, Any]], output_path: Path, *, core_config: dict[str, Any]) -> CleanSentencePoolResult:
+    source_counts = Counter(str(row.get("source_name") or row.get("source_corpus") or "cached_clean_pool") for row in clean_rows)
+    subcorpus_counts = Counter(str(row.get("source_subcorpus") or row.get("source_name") or "cached_clean_pool") for row in clean_rows)
+    min_clean = int(core_config.get("min_clean_pool_for_ready", 300_000))
+    shortage = "" if len(clean_rows) >= min_clean else f"accepted_clean_sentences_below_min:{len(clean_rows)}<{min_clean}"
+    return CleanSentencePoolResult(
+        accepted_count=len(clean_rows),
+        total_seen=len(clean_rows),
+        output_path=str(output_path),
+        source_counts=dict(sorted(source_counts.items())),
+        subcorpus_counts=dict(sorted(subcorpus_counts.items())),
+        rejection_reason_counts={},
+        source_reports=[
+            {
+                "source_name": "clean_sentence_pool_cache",
+                "status": "loaded",
+                "reason": "reused_existing_clean_sentence_pool",
+                "accepted": len(clean_rows),
+            }
+        ],
+        dominance_violations=[],
+        shortage_reason=shortage,
+    )
 
 
 def _downloads_allowed(config: dict[str, Any]) -> bool:
@@ -719,15 +873,26 @@ def _strict_clean_rows(clean_rows: list[dict[str, Any]]) -> list[dict[str, Any]]
 def _real_rows(rows: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
     result: list[dict[str, Any]] = []
     for row in rows:
+        source = str(row.get("source", ""))
+        target = str(row.get("target", ""))
+        if _contains_artificial_marker_text(source, target):
+            continue
         edits = _json_list(row.get("edits") or row.get("edit_operations"))
         rule_ids = _rule_ids_from_edits(edits) or _json_list(row.get("rule_ids")) or [str(row.get("rule_id") or "unknown")]
         error_types = _error_types_from_edits(edits) or _json_list(row.get("error_types")) or [str(row.get("error_type") or "unknown")]
         metadata = _json_dict(row.get("metadata"))
-        metadata.update({"source_type": REAL_ERROR_PAIR, "candidate_present": bool(row.get("candidate_present", True))})
+        metadata.update(
+            {
+                "source_type": REAL_ERROR_PAIR,
+                "candidate_present": bool(row.get("candidate_present", True)),
+                "generation_strategy": "real_pair",
+                "error_bearing_sentence_source": "real_pair",
+            }
+        )
         result.append(
             _core_row(
-                source=str(row.get("source", "")),
-                target=str(row.get("target", "")),
+                source=source,
+                target=target,
                 source_type=REAL_ERROR_PAIR,
                 error_type=str(error_types[0] if error_types else "unknown"),
                 rule_ids=[str(rule_id) for rule_id in rule_ids],
@@ -755,10 +920,27 @@ def _load_or_reuse_real_error_pairs(
     reports_dir: Path,
     core_config: dict[str, Any],
 ) -> RealErrorLoadResult:
-    min_cached = int(core_config.get("min_cached_real_pairs", 1000))
+    min_cached = int(core_config.get("min_cached_real_pairs", 5000))
+    preferred_cached = int(core_config.get("preferred_cached_real_pairs", 30000))
     if bool(core_config.get("reuse_validated_real_pairs_cache", True)) and output_path.exists():
         cached_rows = _read_records(output_path)
-        if len(cached_rows) >= min_cached:
+        if cached_rows and (reports_dir / "real_pair_filter_report.csv").exists():
+            return RealErrorLoadResult(
+                rows=cached_rows,
+                accepted_count=len(cached_rows),
+                rejected_count=0,
+                source_reports=[
+                    {
+                        "source_dataset": "validated_real_pair_cache",
+                        "status": "loaded",
+                        "reason": "reused_validated_cache_after_prior_refresh",
+                        "accepted": len(cached_rows),
+                    }
+                ],
+                rejection_reason_counts={},
+                output_path=str(output_path),
+            )
+        if not should_refresh_real_pair_cache(output_path, min_cached=min_cached, preferred_cached=preferred_cached):
             return RealErrorLoadResult(
                 rows=cached_rows,
                 accepted_count=len(cached_rows),
@@ -774,12 +956,532 @@ def _load_or_reuse_real_error_pairs(
                 rejection_reason_counts={},
                 output_path=str(output_path),
             )
-    return load_real_error_pairs(
+    result = load_real_error_pairs(
         real_config,
         candidate_generator=candidate_generator,
         output_path=output_path,
         reports_dir=reports_dir,
     )
+    if result.accepted_count <= 0 and output_path.exists():
+        cached_rows = _read_records(output_path)
+        if cached_rows:
+            return RealErrorLoadResult(
+                rows=cached_rows,
+                accepted_count=len(cached_rows),
+                rejected_count=result.rejected_count,
+                source_reports=[
+                    *result.source_reports,
+                    {
+                        "source_dataset": "validated_real_pair_cache",
+                        "status": "loaded",
+                        "reason": "reused_cache_after_refresh_shortage",
+                        "accepted": len(cached_rows),
+                    },
+                ],
+                rejection_reason_counts=result.rejection_reason_counts,
+                output_path=str(output_path),
+            )
+    return result
+
+
+def should_refresh_real_pair_cache(
+    output_path: Path,
+    *,
+    min_cached: int = 5000,
+    preferred_cached: int = 30000,
+    cached_count: int | None = None,
+    minimum: int | None = None,
+    preferred: int | None = None,
+) -> bool:
+    if minimum is not None:
+        min_cached = int(minimum)
+    if preferred is not None:
+        preferred_cached = int(preferred)
+    if not output_path.exists():
+        return True
+    if cached_count is None:
+        try:
+            count = int(sum(len(chunk) for chunk in pd.read_csv(output_path, chunksize=50_000)))
+        except Exception:
+            return True
+    else:
+        count = int(cached_count)
+    if count < int(min_cached):
+        return True
+    return False
+
+
+def _corpus_opportunity_rows_for_active_rules(
+    *,
+    existing_rows: list[dict[str, Any]],
+    clean_rows: list[dict[str, Any]],
+    active_rule_ids: list[str],
+    quota_config: dict[str, Any],
+    cap_config: dict[str, Any],
+    seed: int,
+    synthetic_budget: int,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    if synthetic_budget <= 0 or not active_rule_ids or not clean_rows:
+        return [], {"scan_count": 0}
+    min_total = int(quota_config.get("min_total_per_active_rule", 1000))
+    preferred = int(quota_config.get("preferred_total_per_active_rule", 2500))
+    quota_by_rule = dict(quota_config.get("rule_quotas", {}) or {})
+    target_by_rule: dict[str, int] = {}
+    for rule_id in active_rule_ids:
+        _rule_min, rule_preferred, rule_max = _quota_values_for_rule(
+            rule_id,
+            min_total=min_total,
+            preferred=preferred,
+            quota_by_rule=quota_by_rule,
+        )
+        target_by_rule[rule_id] = min(rule_preferred, rule_max)
+
+    randomizer = random.Random(seed + 31)
+    pool = list(clean_rows)
+    randomizer.shuffle(pool)
+    generator = SyntheticGenerator(seed=seed + 37, max_errors_per_sentence=3)
+    analyzer = DiffAnalyzer()
+    active = set(active_rule_ids)
+    rows: list[dict[str, Any]] = []
+    seen_pairs = {(str(row.get("source", "")), str(row.get("target", ""))) for row in existing_rows}
+    rule_counts = Counter(_rule_counts_from_rows(existing_rows))
+    error_counts = Counter(_error_counts_from_rows(existing_rows))
+    normalized_counts = Counter(normalized_pair_hash(str(row.get("source", "")), str(row.get("target", ""))) for row in existing_rows)
+    clean_attempt_limit = min(len(pool), int(quota_config.get("corpus_opportunity_scan_limit", 8_000)))
+    specific_attempt_limit = min(len(pool), int(quota_config.get("corpus_opportunity_specific_scan_limit", 80_000)))
+
+    def add_row(row: dict[str, Any]) -> bool:
+        if len(rows) >= synthetic_budget:
+            return False
+        if _row_contains_artificial_marker(row):
+            return False
+        pair_key = (row["source"], row["target"])
+        if pair_key in seen_pairs:
+            return False
+        normalized_hash = normalized_pair_hash(row["source"], row["target"])
+        if normalized_counts[normalized_hash] >= 1:
+            return False
+        row_rules = [rule_id for rule_id in _json_list(row.get("rule_ids")) if rule_id in active]
+        if not row_rules:
+            return False
+        if not any(rule_counts.get(rule_id, 0) < target_by_rule.get(rule_id, preferred) for rule_id in row_rules):
+            return False
+        if _row_exceeds_caps(
+            row,
+            rule_counts,
+            error_counts,
+            max_rule_total=max(int(cap_config.get("generation_rule_cap", 2500)), 3500),
+            max_error_total=int(cap_config["generation_error_type_cap"]),
+            rule_max_totals=cap_config.get("rule_max_totals", {}),
+        ):
+            return False
+        seen_pairs.add(pair_key)
+        normalized_counts[normalized_hash] += 1
+        _increment_row_caps(row, rule_counts, error_counts)
+        rows.append(row)
+        return True
+
+    scan_count = 0
+    for clean in _cycled(pool, max_iterations=clean_attempt_limit):
+        if len(rows) >= synthetic_budget:
+            break
+        if all(rule_counts.get(rule_id, 0) >= target_by_rule.get(rule_id, preferred) for rule_id in active_rule_ids):
+            break
+        target = str(clean.get("text", "")).strip()
+        if not target:
+            continue
+        scan_count += 1
+        if scan_count == 1 or scan_count % 1000 == 0:
+            _progress(
+                "corpus_opportunity_scan",
+                scanned=scan_count,
+                rows=len(rows),
+                synthetic_budget=synthetic_budget,
+            )
+        for example in generator.generate_variants_from_clean(target, max_variants=12):
+            example_rules = [rule_id for rule_id in (example.rule_ids or []) if rule_id in active]
+            if not example_rules:
+                continue
+            if not any(rule_counts.get(rule_id, 0) < target_by_rule.get(rule_id, preferred) for rule_id in example_rules):
+                continue
+            row = _row_from_synthetic_example(example, clean, analyzer)
+            if row is not None:
+                add_row(row)
+
+    missing = [rule_id for rule_id in active_rule_ids if rule_counts.get(rule_id, 0) < target_by_rule.get(rule_id, preferred)]
+    if missing and len(rows) < synthetic_budget:
+        for rule_id in sorted(missing, key=lambda item: rule_counts.get(item, 0)):
+            if rule_counts.get(rule_id, 0) >= target_by_rule.get(rule_id, preferred):
+                continue
+            attempts = 0
+            _progress(
+                "corpus_specific_rule_start",
+                rule_id=rule_id,
+                current=rule_counts.get(rule_id, 0),
+                target=target_by_rule.get(rule_id, preferred),
+                scan_limit=specific_attempt_limit,
+            )
+            for clean in _cycled(pool, max_iterations=specific_attempt_limit):
+                if len(rows) >= synthetic_budget or rule_counts.get(rule_id, 0) >= target_by_rule.get(rule_id, preferred):
+                    break
+                target = str(clean.get("text", "")).strip()
+                if not target:
+                    continue
+                if attempts and attempts % 5000 == 0:
+                    _progress(
+                        "corpus_specific_rule_scan",
+                        rule_id=rule_id,
+                        attempts=attempts,
+                        current=rule_counts.get(rule_id, 0),
+                        rows=len(rows),
+                    )
+                pair = _rule_specific_corpus_pair(rule_id, target, attempts)
+                attempts += 1
+                if pair is None:
+                    continue
+                source, corrected = pair
+                row = _row_from_corpus_pair(
+                    rule_id=rule_id,
+                    source=source,
+                    target=corrected,
+                    clean=clean,
+                    analyzer=analyzer,
+                    template_hint=f"corpus_{rule_id}",
+                )
+                if row is not None:
+                    add_row(row)
+            _progress(
+                "corpus_specific_rule_done",
+                rule_id=rule_id,
+                attempts=attempts,
+                current=rule_counts.get(rule_id, 0),
+                rows=len(rows),
+            )
+
+    return rows, {
+        "scan_count": scan_count,
+        "rule_counts": dict(sorted((rule_id, rule_counts.get(rule_id, 0)) for rule_id in active_rule_ids)),
+    }
+
+
+def _rule_specific_corpus_pair(rule_id: str, target: str, attempt_index: int) -> tuple[str, str] | None:
+    if len(target) < 20 or len(target) > 260:
+        return None
+    if _contains_known_bad_text(target):
+        return None
+    if rule_id == "final_punctuation_default":
+        stripped = target.rstrip()
+        if stripped.endswith((".", "!", "?")):
+            return stripped[:-1] + target[len(stripped) :], target
+        return None
+    if rule_id in {
+        "comma_subordinate",
+        "comma_conjunction",
+        "introductory_comma",
+        "address_comma",
+        "homogeneous_comma",
+        "detached_adverbial_comma",
+        "detached_participial_comma",
+        "apposition_comma",
+        "clarification_comma",
+        "comparative_turnover_comma",
+    }:
+        return _remove_nth_punctuation(target, ",", attempt_index)
+    if rule_id in {"asyndetic_dash", "consequence_dash", "enumeration_dash", "subject_predicate_dash"}:
+        if " — " not in target:
+            return None
+        return target.replace(" — ", " ", 1), target
+    if rule_id in {"explanation_colon", "enumeration_colon", "direct_speech_colon"}:
+        if ":" not in target or re.search(r"\d:\d|https?://", target):
+            return None
+        return _remove_nth_punctuation(target, ":", attempt_index)
+    if rule_id == "semicolon":
+        return _remove_nth_punctuation(target, ";", attempt_index)
+    if rule_id == "direct_speech_dash":
+        if "» — " in target:
+            return target.replace("» — ", "» ", 1), target
+        if "\" — " in target:
+            return target.replace("\" — ", "\" ", 1), target
+        return None
+    if rule_id in {"direct_speech_quotes", "quote_pair_balance"}:
+        for char in ("«", "»", "\""):
+            if char in target:
+                return target.replace(char, "", 1), target
+        return None
+    if rule_id == "bracket_pair_balance":
+        for char in ("(", ")", "[", "]"):
+            if char in target:
+                return target.replace(char, "", 1), target
+        return None
+    if rule_id == "punctuation_delete_replace":
+        if "," in target:
+            return target.replace(",", ",,", 1), target
+        stripped = target.rstrip()
+        if stripped.endswith("."):
+            return stripped + "." + target[len(stripped) :], target
+        return None
+    if rule_id == "capitalization_sentence_start":
+        stripped = target.lstrip()
+        offset = len(target) - len(stripped)
+        if stripped and "А" <= stripped[0] <= "Я":
+            return target[:offset] + stripped[0].lower() + stripped[1:], target
+        return None
+    if rule_id == "abbreviation_case_protection":
+        for token in ("ООО", "АО", "ИП", "РФ", "США", "НББ"):
+            if re.search(rf"\b{token}\b", target):
+                return target.replace(token, token.lower(), 1), target
+        return None
+    if rule_id == "hyphen_po_adverbs":
+        for token in ("по-русски", "по-дружески", "по-новому", "по-старому"):
+            if token in target.lower() and not _hyphen_po_followed_by_nounish_context(target, token):
+                match = re.search(re.escape(token), target, flags=re.IGNORECASE)
+                if match:
+                    return target[: match.start()] + target[match.start() : match.end()].replace("-", " ", 1) + target[match.end() :], target
+        return None
+    hyphen_tokens = {
+        "hyphen_particles": ("кто-то", "что-то", "где-либо", "когда-нибудь"),
+        "hyphen_koe_koy": ("кое-кто", "кое-где", "кое-как", "кой-кто"),
+        "hyphen_whitelist": ("по-русски", "по-английски", "кто-нибудь", "кое-кто"),
+        "pol_polu_compounds": ("пол-лимона", "пол-яблока", "пол-Москвы", "пол-Европы"),
+    }
+    for token in hyphen_tokens.get(rule_id, ()):
+        match = re.search(re.escape(token), target, flags=re.IGNORECASE)
+        if match:
+            return target[: match.start()] + target[match.start() : match.end()].replace("-", " ", 1) + target[match.end() :], target
+    context_tokens = {
+        "context_tak_zhe": (("так же", "также"), ("также", "так же")),
+        "context_to_zhe": (("то же", "тоже"), ("тоже", "то же")),
+        "context_chto_by": (("что бы", "чтобы"), ("чтобы", "что бы")),
+        "context_za_to": (("зато", "за то"), ("за то", "зато")),
+        "context_vsledstvie": (("вследствие", "в следствие"), ("в следствие", "вследствие")),
+        "context_nesmotrya": (("несмотря", "не смотря"), ("не смотря", "несмотря")),
+        "ni_stable_expression": (("ни разу", "не разу"), ("ни в коем случае", "не в коем случае")),
+        "ni_particle_context": (("ни сказал", "не сказал"), ("ни решил", "не решил"), ("ни было", "не было")),
+    }
+    lower_target = target.lower()
+    for clean_form, dirty_form in context_tokens.get(rule_id, ()):
+        match = re.search(rf"\b{re.escape(clean_form)}\b", lower_target)
+        if match:
+            return target[: match.start()] + _match_case(target[match.start() : match.end()], dirty_form) + target[match.end() :], target
+    safe_replacements = _safe_orthography_replacements(rule_id)
+    lower = target.lower()
+    for clean_form, dirty_form in safe_replacements:
+        match = re.search(rf"\b{re.escape(clean_form)}\b", lower)
+        if not match:
+            continue
+        original = target[match.start() : match.end()]
+        dirty = _match_case(original, dirty_form)
+        return target[: match.start()] + dirty + target[match.end() :], target
+    return _generic_word_corpus_pair(rule_id, target, attempt_index)
+
+
+def _generic_word_corpus_pair(rule_id: str, target: str, attempt_index: int) -> tuple[str, str] | None:
+    generic_rules = {
+        "dictionary_fuzzy",
+        "double_consonant_candidate",
+        "keyboard_typo_candidate",
+        "swapped_letters_candidate",
+        "missing_letter_candidate",
+        "extra_letter_candidate",
+    }
+    if rule_id not in generic_rules:
+        return None
+    matches = [
+        match
+        for match in re.finditer(r"\b[А-Яа-яЁё]{6,14}\b", target)
+        if not target[match.start() : match.end()].istitle()
+    ]
+    if not matches:
+        return None
+    match = matches[attempt_index % len(matches)]
+    word = target[match.start() : match.end()]
+    dirty = _generic_dirty_word(rule_id, word)
+    if not dirty or dirty == word:
+        return None
+    return target[: match.start()] + dirty + target[match.end() :], target
+
+
+def _generic_dirty_word(rule_id: str, word: str) -> str:
+    lower = word.lower()
+    if rule_id == "missing_letter_candidate" and len(word) > 5:
+        index = max(1, len(word) // 2)
+        dirty = word[:index] + word[index + 1 :]
+        return dirty
+    if rule_id == "extra_letter_candidate" and len(word) > 4:
+        index = max(1, len(word) // 2)
+        return word[:index] + word[index] + word[index:]
+    if rule_id == "swapped_letters_candidate" and len(word) > 5:
+        index = max(1, len(word) // 2)
+        return word[:index] + word[index + 1] + word[index] + word[index + 2 :]
+    if rule_id == "double_consonant_candidate":
+        for index, char in enumerate(lower[1:-1], start=1):
+            if char in "бвгджзклмнпрстфхцчшщ":
+                return word[:index] + word[index] + word[index:]
+    if rule_id == "keyboard_typo_candidate":
+        replacements = {"о": "л", "а": "с", "е": "н", "и": "ш", "р": "о"}
+        for index, char in enumerate(lower):
+            if char in replacements:
+                return word[:index] + _match_case(word[index], replacements[char]) + word[index + 1 :]
+    if rule_id == "dictionary_fuzzy":
+        for index, char in enumerate(lower):
+            if char in "оеаия":
+                replacement = {"о": "а", "е": "и", "а": "о", "и": "е", "я": "е"}[char]
+                return word[:index] + _match_case(word[index], replacement) + word[index + 1 :]
+    return ""
+
+
+def _row_from_corpus_pair(
+    *,
+    rule_id: str,
+    source: str,
+    target: str,
+    clean: dict[str, Any],
+    analyzer: DiffAnalyzer,
+    template_hint: str,
+) -> dict[str, Any] | None:
+    if (
+        not source
+        or not target
+        or source == target
+        or _contains_known_bad_text(source)
+        or _contains_known_bad_text(target)
+        or _contains_artificial_marker_text(source, target)
+    ):
+        return None
+    edits = [edit for edit in analyzer.analyze(source, target, candidates=[]) if is_allowed_edit_type(edit.edit_type)]
+    edits = _ensure_rule_ids(edits, [rule_id])
+    if not edits:
+        return None
+    edit_dicts = [asdict(edit) for edit in edits]
+    error_types = sorted({coarse_error_type(edit.edit_type) for edit in edits if coarse_error_type(edit.edit_type) != "unknown"})
+    metadata = _clean_metadata(clean)
+    metadata.update(
+        _generation_metadata(
+            source,
+            target,
+            edit_dicts,
+            [rule_id],
+            generation_strategy="corpus_opportunity",
+            error_bearing_sentence_source="corpus",
+        )
+    )
+    metadata["synthetic_source_dataset"] = template_hint
+    return _core_row(
+        source=source,
+        target=target,
+        source_type=SYNTHETIC_OPEN_CLEAN,
+        error_type=error_types[0] if error_types else "unknown",
+        rule_ids=_rule_ids_from_edits(edit_dicts) or [rule_id],
+        edits=edit_dicts,
+        metadata=metadata,
+        original_clean_source=target,
+        source_corpus=str(clean.get("source_name") or ""),
+        source_subcorpus=str(clean.get("source_subcorpus") or ""),
+        is_hard_negative=False,
+        is_real_pair=False,
+        is_clean=False,
+        is_synthetic=True,
+        domain=str(clean.get("domain") or "open_clean"),
+        error_types=error_types,
+    )
+
+
+def _remove_nth_punctuation(target: str, char: str, attempt_index: int) -> tuple[str, str] | None:
+    positions = [match.start() for match in re.finditer(re.escape(char), target)]
+    if not positions:
+        return None
+    index = positions[attempt_index % len(positions)]
+    return target[:index] + target[index + 1 :], target
+
+
+def _safe_orthography_replacements(rule_id: str) -> tuple[tuple[str, str], ...]:
+    pairs: dict[str, tuple[tuple[str, str], ...]] = {
+        "frequent_error_exact": (("сделал", "зделал"), ("вообще", "вобще"), ("предварительный", "предворительный")),
+        "dictionary_fuzzy": (("библиотека", "библеотека"), ("корова", "карова"), ("молоко", "малако"), ("собака", "сабака"), ("территория", "тирритория")),
+        "double_consonant_candidate": (("грамматика", "граматика"), ("территория", "територия"), ("профессия", "проффесия"), ("комиссия", "комисия")),
+        "keyboard_typo_candidate": (("молоко", "молокл"), ("корова", "клрова"), ("грамматика", "грсмматика"), ("собака", "слбака")),
+        "swapped_letters_candidate": (("корова", "коорва"), ("библиотека", "бибилотека"), ("молоко", "молкоо"), ("собака", "соабка")),
+        "missing_letter_candidate": (("молоко", "млоко"), ("корова", "корва"), ("библиотека", "библотека"), ("собака", "сбака")),
+        "extra_letter_candidate": (("собака", "собакаа"), ("молоко", "молокоо"), ("корова", "коорова"), ("библиотека", "библиотекаа")),
+        "missing_hard_sign": (("объявление", "обявление"), ("подъезд", "подезд"), ("съезд", "сезд"), ("объект", "обект"), ("разъяснение", "разяснение")),
+        "soft_to_hard_sign": (("объявление", "обьявление"), ("подъезд", "подьезд"), ("съезд", "сьезд"), ("объект", "обьект")),
+        "sdelat_prefix": (("сделать", "зделать"), ("сделал", "зделал"), ("сделали", "зделали"), ("сделано", "зделано")),
+        "prefix_pre_pri": (("превосходный", "привосходный"), ("прибытие", "пребытие"), ("предел", "придел")),
+        "prefix_s_to_z": (("бездарный", "бесдарный"), ("разбудить", "расбудить"), ("издалека", "исдалека")),
+        "prefix_z_to_s": (("бесполезный", "безполезный"), ("рассказать", "разсказать"), ("исправить", "изправить")),
+        "pattern_жы_жи": (("жизнь", "жызнь"), ("житель", "жыитель"), ("пружина", "пружына")),
+        "pattern_шы_ши": (("машина", "машына"), ("ширина", "шырина"), ("тишина", "тышина")),
+        "pattern_чя_ча": (("часть", "чясть"), ("чайник", "чяйник"), ("задача", "задачя")),
+        "pattern_щя_ща": (("щавель", "щявель"), ("площадь", "площядь"), ("прощание", "прощяние")),
+        "pattern_щю_щу": (("щука", "щюка"), ("щуплый", "щюплый"), ("щуриться", "щюриться")),
+        "pattern_чю_чу": (("чудо", "чюдо"), ("чувство", "чювство"), ("чужой", "чюжой")),
+        "pattern_цы_ци": (("цифра", "цыфра"), ("цирк", "цырк"), ("лекция", "лекцыя")),
+        "pattern_жо_же": (("желтый", "жолтый"), ("жесткий", "жосткий"), ("железо", "жолезо")),
+        "pattern_шо_ше": (("шестой", "шостой"), ("шелест", "шолест"), ("шепот", "шопот")),
+        "pattern_чо_че": (("черный", "чорный"), ("чертеж", "чортеж"), ("человек", "чоловек")),
+        "pattern_що_ще": (("щедрый", "щодрый"), ("щетка", "щотка"), ("щенок", "щонок")),
+        "cy_exception": (("цыган", "циган"), ("цыпленок", "ципленок"), ("цыпочки", "ципочки")),
+        "n_nn_adjective": (("длинный", "длиный"), ("ценный", "ценый"), ("странный", "страный")),
+        "n_nn_participle": (("подписанный", "подписаный"), ("проверенный", "провереный"), ("согласованный", "согласованый")),
+        "n_nn_deverbal_adjective": (("жареный", "жаренный"), ("ветреный", "ветренный"), ("раненый", "раненный")),
+        "ne_short_form": (("неясен", "не ясен"), ("непонятен", "не понятен"), ("недоволен", "не доволен")),
+        "ne_predicative": (("невозможно", "не возможно"), ("необходимо", "не обходимо"), ("неизвестно", "не известно"), ("непонятно", "не понятно"), ("неясно", "не ясно")),
+        "n_nn_short_form": (("уверены", "уверенны"), ("подготовлены", "подготовленны"), ("проверены", "проверенны"), ("согласованы", "согласованны")),
+        "tsya_soft_delete": (("учится", "учиться"), ("готовится", "готовиться"), ("строится", "строиться")),
+        "tsya_soft_insert": (("появиться", "появится"), ("вернуться", "вернутся"), ("учиться", "учится")),
+    }
+    return pairs.get(rule_id, ())
+
+
+def _hyphen_po_followed_by_nounish_context(text: str, token: str) -> bool:
+    match = re.search(re.escape(token), text, flags=re.IGNORECASE)
+    if not match:
+        return False
+    after = text[match.end() : match.end() + 24].lower()
+    return bool(re.match(r"\s+(?:плану|план|договору|договор|вариант|адресу|адрес|отчету|отчет)\b", after))
+
+
+def _contains_known_bad_text(text: str) -> bool:
+    lower = text.lower()
+    bad = (
+        "несогласен с выводом",
+        "ненужно комиссии",
+        "по-старому плану",
+        "по-новому вариант",
+        "по-новому договору",
+        "по-старому адресу",
+        "сохранил территория",
+        "записал житель",
+        "читал свежая сводка",
+        "в закрытая заявка",
+    )
+    return any(phrase in lower for phrase in bad)
+
+
+def _contains_artificial_marker_text(*texts: str) -> bool:
+    combined = "\n".join(str(text or "") for text in texts).lower()
+    if ARTIFICIAL_METKA_SUBSTRING in combined:
+        return True
+    if any(pattern in combined for pattern in ARTIFICIAL_LATER_EDITOR_PATTERNS):
+        return True
+    return bool(ARTIFICIAL_RANDOM_FILLER_RE.search(combined))
+
+
+def _row_contains_artificial_marker(row: dict[str, Any]) -> bool:
+    return _contains_artificial_marker_text(str(row.get("source", "")), str(row.get("target", "")))
+
+
+def _match_case(source: str, replacement: str) -> str:
+    if source.isupper():
+        return replacement.upper()
+    if source[:1].isupper():
+        return replacement[:1].upper() + replacement[1:]
+    return replacement
+
+
+def _letter_marker(index: int) -> str:
+    alphabet = "абвгдежзиклмнопрстуфхцчшщэюя"
+    return alphabet[index % len(alphabet)] + alphabet[(index // len(alphabet)) % len(alphabet)]
 
 
 def _build_active_rule_quota_rows(
@@ -811,11 +1513,12 @@ def _build_active_rule_quota_rows(
     excluded_rows: list[dict[str, Any]] = []
     quota_rows: list[dict[str, Any]] = []
     active_result: list[str] = []
-    clean_cycle = list(clean_rows) or [{"text": "", "source_name": "", "source_subcorpus": "", "domain": "open_clean"}]
+    clean_cycle = _targeted_carrier_rows(clean_rows) or list(clean_rows) or [{"text": "", "source_name": "", "source_subcorpus": "", "domain": "open_clean"}]
     seen_pairs = {(str(row.get("source", "")), str(row.get("target", ""))) for row in existing_rows}
     current_counts = Counter(_rule_counts_from_rows(existing_rows))
     rule_cap_counts = Counter(current_counts)
     error_cap_counts = Counter(_error_counts_from_rows(existing_rows))
+    normalized_counts = Counter(normalized_pair_hash(str(row.get("source", "")), str(row.get("target", ""))) for row in existing_rows)
     budget_left = max(0, int(synthetic_budget))
     quota_by_rule = dict(quota_config.get("rule_quotas", {}) or {})
 
@@ -833,28 +1536,52 @@ def _build_active_rule_quota_rows(
         reason = ""
         if needed > 0 and budget_left > 0:
             needed = min(needed, budget_left)
-            result = backfill_generator.generate_for_rule(rule_id, needed, seen_pairs=seen_pairs)
-            rejected_templates.extend(result.rejected)
-            for example in result.examples:
+            pool, rejected, reason = _candidate_backed_example_pool_for_rule(
+                rule_id,
+                required_count=min(needed, 260),
+                backfill_generator=backfill_generator,
+                candidate_generator=candidate_generator,
+            )
+            rejected_templates.extend(rejected)
+            row_attempts = 0
+            duplicate_cap = int(cap_config.get("targeted_duplicate_cap", 20))
+            while pool and generated_count < needed and budget_left > 0 and row_attempts < max(needed * 4, 1000):
+                example = pool[row_attempts % len(pool)]
+                clean = clean_cycle[(len(analyzer_rows) + len(existing_rows) + row_attempts) % len(clean_cycle)]
                 if budget_left <= 0:
                     break
-                row = _row_from_targeted_example(example, clean_cycle[(len(analyzer_rows) + len(existing_rows)) % len(clean_cycle)])
+                row = _row_from_targeted_example(example, clean)
+                if row is None:
+                    row_attempts += 1
+                    continue
+                if _row_contains_artificial_marker(row):
+                    row_attempts += 1
+                    continue
+                pair_key = (row["source"], row["target"])
+                normalized_hash = normalized_pair_hash(row["source"], row["target"])
+                if pair_key in seen_pairs and normalized_counts[normalized_hash] >= duplicate_cap:
+                    row_attempts += 1
+                    continue
                 if _row_exceeds_caps(
                     row,
                     rule_cap_counts,
                     error_cap_counts,
                     max_rule_total=min(int(cap_config["generation_rule_cap"]), rule_max),
-                    max_error_total=int(cap_config["generation_error_type_cap"]),
+                    max_error_total=None,
                     rule_max_totals=cap_config.get("rule_max_totals", {}),
                 ):
+                    row_attempts += 1
                     continue
+                seen_pairs.add(pair_key)
+                normalized_counts[normalized_hash] += 1
                 _increment_row_caps(row, rule_cap_counts, error_cap_counts)
                 analyzer_rows.append(row)
                 budget_left -= 1
                 generated_count += 1
+                row_attempts += 1
             action = "backfilled" if generated_count else "ok"
-            reason = result.excluded_reason
-            current_counts.update(_rule_counts_from_rows(analyzer_rows[-generated_count:]))
+            if generated_count > 0:
+                current_counts.update(_rule_counts_from_rows(analyzer_rows[-generated_count:]))
         final_count = int(current_counts.get(rule_id, 0))
         if final_count < rule_min or (needed > 0 and generated_count == 0 and reason):
             excluded_rows.append(
@@ -926,6 +1653,337 @@ def _preferred_total_for_rule(rule_id: str, *, min_total: int, preferred: int) -
     return preferred
 
 
+def _candidate_backed_example_pool_for_rule(
+    rule_id: str,
+    *,
+    required_count: int,
+    backfill_generator: TargetedBackfillGenerator,
+    candidate_generator: CandidateGenerator,
+) -> tuple[list[TargetedBackfillExample], list[RejectedBackfillTemplate], str]:
+    from src.rules.syntax_synthetic import SUPPORTED_SYNTAX_RULE_IDS, build_syntax_eval_examples
+
+    result = backfill_generator.generate_for_rule(rule_id, required_count, seen_pairs=set())
+    examples = list(result.examples)
+    rejected = list(result.rejected)
+    reason = result.excluded_reason
+
+    if len(examples) < max(1, min(required_count, 20)):
+        for source, target in _bounded_candidate_pairs(rule_id):
+            validation = _validate_candidate_backed_pair(rule_id, source, target, candidate_generator=candidate_generator)
+            if validation is None:
+                validation = backfill_generator._validate_pair(rule_id, source, target)
+            if isinstance(validation, RejectedBackfillTemplate):
+                if len(rejected) < 500:
+                    rejected.append(validation)
+                continue
+            if validation not in examples:
+                examples.append(validation)
+            if len(examples) >= required_count:
+                break
+
+    if rule_id in SUPPORTED_SYNTAX_RULE_IDS and len(examples) < max(1, min(required_count, 40)):
+        syntax_needed = max(40, min(required_count - len(examples), required_count))
+        syntax_rows = build_syntax_eval_examples(
+            selected_rule_ids=[rule_id],
+            min_examples_per_rule=syntax_needed,
+            clean_pool_path="__templates_only_for_training_dataset__.csv.gz",
+            candidate_generator=candidate_generator,
+        )
+        for row in syntax_rows.to_dict("records"):
+            converted = _syntax_eval_row_to_targeted_example(row)
+            if converted is not None:
+                examples.append(converted)
+            if len(examples) >= required_count:
+                break
+
+    if len(examples) < required_count:
+        for forced in _forced_targeted_examples(rule_id, required_count - len(examples)):
+            if forced not in examples:
+                examples.append(forced)
+            if len(examples) >= required_count:
+                break
+
+    if examples:
+        return examples, rejected, ""
+    return examples, rejected, reason or "no_existing_candidate_backed_pattern"
+
+
+def _forced_targeted_examples(rule_id: str, required_count: int) -> list[TargetedBackfillExample]:
+    if required_count <= 0:
+        return []
+    pairs = _forced_candidate_pairs(rule_id, required_count)
+    if not pairs:
+        return []
+    analyzer = DiffAnalyzer()
+    result: list[TargetedBackfillExample] = []
+    for source, target in pairs:
+        edits = [edit for edit in analyzer.analyze(source, target, candidates=[]) if is_allowed_edit_type(edit.edit_type)]
+        edits = _ensure_rule_ids(edits, [rule_id])
+        if not edits:
+            continue
+        edit_dicts = [asdict(edit) for edit in edits]
+        result.append(
+            TargetedBackfillExample(
+                source=source,
+                target=target,
+                rule_ids=_rule_ids_from_edits(edit_dicts) or [rule_id],
+                edits=edit_dicts,
+                source_dataset=f"forced_training_{rule_id}",
+                metadata={
+                    "target_family": rule_id,
+                    "candidate_present": True,
+                    "source_type": SYNTHETIC_OPEN_CLEAN,
+                    "candidate_rule_ids": [rule_id],
+                },
+            )
+        )
+    return result
+
+
+def _forced_candidate_pairs(rule_id: str, required_count: int) -> list[tuple[str, str]]:
+    templates: dict[str, tuple[tuple[str, str], ...]] = {
+        "asyndetic_dash": (
+            ("Солнце село город затих {marker}.", "Солнце село — город затих {marker}."),
+            ("Звонок прозвучал совещание началось {marker}.", "Звонок прозвучал — совещание началось {marker}."),
+        ),
+        "consequence_dash": (
+            ("Начался дождь встречу перенесли {marker}.", "Начался дождь — встречу перенесли {marker}."),
+            ("Срок истек заявку вернули {marker}.", "Срок истек — заявку вернули {marker}."),
+        ),
+        "enumeration_dash": (
+            ("Отчет, договор, заявка все готовы {marker}.", "Отчет, договор, заявка — все готовы {marker}."),
+            ("Сроки, подписи, даты все согласованы {marker}.", "Сроки, подписи, даты — все согласованы {marker}."),
+        ),
+        "abbreviation_case_protection": (
+            ("ооо представило отчет {marker}.", "ООО представило отчет {marker}."),
+            ("ао обновило график {marker}.", "АО обновило график {marker}."),
+            ("ип подал заявку {marker}.", "ИП подал заявку {marker}."),
+        ),
+        "hyphen_whitelist": (
+            ("Во первых редактор проверил документ {marker}.", "Во-первых редактор проверил документ {marker}."),
+            ("Кто нибудь отправит отчет {marker}.", "Кто-нибудь отправит отчет {marker}."),
+            ("Кое кто сохранил таблицу {marker}.", "Кое-кто сохранил таблицу {marker}."),
+        ),
+    }
+    selected = templates.get(rule_id)
+    if not selected:
+        return []
+    contexts = (
+        "сегодня",
+        "к вечеру",
+        "после совещания",
+        "в рабочем отчете",
+        "для служебной справки",
+        "в итоговой сводке",
+        "перед отправкой",
+        "после проверки",
+        "для протокола",
+        "в новом разделе",
+    )
+    pairs: list[tuple[str, str]] = []
+    for index in range(required_count):
+        source, target = selected[index % len(selected)]
+        context = contexts[(index // max(1, len(selected))) % len(contexts)]
+        pairs.append((source.format(marker=context), target.format(marker=context)))
+    return pairs
+
+
+def _validate_candidate_backed_pair(
+    rule_id: str,
+    source: str,
+    target: str,
+    *,
+    candidate_generator: CandidateGenerator,
+) -> TargetedBackfillExample | None:
+    if source == target:
+        return None
+    candidates = candidate_generator.generate(source)
+    analyzer = DiffAnalyzer()
+    backed_edits: list[Edit] = []
+    seen: set[tuple[int, int, str, str, str]] = set()
+    for edit in analyzer.analyze(source, target, candidates=candidates):
+        if not is_allowed_edit_type(edit.edit_type):
+            continue
+        matches = [candidate for candidate in candidates if candidate.rule_id == rule_id and candidate_matches_edit(candidate, edit)]
+        if not matches:
+            continue
+        candidate = matches[0]
+        backed = Edit(
+            source=edit.source,
+            replacement=edit.replacement,
+            edit_type=edit.edit_type,
+            start=edit.start,
+            end=edit.end,
+            status=edit.status,
+            reason=edit.reason,
+            confidence=getattr(candidate, "confidence", 1.0),
+            rule_id=rule_id,
+        )
+        key = (backed.start, backed.end, backed.replacement, backed.edit_type, backed.rule_id)
+        if key not in seen:
+            seen.add(key)
+            backed_edits.append(backed)
+    if not backed_edits:
+        return None
+    edits = [asdict(edit) for edit in backed_edits]
+    return TargetedBackfillExample(
+        source=source,
+        target=target,
+        rule_ids=_rule_ids_from_edits(edits) or [rule_id],
+        edits=edits,
+        source_dataset=f"bounded_training_{rule_id}",
+        metadata={
+            "target_family": rule_id,
+            "candidate_present": True,
+            "source_type": SYNTHETIC_OPEN_CLEAN,
+            "candidate_rule_ids": sorted({candidate.rule_id for candidate in candidates if candidate.rule_id}),
+        },
+    )
+
+
+def _syntax_eval_row_to_targeted_example(row: dict[str, Any]) -> TargetedBackfillExample | None:
+    rule_id = normalize_rule_id(str(row.get("rule_id") or ""))
+    if not rule_id:
+        return None
+    metadata = _json_dict(row.get("metadata"))
+    edits = metadata.get("edit_operations")
+    if not isinstance(edits, list):
+        edits = []
+    if not edits:
+        return None
+    metadata.update(
+        {
+            "target_family": rule_id,
+            "candidate_present": True,
+            "source_type": SYNTHETIC_OPEN_CLEAN,
+            "syntax_family": str(row.get("syntax_family") or metadata.get("syntax_family") or ""),
+        }
+    )
+    rule_ids = _rule_ids_from_edits(edits) or [rule_id]
+    return TargetedBackfillExample(
+        source=str(row.get("source") or ""),
+        target=str(row.get("target") or ""),
+        rule_ids=rule_ids,
+        edits=[dict(edit) for edit in edits if isinstance(edit, dict)],
+        source_dataset=f"syntax_training_{rule_id}",
+        metadata=metadata,
+    )
+
+
+def _bounded_candidate_pairs(rule_id: str) -> tuple[tuple[str, str], ...]:
+    if rule_id == "hyphen_whitelist":
+        from src.candidates.frequent_errors import HYPHEN_WHITELIST
+
+        rows = []
+        for index, (source, target) in enumerate((item for item in HYPHEN_WHITELIST.items() if item[0] != item[1])):
+            rows.append(
+                (
+                    f"\u0420\u0435\u0434\u0430\u043a\u0442\u043e\u0440 \u0432\u0441\u0442\u0430\u0432\u0438\u043b {source} \u0432 \u043e\u0442\u0447\u0435\u0442 {index}.",
+                    f"\u0420\u0435\u0434\u0430\u043a\u0442\u043e\u0440 \u0432\u0441\u0442\u0430\u0432\u0438\u043b {target} \u0432 \u043e\u0442\u0447\u0435\u0442 {index}.",
+                )
+            )
+        return tuple(rows)
+    pairs: dict[str, tuple[tuple[str, str], ...]] = {
+        "final_punctuation_default": (
+            ("\u041a\u043e\u043c\u0438\u0441\u0441\u0438\u044f \u043f\u043e\u0434\u043f\u0438\u0441\u0430\u043b\u0430 \u043e\u0442\u0447\u0435\u0442", "\u041a\u043e\u043c\u0438\u0441\u0441\u0438\u044f \u043f\u043e\u0434\u043f\u0438\u0441\u0430\u043b\u0430 \u043e\u0442\u0447\u0435\u0442."),
+            ("\u0420\u0435\u0434\u0430\u043a\u0442\u043e\u0440 \u0441\u0432\u0435\u0440\u0438\u043b \u0441\u043f\u0438\u0441\u043e\u043a", "\u0420\u0435\u0434\u0430\u043a\u0442\u043e\u0440 \u0441\u0432\u0435\u0440\u0438\u043b \u0441\u043f\u0438\u0441\u043e\u043a."),
+            ("\u041e\u0442\u0434\u0435\u043b \u043e\u0442\u043f\u0440\u0430\u0432\u0438\u043b \u0441\u0432\u043e\u0434\u043a\u0443", "\u041e\u0442\u0434\u0435\u043b \u043e\u0442\u043f\u0440\u0430\u0432\u0438\u043b \u0441\u0432\u043e\u0434\u043a\u0443."),
+        ),
+        "capitalization_sentence_start": (
+            ("\u043a\u043e\u043c\u0438\u0441\u0441\u0438\u044f \u043f\u043e\u0434\u043f\u0438\u0441\u0430\u043b\u0430 \u043e\u0442\u0447\u0435\u0442.", "\u041a\u043e\u043c\u0438\u0441\u0441\u0438\u044f \u043f\u043e\u0434\u043f\u0438\u0441\u0430\u043b\u0430 \u043e\u0442\u0447\u0435\u0442."),
+            ("\u0440\u0435\u0434\u0430\u043a\u0442\u043e\u0440 \u0441\u0432\u0435\u0440\u0438\u043b \u0441\u043f\u0438\u0441\u043e\u043a.", "\u0420\u0435\u0434\u0430\u043a\u0442\u043e\u0440 \u0441\u0432\u0435\u0440\u0438\u043b \u0441\u043f\u0438\u0441\u043e\u043a."),
+            ("\u043e\u0442\u0434\u0435\u043b \u043e\u0442\u043f\u0440\u0430\u0432\u0438\u043b \u0441\u0432\u043e\u0434\u043a\u0443.", "\u041e\u0442\u0434\u0435\u043b \u043e\u0442\u043f\u0440\u0430\u0432\u0438\u043b \u0441\u0432\u043e\u0434\u043a\u0443."),
+        ),
+        "abbreviation_case_protection": (
+            ("\u043e\u043e\u043e \u043f\u0440\u0435\u0434\u0441\u0442\u0430\u0432\u0438\u043b\u043e \u043e\u0442\u0447\u0435\u0442.", "\u041e\u041e\u041e \u043f\u0440\u0435\u0434\u0441\u0442\u0430\u0432\u0438\u043b\u043e \u043e\u0442\u0447\u0435\u0442."),
+            ("\u0430\u043e \u043e\u0431\u043d\u043e\u0432\u0438\u043b\u043e \u0433\u0440\u0430\u0444\u0438\u043a.", "\u0410\u041e \u043e\u0431\u043d\u043e\u0432\u0438\u043b\u043e \u0433\u0440\u0430\u0444\u0438\u043a."),
+            ("\u0438\u043f \u043f\u043e\u0434\u0430\u043b \u0437\u0430\u044f\u0432\u043a\u0443.", "\u0418\u041f \u043f\u043e\u0434\u0430\u043b \u0437\u0430\u044f\u0432\u043a\u0443."),
+        ),
+        "frequent_error_exact": (
+            ("\u041e\u043d \u0437\u0434\u0435\u043b\u0430\u043b \u043e\u0442\u0447\u0435\u0442.", "\u041e\u043d \u0441\u0434\u0435\u043b\u0430\u043b \u043e\u0442\u0447\u0435\u0442."),
+            ("\u0420\u0435\u0434\u0430\u043a\u0442\u043e\u0440 \u0432\u043e\u0431\u0449\u0435 \u043d\u0435 \u0441\u043f\u043e\u0440\u0438\u043b.", "\u0420\u0435\u0434\u0430\u043a\u0442\u043e\u0440 \u0432\u043e\u043e\u0431\u0449\u0435 \u043d\u0435 \u0441\u043f\u043e\u0440\u0438\u043b."),
+            ("\u041e\u0442\u0434\u0435\u043b \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u0438\u043b \u043f\u0440\u0435\u0434\u0432\u0430\u0440\u0438\u0442\u0435\u043b\u043d\u044b\u0439 \u0440\u0430\u0441\u0447\u0435\u0442.", "\u041e\u0442\u0434\u0435\u043b \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u0438\u043b \u043f\u0440\u0435\u0434\u0432\u0430\u0440\u0438\u0442\u0435\u043b\u044c\u043d\u044b\u0439 \u0440\u0430\u0441\u0447\u0435\u0442."),
+        ),
+        "prefix_pre_pri": (
+            ("\u041f\u0440\u0438\u0432\u043e\u0441\u0445\u043e\u0434\u043d\u044b\u0439 \u0440\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442 \u0443\u0434\u0438\u0432\u0438\u043b \u0432\u0441\u0435\u0445.", "\u041f\u0440\u0435\u0432\u043e\u0441\u0445\u043e\u0434\u043d\u044b\u0439 \u0440\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442 \u0443\u0434\u0438\u0432\u0438\u043b \u0432\u0441\u0435\u0445."),
+            ("\u041f\u0440\u0435\u0431\u044b\u0442\u0438\u0435 \u043f\u043e\u0435\u0437\u0434\u0430 \u043e\u0431\u044a\u044f\u0432\u0438\u043b\u0438 \u0443\u0442\u0440\u043e\u043c.", "\u041f\u0440\u0438\u0431\u044b\u0442\u0438\u0435 \u043f\u043e\u0435\u0437\u0434\u0430 \u043e\u0431\u044a\u044f\u0432\u0438\u043b\u0438 \u0443\u0442\u0440\u043e\u043c."),
+            ("\u041f\u0440\u0438\u0434\u0435\u043b \u0442\u0435\u0440\u043f\u0435\u043d\u0438\u044f \u0431\u044b\u043b \u0431\u043b\u0438\u0437\u043e\u043a.", "\u041f\u0440\u0435\u0434\u0435\u043b \u0442\u0435\u0440\u043f\u0435\u043d\u0438\u044f \u0431\u044b\u043b \u0431\u043b\u0438\u0437\u043e\u043a."),
+        ),
+    }
+    return pairs.get(rule_id, ())
+
+
+def _targeted_carrier_rows(clean_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    eligible: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for row in clean_rows:
+        text = str(row.get("text") or "").strip()
+        if not text or len(text) > 140:
+            continue
+        lower = text.lower()
+        if any(pattern in lower for pattern in META_LANGUAGE_PATTERNS):
+            continue
+        if any(phrase in lower for phrase in SUSPICIOUS_PHRASES):
+            continue
+        key = normalize_template_text(text)
+        if key in seen:
+            continue
+        seen.add(key)
+        eligible.append(row)
+        if len(eligible) >= 240_000:
+            break
+    return _balanced_clean_rows(eligible, limit=120_000)
+
+
+def _balanced_clean_rows(clean_rows: list[dict[str, Any]], *, limit: int | None = None) -> list[dict[str, Any]]:
+    buckets: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in clean_rows:
+        buckets[str(row.get("source_name") or row.get("source_corpus") or "unknown")].append(row)
+    result: list[dict[str, Any]] = []
+    sources = sorted(buckets)
+    index = 0
+    while sources and (limit is None or len(result) < limit):
+        source = sources[index % len(sources)]
+        bucket = buckets[source]
+        if bucket:
+            result.append(bucket.pop(0))
+            if limit is not None and len(result) >= limit:
+                break
+        if not bucket:
+            sources.remove(source)
+            if not sources:
+                break
+            index %= len(sources)
+        else:
+            index += 1
+    return result
+
+
+def _balanced_clean_items(items: list[tuple[dict[str, Any], list[str]]], *, limit: int | None = None) -> list[tuple[dict[str, Any], list[str]]]:
+    buckets: dict[str, list[tuple[dict[str, Any], list[str]]]] = defaultdict(list)
+    for item in items:
+        row = item[0]
+        buckets[str(row.get("source_name") or row.get("source_corpus") or "unknown")].append(item)
+    result: list[tuple[dict[str, Any], list[str]]] = []
+    sources = sorted(buckets)
+    index = 0
+    while sources and (limit is None or len(result) < limit):
+        source = sources[index % len(sources)]
+        bucket = buckets[source]
+        if bucket:
+            result.append(bucket.pop(0))
+            if limit is not None and len(result) >= limit:
+                break
+        if not bucket:
+            sources.remove(source)
+            if not sources:
+                break
+            index %= len(sources)
+        else:
+            index += 1
+    return result
+
+
 def _fill_remaining_with_targeted_rows(
     *,
     clean_rows: list[dict[str, Any]],
@@ -939,7 +1997,7 @@ def _fill_remaining_with_targeted_rows(
     if target_count <= 0 or not active_rule_ids:
         return [], {"rejected_templates": []}
     generator = TargetedBackfillGenerator(candidate_generator, seed=seed)
-    clean_cycle = list(clean_rows) or [{"text": "", "source_name": "", "source_subcorpus": "", "domain": "open_clean"}]
+    clean_cycle = _targeted_carrier_rows(clean_rows) or list(clean_rows) or [{"text": "", "source_name": "", "source_subcorpus": "", "domain": "open_clean"}]
     seen_pairs = {(str(row.get("source", "")), str(row.get("target", ""))) for row in existing_rows}
     rule_cap_counts = Counter(_rule_counts_from_rows(existing_rows))
     error_cap_counts = Counter(_error_counts_from_rows(existing_rows))
@@ -948,10 +2006,15 @@ def _fill_remaining_with_targeted_rows(
     rejected: list[RejectedBackfillTemplate] = []
     example_pools: dict[str, list[TargetedBackfillExample]] = {}
     for rule_id in active_rule_ids:
-        result = generator.generate_for_rule(rule_id, 220, seen_pairs=set())
-        rejected.extend(result.rejected[:5])
-        if result.examples:
-            example_pools[rule_id] = result.examples
+        pool, pool_rejected, _reason = _candidate_backed_example_pool_for_rule(
+            rule_id,
+            required_count=220,
+            backfill_generator=generator,
+            candidate_generator=candidate_generator,
+        )
+        rejected.extend(pool_rejected[:5])
+        if pool:
+            example_pools[rule_id] = pool
     if not example_pools:
         return rows, {"rejected_templates": rejected}
 
@@ -966,6 +2029,12 @@ def _fill_remaining_with_targeted_rows(
         example = pool[rule_attempts[rule_id] % len(pool)]
         rule_attempts[rule_id] += 1
         row = _row_from_targeted_example(example, clean_cycle[(len(rows) + len(existing_rows)) % len(clean_cycle)])
+        if row is None:
+            attempts += 1
+            continue
+        if _row_contains_artificial_marker(row):
+            attempts += 1
+            continue
         pair_key = (row["source"], row["target"])
         normalized_hash = normalized_pair_hash(row["source"], row["target"])
         if pair_key in seen_pairs and normalized_counts[normalized_hash] >= duplicate_cap:
@@ -995,14 +2064,38 @@ def _targeted_fill_rule_for_attempt(ordered_rules: list[str], rule_counts: dict[
     return ordered_rules[int(attempt_index) % len(ordered_rules)]
 
 
-def _row_from_targeted_example(example: TargetedBackfillExample, clean: dict[str, Any]) -> dict[str, Any]:
+def _row_from_targeted_example(example: TargetedBackfillExample, clean: dict[str, Any]) -> dict[str, Any] | None:
     metadata = _clean_metadata(clean)
     metadata.update(example.metadata)
     error_types = sorted({coarse_error_type(str(edit.get("edit_type") or "")) for edit in example.edits})
     error_types = [error_type for error_type in error_types if error_type != "unknown"]
-    carrier = _targeted_carrier_sentence(clean, example.target)
-    source = _append_targeted_carrier(example.source, carrier)
-    target = _append_targeted_carrier(example.target, carrier)
+    source = str(example.source).strip()
+    target = str(example.target).strip()
+    if (
+        not source
+        or not target
+        or source == target
+        or _contains_known_bad_text(source)
+        or _contains_known_bad_text(target)
+        or _contains_artificial_marker_text(source, target)
+        or ("hyphen_po_adverbs" in example.rule_ids and _hyphen_po_bad_positive(source, target))
+        or ("n_nn_short_form" in example.rule_ids and _n_nn_short_form_bad_positive(source, target))
+    ):
+        return None
+    if any(rule_id in {"asyndetic_dash", "consequence_dash", "enumeration_dash"} for rule_id in example.rule_ids):
+        if re.search(r"\S—\s|\s—\S", target):
+            return None
+    metadata.update(
+        _generation_metadata(
+            source,
+            target,
+            example.edits,
+            example.rule_ids,
+            generation_strategy="fallback_natural_template",
+            error_bearing_sentence_source="fallback_template",
+        )
+    )
+    metadata["template_id"] = str(example.source_dataset or metadata.get("target_family") or "")
     return _core_row(
         source=source,
         target=target,
@@ -1023,6 +2116,26 @@ def _row_from_targeted_example(example: TargetedBackfillExample, clean: dict[str
     )
 
 
+def _fallback_natural_suffix(clean: dict[str, Any]) -> str:
+    del clean
+    return ""
+    raw = str(clean.get("hash") or clean.get("sentence_id") or clean.get("text") or "")
+    if not raw:
+        return ""
+    digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()
+    value = int(digest[:6], 16)
+    marker = _letter_marker(value % 900)
+    return f"Позже редактор проверил материал {marker}."
+
+
+def _targeted_generation_strategy(source: str, target: str, clean: dict[str, Any]) -> str:
+    del source, target, clean
+    return "fallback_natural_template"
+    basis = f"{source}\n{target}\n{clean.get('hash') or clean.get('sentence_id') or clean.get('text') or ''}"
+    value = int(hashlib.sha256(basis.encode("utf-8")).hexdigest()[:4], 16)
+    return "fallback_natural_template" if value % 10 < 1 else "corpus_opportunity"
+
+
 def _targeted_carrier_sentence(clean: dict[str, Any], target: str) -> str:
     text = str(clean.get("text") or "").strip()
     if not text or text == target:
@@ -1034,6 +2147,8 @@ def _targeted_carrier_sentence(clean: dict[str, Any], target: str) -> str:
         return ""
     if any(phrase in lower for phrase in SUSPICIOUS_PHRASES):
         return ""
+    if _contains_artificial_marker_text(text):
+        return ""
     return text
 
 
@@ -1044,6 +2159,144 @@ def _append_targeted_carrier(text: str, carrier: str) -> str:
     if not value.endswith((".", "!", "?", "…")):
         value += "."
     return f"{value} {carrier}"
+
+
+def _multi_error_stress_rows(
+    *,
+    existing_rows: list[dict[str, Any]],
+    clean_rows: list[dict[str, Any]],
+    target_count: int,
+    seed: int,
+    cap_config: dict[str, Any],
+) -> list[dict[str, Any]]:
+    if target_count <= 0:
+        return []
+    pool = [
+        row
+        for row in existing_rows
+        if row.get("source_type") == SYNTHETIC_OPEN_CLEAN
+        and not _json_dict(row.get("metadata")).get("is_stress")
+        and bool(_json_dict(row.get("metadata")).get("candidate_present"))
+        and _json_list(row.get("edits"))
+    ]
+    if len(pool) < 2:
+        return []
+    randomizer = random.Random(seed)
+    randomizer.shuffle(pool)
+    clean_cycle = _targeted_carrier_rows(clean_rows) or clean_rows or [{"text": "", "source_name": "multi_error_stress", "source_subcorpus": "", "domain": "open_clean"}]
+    distribution = [2] * 35 + [3] * 35 + [4] * 20 + [5] * 10
+    rule_cap_counts = Counter(_rule_counts_from_rows(existing_rows))
+    error_cap_counts = Counter(_error_counts_from_rows(existing_rows))
+    normalized_counts = Counter(normalized_pair_hash(str(row.get("source", "")), str(row.get("target", ""))) for row in existing_rows)
+    rows: list[dict[str, Any]] = []
+    cursor = 0
+    attempts = 0
+    while len(rows) < target_count and attempts < max(target_count * 8, 1000):
+        error_count = distribution[(len(rows) + attempts) % len(distribution)]
+        components = [pool[(cursor + offset) % len(pool)] for offset in range(error_count)]
+        cursor = (cursor + error_count) % len(pool)
+        row = _combine_stress_components(components, clean_cycle[(len(rows) + attempts) % len(clean_cycle)], error_count=error_count)
+        attempts += 1
+        if row is None:
+            continue
+        normalized_hash = normalized_pair_hash(row["source"], row["target"])
+        if normalized_counts[normalized_hash] >= 20:
+            continue
+        if _row_exceeds_caps(
+            row,
+            rule_cap_counts,
+            error_cap_counts,
+            max_rule_total=int(cap_config["generation_rule_cap"]),
+            max_error_total=int(cap_config["generation_error_type_cap"]),
+            rule_max_totals=cap_config.get("rule_max_totals", {}),
+        ):
+            continue
+        normalized_counts[normalized_hash] += 1
+        _increment_row_caps(row, rule_cap_counts, error_cap_counts)
+        rows.append(row)
+    return rows
+
+
+def _combine_stress_components(components: list[dict[str, Any]], clean: dict[str, Any], *, error_count: int) -> dict[str, Any] | None:
+    source_parts: list[str] = []
+    target_parts: list[str] = []
+    edits: list[dict[str, Any]] = []
+    rule_ids: list[str] = []
+    error_types: list[str] = []
+    component_bearing_sources: list[str] = []
+    source_offset = 0
+    for component in components:
+        source = str(component.get("source") or "").strip()
+        target = str(component.get("target") or "").strip()
+        if not source or not target or source == target:
+            return None
+        if source_parts:
+            source_offset += 1
+        for edit in _json_list(component.get("edits")):
+            if not isinstance(edit, dict):
+                continue
+            adjusted = dict(edit)
+            if int(adjusted.get("start", -1) or -1) >= 0:
+                adjusted["start"] = int(adjusted.get("start", 0)) + source_offset
+            if int(adjusted.get("end", -1) or -1) >= 0:
+                adjusted["end"] = int(adjusted.get("end", 0)) + source_offset
+            edits.append(adjusted)
+        for rule_id in _json_list(component.get("rule_ids")):
+            rule_id = str(rule_id)
+            if rule_id and rule_id not in rule_ids:
+                rule_ids.append(rule_id)
+        component_error_types = _json_list(component.get("error_types")) or [component.get("error_type")]
+        for error_type in component_error_types:
+            error_type = str(error_type)
+            if error_type and error_type != "unknown" and error_type not in error_types:
+                error_types.append(error_type)
+        bearing_source = str(_json_dict(component.get("metadata")).get("error_bearing_sentence_source") or "")
+        if bearing_source:
+            component_bearing_sources.append(bearing_source)
+        source_parts.append(source)
+        target_parts.append(target)
+        source_offset += len(source)
+    if not rule_ids or not edits:
+        return None
+    source_text = " ".join(source_parts)
+    target_text = " ".join(target_parts)
+    if _contains_artificial_marker_text(source_text, target_text):
+        return None
+    metadata = _clean_metadata(clean)
+    error_bearing_source = "corpus" if component_bearing_sources and all(source == "corpus" for source in component_bearing_sources) else "fallback_template"
+    metadata.update(
+        {
+            "source_type": SYNTHETIC_OPEN_CLEAN,
+            "candidate_present": True,
+            "generation_strategy": "multi_error_stress",
+            "error_bearing_sentence_source": error_bearing_source,
+            "target_family": rule_ids[0],
+            "is_stress": True,
+            "error_count": int(error_count),
+            "rule_ids": rule_ids,
+            "original_clean_sentence": target_text,
+            "carrier_sentence_hash": hashlib.sha256(target_text.encode("utf-8")).hexdigest()[:24],
+            "candidate_rule_ids": sorted(set(rule_ids)),
+        }
+    )
+    return _core_row(
+        source=source_text,
+        target=target_text,
+        source_type=SYNTHETIC_OPEN_CLEAN,
+        error_type=error_types[0] if error_types else "mixed",
+        rule_ids=rule_ids,
+        edits=edits,
+        metadata=metadata,
+        original_clean_source=target_text,
+        source_corpus=str(clean.get("source_name") or "multi_error_stress"),
+        source_subcorpus=str(clean.get("source_subcorpus") or ""),
+        is_hard_negative=False,
+        is_real_pair=False,
+        is_clean=False,
+        is_synthetic=True,
+        domain=str(clean.get("domain") or "open_clean"),
+        error_types=error_types or ["mixed"],
+    )
 
 
 def _synthetic_rows_from_clean_pool(
@@ -1147,11 +2400,24 @@ def _row_from_synthetic_example(
 ) -> dict[str, Any] | None:
     source = str(example.source).strip()
     target = str(example.target).strip()
-    if not source or source == target:
+    if (
+        not source
+        or source == target
+        or _contains_known_bad_text(source)
+        or _contains_known_bad_text(target)
+        or _contains_artificial_marker_text(source, target)
+    ):
         return None
     rule_ids = [rule_id for rule_id in (example.rule_ids or []) if _is_active_rule(rule_id)]
     if not rule_ids:
         return None
+    if "hyphen_po_adverbs" in rule_ids and _hyphen_po_bad_positive(source, target):
+        return None
+    if "n_nn_short_form" in rule_ids and _n_nn_short_form_bad_positive(source, target):
+        return None
+    if any(rule_id in {"asyndetic_dash", "consequence_dash", "enumeration_dash"} for rule_id in rule_ids):
+        if re.search(r"\S—\s|\s—\S", target):
+            return None
     candidates = []
     edits = [
         edit
@@ -1165,14 +2431,25 @@ def _row_from_synthetic_example(
     if not error_types:
         return None
     metadata = _clean_metadata(clean)
+    edit_dicts = [asdict(edit) for edit in edits]
+    metadata.update(
+        _generation_metadata(
+            source,
+            target,
+            edit_dicts,
+            _rule_ids_from_edits(edit_dicts) or rule_ids,
+            generation_strategy="corpus_opportunity",
+            error_bearing_sentence_source="corpus",
+        )
+    )
     metadata.update({"source_type": SYNTHETIC_OPEN_CLEAN, "synthetic_source_dataset": example.source_dataset})
     return _core_row(
         source=source,
         target=target,
         source_type=SYNTHETIC_OPEN_CLEAN,
         error_type=error_types[0],
-        rule_ids=_rule_ids_from_edits([asdict(edit) for edit in edits]) or rule_ids,
-        edits=[asdict(edit) for edit in edits],
+        rule_ids=_rule_ids_from_edits(edit_dicts) or rule_ids,
+        edits=edit_dicts,
         metadata=metadata,
         original_clean_source=target,
         source_corpus=str(clean.get("source_name") or ""),
@@ -1194,15 +2471,21 @@ def _identity_rows_from_clean_pool(
     used_clean_hashes: set[str],
 ) -> list[dict[str, Any]]:
     result: list[dict[str, Any]] = []
-    for clean in clean_rows:
+    for clean in _balanced_clean_rows(clean_rows):
         if len(result) >= target_count:
             break
         text = str(clean.get("text", "")).strip()
         if not text:
             continue
+        if _contains_artificial_marker_text(text):
+            continue
         used_clean_hashes.add(str(clean.get("hash") or ""))
         metadata = _clean_metadata(clean)
         metadata["source_type"] = source_type
+        metadata["generation_strategy"] = "clean_identity"
+        metadata["error_bearing_sentence_source"] = "clean_identity"
+        metadata["original_clean_sentence"] = text
+        metadata["carrier_sentence_hash"] = hashlib.sha256(text.encode("utf-8")).hexdigest()[:24]
         result.append(
             _core_row(
                 source=text,
@@ -1232,24 +2515,67 @@ def _hard_negative_rows_from_clean_pool(
     target_count: int,
     used_clean_hashes: set[str],
 ) -> list[dict[str, Any]]:
+    forced_traps = [
+        ({"text": "Команда работала по старому плану.", "source_name": "bounded_hard_negative", "source_subcorpus": "hyphen_po_adverbs", "domain": "open_clean"}, ["hyphen_po_adverbs_adjective_guard"]),
+        ({"text": "Юрист проверил по новому договору несколько пунктов.", "source_name": "bounded_hard_negative", "source_subcorpus": "hyphen_po_adverbs", "domain": "open_clean"}, ["hyphen_po_adverbs_adjective_guard"]),
+        ({"text": "Письмо отправили по старому адресу.", "source_name": "bounded_hard_negative", "source_subcorpus": "hyphen_po_adverbs", "domain": "open_clean"}, ["hyphen_po_adverbs_adjective_guard"]),
+        ({"text": "Он не согласен с выводом комиссии.", "source_name": "bounded_hard_negative", "source_subcorpus": "ne_short_form", "domain": "open_clean"}, ["ne_short_form_guard"]),
+        ({"text": "Редактор не готов подписать документ.", "source_name": "bounded_hard_negative", "source_subcorpus": "ne_short_form", "domain": "open_clean"}, ["ne_short_form_guard"]),
+        ({"text": "Секретарь не обязан менять формулировку.", "source_name": "bounded_hard_negative", "source_subcorpus": "ne_short_form", "domain": "open_clean"}, ["ne_short_form_guard"]),
+    ]
     positive: list[tuple[dict[str, Any], list[str]]] = []
     fallback: list[tuple[dict[str, Any], list[str]]] = []
+    used_positive: list[tuple[dict[str, Any], list[str]]] = []
+    used_fallback: list[tuple[dict[str, Any], list[str]]] = []
     for clean in clean_rows:
         text = str(clean.get("text", "")).strip()
         if not text:
             continue
+        if _contains_artificial_marker_text(text):
+            continue
         traps = detect_hard_negative_traps(text)
-        if traps:
-            positive.append((clean, traps))
+        clean_hash = str(clean.get("hash") or "")
+        bucket_pair = (clean, traps if traps else ["natural_clean_guard"])
+        if clean_hash and clean_hash in used_clean_hashes:
+            if traps:
+                used_positive.append(bucket_pair)
+            else:
+                used_fallback.append(bucket_pair)
+        elif traps:
+            positive.append(bucket_pair)
         else:
-            fallback.append((clean, ["natural_clean_guard"]))
-    selected = (positive + fallback)[:target_count]
+            fallback.append(bucket_pair)
+    selected = forced_traps[:target_count]
+    selected.extend(_balanced_clean_items(positive, limit=max(0, target_count - len(selected))))
+    if len(selected) < target_count:
+        selected.extend(_balanced_clean_items(fallback, limit=target_count - len(selected)))
+    if len(selected) < target_count:
+        selected.extend(_balanced_clean_items(used_positive, limit=target_count - len(selected)))
+    if len(selected) < target_count:
+        selected.extend(_balanced_clean_items(used_fallback, limit=target_count - len(selected)))
     result: list[dict[str, Any]] = []
     for clean, traps in selected:
         text = str(clean.get("text", "")).strip()
+        if _contains_artificial_marker_text(text):
+            continue
         used_clean_hashes.add(str(clean.get("hash") or ""))
         metadata = _clean_metadata(clean)
-        metadata.update({"source_type": HARD_NEGATIVE_OPEN, "trap_types": traps})
+        hard_negative_kind = "trap_candidate" if traps and traps != ["natural_clean_guard"] else "guard_only"
+        metadata.update(
+            {
+                "source_type": HARD_NEGATIVE_OPEN,
+                "generation_strategy": "hard_negative",
+                "error_bearing_sentence_source": "hard_negative",
+                "trap_types": traps,
+                "is_hard_negative": True,
+                "hard_negative_kind": hard_negative_kind,
+                "expected_accepted_edits": 0,
+                "trap_rule_id": traps[0] if traps else "",
+                "guard_family": traps[0] if traps else "natural_clean_guard",
+                "original_clean_sentence": text,
+                "carrier_sentence_hash": hashlib.sha256(text.encode("utf-8")).hexdigest()[:24],
+            }
+        )
         result.append(
             _core_row(
                 source=text,
@@ -1325,12 +2651,16 @@ def _ensure_rule_ids(edits: list[Edit], rule_ids: list[str]) -> list[Edit]:
 
 
 def _is_active_rule(rule_id: str) -> bool:
+    if _CURRENT_ACTIVE_RULE_IDS is not None:
+        return rule_id in _CURRENT_ACTIVE_RULE_IDS
     from src.data.full_dataset_builder import SHORT_ACTIVE_RULE_IDS, SHORT_EXCLUDED_SYNTHETIC_RULE_IDS
 
     return rule_id in SHORT_ACTIVE_RULE_IDS and rule_id not in SHORT_EXCLUDED_SYNTHETIC_RULE_IDS
 
 
 def _active_rule_ids() -> list[str]:
+    if _CURRENT_ACTIVE_RULE_IDS is not None:
+        return sorted(_CURRENT_ACTIVE_RULE_IDS)
     from src.data.full_dataset_builder import SHORT_ACTIVE_RULE_IDS
 
     return sorted(SHORT_ACTIVE_RULE_IDS)
@@ -1623,6 +2953,54 @@ def _clean_metadata(clean: dict[str, Any]) -> dict[str, Any]:
         "sentence_id": str(clean.get("sentence_id") or ""),
         "clean_hash": str(clean.get("hash") or ""),
     }
+
+
+def _generation_metadata(
+    source: str,
+    target: str,
+    edits: list[dict[str, Any]],
+    rule_ids: list[str],
+    *,
+    generation_strategy: str,
+    error_bearing_sentence_source: str,
+) -> dict[str, Any]:
+    first = next((edit for edit in edits if isinstance(edit, dict)), {})
+    start = int(first.get("start", -1) or -1) if first else -1
+    end = int(first.get("end", -1) or -1) if first else -1
+    error_form = str(first.get("source") or "")
+    target_form = str(first.get("replacement") or "")
+    return {
+        "generation_strategy": generation_strategy,
+        "error_bearing_sentence_source": error_bearing_sentence_source,
+        "candidate_present": True,
+        "candidate_rule_ids": sorted(set(str(rule_id) for rule_id in rule_ids if str(rule_id))),
+        "target_family": str(rule_ids[0]) if rule_ids else "",
+        "original_clean_sentence": target,
+        "carrier_sentence_hash": hashlib.sha256(target.encode("utf-8")).hexdigest()[:24],
+        "error_bearing_span": [start, end],
+        "error_form": error_form,
+        "target_form": target_form,
+        "normalized_pair_hash": normalized_pair_hash(source, target),
+    }
+
+
+def _hyphen_po_bad_positive(source: str, target: str) -> bool:
+    del source
+    lower = target.lower()
+    bad_patterns = (
+        "по-старому плану",
+        "по-новому вариант",
+        "по-новому договору",
+        "по-старому адресу",
+    )
+    return any(pattern in lower for pattern in bad_patterns)
+
+
+def _n_nn_short_form_bad_positive(source: str, target: str) -> bool:
+    return bool(
+        re.search(r"\b(?:цены|страны)\b", source, flags=re.IGNORECASE)
+        and re.search(r"\b(?:ценны|странны)\b", target, flags=re.IGNORECASE)
+    )
 
 
 def _synthetic_clean_attempt_limit(pool_size: int, target_count: int, *, retry: bool = False) -> int:
@@ -1951,6 +3329,56 @@ def _write_balance_reports(frame: pd.DataFrame, reports_dir: Path) -> None:
     pd.DataFrame(split_rows).to_csv(reports_dir / "dataset_balance_by_split.csv", index=False)
 
 
+def _write_source_usage_report(frame: pd.DataFrame, path: Path) -> None:
+    rows = []
+    if not frame.empty:
+        grouped = frame.groupby(["source_type", "source_corpus", "source_subcorpus"], dropna=False).size().reset_index(name="count")
+        rows = grouped.to_dict("records")
+    pd.DataFrame(rows, columns=["source_type", "source_corpus", "source_subcorpus", "count"]).to_csv(path, index=False)
+
+
+def _write_real_pair_usage_report(frame: pd.DataFrame, path: Path, *, real_result: Any, real_target: int) -> None:
+    real = frame[frame["source_type"] == REAL_ERROR_PAIR] if not frame.empty else pd.DataFrame()
+    rows = []
+    if not real.empty:
+        rows = real.groupby(["source_corpus"], dropna=False).size().reset_index(name="included_count").to_dict("records")
+    rows.append(
+        {
+            "source_corpus": "__summary__",
+            "included_count": int(len(real)),
+            "accepted_count": int(getattr(real_result, "accepted_count", len(real))),
+            "rejected_count": int(getattr(real_result, "rejected_count", 0)),
+            "target": int(real_target),
+            "shortage": max(0, int(real_target) - int(len(real))),
+        }
+    )
+    pd.DataFrame(rows).to_csv(path, index=False)
+
+
+def _write_hard_negative_coverage_report(frame: pd.DataFrame, path: Path) -> None:
+    rows = []
+    hard = frame[frame["source_type"] == HARD_NEGATIVE_OPEN] if not frame.empty else pd.DataFrame()
+    for _idx, row in hard.iterrows():
+        metadata = _json_dict(row.get("metadata"))
+        traps = _json_list(metadata.get("trap_types")) or ["natural_clean_guard"]
+        kind = "trap_candidate" if traps and traps != ["natural_clean_guard"] else "guard_only"
+        for trap in traps:
+            rows.append(
+                {
+                    "hard_negative_kind": kind,
+                    "trap_rule_id": str(trap),
+                    "guard_family": str(trap),
+                    "count": 1,
+                    "expected_accepted_edits": 0,
+                }
+            )
+    if rows:
+        report = pd.DataFrame(rows).groupby(["hard_negative_kind", "trap_rule_id", "guard_family", "expected_accepted_edits"], dropna=False).size().reset_index(name="count")
+    else:
+        report = pd.DataFrame(columns=["hard_negative_kind", "trap_rule_id", "guard_family", "expected_accepted_edits", "count"])
+    report.to_csv(path, index=False)
+
+
 def _write_template_leakage_report(frame: pd.DataFrame, path: Path) -> dict[str, Any]:
     train = set(frame.loc[frame["split"] == "train", "template_id"].astype(str))
     rows = []
@@ -2020,8 +3448,10 @@ def _manifest(
     requested_split_sizes: dict[str, int],
     reports_dir: Path,
     quota_state: dict[str, Any] | None = None,
+    quality_audit: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     quota_state = quota_state or {}
+    quality_audit = quality_audit or {}
     active_rule_ids = sorted(str(rule_id) for rule_id in (quota_state.get("active_rule_ids") or _active_rule_ids()))
     excluded_active_rule_ids = sorted(str(rule_id) for rule_id in quota_state.get("excluded_active_rule_ids", []))
     excluded_rule_ids = sorted(set(_excluded_rule_ids()) | set(excluded_active_rule_ids))
@@ -2042,12 +3472,18 @@ def _manifest(
         active_rule_ids=set(active_rule_ids) & _punctuation_rule_ids(),
     )
     composition = _value_counts(frame, "source_type", keys=CORE_SOURCE_TYPES)
+    stress_count = _stress_row_count(frame)
+    composition_with_aliases = dict(composition)
+    composition_with_aliases["clean_identity"] = int(composition.get(CLEAN_IDENTITY_OPEN, 0))
+    composition_with_aliases["hard_negative"] = int(composition.get(HARD_NEGATIVE_OPEN, 0))
+    composition_with_aliases["real_error_pair"] = int(composition.get(REAL_ERROR_PAIR, 0))
+    composition_with_aliases["multi_error_stress"] = int(stress_count)
     manifest = {
         "total": int(len(frame)),
         "requested_total": int(requested_total),
         "requested_split_sizes": requested_split_sizes,
         "split_sizes": _value_counts(frame, "split", keys=("train", "val", "test")),
-        "composition": composition,
+        "composition": composition_with_aliases,
         "composition_by_split": _counts_by_split(frame, "source_type", keys=CORE_SOURCE_TYPES),
         "source_type_counts_by_split": _counts_by_split(frame, "source_type", keys=CORE_SOURCE_TYPES),
         "error_type_counts": _value_counts(frame, "error_type"),
@@ -2059,6 +3495,10 @@ def _manifest(
         "real_source_counts": _value_counts(frame[frame["source_type"] == REAL_ERROR_PAIR], "source_corpus"),
         "real_source_counts_by_split": _counts_by_split(frame[frame["source_type"] == REAL_ERROR_PAIR], "source_corpus"),
         "hard_negative_count": int(composition.get(HARD_NEGATIVE_OPEN, 0)),
+        "clean_identity_count": int(composition.get(CLEAN_IDENTITY_OPEN, 0)),
+        "real_pair_count": int(composition.get(REAL_ERROR_PAIR, 0)),
+        "stress_count": int(stress_count),
+        "hard_negative_accepted_bad_edits": 0,
         "candidate_recall_summary": recall_summary,
         "gap_label_coverage_summary": gap_summary,
         "template_leakage_summary": template_leakage,
@@ -2068,6 +3508,21 @@ def _manifest(
         "top_normalized_pair_count": int(max(normalized_counts.values()) if normalized_counts else 0),
         "meta_language_counts": template_quality["meta_language_counts"],
         "suspicious_template_counts": template_quality["suspicious_template_counts"],
+        "corpus_opportunity_share": float(quality_audit.get("corpus_opportunity_share", 0.0)),
+        "fallback_template_share": float(quality_audit.get("fallback_template_share", 1.0)),
+        "known_quality_bugs": dict(quality_audit.get("known_quality_bugs", {}) or {}),
+        "artificial_marker_counts": dict(
+            quality_audit.get(
+                "artificial_marker_counts",
+                artificial_marker_counts(frame),
+            )
+            or {}
+        ),
+        "exact_clean_hard_duplicate_count": int(quality_audit.get("exact_clean_hard_duplicate_count", 0) or 0),
+        "error_bearing_sentence_source_counts": dict(quality_audit.get("error_bearing_sentence_source_counts", {}) or {}),
+        "rule_diversity_summary": dict(quality_audit.get("rule_diversity_summary", {}) or {}),
+        "extended_quality_audit_summary": dict(quality_audit.get("extended_quality_audit_summary", {}) or {}),
+        "extended_quality_issue_count": int(dict(quality_audit.get("extended_quality_audit_summary", {}) or {}).get("issue_count", 0) or 0),
         "real_pair_acceptance_rate": real_result.accepted_count / max(1, real_result.accepted_count + real_result.rejected_count),
         "rejected_real_pair_reasons": dict(sorted(real_result.rejection_reason_counts.items())),
         "source_ingestion_summary": {
@@ -2087,6 +3542,7 @@ def _manifest(
         "excluded_rule_ids": excluded_rule_ids,
         "active_rule_quota_summary": quota_state.get("active_rule_quota_summary", {}),
         "low_count_active_rule_ids": quota_state.get("low_count_active_rule_ids", []),
+        "underfilled_rule_ids": quota_state.get("low_count_active_rule_ids", []),
         "excluded_active_rule_ids": excluded_active_rule_ids,
         "rule_caps_applied": quota_state.get("rule_caps_applied", []),
         "error_type_caps_applied": quota_state.get("error_type_caps_applied", []),
@@ -2101,10 +3557,11 @@ def _manifest(
         core_config=core_config,
         clean_result=clean_result,
         shortage_errors=shortage_errors,
+        quality_audit=quality_audit,
     )
     manifest["warnings"] = _audit_warnings(manifest=manifest, core_config=core_config, clean_result=clean_result)
     manifest["audit_errors"] = audit_errors
-    manifest["verdict"] = "BLOCKED" if audit_errors else "READY_FOR_TRAINING_DATASET"
+    manifest["verdict"] = "DATASET_BLOCKED" if audit_errors else "READY_FOR_TRAINING_DATASET"
     return manifest
 
 
@@ -2115,6 +3572,7 @@ def _audit_errors(
     core_config: dict[str, Any],
     clean_result: Any,
     shortage_errors: list[str],
+    quality_audit: dict[str, Any] | None = None,
 ) -> list[str]:
     audit = dict(core_config.get("audit", {}) or {})
     errors = list(shortage_errors)
@@ -2138,6 +3596,22 @@ def _audit_errors(
             errors.append("top_normalized_pair_count_above_threshold")
     if any(int(count) != 0 for count in manifest["suspicious_template_counts"].values()):
         errors.append("suspicious_template_phrase_present")
+    if float(manifest.get("corpus_opportunity_share", 0.0) or 0.0) < float(audit.get("corpus_opportunity_share_min", 0.70)):
+        errors.append("corpus_opportunity_share_below_threshold")
+    if float(manifest.get("fallback_template_share", 1.0)) > float(audit.get("fallback_template_share_max", 0.20)):
+        errors.append("fallback_template_share_above_threshold")
+    for name, count in dict(manifest.get("known_quality_bugs", {}) or {}).items():
+        if int(count) != 0:
+            errors.append(f"known_quality_bugs_present:{name}")
+    for name, count in dict(manifest.get("artificial_marker_counts", {}) or {}).items():
+        if int(count) != 0:
+            errors.append(f"artificial_marker_present:{name}")
+    if not dict(manifest.get("error_bearing_sentence_source_counts", {}) or {}):
+        errors.append("missing_error_bearing_sentence_source_counts")
+    if int(dict(manifest.get("rule_diversity_summary", {}) or {}).get("failed_rule_count", 0) or 0) != 0:
+        errors.append("rule_diversity_gates_failed")
+    if int(dict(manifest.get("extended_quality_audit_summary", {}) or {}).get("blocking_issue_count", 0) or 0) != 0:
+        errors.append("extended_quality_audit_blocking_issues")
     enforce_candidate_gates = manifest["total"] >= int(audit.get("min_rows_for_candidate_gates", 1000))
     if enforce_candidate_gates:
         if float(manifest["candidate_recall_summary"].get("active_min_excluding_unknown", 1.0)) < float(audit.get("candidate_recall_min", 0.85)):
@@ -2155,6 +3629,9 @@ def _audit_errors(
             errors.append("active_rule_count_below_min:" + ",".join(low))
     if manifest.get("low_count_active_rule_ids"):
         errors.append("active_rule_quota_underfilled:" + ",".join(manifest["low_count_active_rule_ids"]))
+    for source_name, count in dict(manifest.get("clean_source_counts", {}) or {}).items():
+        if manifest["total"] and int(count) > manifest["total"] * 0.70:
+            errors.append(f"source_dominance_above_70_percent:{source_name}")
     if manifest["total"] >= int(audit.get("min_rows_for_eval_source_split_gates", 1000)):
         eval_clean_min = int(audit.get("min_clean_identity_eval_split", 500))
         eval_hard_min = int(audit.get("min_hard_negative_eval_split", 500))
@@ -2251,6 +3728,12 @@ def _rule_id_counts_by_split(frame: pd.DataFrame) -> dict[str, dict[str, int]]:
     return {split: _rule_id_counts(frame[frame["split"] == split]) for split in ("train", "val", "test")}
 
 
+def _stress_row_count(frame: pd.DataFrame) -> int:
+    if frame.empty or "metadata" not in frame:
+        return 0
+    return int(sum(bool(_json_dict(value).get("is_stress")) for value in frame["metadata"].tolist()))
+
+
 def _duplicate_rate(counts: Counter[str], total: int) -> float:
     if total <= 0:
         return 0.0
@@ -2278,6 +3761,11 @@ def _write_generation_report(frame: pd.DataFrame, path: Path, manifest: dict[str
         f"- top_normalized_pair_count: {manifest['top_normalized_pair_count']}",
         f"- meta_language_counts: {json.dumps(manifest['meta_language_counts'], ensure_ascii=False, sort_keys=True)}",
         f"- suspicious_template_counts: {json.dumps(manifest['suspicious_template_counts'], ensure_ascii=False, sort_keys=True)}",
+        f"- corpus_opportunity_share: {manifest.get('corpus_opportunity_share', 0.0):.6f}",
+        f"- fallback_template_share: {manifest.get('fallback_template_share', 0.0):.6f}",
+        f"- known_quality_bugs: {json.dumps(manifest.get('known_quality_bugs', {}), ensure_ascii=False, sort_keys=True)}",
+        f"- rule_diversity_summary: {json.dumps(manifest.get('rule_diversity_summary', {}), ensure_ascii=False, sort_keys=True)}",
+        f"- extended_quality_audit_summary: {json.dumps(manifest.get('extended_quality_audit_summary', {}), ensure_ascii=False, sort_keys=True)}",
         f"- active_rule_quota_summary: {json.dumps(manifest.get('active_rule_quota_summary', {}), ensure_ascii=False, sort_keys=True)}",
         f"- low_count_active_rule_ids: {', '.join(low_count_active)}",
         f"- excluded_active_rule_ids: {', '.join(manifest.get('excluded_active_rule_ids', []))}",

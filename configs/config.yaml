@@ -43,9 +43,9 @@ training:
   run_model_training: true
   evaluation_split: val
   checkpoint_metric: combined_score
-  max_train_examples: 80000
-  max_val_examples: 10000
-  max_test_examples: 10000
+  max_train_examples: 185923
+  max_val_examples: 23240
+  max_test_examples: 23241
   batch_size: 128
   gradient_accumulation_steps: 1
   epochs: 1
@@ -106,11 +106,11 @@ data:
   synthetic_seed: 13
   processed_train_path: data/processed/correction_dataset.csv.gz
   manifest_path: data/processed/dataset_manifest.json
-  target_total_examples: 100000
-  total_examples: 100000
-  train_examples: 80000
-  val_examples: 10000
-  test_examples: 10000
+  target_total_examples: 232404
+  total_examples: 232404
+  train_examples: 185923
+  val_examples: 23240
+  test_examples: 23241
   clean_identity_ratio: 0.1
   punctuation_hard_negative_clean_ratio: 0.25
   val_ratio: 0.05
@@ -225,13 +225,13 @@ data:
   - Чистый текст.
   config_path: configs/config.yaml
   exact_split_sizes:
-    train: 80000
-    val: 10000
-    test: 10000
+    train: 185923
+    val: 23240
+    test: 23241
   training_dataset:
     enabled: true
-    requested_total: 100000
-    expected_total: 100000
+    requested_total: 232404
+    expected_total: 232404
     smoke:
       enabled: false
       requested_total: 60000
@@ -240,36 +240,36 @@ data:
         val: 5000
         test: 5000
       verdict: READY_FOR_SMOKE_ONLY
-    min_clean_pool_for_ready: 150000
-    min_clean_pool_hard_min: 60000
+    min_clean_pool_for_ready: 300000
+    min_clean_pool_hard_min: 150000
     open_corpora_sources_path: configs/open_corpora_sources.yaml
     real_error_sources_path: configs/real_error_sources.yaml
     source_type_targets:
-      synthetic_augmented_from_open_clean: 72000
-      real_error_pair: 4000
-      clean_identity_from_open_clean: 12000
-      hard_negative_from_open_clean: 12000
-    split_source_type_targets:
+      synthetic_augmented_from_open_clean: 180365
+      real_error_pair: 1969
+      clean_identity_from_open_clean: 25035
+      hard_negative_from_open_clean: 25035
+    split_source_type_targets: &id001
       train:
-        synthetic_augmented_from_open_clean: 57600
-        real_error_pair: 3200
-        clean_identity_from_open_clean: 9600
-        hard_negative_from_open_clean: 9600
+        synthetic_augmented_from_open_clean: 144294
+        real_error_pair: 1575
+        clean_identity_from_open_clean: 20027
+        hard_negative_from_open_clean: 20027
       val:
-        synthetic_augmented_from_open_clean: 7200
-        real_error_pair: 400
-        clean_identity_from_open_clean: 1200
-        hard_negative_from_open_clean: 1200
+        synthetic_augmented_from_open_clean: 18038
+        real_error_pair: 196
+        clean_identity_from_open_clean: 2503
+        hard_negative_from_open_clean: 2503
       test:
-        synthetic_augmented_from_open_clean: 7200
-        real_error_pair: 400
-        clean_identity_from_open_clean: 1200
-        hard_negative_from_open_clean: 1200
+        synthetic_augmented_from_open_clean: 18033
+        real_error_pair: 198
+        clean_identity_from_open_clean: 2505
+        hard_negative_from_open_clean: 2505
     active_rule_quota:
       enabled: true
-      strategy: tiered_canonical
-      min_total_per_active_rule: 200
-      preferred_total_per_active_rule: 1000
+      strategy: broad_canonical
+      min_total_per_active_rule: 1000
+      preferred_total_per_active_rule: 2500
       split_minimums: {}
       tiers:
         stable_core:
@@ -307,18 +307,19 @@ data:
     audit:
       candidate_recall_min: 0.85
       gap_coverage_min: 0.85
-      synthetic_min: 70000
-      min_active_rule_count: 1
+      synthetic_min: 188300
+      min_active_rule_count: 1000
       min_clean_identity_eval_split: 500
       min_hard_negative_eval_split: 500
       min_rows_for_template_gates: 1000
       min_rows_for_candidate_gates: 1000
       min_rows_for_eval_source_split_gates: 1000
       require_all_source_types: true
+    multi_error_stress_target: 10000
   training_dataset_core:
     enabled: true
-    requested_total: 100000
-    expected_total: 100000
+    requested_total: 232404
+    expected_total: 232404
     smoke:
       enabled: false
       requested_total: 60000
@@ -327,36 +328,21 @@ data:
         val: 5000
         test: 5000
       verdict: READY_FOR_SMOKE_ONLY
-    min_clean_pool_for_ready: 150000
-    min_clean_pool_hard_min: 60000
+    min_clean_pool_for_ready: 300000
+    min_clean_pool_hard_min: 150000
     open_corpora_sources_path: configs/open_corpora_sources.yaml
     real_error_sources_path: configs/real_error_sources.yaml
     source_type_targets:
-      synthetic_augmented_from_open_clean: 72000
-      real_error_pair: 4000
-      clean_identity_from_open_clean: 12000
-      hard_negative_from_open_clean: 12000
-    split_source_type_targets:
-      train:
-        synthetic_augmented_from_open_clean: 57600
-        real_error_pair: 3200
-        clean_identity_from_open_clean: 9600
-        hard_negative_from_open_clean: 9600
-      val:
-        synthetic_augmented_from_open_clean: 7200
-        real_error_pair: 400
-        clean_identity_from_open_clean: 1200
-        hard_negative_from_open_clean: 1200
-      test:
-        synthetic_augmented_from_open_clean: 7200
-        real_error_pair: 400
-        clean_identity_from_open_clean: 1200
-        hard_negative_from_open_clean: 1200
+      synthetic_augmented_from_open_clean: 180365
+      real_error_pair: 1969
+      clean_identity_from_open_clean: 25035
+      hard_negative_from_open_clean: 25035
+    split_source_type_targets: *id001
     active_rule_quota:
       enabled: true
-      strategy: tiered_canonical
-      min_total_per_active_rule: 200
-      preferred_total_per_active_rule: 1000
+      strategy: broad_canonical
+      min_total_per_active_rule: 1000
+      preferred_total_per_active_rule: 2500
       split_minimums: {}
       tiers:
         stable_core:
@@ -394,14 +380,15 @@ data:
     audit:
       candidate_recall_min: 0.85
       gap_coverage_min: 0.85
-      synthetic_min: 70000
-      min_active_rule_count: 1
+      synthetic_min: 188300
+      min_active_rule_count: 1000
       min_clean_identity_eval_split: 500
       min_hard_negative_eval_split: 500
       min_rows_for_template_gates: 1000
       min_rows_for_candidate_gates: 1000
       min_rows_for_eval_source_split_gates: 1000
       require_all_source_types: true
+    multi_error_stress_target: 10000
 thresholds:
   mode: calibrated_guarded
   conservative:
@@ -503,14 +490,18 @@ thresholds:
     punctuation_delete_threshold: 0.98
     split_join_threshold: 0.95
     dictionary_threshold: 0.95
+    frequent_error_exact_threshold: 0.45
     context_pair_threshold: 0.995
-    tsya_threshold: 0.995
+    tsya_threshold: 0.82
+    tsya_soft_delete_threshold: 0.82
+    tsya_soft_insert_threshold: 0.995
+    ne_verb_threshold: 0.035
     ne_adjective_threshold: 0.99995
     ne_participle_threshold: 0.99995
     ne_adverb_threshold: 0.99995
     comma_subordinate_threshold: 0.92
     introductory_word_threshold: 0.94
-    introductory_comma_threshold: 0.97
+    introductory_comma_threshold: 0.69
     dash_subject_predicate_threshold: 0.96
     hyphen_threshold: 0.95
     case_threshold: 0.9
@@ -519,14 +510,14 @@ thresholds:
     quote_pair_balance_threshold: 0.995
     bracket_pair_balance_threshold: 0.995
     capitalization_ner_threshold: 0.999999
-    capitalization_sentence_start_threshold: 0.98
+    capitalization_sentence_start_threshold: 0.74
     n_nn_adjective_threshold: 0.995
     n_nn_participle_threshold: 0.999
     n_nn_short_form_threshold: 0.99995
     subject_predicate_dash_threshold: 0.99
     direct_speech_colon_threshold: 0.995
     direct_speech_quotes_threshold: 0.995
-    comma_conjunction_threshold: 0.995
+    comma_conjunction_threshold: 0.95
     punctuation_delete_replace_threshold: 0.9999
     hyphen_particles_threshold: 0.5
     hyphen_koe_koy_threshold: 0.45
@@ -534,7 +525,7 @@ thresholds:
     cy_exception_threshold: 0.58
     swapped_letters_candidate_threshold: 0.84
     double_consonant_candidate_threshold: 0.84
-    hyphen_po_adverbs_threshold: 0.88
+    hyphen_po_adverbs_threshold: 0.95
 decoder:
   max_passes: 3
 labels:
@@ -576,6 +567,6 @@ metrics:
     dirty_worse_rate: -2.0
     clean_overcorrection_rate: -3.0
 paths:
-  adapter_output_dir: models/current/adapters
-  heads_output_dir: models/current/heads
+  adapter_output_dir: models/adapters/latest
+  heads_output_dir: models/heads/latest
   reports_dir: reports

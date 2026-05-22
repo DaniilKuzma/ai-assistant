@@ -1,0 +1,12 @@
+rule_id,tier,include_in_dataset,dataset_count,candidate_recall,reason
+address_comma,syntax_supported,True,3250,1.0,syntax_supported_candidate_backed
+comma_conjunction,syntax_supported,True,3250,1.0,syntax_supported_candidate_backed
+comma_subordinate,syntax_supported,True,3250,1.0,syntax_supported_candidate_backed
+comparative_turnover_comma,syntax_supported,True,3250,1.0,syntax_supported_candidate_backed
+detached_adverbial_comma,syntax_supported,True,3250,1.0,syntax_supported_candidate_backed
+direct_speech_dash,syntax_supported,True,3250,1.0,syntax_supported_candidate_backed
+homogeneous_comma,syntax_supported,True,3250,1.0,syntax_supported_candidate_backed
+hyphen_koe_koy,legacy_stable,True,3750,1.0,legacy_candidate_backed_current_capability
+hyphen_particles,legacy_stable,True,3750,1.0,legacy_candidate_backed_current_capability
+introductory_comma,syntax_supported,True,3250,1.0,syntax_supported_candidate_backed
+subject_predicate_dash,syntax_supported,True,3250,1.0,syntax_supported_candidate_backed

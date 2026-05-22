@@ -1,0 +1,12 @@
+hard_negative_kind,trap_rule_id,guard_family,expected_accepted_edits,count
+trap_candidate,abbreviation_correct,abbreviation_correct,0,846
+trap_candidate,context_pair_correct,context_pair_correct,0,1859
+trap_candidate,hyphen_correct,hyphen_correct,0,3375
+trap_candidate,hyphen_po_adverbs_adjective_guard,hyphen_po_adverbs_adjective_guard,0,3
+trap_candidate,n_nn_correct,n_nn_correct,0,24897
+trap_candidate,ne_ni_correct,ne_ni_correct,0,3890
+trap_candidate,ne_short_form_guard,ne_short_form_guard,0,3
+trap_candidate,numbers_percent_decimals,numbers_percent_decimals,0,1353
+trap_candidate,punctuation_trap,punctuation_trap,0,2143
+trap_candidate,quotes_brackets_final_punctuation,quotes_brackets_final_punctuation,0,5355
+trap_candidate,tsya_correct,tsya_correct,0,4606
