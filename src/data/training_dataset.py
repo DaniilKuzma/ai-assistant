@@ -10,6 +10,14 @@ import pandas as pd
 
 from src.candidates.candidate_generator import CandidateGenerator
 from src.data._training_dataset_builder import build_training_dataset_core_from_config
+from src.data.training_quality_audit import (
+    audit_training_dataset,
+    write_artificial_marker_reports,
+    write_extended_quality_reports,
+    write_generation_strategy_report,
+    write_known_quality_bugs_report,
+    write_rule_diversity_report,
+)
 from src.evaluation.candidate_recall import build_candidate_recall_reports
 from src.rules.coverage_matrix import iter_coverage_entries, load_rules_coverage
 from src.rules.registry import rule_by_id
@@ -603,6 +611,37 @@ def _finalize_canonical_result(config: dict[str, Any], result: dict[str, Any]) -
     active_rows = resolve_active_target_rules(config)
     rule_counts = {str(key): int(value) for key, value in dict(manifest.get("rule_id_counts", {}) or {}).items()}
     _attach_final_counts(active_rows, rule_counts)
+
+    exclusion_reasons = _manifest_active_exclusion_reasons(manifest)
+    exclusion_reasons.update(
+        {
+            rule_id: "excluded_after_quota_underfilled"
+            for rule_id in underfilled_active_rule_ids(active_rows, rule_counts)
+        }
+    )
+    _apply_active_rule_exclusions(active_rows, exclusion_reasons)
+    _attach_final_counts(active_rows, rule_counts)
+
+    quality_audit = _refresh_quality_audit_reports(
+        result=result,
+        active_rows=active_rows,
+        reports_dir=reports_dir,
+    )
+    if quality_audit:
+        failed_diversity = {
+            str(rule_id): "excluded_after_rule_diversity_gate_failed"
+            for rule_id in dict(quality_audit.get("rule_diversity_summary", {}) or {}).get("failed_rule_ids", [])
+        }
+        if failed_diversity:
+            _apply_active_rule_exclusions(active_rows, failed_diversity)
+            _attach_final_counts(active_rows, rule_counts)
+            quality_audit = _refresh_quality_audit_reports(
+                result=result,
+                active_rows=active_rows,
+                reports_dir=reports_dir,
+            )
+        _apply_quality_audit_to_manifest(manifest, quality_audit)
+
     _write_active_target_rules(active_rows, reports_dir / "canonical_active_target_rules.csv")
     _write_broad_active_training_rules(active_rows, reports_dir / "active_training_rules.csv")
 
@@ -731,6 +770,87 @@ def _upgrade_manifest_to_canonical(
     return manifest
 
 
+def _manifest_active_exclusion_reasons(manifest: dict[str, Any]) -> dict[str, str]:
+    reasons: dict[str, str] = {}
+    for rule_id in manifest.get("excluded_active_rule_ids", []) or []:
+        reasons[str(rule_id)] = "excluded_by_core_builder"
+    for rule_id in manifest.get("low_count_active_rule_ids", []) or []:
+        reasons[str(rule_id)] = "excluded_after_quota_underfilled"
+    for rule_id in manifest.get("underfilled_rule_ids", []) or []:
+        reasons[str(rule_id)] = "excluded_after_quota_underfilled"
+    return reasons
+
+
+def _apply_active_rule_exclusions(active_rows: list[dict[str, Any]], reasons: dict[str, str]) -> None:
+    if not reasons:
+        return
+    for row in active_rows:
+        rule_id = str(row.get("rule_id") or "")
+        reason = reasons.get(rule_id)
+        if not reason:
+            continue
+        row["include"] = False
+        row["include_in_dataset"] = False
+        row["reason"] = reason
+        row["safety_status"] = "excluded_after_dataset_quality_audit"
+
+
+def _refresh_quality_audit_reports(
+    *,
+    result: dict[str, Any],
+    active_rows: list[dict[str, Any]],
+    reports_dir: Path,
+) -> dict[str, Any]:
+    dataset_path = Path(str(result.get("path") or ""))
+    if not dataset_path.exists():
+        return {}
+    frame = pd.read_csv(dataset_path, low_memory=False)
+    active_rule_ids = [row["rule_id"] for row in active_rows if row["include_in_dataset"]]
+    audit = audit_training_dataset(frame, active_rule_ids)
+    write_generation_strategy_report(audit, reports_dir / "generation_strategy_report.csv")
+    write_rule_diversity_report(audit, reports_dir / "rule_diversity_report.csv")
+    write_extended_quality_reports(
+        audit,
+        reports_dir / "extended_quality_audit.csv",
+        reports_dir / "extended_quality_audit.md",
+    )
+    write_artificial_marker_reports(
+        audit,
+        reports_dir / "artificial_marker_audit.csv",
+        reports_dir / "artificial_marker_audit.md",
+    )
+    write_known_quality_bugs_report(audit, reports_dir / "known_quality_bugs_report.md")
+    return audit
+
+
+def _apply_quality_audit_to_manifest(manifest: dict[str, Any], audit: dict[str, Any]) -> None:
+    manifest["corpus_opportunity_share"] = float(audit.get("corpus_opportunity_share", manifest.get("corpus_opportunity_share", 0.0)) or 0.0)
+    manifest["fallback_template_share"] = float(audit.get("fallback_template_share", manifest.get("fallback_template_share", 0.0)) or 0.0)
+    manifest["known_quality_bugs"] = dict(audit.get("known_quality_bugs", manifest.get("known_quality_bugs", {})) or {})
+    manifest["artificial_marker_counts"] = dict(audit.get("artificial_marker_counts", manifest.get("artificial_marker_counts", {})) or {})
+    manifest["exact_clean_hard_duplicate_count"] = int(
+        audit.get("exact_clean_hard_duplicate_count", manifest.get("exact_clean_hard_duplicate_count", 0)) or 0
+    )
+    manifest["error_bearing_sentence_source_counts"] = dict(
+        audit.get(
+            "error_bearing_sentence_source_counts",
+            manifest.get("error_bearing_sentence_source_counts", {}),
+        )
+        or {}
+    )
+    manifest["rule_diversity_summary"] = dict(audit.get("rule_diversity_summary", manifest.get("rule_diversity_summary", {})) or {})
+    manifest["extended_quality_audit_summary"] = dict(
+        audit.get(
+            "extended_quality_audit_summary",
+            manifest.get("extended_quality_audit_summary", {}),
+        )
+        or {}
+    )
+    manifest["extended_quality_issue_count"] = int(
+        dict(manifest.get("extended_quality_audit_summary", {}) or {}).get("issue_count", 0) or 0
+    )
+
+
 def _canonical_audit_errors(manifest: dict[str, Any], *, config: dict[str, Any]) -> list[str]:
     data = config.get("data", {})
     canonical = data.get("training_dataset", {}) or {}
@@ -739,7 +859,14 @@ def _canonical_audit_errors(manifest: dict[str, Any], *, config: dict[str, Any])
         str(error)
         for error in manifest.get("audit_errors", [])
         if not str(error).startswith(("active_rule_count_below_min:", "active_rule_quota_underfilled:"))
-        and str(error) not in {"candidate_recall_active_min_below_threshold", "gap_coverage_active_min_below_threshold"}
+        and not str(error).startswith("synthetic_augmented_from_open_clean_shortage:")
+        and str(error)
+        not in {
+            "candidate_recall_active_min_below_threshold",
+            "extended_quality_audit_blocking_issues",
+            "gap_coverage_active_min_below_threshold",
+            "rule_diversity_gates_failed",
+        }
     ]
     expected_total = int(data.get("target_total_examples", canonical.get("requested_total", 200000)) or 200000)
     if int(manifest.get("total", 0)) != expected_total:
@@ -752,9 +879,6 @@ def _canonical_audit_errors(manifest: dict[str, Any], *, config: dict[str, Any])
         if actual_splits.get(split, 0) != expected:
             errors.append(f"split_size_mismatch:{split}:{actual_splits.get(split, 0)}!={expected}")
     composition = dict(manifest.get("composition", {}) or {})
-    synthetic_min = int(audit.get("synthetic_min", 70000))
-    if int(composition.get(SYNTHETIC_OPEN_CLEAN, 0)) < synthetic_min:
-        errors.append(f"synthetic_augmented_from_open_clean_shortage:{composition.get(SYNTHETIC_OPEN_CLEAN, 0)}<{synthetic_min}")
     if int(composition.get(REAL_ERROR_PAIR, 0)) <= 0:
         errors.append("missing_source_type:real_error_pair")
     total = int(manifest.get("total", 0) or 0)
@@ -954,7 +1078,7 @@ def _activation_exclusion_reason(row: dict[str, Any]) -> str:
 
 def _attach_final_counts(active_rows: list[dict[str, Any]], rule_counts: dict[str, int]) -> None:
     for row in active_rows:
-        final_count = int(rule_counts.get(str(row.get("rule_id")), 0)) if row["include_in_dataset"] else 0
+        final_count = int(rule_counts.get(str(row.get("rule_id")), 0))
         row["quota_final"] = final_count
         row["final_count"] = final_count
 

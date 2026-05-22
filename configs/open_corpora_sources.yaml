@@ -59,6 +59,26 @@ clean_sources:
     min_accepted_sentences: 5000
     license_note: "OpenCorpora annotated corpus; verify terms before production."
 
+  taiga_hf_news_rest:
+    enabled: true
+    type: hf_dataset
+    priority: 3
+    domain: news
+    style: neutral
+    repo: cointegrated/taiga_stripped_rest
+    hf_id: cointegrated/taiga_stripped_rest
+    splits:
+      - Interfax
+      - Lenta
+      - NPlus1
+      - Fontanka
+      - KP
+    text_fields:
+      - text
+    max_sentences: 180000
+    min_accepted_sentences: 30000
+    license_note: "Taiga stripped news/rest media subcorpora from Hugging Face; excludes proza, social, subtitles, and Arzamas."
+
   corus_loader:
     enabled: true
     type: python_loader

@@ -154,6 +154,8 @@ def clean_sentence_rejection_reasons(text: str, source_metadata: dict[str, Any])
         reasons.append("numeric_table")
     if text.startswith(("-", "—", "–")):
         reasons.append("dialogue_or_fiction_line")
+    if re.search(r"\S\u2014\s|\s\u2014\S", text):
+        reasons.append("malformed_dash_spacing")
     if re.search(r"^\s*\d{1,2}:\d{2}(?::\d{2})?\s", text):
         reasons.append("subtitles_format")
     if any(marker in lower for marker in OBSCENE_OR_SLANG_MARKERS):

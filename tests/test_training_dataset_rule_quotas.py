@@ -1,9 +1,21 @@
+import json
 from pathlib import Path
 
 import yaml
 
 from src.data.training_dataset import compute_broad_dataset_targets, resolve_broad_active_training_rules
+from src.data._training_dataset_builder import (
+    CLEAN_IDENTITY_OPEN,
+    HARD_NEGATIVE_OPEN,
+    REAL_ERROR_PAIR,
+    SYNTHETIC_OPEN_CLEAN,
+    _finalize_quota_state,
+    _quality_source_minimum_targets,
+    _remaining_fallback_template_budget,
+)
 from src.rules.syntax_synthetic import SUPPORTED_SYNTAX_RULE_IDS
+
+import pandas as pd
 
 
 def _config() -> dict:
@@ -72,3 +84,74 @@ def test_dynamic_targets_scale_from_active_rule_quotas_and_real_pair_count():
     assert targets["clean_identity_target"] >= int(targets["total_target"] * 0.10)
     assert targets["hard_negative_target"] >= int(targets["total_target"] * 0.10)
     assert 0.03 <= targets["multi_error_stress_target"] / targets["total_target"] <= 0.05
+
+
+def test_excluded_active_rules_do_not_remain_underfilled_after_quota_finalize():
+    frame = pd.DataFrame(
+        [
+            {"rule_ids": '["safe_rule"]', "split": "train", "error_type": "spelling"},
+            {"rule_ids": '["safe_rule"]', "split": "val", "error_type": "spelling"},
+        ]
+    )
+    quota_state = {
+        "active_rule_ids": ["safe_rule", "excluded_rule"],
+        "excluded_active_rule_ids": ["excluded_rule"],
+        "quota_rows": [
+            {"rule_id": "safe_rule", "target_min_total": 2, "preferred_total": 2},
+            {"rule_id": "excluded_rule", "target_min_total": 1000, "preferred_total": 2500},
+        ],
+        "excluded_rows": [
+            {
+                "rule_id": "excluded_rule",
+                "reason": "excluded_after_quality_gate",
+                "new_status": "excluded_from_synthetic_target",
+            }
+        ],
+    }
+
+    result = _finalize_quota_state(
+        frame,
+        quota_state,
+        quota_config={"min_total_per_active_rule": 2, "preferred_total_per_active_rule": 2},
+        cap_config={"generation_rule_cap": 10, "generation_error_type_cap": 10, "rule_max_totals": {}},
+    )
+
+    assert result["active_rule_ids"] == ["safe_rule"]
+    assert result["low_count_active_rule_ids"] == []
+
+
+def test_final_targeted_fill_is_capped_by_fallback_share_budget():
+    rows = []
+    for idx in range(100):
+        rows.append(
+            {
+                "source_type": SYNTHETIC_OPEN_CLEAN,
+                "metadata": json.dumps({"error_bearing_sentence_source": "corpus"}),
+            }
+        )
+    for idx in range(20):
+        rows.append(
+            {
+                "source_type": SYNTHETIC_OPEN_CLEAN,
+                "metadata": json.dumps({"error_bearing_sentence_source": "fallback_template"}),
+            }
+        )
+
+    assert _remaining_fallback_template_budget(rows, max_share=0.20) == 5
+
+
+def test_quality_source_minimum_targets_do_not_require_exact_synthetic_target():
+    targets = _quality_source_minimum_targets(
+        {
+            SYNTHETIC_OPEN_CLEAN: 180365,
+            REAL_ERROR_PAIR: 1969,
+            CLEAN_IDENTITY_OPEN: 25035,
+            HARD_NEGATIVE_OPEN: 25035,
+        },
+        232404,
+    )
+
+    assert SYNTHETIC_OPEN_CLEAN not in targets
+    assert targets[REAL_ERROR_PAIR] == 1969
+    assert targets[CLEAN_IDENTITY_OPEN] == 23241
+    assert targets[HARD_NEGATIVE_OPEN] == 23241

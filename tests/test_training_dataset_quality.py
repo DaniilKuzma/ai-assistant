@@ -4,6 +4,7 @@ from pathlib import Path
 import pandas as pd
 
 from src.data.training_dataset import training_dataset_quality_errors
+from src.data._training_dataset_builder import _hyphen_po_bad_positive
 from src.data.training_quality_audit import audit_training_dataset, known_quality_bug_counts
 
 
@@ -143,3 +144,35 @@ def test_quality_audit_counts_artificial_marker_suffixes_as_blocking():
         "random_filler_tokens": 1,
     }
     assert audit["extended_quality_audit_summary"]["blocking_issue_count"] >= 1
+
+
+def test_quality_audit_counts_malformed_dash_spacing_outside_dash_rules():
+    frame = pd.DataFrame(
+        [
+            {
+                "source": "\u0415\u0433\u043e\u0440 \u041b\u0435\u0442\u043e\u0432 \u2014\u0440\u043e\u043a-\u043c\u0443\u0437\u044b\u043a\u0430\u043d\u0442.",
+                "target": "\u0415\u0433\u043e\u0440 \u041b\u0435\u0442\u043e\u0432 \u2014\u0440\u043e\u043a-\u043c\u0443\u0437\u044b\u043a\u0430\u043d\u0442.",
+                "source_type": "synthetic_augmented_from_open_clean",
+                "rule_ids": '["pattern_\u0447\u043e_\u0447\u0435"]',
+                "metadata": (
+                    '{"generation_strategy":"corpus_opportunity",'
+                    '"candidate_present":true,'
+                    '"error_bearing_sentence_source":"corpus"}'
+                ),
+                "template_id": "x",
+                "normalized_pair_hash": "x",
+            }
+        ]
+    )
+
+    known = known_quality_bug_counts(frame)
+    audit = audit_training_dataset(frame, ["pattern_\u0447\u043e_\u0447\u0435"])
+
+    assert known["bad_dash_spacing"] == 1
+    assert audit["extended_quality_audit_summary"]["blocking_issue_count"] >= 1
+
+
+def test_hyphen_po_adverbs_bad_positive_guard_returns_true_for_adjective_contexts():
+    assert _hyphen_po_bad_positive("", "Команда работала по-старому плану.")
+    assert _hyphen_po_bad_positive("", "Юрист проверил по-новому договору.")
+    assert not _hyphen_po_bad_positive("", "Он ответил по-дружески.")

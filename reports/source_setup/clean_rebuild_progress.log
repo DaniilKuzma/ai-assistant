@@ -1,0 +1,17 @@
+downloads enabled: yes
+dependencies installed/updated: requirements.txt updated
+clean sources used: ['lenta_news', 'nerus_news', 'opencorpora', 'taiga_hf_news_rest']
+clean sources skipped and reasons: {'corus_loader': 'utility_loader_not_source', 'taiga_news_wiki': 'missing_local_path', 'ruwiki': 'disabled', 'ud_russian_taiga': 'disabled'}
+clean pool size: 597268
+clean source counts: {'lenta_news': 203648, 'nerus_news': 200923, 'opencorpora': 53639, 'taiga_hf_news_rest': 139058}
+clean rejection top reasons: {'too_long_chars': 67283, 'too_few_tokens': 29881, 'duplicate_normalized_text': 21104, 'obscene_or_slang': 15308, 'dialogue_or_fiction_line': 5076, 'low_cyrillic_ratio': 4431, 'code_snippet': 3049, 'broken_punctuation_artifact': 2061, 'synthetic_meta_language': 1917, 'numeric_table': 897}
+real sources used: []
+real sources skipped and reasons: {}
+accepted real pair count: 0
+rejected real pair count: 0
+real source counts: {}
+real rejection top reasons: {}
+candidate-present rate for real pairs: 0.0000
+output paths: data\processed
+reports paths: reports\source_setup
+final verdict: DATA_SOURCES_PARTIAL

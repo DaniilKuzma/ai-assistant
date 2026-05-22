@@ -4,9 +4,9 @@ comma_conjunction,syntax_supported,True,3250,1.0,syntax_supported_candidate_back
 comma_subordinate,syntax_supported,True,3250,1.0,syntax_supported_candidate_backed
 comparative_turnover_comma,syntax_supported,True,3250,1.0,syntax_supported_candidate_backed
 detached_adverbial_comma,syntax_supported,True,3250,1.0,syntax_supported_candidate_backed
-direct_speech_dash,syntax_supported,True,3250,1.0,syntax_supported_candidate_backed
+direct_speech_dash,syntax_supported,False,662,1.0,excluded_after_quota_underfilled
 homogeneous_comma,syntax_supported,True,3250,1.0,syntax_supported_candidate_backed
-hyphen_koe_koy,legacy_stable,True,3750,1.0,legacy_candidate_backed_current_capability
-hyphen_particles,legacy_stable,True,3750,1.0,legacy_candidate_backed_current_capability
+hyphen_koe_koy,legacy_stable,False,691,1.0,excluded_after_quota_underfilled
+hyphen_particles,legacy_stable,False,1714,1.0,excluded_by_core_builder
 introductory_comma,syntax_supported,True,3250,1.0,syntax_supported_candidate_backed
-subject_predicate_dash,syntax_supported,True,3250,1.0,syntax_supported_candidate_backed
+subject_predicate_dash,syntax_supported,False,969,1.0,excluded_after_quota_underfilled

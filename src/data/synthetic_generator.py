@@ -398,6 +398,8 @@ def _append_before_terminal(sentence: str, phrase: str) -> str:
 
 
 def _with_natural_tail(source: str, target: str, index: int) -> tuple[str, str]:
+    del index
+    return source, target
     tails = (
         "Позже редактор сохранил копию.",
         "Утром комиссия вернулась к письму.",
@@ -590,23 +592,6 @@ def _term_target_sentence(term: str, topic: str, index: int) -> str:
         "\u0412 \u0440\u0430\u0437\u0434\u0435\u043b\u0435 \u043f\u0440\u043e \u0442\u0435\u043c\u0443 «{topic}» \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u043b\u0438 \u0441\u043b\u043e\u0432\u043e {term}.",
     )
     return contexts[index % len(contexts)].format(term=term, topic=topic)
-    templates = (
-        "Редактор исправил слово {term} в документе {marker}.",
-        "В отчете {marker} встретилось слово {term}.",
-        "Эксперт заметил ошибку в слове {term} в записи {marker}.",
-        "В письме {marker} была фраза со словом {term}.",
-        "В заявлении {marker} указали слово {term}.",
-        "Корректор проверил написание слова {term} в файле {marker}.",
-    )
-    del topic
-    return templates[index % len(templates)].format(term=term, marker=_letter_marker(index))
-
-
-def _letter_marker(index: int) -> str:
-    alphabet = "абвгдежзиклмнопрстуфхцчшщэюя"
-    left = alphabet[index % len(alphabet)]
-    right = alphabet[(index // len(alphabet)) % len(alphabet)]
-    return left + right
 
 
 def _dirty_term_for_rule(rule_id: str, term: str) -> str:

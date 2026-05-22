@@ -101,6 +101,11 @@ def test_open_corpora_config_uses_controlled_download_schema():
     assert config["clean_sources"]["lenta_news"]["type"] == "lenta_news"
     assert config["clean_sources"]["nerus_news"]["type"] == "nerus_conllu"
     assert config["clean_sources"]["opencorpora"]["archive_path"].endswith(".zip")
+    taiga_hf = config["clean_sources"]["taiga_hf_news_rest"]
+    assert taiga_hf["type"] == "hf_dataset"
+    assert taiga_hf["repo"] == "cointegrated/taiga_stripped_rest"
+    assert set(taiga_hf["splits"]) == {"Interfax", "Lenta", "NPlus1", "Fontanka", "KP"}
+    assert "Arzamas" not in taiga_hf["splits"]
     assert config["clean_sources"]["taiga_news_wiki"]["enabled"] is True
     assert "proza" in config["clean_sources"]["taiga_news_wiki"]["forbidden_subcorpora"]
     assert config["clean_sources"]["ruwiki"]["enabled"] is False
@@ -176,6 +181,22 @@ def test_clean_sentence_filter_rejects_meta_language_and_social_noise():
         "Ну что, чувак, это #тест от @user 😂",
         metadata,
     )
+
+
+def test_clean_sentence_filter_rejects_malformed_dash_spacing():
+    metadata = {"source_name": "unit_news", "domain": "news", "style": "neutral"}
+    bad = (
+        "\u0415\u0433\u043e\u0440 \u041b\u0435\u0442\u043e\u0432 "
+        "\u2014\u0440\u043e\u043a-\u043c\u0443\u0437\u044b\u043a\u0430\u043d\u0442, "
+        "\u043a\u043e\u0442\u043e\u0440\u044b\u0439 \u0440\u043e\u0434\u0438\u043b\u0441\u044f "
+        "\u0432 \u041e\u043c\u0441\u043a\u0435 \u0438 \u0441\u0442\u0430\u043b "
+        "\u0438\u0437\u0432\u0435\u0441\u0442\u0435\u043d \u0432 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0435 "
+        "\u043b\u0438\u0434\u0435\u0440\u0430 \u0433\u0440\u0443\u043f\u043f\u044b."
+    )
+    good = bad.replace("\u2014\u0440\u043e\u043a", "\u2014 \u0440\u043e\u043a")
+
+    assert not is_clean_sentence_acceptable(bad, metadata)
+    assert is_clean_sentence_acceptable(good, metadata)
 
 
 def test_clean_sentence_pool_uses_license_status_column_and_reports_download_mode(tmp_path: Path):

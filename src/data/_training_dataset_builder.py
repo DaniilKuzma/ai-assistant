@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from dataclasses import asdict
 from datetime import datetime, timezone
+import difflib
 import hashlib
 import json
 import os
@@ -76,6 +77,8 @@ ARTIFICIAL_RANDOM_FILLER_RE = re.compile(
     r"[\u0430-\u044f\u0451]{2}\b)",
     re.IGNORECASE,
 )
+MAX_SYNTHETIC_DIFF_CHARS = 320
+MAX_SYNTHETIC_DIFF_WORDS = 55
 SOURCE_TYPE_ALIASES = {
     "synthetic_augmented": SYNTHETIC_OPEN_CLEAN,
     SYNTHETIC_OPEN_CLEAN: SYNTHETIC_OPEN_CLEAN,
@@ -292,6 +295,8 @@ def build_training_dataset_core_from_config(config: dict[str, Any], force: bool 
     rows.extend(corpus_rows)
     _progress("corpus_opportunity_done", rows=len(corpus_rows), total_rows=len(rows), state=corpus_state)
     _progress("quota_backfill_start", synthetic_budget=int(source_targets.get(SYNTHETIC_OPEN_CLEAN, 0)))
+    current_synthetic_count = len([row for row in rows if row["source_type"] == SYNTHETIC_OPEN_CLEAN])
+    quota_budget = max(0, int(source_targets.get(SYNTHETIC_OPEN_CLEAN, 0)) - current_synthetic_count - stress_target)
     quota_rows, quota_state = _build_active_rule_quota_rows(
         rows,
         clean_rows=strict_clean_rows,
@@ -300,7 +305,7 @@ def build_training_dataset_core_from_config(config: dict[str, Any], force: bool 
         cap_config=cap_config,
         candidate_generator=candidate_generator,
         seed=seed,
-        synthetic_budget=int(source_targets.get(SYNTHETIC_OPEN_CLEAN, 0)),
+        synthetic_budget=quota_budget,
     )
     quota_state["corpus_opportunity_rows"] = len(corpus_rows)
     quota_state["corpus_opportunity_state"] = corpus_state
@@ -340,11 +345,21 @@ def build_training_dataset_core_from_config(config: dict[str, Any], force: bool 
     _progress("general_synthetic_done", rows=len(synthetic_rows), total_rows=len(rows))
     synthetic_remaining = max(0, synthetic_target - len([row for row in rows if row["source_type"] == SYNTHETIC_OPEN_CLEAN]))
     if synthetic_remaining:
-        _progress("targeted_fill_start", target=synthetic_remaining)
+        fallback_share_max = float((core_config.get("audit", {}) or {}).get("fallback_template_share_max", 0.20))
+        fallback_budget = _remaining_fallback_template_budget(rows, max_share=fallback_share_max)
+        targeted_fill_target = min(synthetic_remaining, fallback_budget)
+        _progress(
+            "targeted_fill_start",
+            target=targeted_fill_target,
+            requested=synthetic_remaining,
+            fallback_budget=fallback_budget,
+            fallback_share_max=fallback_share_max,
+        )
+    if synthetic_remaining and targeted_fill_target > 0:
         fill_rows, fill_state = _fill_remaining_with_targeted_rows(
             clean_rows=strict_clean_rows,
             active_rule_ids=active_rule_ids,
-            target_count=synthetic_remaining,
+            target_count=targeted_fill_target,
             candidate_generator=candidate_generator,
             seed=seed + 101,
             existing_rows=rows,
@@ -353,6 +368,8 @@ def build_training_dataset_core_from_config(config: dict[str, Any], force: bool 
         rows.extend(fill_rows)
         quota_state["rejected_templates"].extend(fill_state["rejected_templates"])
         _progress("targeted_fill_done", rows=len(fill_rows), total_rows=len(rows))
+    elif synthetic_remaining:
+        _progress("targeted_fill_skipped", requested=synthetic_remaining, reason="fallback_share_budget_exhausted")
 
     clean_identity_target = int(source_targets.get(CLEAN_IDENTITY_OPEN, 0))
     _progress("clean_identity_start", target=clean_identity_target)
@@ -380,7 +397,20 @@ def build_training_dataset_core_from_config(config: dict[str, Any], force: bool 
     before_marker_filter = len(rows)
     rows = [row for row in rows if not _row_contains_artificial_marker(row)]
     _progress("artificial_marker_filter_done", removed=before_marker_filter - len(rows), total_rows=len(rows))
-    shortage_errors = _target_shortage_errors(rows, source_targets)
+
+    top_up_needed = max(0, total - len(rows))
+    if top_up_needed:
+        _progress("safe_clean_hard_top_up_start", target=top_up_needed, total_rows=len(rows))
+        top_up_rows = _safe_clean_hard_top_up_rows(
+            rows,
+            clean_rows=strict_clean_rows,
+            target_total=total,
+            used_clean_hashes=used_clean_hashes,
+        )
+        rows.extend(top_up_rows)
+        _progress("safe_clean_hard_top_up_done", rows=len(top_up_rows), total_rows=len(rows))
+
+    shortage_errors = _target_shortage_errors(rows, _quality_source_minimum_targets(source_targets, total))
     rows = rows[:total]
     _attach_template_fields(rows)
     effective_split_sizes = split_sizes if len(rows) == total else _proportional_targets(len(rows), split_sizes)
@@ -710,8 +740,10 @@ def _rule_cap_config(core_config: dict[str, Any], split_sizes: dict[str, int]) -
         "max_rule_share_train": float(raw.get("max_rule_share_train", 0.10)),
         "max_error_type_share_train": max_error_share,
         "generation_rule_cap": min(max_total, max_train),
+        "stress_generation_rule_cap": int(raw.get("stress_generation_rule_cap", max(min(max_total, max_train) * 2, 5000))),
         "generation_error_type_cap": max(1, int(split_sizes.get("train", 0) * max_error_share)),
         "rule_max_totals": rule_max_totals,
+        "targeted_duplicate_cap": int(raw.get("targeted_duplicate_cap", 2)),
     }
 
 
@@ -1343,6 +1375,7 @@ def _row_from_corpus_pair(
         not source
         or not target
         or source == target
+        or _diff_pair_too_expensive(source, target)
         or _contains_known_bad_text(source)
         or _contains_known_bad_text(target)
         or _contains_artificial_marker_text(source, target)
@@ -1442,6 +1475,8 @@ def _hyphen_po_followed_by_nounish_context(text: str, token: str) -> bool:
 
 
 def _contains_known_bad_text(text: str) -> bool:
+    if re.search(r"\S\u2014\s|\s\u2014\S", text):
+        return True
     lower = text.lower()
     bad = (
         "несогласен с выводом",
@@ -1477,12 +1512,6 @@ def _match_case(source: str, replacement: str) -> str:
     if source[:1].isupper():
         return replacement[:1].upper() + replacement[1:]
     return replacement
-
-
-def _letter_marker(index: int) -> str:
-    alphabet = "абвгдежзиклмнопрстуфхцчшщэюя"
-    return alphabet[index % len(alphabet)] + alphabet[(index // len(alphabet)) % len(alphabet)]
-
 
 def _build_active_rule_quota_rows(
     existing_rows: list[dict[str, Any]],
@@ -1536,6 +1565,13 @@ def _build_active_rule_quota_rows(
         reason = ""
         if needed > 0 and budget_left > 0:
             needed = min(needed, budget_left)
+            _progress(
+                "targeted_fill_rule_start",
+                rule_id=rule_id,
+                current=current,
+                needed=needed,
+                budget_left=budget_left,
+            )
             pool, rejected, reason = _candidate_backed_example_pool_for_rule(
                 rule_id,
                 required_count=min(needed, 260),
@@ -1546,6 +1582,15 @@ def _build_active_rule_quota_rows(
             row_attempts = 0
             duplicate_cap = int(cap_config.get("targeted_duplicate_cap", 20))
             while pool and generated_count < needed and budget_left > 0 and row_attempts < max(needed * 4, 1000):
+                if row_attempts and row_attempts % 1000 == 0:
+                    _progress(
+                        "targeted_fill_rule_scan",
+                        rule_id=rule_id,
+                        attempts=row_attempts,
+                        generated=generated_count,
+                        needed=needed,
+                        budget_left=budget_left,
+                    )
                 example = pool[row_attempts % len(pool)]
                 clean = clean_cycle[(len(analyzer_rows) + len(existing_rows) + row_attempts) % len(clean_cycle)]
                 if budget_left <= 0:
@@ -1582,6 +1627,14 @@ def _build_active_rule_quota_rows(
             action = "backfilled" if generated_count else "ok"
             if generated_count > 0:
                 current_counts.update(_rule_counts_from_rows(analyzer_rows[-generated_count:]))
+            _progress(
+                "targeted_fill_rule_done",
+                rule_id=rule_id,
+                generated=generated_count,
+                attempts=row_attempts,
+                final_count=int(current_counts.get(rule_id, 0)),
+                budget_left=budget_left,
+            )
         final_count = int(current_counts.get(rule_id, 0))
         if final_count < rule_min or (needed > 0 and generated_count == 0 and reason):
             excluded_rows.append(
@@ -2119,13 +2172,6 @@ def _row_from_targeted_example(example: TargetedBackfillExample, clean: dict[str
 def _fallback_natural_suffix(clean: dict[str, Any]) -> str:
     del clean
     return ""
-    raw = str(clean.get("hash") or clean.get("sentence_id") or clean.get("text") or "")
-    if not raw:
-        return ""
-    digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()
-    value = int(digest[:6], 16)
-    marker = _letter_marker(value % 900)
-    return f"Позже редактор проверил материал {marker}."
 
 
 def _targeted_generation_strategy(source: str, target: str, clean: dict[str, Any]) -> str:
@@ -2191,7 +2237,7 @@ def _multi_error_stress_rows(
     rows: list[dict[str, Any]] = []
     cursor = 0
     attempts = 0
-    while len(rows) < target_count and attempts < max(target_count * 8, 1000):
+    while len(rows) < target_count and attempts < max(target_count * 40, 1000):
         error_count = distribution[(len(rows) + attempts) % len(distribution)]
         components = [pool[(cursor + offset) % len(pool)] for offset in range(error_count)]
         cursor = (cursor + error_count) % len(pool)
@@ -2206,8 +2252,8 @@ def _multi_error_stress_rows(
             row,
             rule_cap_counts,
             error_cap_counts,
-            max_rule_total=int(cap_config["generation_rule_cap"]),
-            max_error_total=int(cap_config["generation_error_type_cap"]),
+            max_rule_total=int(cap_config.get("stress_generation_rule_cap", cap_config["generation_rule_cap"])),
+            max_error_total=None,
             rule_max_totals=cap_config.get("rule_max_totals", {}),
         ):
             continue
@@ -2323,11 +2369,25 @@ def _synthetic_rows_from_clean_pool(
     rule_cap_counts = rule_cap_counts if rule_cap_counts is not None else Counter()
     error_cap_counts = error_cap_counts if error_cap_counts is not None else Counter()
     clean_attempt_limit = _synthetic_clean_attempt_limit(len(pool), target_count)
+    attempts = 0
+    rejected_expensive = 0
     for clean in _cycled(pool, max_iterations=clean_attempt_limit):
         if len(result) >= target_count or not pool:
             break
+        attempts += 1
+        if attempts == 1 or attempts % 5000 == 0:
+            _progress(
+                "general_synthetic_scan",
+                attempts=attempts,
+                rows=len(result),
+                target=target_count,
+                rejected_expensive=rejected_expensive,
+            )
         target = str(clean.get("text", "")).strip()
         if not target:
+            continue
+        if _diff_pair_too_expensive(target, target):
+            rejected_expensive += 1
             continue
         variants = generator.generate_variants_from_clean(target, max_variants=30)
         for example in variants:
@@ -2358,11 +2418,24 @@ def _synthetic_rows_from_clean_pool(
             result.append(row)
     if len(result) < target_count:
         retry_attempt_limit = _synthetic_clean_attempt_limit(len(pool), target_count - len(result), retry=True)
+        retry_attempts = 0
         for clean in _cycled(pool, max_iterations=retry_attempt_limit):
             if len(result) >= target_count or not pool:
                 break
+            retry_attempts += 1
+            if retry_attempts == 1 or retry_attempts % 5000 == 0:
+                _progress(
+                    "general_synthetic_retry_scan",
+                    attempts=retry_attempts,
+                    rows=len(result),
+                    target=target_count,
+                    rejected_expensive=rejected_expensive,
+                )
             target = str(clean.get("text", "")).strip()
             if not target:
+                continue
+            if _diff_pair_too_expensive(target, target):
+                rejected_expensive += 1
                 continue
             for example in generator.generate_variants_from_clean(target, max_variants=30):
                 if len(result) >= target_count:
@@ -2403,6 +2476,7 @@ def _row_from_synthetic_example(
     if (
         not source
         or source == target
+        or _diff_pair_too_expensive(source, target)
         or _contains_known_bad_text(source)
         or _contains_known_bad_text(target)
         or _contains_artificial_marker_text(source, target)
@@ -2418,12 +2492,14 @@ def _row_from_synthetic_example(
     if any(rule_id in {"asyndetic_dash", "consequence_dash", "enumeration_dash"} for rule_id in rule_ids):
         if re.search(r"\S—\s|\s—\S", target):
             return None
-    candidates = []
-    edits = [
-        edit
-        for edit in analyzer.analyze(source, target, candidates=candidates)
-        if is_allowed_edit_type(edit.edit_type) and (not edit.rule_id or _is_active_rule(edit.rule_id))
-    ]
+    edits = _lightweight_synthetic_edits(source, target, rule_ids)
+    if not edits:
+        candidates = []
+        edits = [
+            edit
+            for edit in analyzer.analyze(source, target, candidates=candidates)
+            if is_allowed_edit_type(edit.edit_type) and (not edit.rule_id or _is_active_rule(edit.rule_id))
+        ]
     edits = _ensure_rule_ids(edits, rule_ids)
     if not edits:
         return None
@@ -2463,6 +2539,97 @@ def _row_from_synthetic_example(
     )
 
 
+def _lightweight_synthetic_edits(source: str, target: str, rule_ids: list[str]) -> list[Edit]:
+    """Recover gold edits for generated corpus variants without candidate sweeps."""
+    if not rule_ids:
+        return []
+    opcodes = [opcode for opcode in difflib.SequenceMatcher(a=source, b=target, autojunk=False).get_opcodes() if opcode[0] != "equal"]
+    if not opcodes or len(opcodes) > max(5, len(rule_ids) * 2):
+        return []
+    edits: list[Edit] = []
+    for index, (tag, i1, i2, j1, j2) in enumerate(opcodes):
+        source_part = source[i1:i2]
+        target_part = target[j1:j2]
+        rule_id = rule_ids[min(index, len(rule_ids) - 1)]
+        edit_type = _lightweight_edit_type(rule_id, tag, source_part, target_part, source_index=i1, source_len=len(source))
+        if not is_allowed_edit_type(edit_type):
+            return []
+        edits.append(
+            Edit(
+                source_part,
+                target_part,
+                edit_type,
+                i1,
+                i2,
+                confidence=0.95,
+                rule_id=rule_id,
+            )
+        )
+    return edits
+
+
+def _lightweight_edit_type(
+    rule_id: str,
+    tag: str,
+    source_part: str,
+    target_part: str,
+    *,
+    source_index: int,
+    source_len: int,
+) -> str:
+    combined = f"{source_part}{target_part}"
+    if rule_id == "final_punctuation_default" or (
+        tag == "insert"
+        and source_index >= max(0, source_len - 1)
+        and target_part.strip() in {".", "!", "?", "…"}
+    ):
+        return "final_punctuation"
+    if _rule_id_is_punctuation_like(rule_id) or _diff_is_punctuation_only(source_part, target_part):
+        if tag == "insert":
+            return "punctuation_insert"
+        if tag == "delete":
+            return "punctuation_delete"
+        return "punctuation_replace"
+    if rule_id.startswith("capitalization") or (
+        source_part
+        and target_part
+        and source_part.lower() == target_part.lower()
+        and source_part != target_part
+    ):
+        return "case_change"
+    if "hyphen" in rule_id or "-" in combined:
+        return "hyphen_change"
+    if source_part.replace(" ", "") == target_part.replace(" ", "") and source_part.count(" ") != target_part.count(" "):
+        return "join_words" if source_part.count(" ") > target_part.count(" ") else "split_word"
+    return "spelling_replace"
+
+
+def _rule_id_is_punctuation_like(rule_id: str) -> bool:
+    return any(
+        marker in rule_id
+        for marker in (
+            "comma",
+            "dash",
+            "colon",
+            "semicolon",
+            "speech",
+            "quote",
+            "bracket",
+            "punctuation",
+        )
+    )
+
+
+def _diff_is_punctuation_only(source_part: str, target_part: str) -> bool:
+    text = f"{source_part}{target_part}".strip()
+    return bool(text) and not re.search(r"[A-Za-zА-Яа-яЁё0-9]", text)
+
+
+def _clean_row_key(clean: dict[str, Any]) -> str:
+    text = str(clean.get("text") or "")
+    return str(clean.get("hash") or hashlib.sha256(text.encode("utf-8")).hexdigest())
+
+
 def _identity_rows_from_clean_pool(
     clean_rows: list[dict[str, Any]],
     *,
@@ -2471,41 +2638,48 @@ def _identity_rows_from_clean_pool(
     used_clean_hashes: set[str],
 ) -> list[dict[str, Any]]:
     result: list[dict[str, Any]] = []
-    for clean in _balanced_clean_rows(clean_rows):
+    balanced = _balanced_clean_rows(clean_rows)
+    for allow_used in (False, True):
+        for clean in balanced:
+            if len(result) >= target_count:
+                break
+            text = str(clean.get("text", "")).strip()
+            if not text:
+                continue
+            if _contains_artificial_marker_text(text):
+                continue
+            key = _clean_row_key(clean)
+            if key in used_clean_hashes and not allow_used:
+                continue
+            used_clean_hashes.add(key)
+            metadata = _clean_metadata(clean)
+            metadata["source_type"] = source_type
+            metadata["generation_strategy"] = "clean_identity"
+            metadata["error_bearing_sentence_source"] = "clean_identity"
+            metadata["original_clean_sentence"] = text
+            metadata["carrier_sentence_hash"] = hashlib.sha256(text.encode("utf-8")).hexdigest()[:24]
+            result.append(
+                _core_row(
+                    source=text,
+                    target=text,
+                    source_type=source_type,
+                    error_type="clean_identity",
+                    rule_ids=["clean_identity"],
+                    edits=[],
+                    metadata=metadata,
+                    original_clean_source=text,
+                    source_corpus=str(clean.get("source_name") or ""),
+                    source_subcorpus=str(clean.get("source_subcorpus") or ""),
+                    is_hard_negative=False,
+                    is_real_pair=False,
+                    is_clean=True,
+                    is_synthetic=False,
+                    domain=str(clean.get("domain") or "open_clean"),
+                    error_types=[],
+                )
+            )
         if len(result) >= target_count:
             break
-        text = str(clean.get("text", "")).strip()
-        if not text:
-            continue
-        if _contains_artificial_marker_text(text):
-            continue
-        used_clean_hashes.add(str(clean.get("hash") or ""))
-        metadata = _clean_metadata(clean)
-        metadata["source_type"] = source_type
-        metadata["generation_strategy"] = "clean_identity"
-        metadata["error_bearing_sentence_source"] = "clean_identity"
-        metadata["original_clean_sentence"] = text
-        metadata["carrier_sentence_hash"] = hashlib.sha256(text.encode("utf-8")).hexdigest()[:24]
-        result.append(
-            _core_row(
-                source=text,
-                target=text,
-                source_type=source_type,
-                error_type="clean_identity",
-                rule_ids=["clean_identity"],
-                edits=[],
-                metadata=metadata,
-                original_clean_source=text,
-                source_corpus=str(clean.get("source_name") or ""),
-                source_subcorpus=str(clean.get("source_subcorpus") or ""),
-                is_hard_negative=False,
-                is_real_pair=False,
-                is_clean=True,
-                is_synthetic=False,
-                domain=str(clean.get("domain") or "open_clean"),
-                error_types=[],
-            )
-        )
     return result
 
 
@@ -2534,7 +2708,7 @@ def _hard_negative_rows_from_clean_pool(
         if _contains_artificial_marker_text(text):
             continue
         traps = detect_hard_negative_traps(text)
-        clean_hash = str(clean.get("hash") or "")
+        clean_hash = _clean_row_key(clean)
         bucket_pair = (clean, traps if traps else ["natural_clean_guard"])
         if clean_hash and clean_hash in used_clean_hashes:
             if traps:
@@ -2558,7 +2732,7 @@ def _hard_negative_rows_from_clean_pool(
         text = str(clean.get("text", "")).strip()
         if _contains_artificial_marker_text(text):
             continue
-        used_clean_hashes.add(str(clean.get("hash") or ""))
+        used_clean_hashes.add(_clean_row_key(clean))
         metadata = _clean_metadata(clean)
         hard_negative_kind = "trap_candidate" if traps and traps != ["natural_clean_guard"] else "guard_only"
         metadata.update(
@@ -2996,6 +3170,15 @@ def _hyphen_po_bad_positive(source: str, target: str) -> bool:
     return any(pattern in lower for pattern in bad_patterns)
 
 
+def _diff_pair_too_expensive(source: str, target: str) -> bool:
+    """Avoid quadratic difflib work on long synthetic pairs."""
+    if max(len(source), len(target)) > MAX_SYNTHETIC_DIFF_CHARS:
+        return True
+    if max(len(source.split()), len(target.split())) > MAX_SYNTHETIC_DIFF_WORDS:
+        return True
+    return False
+
+
 def _n_nn_short_form_bad_positive(source: str, target: str) -> bool:
     return bool(
         re.search(r"\b(?:цены|страны)\b", source, flags=re.IGNORECASE)
@@ -3031,6 +3214,94 @@ def _target_shortage_errors(rows: list[dict[str, Any]], targets: dict[str, int])
 
 def _source_counts_from_rows(rows: list[dict[str, Any]]) -> dict[str, int]:
     return {source_type: sum(row.get("source_type") == source_type for row in rows) for source_type in CORE_SOURCE_TYPES}
+
+
+def _metadata_bearing_source(row: dict[str, Any]) -> str:
+    return str(_json_dict(row.get("metadata")).get("error_bearing_sentence_source") or "")
+
+
+def _synthetic_bearing_counts_from_rows(rows: list[dict[str, Any]]) -> Counter[str]:
+    counts: Counter[str] = Counter()
+    for row in rows:
+        if row.get("source_type") != SYNTHETIC_OPEN_CLEAN:
+            continue
+        source = _metadata_bearing_source(row)
+        if source:
+            counts[source] += 1
+    return counts
+
+
+def _remaining_fallback_template_budget(rows: list[dict[str, Any]], *, max_share: float) -> int:
+    counts = _synthetic_bearing_counts_from_rows(rows)
+    corpus = int(counts.get("corpus", 0))
+    fallback = int(counts.get("fallback_template", 0))
+    if max_share <= 0 or max_share >= 1:
+        return 0
+    # Keep (fallback + x) / (corpus + fallback + x) <= max_share.
+    return max(0, int((max_share * corpus / (1.0 - max_share)) - fallback))
+
+
+def _quality_source_minimum_targets(source_targets: dict[str, int], total: int) -> dict[str, int]:
+    minimum = (int(total) + 9) // 10
+    real_minimum = max(1, int(source_targets.get(REAL_ERROR_PAIR, 0)))
+    return {
+        REAL_ERROR_PAIR: real_minimum,
+        CLEAN_IDENTITY_OPEN: minimum,
+        HARD_NEGATIVE_OPEN: minimum,
+    }
+
+
+def _safe_clean_hard_top_up_rows(
+    existing_rows: list[dict[str, Any]],
+    *,
+    clean_rows: list[dict[str, Any]],
+    target_total: int,
+    used_clean_hashes: set[str],
+) -> list[dict[str, Any]]:
+    remaining = max(0, int(target_total) - len(existing_rows))
+    if remaining <= 0:
+        return []
+    counts = _source_counts_from_rows(existing_rows)
+    minimum = (int(target_total) + 9) // 10
+    clean_needed = max(0, minimum - int(counts.get(CLEAN_IDENTITY_OPEN, 0)))
+    hard_needed = max(0, minimum - int(counts.get(HARD_NEGATIVE_OPEN, 0)))
+    required = clean_needed + hard_needed
+    if required > remaining:
+        clean_needed = min(clean_needed, remaining)
+        hard_needed = max(0, remaining - clean_needed)
+        required = clean_needed + hard_needed
+    extra = remaining - required
+    clean_needed += extra // 2 + extra % 2
+    hard_needed += extra // 2
+
+    result: list[dict[str, Any]] = []
+    if clean_needed:
+        result.extend(
+            _identity_rows_from_clean_pool(
+                clean_rows,
+                target_count=clean_needed,
+                source_type=CLEAN_IDENTITY_OPEN,
+                used_clean_hashes=used_clean_hashes,
+            )
+        )
+    if hard_needed:
+        result.extend(
+            _hard_negative_rows_from_clean_pool(
+                clean_rows,
+                target_count=hard_needed,
+                used_clean_hashes=used_clean_hashes,
+            )
+        )
+    if len(result) < remaining:
+        result.extend(
+            _identity_rows_from_clean_pool(
+                clean_rows,
+                target_count=remaining - len(result),
+                source_type=CLEAN_IDENTITY_OPEN,
+                used_clean_hashes=used_clean_hashes,
+            )
+        )
+    return result[:remaining]
 
 
 def _actual_split_source_targets(
@@ -3183,8 +3454,8 @@ def _finalize_quota_state(
         if enforce_split_minimums
         else {}
     )
-    active_rule_ids = list(quota_state.get("active_rule_ids", []))
     excluded = set(quota_state.get("excluded_active_rule_ids", []))
+    active_rule_ids = [rule_id for rule_id in list(quota_state.get("active_rule_ids", [])) if rule_id not in excluded]
     quota_by_rule = {row["rule_id"]: dict(row) for row in quota_state.get("quota_rows", [])}
     for rule_id in sorted(set(active_rule_ids) | set(quota_by_rule)):
         row = quota_by_rule.setdefault(
@@ -3238,6 +3509,7 @@ def _finalize_quota_state(
         if error_type not in {"clean_identity", "hard_negative"} and int(count) >= int(cap_config["generation_error_type_cap"])
     )
     quota_state["quota_rows"] = [quota_by_rule[rule_id] for rule_id in sorted(quota_by_rule)]
+    quota_state["active_rule_ids"] = sorted(active_rule_ids)
     quota_state["low_count_active_rule_ids"] = low_active
     quota_state["rule_caps_applied"] = sorted(set(quota_state.get("rule_caps_applied", [])) | set(capped_rules) | (set(DEFAULT_CAPPED_RULE_IDS) & set(rule_counts)))
     quota_state["error_type_caps_applied"] = sorted(set(quota_state.get("error_type_caps_applied", [])) | set(capped_errors))

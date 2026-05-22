@@ -270,6 +270,8 @@ data:
       strategy: broad_canonical
       min_total_per_active_rule: 1000
       preferred_total_per_active_rule: 2500
+      corpus_opportunity_scan_limit: 60000
+      corpus_opportunity_specific_scan_limit: 60000
       split_minimums: {}
       tiers:
         stable_core:
@@ -300,6 +302,8 @@ data:
       max_train_per_rule_id: 2000
       max_rule_share_train: 0.1
       max_error_type_share_train: 0.35
+      targeted_duplicate_cap: 2
+      stress_generation_rule_cap: 5000
     pool:
       min_clean_sentences: 150000
       max_source_share: 0.6
@@ -343,6 +347,8 @@ data:
       strategy: broad_canonical
       min_total_per_active_rule: 1000
       preferred_total_per_active_rule: 2500
+      corpus_opportunity_scan_limit: 60000
+      corpus_opportunity_specific_scan_limit: 60000
       split_minimums: {}
       tiers:
         stable_core:
@@ -373,6 +379,8 @@ data:
       max_train_per_rule_id: 2000
       max_rule_share_train: 0.1
       max_error_type_share_train: 0.35
+      targeted_duplicate_cap: 2
+      stress_generation_rule_cap: 5000
     pool:
       min_clean_sentences: 150000
       max_source_share: 0.6

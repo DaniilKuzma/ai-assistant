@@ -178,9 +178,7 @@ def known_quality_bug_counts(frame: pd.DataFrame) -> dict[str, int]:
     combined_lower = (source + "\n" + target).str.lower()
 
     final_positive = synthetic & _has_rule(frame, "final_punctuation_default")
-    dash_rows = pd.Series(False, index=frame.index)
-    for rule_id in DASH_RULE_IDS:
-        dash_rows = dash_rows | _has_rule(frame, rule_id)
+    dash_spacing_rows = source.str.contains(BAD_DASH_SPACING_RE, na=False) | target.str.contains(BAD_DASH_SPACING_RE, na=False)
     unsafe_phrases = pd.Series(False, index=frame.index)
     for phrase in KNOWN_BAD_PHRASES:
         unsafe_phrases = unsafe_phrases | combined_lower.str.contains(phrase, regex=False, na=False)
@@ -197,7 +195,7 @@ def known_quality_bug_counts(frame: pd.DataFrame) -> dict[str, int]:
     return {
         "synthetic_positive_identity": int((synthetic & identity).sum()),
         "final_punctuation_positive_identity": int((final_positive & identity).sum()),
-        "bad_dash_spacing": int((dash_rows & target.str.contains(BAD_DASH_SPACING_RE, na=False)).sum()),
+        "bad_dash_spacing": int(dash_spacing_rows.sum()),
         "unsafe_known_phrases": int(unsafe_phrases.sum()),
         "n_nn_short_form_noun_rewrite": int(n_nn_bad.sum()),
         "missing_generation_strategy": int(missing_strategy.sum()),
@@ -315,7 +313,14 @@ def rule_diversity_frame(frame: pd.DataFrame, active_rule_ids: Iterable[str]) ->
         top_error_form_share = _top_share(Counter(error_forms), len(error_forms))
         top_target_form_share = _top_share(Counter(target_forms), len(target_forms))
         duplicate_rate = _duplicate_rate(norm_counts, count)
-        passes = count >= 1000 and unique_carriers >= min(500, int(count * 0.5)) and top_template_share <= 0.10 and duplicate_rate <= 0.15
+        fallback_template_share = _rule_fallback_share(rule_rows)
+        passes = (
+            count >= 1000
+            and unique_carriers >= min(500, int(count * 0.5))
+            and top_template_share <= 0.10
+            and fallback_template_share <= 0.25
+            and duplicate_rate <= 0.15
+        )
         if forms_applicable:
             passes = (
                 passes
@@ -335,7 +340,7 @@ def rule_diversity_frame(frame: pd.DataFrame, active_rule_ids: Iterable[str]) ->
                 "top_template_share": float(top_template_share),
                 "top_error_form_share": float(top_error_form_share),
                 "top_target_form_share": float(top_target_form_share),
-                "fallback_template_share": _rule_fallback_share(rule_rows),
+                "fallback_template_share": float(fallback_template_share),
                 "normalized_pair_duplicate_rate": float(duplicate_rate),
                 "forms_applicable": bool(forms_applicable),
                 "passes_required_gates": bool(passes),
