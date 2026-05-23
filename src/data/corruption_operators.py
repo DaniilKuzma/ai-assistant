@@ -8,18 +8,17 @@ from typing import Any, Iterable, Protocol
 
 import pandas as pd
 
-from src.candidates.candidate_generator import Candidate, CandidateGenerator
-from src.candidates.matching import candidate_matches_edit
+from src.candidates.candidate_generator import CandidateGenerator
+from src.data.atomic_verifier import verify_atomic_positive
 from src.data.dataset_quality import positive_target_quality_pass
 from src.data.dataset_verifiers import (
     CONTEXT_PAIRS,
     PUNCTUATION_RULE_FAMILIES,
     TYPO_RULE_FAMILIES,
-    SemanticVerification,
     semantic_alignment_for_rule,
 )
 from src.rules.registry import rule_by_id
-from src.validation.diff_analyzer import DiffAnalyzer, Edit
+from src.validation.diff_analyzer import DiffAnalyzer
 from src.validation.edit_classifier import is_allowed_edit_type
 
 
@@ -58,6 +57,9 @@ class VerificationResult:
     candidate_rule_ids: list[str]
     target_quality_pass: bool
     semantic_alignment_pass: bool
+    gold_edit_count: int = 0
+    strict_validator_passed: bool = False
+    matched_candidate: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -368,39 +370,58 @@ def _verification(
     *,
     candidate_generator: CandidateGenerator | None = None,
 ) -> VerificationResult:
-    if source == target:
-        semantic = semantic_alignment_for_rule(rule_id, source, target)
-        return VerificationResult(False, "identity_pair", semantic.actual_error_family, semantic.expected_error_family, False, [], positive_target_quality_pass(target), False)
+    del opportunity
     semantic = semantic_alignment_for_rule(rule_id, source, target)
     target_quality = positive_target_quality_pass(target)
-    if not semantic.semantic_alignment_pass or not target_quality:
+    if source == target:
         return VerificationResult(
             passed=False,
-            reason=_verification_reason(semantic, target_quality, False),
+            reason="identity_pair",
             actual_error_family=semantic.actual_error_family,
             expected_error_family=semantic.expected_error_family,
             candidate_present=False,
             candidate_rule_ids=[],
             target_quality_pass=target_quality,
-            semantic_alignment_pass=semantic.semantic_alignment_pass,
+            semantic_alignment_pass=False,
+            gold_edit_count=0,
         )
-    if opportunity.evidence.get("candidate_present") is True:
-        candidate_present = True
-        raw_rule_ids = opportunity.evidence.get("candidate_rule_ids") or [rule_id]
-        candidate_rule_ids = sorted({str(item) for item in raw_rule_ids if str(item)})
+
+    generator = candidate_generator or _candidate_generator_for_rule(rule_id, target)
+    atomic = verify_atomic_positive(source, target, rule_id, candidate_generator=generator)
+    if atomic.gold_edit_count != 1:
+        passed = False
+        reason = "non_atomic_edit_count"
+    elif not semantic.semantic_alignment_pass:
+        passed = False
+        reason = semantic.reason
+    elif not target_quality:
+        passed = False
+        reason = "target_quality_failed"
+    elif not atomic.candidate_present:
+        passed = False
+        reason = "candidate_missing"
+    elif not atomic.strict_validator_passed:
+        passed = False
+        reason = "strict_validator_rejected"
+    elif not atomic.passed:
+        passed = False
+        reason = atomic.reason
     else:
-        candidate_present, candidate_rule_ids = _candidate_present(rule_id, source, target, candidate_generator=candidate_generator)
-    passed = bool(semantic.semantic_alignment_pass and target_quality and candidate_present)
-    reason = "ok" if passed else _verification_reason(semantic, target_quality, candidate_present)
+        passed = True
+        reason = "ok"
+
     return VerificationResult(
         passed=passed,
         reason=reason,
         actual_error_family=semantic.actual_error_family,
         expected_error_family=semantic.expected_error_family,
-        candidate_present=candidate_present,
-        candidate_rule_ids=candidate_rule_ids,
+        candidate_present=atomic.candidate_present,
+        candidate_rule_ids=atomic.candidate_rule_ids,
         target_quality_pass=target_quality,
         semantic_alignment_pass=semantic.semantic_alignment_pass,
+        gold_edit_count=atomic.gold_edit_count,
+        strict_validator_passed=atomic.strict_validator_passed,
+        matched_candidate=atomic.matched_candidate,
     )
 
 
@@ -412,20 +433,8 @@ def _candidate_present(
     candidate_generator: CandidateGenerator | None = None,
 ) -> tuple[bool, list[str]]:
     generator = candidate_generator or _candidate_generator_for_rule(rule_id, target)
-    candidates = generator.generate(source)
-    candidate_rule_ids = sorted({candidate.rule_id for candidate in candidates if candidate.rule_id})
-    for candidate in candidates:
-        if candidate.rule_id != rule_id:
-            continue
-        if _apply_candidate(source, candidate) == target:
-            return True, candidate_rule_ids
-    edits = DiffAnalyzer().analyze(source, target, candidates=candidates)
-    for candidate in candidates:
-        if candidate.rule_id != rule_id:
-            continue
-        if any(candidate_matches_edit(candidate, edit) for edit in edits):
-            return True, candidate_rule_ids
-    return False, candidate_rule_ids
+    atomic = verify_atomic_positive(source, target, rule_id, candidate_generator=generator, require_strict_validator=False)
+    return atomic.candidate_present, atomic.candidate_rule_ids
 
 
 def _candidate_generator_for_rule(rule_id: str, target: str) -> CandidateGenerator:
@@ -434,24 +443,6 @@ def _candidate_generator_for_rule(rule_id: str, target: str) -> CandidateGenerat
         lexicon.extend(_words(target))
     lexicon.extend(["молоко", "корова", "собака", "библиотека", "грамматика", "территория", "комиссия"])
     return CandidateGenerator(dictionary_lexicon=tuple(dict.fromkeys(lexicon)), dictionary_limit=4, syntax_provider=lambda _text: ())
-
-
-def _apply_candidate(source: str, candidate: Candidate) -> str:
-    start = int(candidate.start)
-    end = int(candidate.end)
-    if start < 0 or end < start:
-        return source
-    return source[:start] + str(candidate.replacement) + source[end:]
-
-
-def _verification_reason(semantic: SemanticVerification, target_quality: bool, candidate_present: bool) -> str:
-    if not semantic.semantic_alignment_pass:
-        return semantic.reason
-    if not candidate_present:
-        return "candidate_missing"
-    if not target_quality:
-        return "target_quality_failed"
-    return "verification_failed"
 
 
 def _edits_for_pair(source: str, target: str, rule_id: str) -> list[dict[str, Any]]:

@@ -7,10 +7,30 @@ from src.candidates.candidate_generator import Candidate, CandidateGenerator
 from src.candidates.candidate_ranking import rank_candidates_for_budget
 from src.candidates.matching import candidate_matches_edit
 from src.data.dataset_quality import positive_target_quality_pass
+from src.data.dataset_verifiers import PUNCTUATION_RULE_FAMILIES, TYPO_RULE_FAMILIES
 from src.rules.rule_ids import UNKNOWN_RULE_ID, normalize_rule_id
 from src.validation.diff_analyzer import DiffAnalyzer, Edit
 from src.validation.edit_classifier import is_allowed_edit_type
 from src.validation.strict_validator import StrictValidator
+
+
+UNAMBIGUOUS_RULE_FAMILY_ALIASES: dict[str, set[str]] = {
+    **{rule_id: {family} for rule_id, family in PUNCTUATION_RULE_FAMILIES.items()},
+    **{rule_id: {family} for rule_id, family in TYPO_RULE_FAMILIES.items()},
+    "comma_subordinate": {"subordinate_clause_comma"},
+    "comma_conjunction": {"conjunction_comma"},
+    "introductory_comma": {"introductory_words"},
+    "address_comma": {"address_comma"},
+    "homogeneous_comma": {"homogeneous_comma"},
+    "detached_adverbial_comma": {"detached_adverbial_comma"},
+    "detached_participial_comma": {"detached_participial_comma"},
+    "apposition_comma": {"apposition_comma"},
+    "clarification_comma": {"clarification_comma"},
+    "comparative_turnover_comma": {"comparative_turnover_comma"},
+    "subject_predicate_dash": {"subject_predicate_dash"},
+    "quote_pair_balance": {"quote_pair_balance"},
+    "final_punctuation_default": {"final_punctuation"},
+}
 
 
 @dataclass(frozen=True)
@@ -267,7 +287,7 @@ def _matching_candidate_from_candidates(
 ) -> Candidate | None:
     normalized_rule_id = normalize_rule_id(rule_id)
     for candidate in candidates:
-        if normalize_rule_id(getattr(candidate, "rule_id", "")) != normalized_rule_id:
+        if not _candidate_matches_expected_rule(candidate, normalized_rule_id):
             continue
         if not candidate_applies_to_target(source, target, candidate):
             continue
@@ -319,6 +339,31 @@ def _candidate_rule_ids(candidates: list[Candidate]) -> list[str]:
             if normalize_rule_id(candidate.rule_id) != UNKNOWN_RULE_ID
         }
     )
+
+
+def _candidate_matches_expected_rule(candidate: Candidate, expected_rule_id: str) -> bool:
+    normalized_candidate_rule = normalize_rule_id(getattr(candidate, "rule_id", ""))
+    if normalized_candidate_rule == expected_rule_id:
+        return True
+    expected_family_values = _expected_family_values(expected_rule_id)
+    if not expected_family_values:
+        return False
+    candidate_family_values = {
+        _family_value(getattr(candidate, "group", "")),
+        _family_value(getattr(candidate, "syntax_family", "")),
+    }
+    candidate_family_values.discard("")
+    return bool(candidate_family_values & expected_family_values)
+
+
+def _expected_family_values(rule_id: str) -> set[str]:
+    values = set(UNAMBIGUOUS_RULE_FAMILY_ALIASES.get(rule_id, set()))
+    values.add(rule_id)
+    return {_family_value(value) for value in values if _family_value(value)}
+
+
+def _family_value(value: Any) -> str:
+    return str(value or "").strip().lower()
 
 
 def _result(

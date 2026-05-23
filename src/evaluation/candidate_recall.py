@@ -58,6 +58,7 @@ def build_candidate_recall_reports(
     max_missing_examples: int = 20,
     trust_candidate_backed_metadata: bool = True,
 ) -> dict[str, pd.DataFrame]:
+    del trust_candidate_backed_metadata
     generator = candidate_generator or CandidateGenerator()
     rule_groups = _load_rule_groups(rules_config_path)
     analyzer = DiffAnalyzer()
@@ -75,7 +76,6 @@ def build_candidate_recall_reports(
         gold_edits = _gold_edits(row, analyzer)
         if not gold_edits:
             continue
-        trusted_candidate_backed = trust_candidate_backed_metadata and _trusted_candidate_backed_row(row)
 
         candidates: list[Any] | None = None
         candidate_gap_keys: set[tuple[int | None, str, str]] | None = None
@@ -101,14 +101,11 @@ def build_candidate_recall_reports(
         for edit in gold_edits:
             rule_id = normalize_rule_id(edit.rule_id)
             gold_counter[rule_id] += 1
-            if trusted_candidate_backed and rule_id != UNKNOWN_RULE_ID:
-                candidate_present = True
-            else:
-                cache_key = _candidate_match_cache_key(source, rule_id, edit)
-                candidate_present = candidate_match_cache.get(cache_key)
-                if candidate_present is None:
-                    candidate_present = any(candidate_matches_edit(candidate, edit) for candidate in get_candidates())
-                    candidate_match_cache[cache_key] = candidate_present
+            cache_key = _candidate_match_cache_key(source, rule_id, edit)
+            candidate_present = candidate_match_cache.get(cache_key)
+            if candidate_present is None:
+                candidate_present = any(candidate_matches_edit(candidate, edit) for candidate in get_candidates())
+                candidate_match_cache[cache_key] = candidate_present
             if candidate_present:
                 present_counter[rule_id] += 1
             else:
@@ -124,14 +121,11 @@ def build_candidate_recall_reports(
                 continue
             rule_id = normalize_rule_id(edit.rule_id)
             gold_gap_counter[rule_id] += 1
-            if trusted_candidate_backed and rule_id != UNKNOWN_RULE_ID:
-                gap_present = True
-            else:
-                gap_cache_key = _gap_match_cache_key(source, rule_id, edit, action, label)
-                gap_present = gap_match_cache.get(gap_cache_key)
-                if gap_present is None:
-                    gap_present = (gap_index, action, label) in get_candidate_gap_keys()
-                    gap_match_cache[gap_cache_key] = gap_present
+            gap_cache_key = _gap_match_cache_key(source, rule_id, edit, action, label)
+            gap_present = gap_match_cache.get(gap_cache_key)
+            if gap_present is None:
+                gap_present = (gap_index, action, label) in get_candidate_gap_keys()
+                gap_match_cache[gap_cache_key] = gap_present
             if gap_present:
                 present_gap_counter[rule_id] += 1
             else:

@@ -326,7 +326,6 @@ def _verified_synthetic_rows(
             _reject(rejections, index, row, "", "artificial_marker")
             continue
         metadata = _json_dict(row.get("metadata"))
-        candidate_rule_ids_from_row = _candidate_rule_ids(row, metadata)
         if source == target:
             _reject(rejections, index, row, "", "identity_pair")
             continue
@@ -350,8 +349,8 @@ def _verified_synthetic_rows(
                 text="",
                 rule_id=rule_id,
                 evidence={
-                    "candidate_present": bool(metadata.get("candidate_present", True)),
-                    "candidate_rule_ids": candidate_rule_ids_from_row or [rule_id],
+                    "generation_strategy": metadata.get("generation_strategy") or "corpus_opportunity",
+                    "target_family": metadata.get("target_family") or rule_id,
                 },
                 source_type=str(metadata.get("error_bearing_sentence_source") or "corpus"),
             )
@@ -363,6 +362,15 @@ def _verified_synthetic_rows(
             verification_payloads[rule_id] = asdict(verification)
         if not accepted_rules:
             continue
+        accepted_candidate_rule_ids = sorted(
+            {
+                str(candidate_rule_id)
+                for payload in verification_payloads.values()
+                for candidate_rule_id in payload.get("candidate_rule_ids", [])
+                if str(candidate_rule_id)
+            }
+        )
+        first_verification = verification_payloads[accepted_rules[0]]
         metadata.update(
             {
                 "operator_based_generation": True,
@@ -370,7 +378,10 @@ def _verified_synthetic_rows(
                 "semantic_alignment_pass": True,
                 "target_quality_pass": True,
                 "candidate_present": True,
-                "candidate_rule_ids": sorted(set(candidate_rule_ids_from_row) | set(accepted_rules)),
+                "candidate_rule_ids": accepted_candidate_rule_ids,
+                "gold_edit_count": int(first_verification.get("gold_edit_count", 0) or 0),
+                "strict_validator_passed": all(bool(payload.get("strict_validator_passed")) for payload in verification_payloads.values()),
+                "matched_candidate": first_verification.get("matched_candidate"),
                 "operator_verification": verification_payloads,
                 "generation_strategy": metadata.get("generation_strategy") or "corpus_opportunity",
                 "error_bearing_sentence_source": metadata.get("error_bearing_sentence_source") or "corpus",
@@ -533,8 +544,11 @@ def _row_from_corruption_result(
             "operator_verify_passed": True,
             "semantic_alignment_pass": True,
             "target_quality_pass": True,
-            "candidate_present": True,
-            "candidate_rule_ids": verification.candidate_rule_ids or [result.rule_id],
+            "candidate_present": bool(verification.candidate_present),
+            "candidate_rule_ids": verification.candidate_rule_ids,
+            "gold_edit_count": int(getattr(verification, "gold_edit_count", 0) or 0),
+            "strict_validator_passed": bool(getattr(verification, "strict_validator_passed", False)),
+            "matched_candidate": getattr(verification, "matched_candidate", None),
             "operator_verification": {result.rule_id: asdict(verification)},
             "generation_strategy": result.generation_strategy,
             "error_bearing_sentence_source": "corpus",
@@ -1056,16 +1070,6 @@ def _row_rule_ids(row: dict[str, Any] | pd.Series) -> list[str]:
         if rule_id:
             result.append(rule_id)
     return result
-
-
-def _candidate_rule_ids(row: dict[str, Any], metadata: dict[str, Any]) -> list[str]:
-    raw = metadata.get("candidate_rule_ids") or row.get("candidate_rule_ids") or []
-    if isinstance(raw, str):
-        try:
-            raw = json.loads(raw)
-        except json.JSONDecodeError:
-            raw = [part.strip() for part in raw.split(",") if part.strip()]
-    return [normalize_rule_id(str(item)) for item in raw if str(item)]
 
 
 def _json_dict(value: Any) -> dict[str, Any]:
