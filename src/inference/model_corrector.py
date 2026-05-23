@@ -11,6 +11,7 @@ from src.config.thresholds import threshold_for_candidate, threshold_for_punctua
 from src.inference.corrector import CorrectionResult
 from src.inference.edit_realizer import apply_candidate
 from src.inference.postprocess import normalize_spacing
+from src.memory.correction_memory import CorrectionMemory
 from src.model.edit_model import CandidateAwareEditModel, EditModelConfig
 from src.model.encoder import EncoderLoadConfig, ensure_pytorch_transformers_backend, load_encoder, load_tokenizer
 from src.preprocessing.punctuation_gaps import word_gap_context_token_indices
@@ -20,6 +21,8 @@ from src.validation.strict_validator import StrictValidator
 
 
 MAX_REPLACEMENT_TOKENS = 8
+MEMORY_SUPPORTED_EDIT_TYPES = frozenset({"spelling", "split_join", "hyphen", "case"})
+MEMORY_SUPPRESS_DECISIONS = frozenset({"rejected", "ignored"})
 
 
 @dataclass(frozen=True)
@@ -70,11 +73,21 @@ class TrainedModelCorrector:
         thresholds: dict[str, float] | None = None,
         max_passes: int = 3,
         candidate_generator: CandidateGenerator | None = None,
+        correction_memory: CorrectionMemory | None = None,
+        doc_id: str = "default",
+        memory_enabled: bool = True,
+        accepted_reuse: bool = True,
+        rejected_suppress: bool = True,
     ) -> None:
         self.backend = backend
         self.thresholds = thresholds or {}
         self.max_passes = max_passes
         self.candidates = candidate_generator or CandidateGenerator()
+        self.correction_memory = correction_memory if memory_enabled else None
+        self.doc_id = doc_id
+        self.memory_enabled = bool(memory_enabled and correction_memory is not None)
+        self.memory_accepted_reuse = bool(accepted_reuse)
+        self.memory_rejected_suppress = bool(rejected_suppress)
         self.validator = StrictValidator(
             context_pair_threshold=float(self.thresholds.get("context_pair_threshold", 0.98)),
             tsya_threshold=float(
@@ -92,11 +105,25 @@ class TrainedModelCorrector:
         mode = threshold_config.get("mode", "balanced")
         thresholds = threshold_config.get(mode, {})
         backend = TorchCandidateModelBackend.from_config(config)
+        memory_config = config.get("correction_memory", {}) or {}
+        memory_enabled = bool(memory_config.get("enabled", False))
+        correction_memory = None
+        if memory_enabled:
+            correction_memory = CorrectionMemory(
+                storage_path=memory_config.get("storage_path"),
+                context_window_chars=int(memory_config.get("context_window_chars", 48)),
+            )
+            correction_memory.load()
         return cls(
             backend,
             thresholds=thresholds,
             max_passes=int(config.get("decoder", {}).get("max_passes", 3)),
             candidate_generator=CandidateGenerator.from_config(config),
+            correction_memory=correction_memory,
+            doc_id=str(memory_config.get("doc_id", "default")),
+            memory_enabled=memory_enabled,
+            accepted_reuse=bool(memory_config.get("accepted_reuse", True)),
+            rejected_suppress=bool(memory_config.get("rejected_suppress", True)),
         )
 
     def correct(self, text: str) -> CorrectionResult:
@@ -105,7 +132,7 @@ class TrainedModelCorrector:
         validation = self.validator.validate(text, proposed, trusted_edits=trusted_edits)
         _annotate_decisions_with_validation(self.last_candidate_decisions, validation.edits)
         corrected = validation.apply_accepted()
-        return CorrectionResult(text, corrected, validation.edits)
+        return CorrectionResult(text, corrected, validation.edits, candidate_decisions=list(self.last_candidate_decisions))
 
     def _single_pass(self, text: str) -> str:
         return self._single_pass_with_candidates(text)[0]
@@ -124,7 +151,15 @@ class TrainedModelCorrector:
 
     def _single_pass_with_candidates(self, text: str) -> tuple[str, list[Candidate]]:
         candidates = self.candidates.generate(text)
-        selected, decisions = _select_candidates_with_trace(self.backend.score_candidates(text, candidates), self.thresholds)
+        selected, decisions = _select_candidates_with_trace(
+            self.backend.score_candidates(text, candidates),
+            self.thresholds,
+            text=text,
+            correction_memory=self.correction_memory if self.memory_enabled else None,
+            doc_id=self.doc_id,
+            accepted_reuse=self.memory_accepted_reuse,
+            rejected_suppress=self.memory_rejected_suppress,
+        )
         self.last_candidate_decisions.extend(decisions)
         proposed = _apply_candidates(text, selected)
         punctuation_candidates = _punctuation_candidates_for_text(self.candidates, proposed)
@@ -399,6 +434,12 @@ def _punctuation_action_predictions(outputs: dict[str, Any]) -> Any:
 def _select_candidates_with_trace(
     predictions: list[ModelCandidatePrediction],
     thresholds: dict[str, float],
+    *,
+    text: str = "",
+    correction_memory: CorrectionMemory | None = None,
+    doc_id: str = "default",
+    accepted_reuse: bool = True,
+    rejected_suppress: bool = True,
 ) -> tuple[list[Candidate], list[dict[str, Any]]]:
     selected: list[Candidate] = []
     occupied: list[tuple[int, int]] = []
@@ -410,10 +451,34 @@ def _select_candidates_with_trace(
         rule_id = prediction.rule_id or candidate.rule_id
         threshold = threshold_for_candidate(candidate, thresholds, rule_id=rule_id)
         threshold_passed = prediction.score >= threshold
-        conflict = threshold_passed and any(
+
+        memory_decision = ""
+        memory_applied = False
+        memory_reason = ""
+        selected_by_memory = False
+        memory_key = ""
+        memory_match = _memory_match_for_candidate(
+            text=text,
+            candidate=candidate,
+            correction_memory=correction_memory,
+            doc_id=doc_id,
+        )
+        if memory_match is not None:
+            memory_decision = memory_match.entry.decision
+            memory_reason = memory_match.reason
+            memory_key = memory_match.entry.key
+            if memory_decision in MEMORY_SUPPRESS_DECISIONS and rejected_suppress:
+                memory_applied = True
+            elif memory_decision == "accepted" and accepted_reuse:
+                memory_applied = True
+                selected_by_memory = True
+
+        suppressed_by_memory = memory_decision in MEMORY_SUPPRESS_DECISIONS and rejected_suppress
+        selection_eligible = (threshold_passed or selected_by_memory) and not suppressed_by_memory
+        conflict = selection_eligible and any(
             _candidates_conflict(candidate.start, candidate.end, start, end) for start, end in occupied
         )
-        selected_candidate = threshold_passed and not conflict
+        selected_candidate = selection_eligible and not conflict
         decisions.append(
             {
                 "candidate": candidate,
@@ -431,9 +496,14 @@ def _select_candidates_with_trace(
                 "conflict": bool(conflict),
                 "validator_status": "",
                 "validator_reason": "",
+                "memory_decision": memory_decision,
+                "memory_applied": bool(memory_applied),
+                "memory_reason": memory_reason,
+                "selected_by_memory": bool(selected_by_memory),
+                "memory_key": memory_key,
             }
         )
-        if not threshold_passed:
+        if not selection_eligible:
             continue
         if conflict:
             continue
@@ -470,6 +540,20 @@ def _select_candidates_with_trace(
         )
         occupied.append((candidate.start, candidate.end))
     return selected, decisions
+
+
+def _memory_match_for_candidate(
+    *,
+    text: str,
+    candidate: Candidate,
+    correction_memory: CorrectionMemory | None,
+    doc_id: str,
+) -> Any | None:
+    if correction_memory is None or not text:
+        return None
+    if candidate.edit_type not in MEMORY_SUPPORTED_EDIT_TYPES:
+        return None
+    return correction_memory.lookup_candidate(text, candidate, doc_id=doc_id)
 
 
 def _candidates_conflict(candidate_start: int, candidate_end: int, occupied_start: int, occupied_end: int) -> bool:

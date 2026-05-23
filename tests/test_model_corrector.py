@@ -2,6 +2,7 @@ from src.candidates.candidate_generator import Candidate
 import pytest
 import torch
 
+from src.inference.corrector import CorrectionResult
 from src.inference.model_corrector import (
     BatchedFeatureModelScores,
     ModelCandidatePrediction,
@@ -11,6 +12,7 @@ from src.inference.model_corrector import (
     _prepare_heads_state_dict_for_module,
     _select_candidates,
 )
+from src.memory.correction_memory import CorrectionMemory
 from src.model.heads import build_linear_heads
 from src.training.tensorization import DebugTokenizer, build_training_feature
 
@@ -34,6 +36,20 @@ class FakeBackend:
         return self.punctuation
 
 
+def _generated_candidate(corrector: TrainedModelCorrector, text: str, replacement: str) -> Candidate:
+    for candidate in corrector.candidates.generate(text):
+        if candidate.replacement == replacement and candidate.edit_type != "keep":
+            return candidate
+    raise AssertionError(f"Candidate with replacement {replacement!r} was not generated")
+
+
+def _decision_for(result: CorrectionResult, replacement: str) -> dict:
+    for decision in result.candidate_decisions:
+        if decision.get("replacement") == replacement:
+            return decision
+    raise AssertionError(f"Decision for replacement {replacement!r} was not recorded")
+
+
 def test_trained_model_corrector_does_not_apply_whitelist_candidate_when_model_score_is_low():
     corrector = TrainedModelCorrector(FakeBackend({}), thresholds={"split_join_threshold": 0.9})
 
@@ -49,6 +65,146 @@ def test_trained_model_corrector_applies_candidate_when_model_score_passes_thres
 
     assert result.corrected_text == "Я не знаю что делать"
     assert any(edit.edit_type == "split_word" and edit.status == "accepted" for edit in result.edits)
+
+
+def test_rejected_memory_suppresses_candidate_even_when_score_passes_threshold():
+    text = "Я незнаю что делать"
+    memory = CorrectionMemory(storage_path=None)
+    corrector = TrainedModelCorrector(
+        FakeBackend({"не знаю": 0.99}),
+        thresholds={"split_join_threshold": 0.9},
+        correction_memory=memory,
+        doc_id="doc-1",
+    )
+    memory.remember_candidate(text, _generated_candidate(corrector, text, "не знаю"), "rejected", doc_id="doc-1")
+
+    result = corrector.correct(text)
+
+    assert result.corrected_text == text
+    decision = _decision_for(result, "не знаю")
+    assert decision["memory_decision"] == "rejected"
+    assert decision["memory_applied"] is True
+    assert decision["memory_reason"] == "exact_context_key"
+    assert decision["memory_key"]
+    assert decision["selected"] is False
+
+
+def test_ignored_memory_suppresses_candidate_even_when_score_passes_threshold():
+    text = "Я незнаю что делать"
+    memory = CorrectionMemory(storage_path=None)
+    corrector = TrainedModelCorrector(
+        FakeBackend({"не знаю": 0.99}),
+        thresholds={"split_join_threshold": 0.9},
+        correction_memory=memory,
+        doc_id="doc-1",
+    )
+    memory.remember_candidate(text, _generated_candidate(corrector, text, "не знаю"), "ignored", doc_id="doc-1")
+
+    result = corrector.correct(text)
+
+    assert result.corrected_text == text
+    decision = _decision_for(result, "не знаю")
+    assert decision["memory_decision"] == "ignored"
+    assert decision["memory_applied"] is True
+    assert decision["selected"] is False
+
+
+def test_accepted_memory_reuses_candidate_even_when_score_is_below_threshold():
+    text = "Я незнаю что делать"
+    memory = CorrectionMemory(storage_path=None)
+    corrector = TrainedModelCorrector(
+        FakeBackend({"не знаю": 0.1}),
+        thresholds={"split_join_threshold": 0.9},
+        correction_memory=memory,
+        doc_id="doc-1",
+    )
+    memory.remember_candidate(text, _generated_candidate(corrector, text, "не знаю"), "accepted", doc_id="doc-1")
+
+    result = corrector.correct(text)
+
+    assert result.corrected_text == "Я не знаю что делать"
+    decision = _decision_for(result, "не знаю")
+    assert decision["memory_decision"] == "accepted"
+    assert decision["memory_applied"] is True
+    assert decision["selected_by_memory"] is True
+    assert decision["threshold_passed"] is False
+    assert decision["selected"] is True
+
+
+def test_accepted_memory_selected_candidate_still_goes_through_strict_validator():
+    text = "Они могут появиться завтра."
+    memory = CorrectionMemory(storage_path=None)
+    corrector = TrainedModelCorrector(
+        FakeBackend({"появится": 0.1}),
+        thresholds={"spelling_threshold": 0.9, "tsya_threshold": 0.98},
+        correction_memory=memory,
+        doc_id="doc-1",
+    )
+    memory.remember_candidate(text, _generated_candidate(corrector, text, "появится"), "accepted", doc_id="doc-1")
+
+    result = corrector.correct(text)
+
+    assert result.corrected_text == text
+    assert any(edit.source == "появиться" and edit.status == "rejected" and edit.reason == "tsya_unsafe" for edit in result.edits)
+    decision = _decision_for(result, "появится")
+    assert decision["selected_by_memory"] is True
+    assert decision["validator_status"] == "rejected"
+    assert decision["validator_reason"] == "tsya_unsafe"
+
+
+def test_without_memory_existing_threshold_behavior_is_unchanged_and_trace_has_memory_fields():
+    corrector = TrainedModelCorrector(FakeBackend({}), thresholds={"split_join_threshold": 0.9})
+
+    result = corrector.correct("Я незнаю что делать")
+
+    assert result.corrected_text == "Я незнаю что делать"
+    decision = _decision_for(result, "не знаю")
+    assert decision["memory_decision"] == ""
+    assert decision["memory_applied"] is False
+    assert decision["memory_reason"] == ""
+    assert decision["selected_by_memory"] is False
+    assert decision["memory_key"] == ""
+
+
+def test_correction_result_exposes_candidate_decisions_and_defaults_to_empty_list():
+    default_result = CorrectionResult("source", "target", [])
+    corrector = TrainedModelCorrector(FakeBackend({"не знаю": 0.99}), thresholds={"split_join_threshold": 0.9})
+
+    result = corrector.correct("Я незнаю что делать")
+
+    assert default_result.candidate_decisions == []
+    assert result.candidate_decisions == corrector.last_candidate_decisions
+    assert any(decision.get("replacement") == "не знаю" for decision in result.candidate_decisions)
+
+
+def test_from_config_leaves_memory_disabled_by_default(monkeypatch, tmp_path):
+    lexicon_path = tmp_path / "russian_lexicon.txt"
+    lexicon_path.write_text("библиотека\n", encoding="utf-8")
+    memory_path = tmp_path / "memory.jsonl"
+    backend = FakeBackend({})
+    monkeypatch.setattr(TorchCandidateModelBackend, "from_config", classmethod(lambda cls, config: backend))
+
+    corrector = TrainedModelCorrector.from_config(
+        {
+            "dictionary": {
+                "enabled": True,
+                "lexicon_path": str(lexicon_path),
+                "max_candidates": 2,
+                "min_score": 85,
+            },
+            "thresholds": {"mode": "balanced", "balanced": {}},
+            "correction_memory": {
+                "enabled": False,
+                "storage_path": str(memory_path),
+                "context_window_chars": 48,
+                "accepted_reuse": True,
+                "rejected_suppress": True,
+            },
+        }
+    )
+
+    assert corrector.correction_memory is None
+    assert not memory_path.exists()
 
 
 def test_trained_model_corrector_applies_final_punctuation_only_when_scorer_accepts_candidate():

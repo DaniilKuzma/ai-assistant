@@ -3,6 +3,12 @@ project:
   strict_scope:
   - spelling
   - punctuation
+correction_memory:
+  enabled: false
+  storage_path: data/user/correction_memory.jsonl
+  context_window_chars: 48
+  accepted_reuse: true
+  rejected_suppress: true
 model:
   primary_encoder: ai-forever/ruRoberta-large
   fallback_encoder: ai-forever/ruRoberta-large

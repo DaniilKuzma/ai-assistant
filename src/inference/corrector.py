@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from src.candidates.candidate_generator import Candidate, CandidateGenerator
@@ -16,6 +16,7 @@ class CorrectionResult:
     source_text: str
     corrected_text: str
     edits: list[Edit]
+    candidate_decisions: list[dict[str, Any]] = field(default_factory=list)
 
 
 class Corrector:
