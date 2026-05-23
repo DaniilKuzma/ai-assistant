@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 import json
 from pathlib import Path
@@ -10,6 +10,8 @@ from typing import Any, Iterable
 
 import pandas as pd
 
+from src.candidates.candidate_generator import CandidateGenerator
+from src.data.atomic_verifier import verify_atomic_positive
 from src.data.corruption_operators import (
     Opportunity,
     RuleOperatorRegistry,
@@ -20,6 +22,7 @@ from src.data.corruption_operators import (
 from src.data.dataset_quality import (
     balance_audit_frames,
     clean_or_hard_quality_pass,
+    clean_or_hard_quality_reasons,
     clean_hard_bug_summary,
     duplicate_rate,
     known_quality_bug_summary,
@@ -30,7 +33,10 @@ from src.data.dataset_quality import (
 )
 from src.data.dataset_contract import (
     CLEAN_IDENTITY_OPEN,
+    CONTRACT_OPTIONAL_COLUMNS,
+    DATASET_CONTRACT,
     HARD_NEGATIVE_OPEN,
+    LAYER_ATOMIC_POSITIVE,
     REAL_ERROR_PAIR,
     SYNTHETIC_OPEN_CLEAN,
     ensure_contract_columns,
@@ -100,6 +106,7 @@ DATASET_COLUMNS = [
     "rule_id",
     "edit_operations",
 ]
+DATASET_COLUMNS.extend(column for column in CONTRACT_OPTIONAL_COLUMNS if column not in DATASET_COLUMNS)
 BACKFILL_PRIORITY_RULE_IDS = frozenset(
     {
         "address_comma",
@@ -142,6 +149,16 @@ BACKFILL_PRIORITY_RULE_IDS = frozenset(
 BACKFILL_TARGET_PER_RULE = 1_250
 BACKFILL_MAX_SENTENCES_PER_RULE = 70_000
 REQUIRED_BACKFILL_RULE_IDS = frozenset({"hyphen_particles", "detached_participial_comma"})
+DEFAULT_CLEAN_POOL_PATH = Path("data/processed/clean_sentence_pool.csv.gz")
+DEFAULT_CLEAN_POOL_CHUNKSIZE = 25_000
+
+
+@dataclass(frozen=True)
+class AtomicPositiveGenerationResult:
+    rows: list[dict[str, Any]]
+    generation_rows: list[dict[str, Any]]
+    rejection_rows: list[dict[str, Any]]
+    rules_without_atomic_positive: list[dict[str, Any]]
 
 
 def build_operator_training_dataset_from_config(config: dict[str, Any], force: bool = False) -> dict[str, Any]:
@@ -150,9 +167,9 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
     manifest_path = Path(str(data_config.get("manifest_path") or "data/processed/dataset_manifest.json"))
     reports_root = Path(str((config.get("paths", {}) or {}).get("reports_dir") or "reports"))
     reports_dir = reports_root if reports_root.name == "dataset_build" else reports_root / "dataset_build"
-    requested_total = int(data_config.get("total_examples") or data_config.get("target_total_examples") or 200_000)
-    requested_total = max(200_000, requested_total if requested_total == 200_000 else 200_000)
-    split_sizes = _exact_split_sizes(requested_total)
+    requested_total = _requested_total_from_config(data_config, output_path=output_path, manifest_path=manifest_path)
+    split_sizes = _split_sizes_from_config(data_config, requested_total)
+    clean_pool_path = _clean_pool_path_from_config(config)
 
     if output_path.exists() and manifest_path.exists() and not force:
         manifest = _read_json(manifest_path)
@@ -178,36 +195,40 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
     )
     write_operator_registry_reports(target_rows, registry=registry, reports_dir=reports_dir)
 
-    seed_frame = _read_seed_dataset(output_path)
-    if seed_frame.empty:
+    if not clean_pool_path.exists():
         manifest = _blocked_manifest(
             requested_total,
             split_sizes,
-            "missing_seed_dataset_for_operator_rebuild",
+            "missing_clean_sentence_pool",
             capabilities=capabilities,
         )
         _write_manifest_and_blocked_reports(manifest, manifest_path, reports_dir)
         return {"status": "blocked", "verdict": "DATASET_BLOCKED", "total": 0, "manifest_path": str(manifest_path)}
 
+    quota_config = _operator_rule_quota_config(config)
     candidate_rule_ids = {row["rule_id"] for row in target_rows if bool(row.get("include"))}
-    verified_rows, rejection_rows = _verified_synthetic_rows(seed_frame, candidate_rule_ids, registry)
-    initial_verified_counts = Counter(rule_id for row in verified_rows for rule_id in _row_rule_ids(row))
-    backfill_rows, backfill_attempt_rows = _backfill_verified_rows_from_pool(
-        candidate_rule_ids=candidate_rule_ids,
+    configured_rule_ids = set(quota_config.get("rule_ids", []) or [])
+    if configured_rule_ids:
+        candidate_rule_ids &= configured_rule_ids
+    candidate_generator = CandidateGenerator.from_config(config)
+    atomic_result = generate_atomic_positive_rows_from_clean_pool(
+        clean_pool_path,
         registry=registry,
-        existing_rows=verified_rows,
-        initial_counts=initial_verified_counts,
-        rejection_rows=rejection_rows,
+        candidate_rule_ids=candidate_rule_ids,
+        config=config,
+        candidate_generator=candidate_generator,
     )
-    verified_rows.extend(backfill_rows)
-    verified_counts = Counter(rule_id for row in verified_rows for rule_id in _row_rule_ids(row))
-    active_rule_ids = sorted(rule_id for rule_id, count in verified_counts.items() if count >= 1000)
+    verified_rows = atomic_result.rows
+    rejection_rows = atomic_result.rejection_rows
+    rule_min = int(quota_config.get("min_atomic_positives_per_active_rule", 1000))
+    verified_counts = Counter(rule_id for row in verified_rows for rule_id in _row_rule_ids(row) if _counts_toward_rule_quota(row))
+    active_rule_ids = sorted(rule_id for rule_id, count in verified_counts.items() if count >= rule_min)
     active_set = set(active_rule_ids)
     selected_synthetic = [row for row in verified_rows if any(rule_id in active_set for rule_id in _row_rule_ids(row))]
     selected_synthetic = [_filter_row_rule_ids(row, active_set) for row in selected_synthetic]
     selected_synthetic = _dedupe_pairs(selected_synthetic)
     active_counts = Counter(rule_id for row in selected_synthetic for rule_id in _row_rule_ids(row))
-    active_rule_ids = sorted(rule_id for rule_id in active_rule_ids if active_counts.get(rule_id, 0) >= 1000)
+    active_rule_ids = sorted(rule_id for rule_id in active_rule_ids if active_counts.get(rule_id, 0) >= rule_min)
     active_set = set(active_rule_ids)
     selected_synthetic = [row for row in selected_synthetic if any(rule_id in active_set for rule_id in _row_rule_ids(row))]
     selected_synthetic = [_filter_row_rule_ids(row, active_set) for row in selected_synthetic]
@@ -218,37 +239,46 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
         for row in target_rows
         if not bool(row.get("include"))
     }
-    attempted_backfill_rule_ids = {str(row.get("rule_id")) for row in backfill_attempt_rows}
     for rule_id in sorted(candidate_rule_ids - active_set):
-        excluded_after_generation[rule_id] = (
-            "insufficient_verified_examples_after_backfill"
-            if rule_id in attempted_backfill_rule_ids
-            else "insufficient_verified_examples"
-        )
+        excluded_after_generation[rule_id] = "insufficient_atomic_positives"
 
-    real_rows = _real_rows(seed_frame)
+    real_rows: list[dict[str, Any]] = []
     clean_target, hard_target = _clean_hard_targets(requested_total, len(selected_synthetic), len(real_rows))
-    clean_rows, hard_rows = _clean_and_hard_rows(seed_frame, clean_target=clean_target, hard_target=hard_target)
+    clean_rows, hard_rows = _top_up_clean_hard_from_pool(
+        existing_rows=selected_synthetic + real_rows,
+        clean_needed=clean_target,
+        hard_needed=hard_target,
+        clean_pool_path=clean_pool_path,
+        config=config,
+    )
     rows = selected_synthetic + real_rows + clean_rows + hard_rows
     if len(rows) < requested_total:
         clean_top, hard_top = _top_up_clean_hard_from_pool(
             existing_rows=rows,
             clean_needed=(requested_total - len(rows) + 1) // 2,
             hard_needed=(requested_total - len(rows)) // 2,
+            clean_pool_path=clean_pool_path,
+            config=config,
         )
         rows.extend(clean_top)
         rows.extend(hard_top)
     rows = rows[:requested_total]
     _assign_splits(rows, split_sizes, seed=int(data_config.get("synthetic_seed", 17)))
     frame = _frame_from_rows(rows)
-    frame, active_rule_ids, excluded_after_generation, quality_audit = _prune_failed_diversity_rules(
-        frame=frame,
-        active_rule_ids=active_rule_ids,
-        excluded_rule_ids=excluded_after_generation,
-        requested_total=requested_total,
-        split_sizes=split_sizes,
-        seed=int(data_config.get("synthetic_seed", 17)),
-    )
+    production_gates = _production_audit_enabled(output_path=output_path, manifest_path=manifest_path, requested_total=requested_total)
+    if production_gates:
+        frame, active_rule_ids, excluded_after_generation, quality_audit = _prune_failed_diversity_rules(
+            frame=frame,
+            active_rule_ids=active_rule_ids,
+            excluded_rule_ids=excluded_after_generation,
+            requested_total=requested_total,
+            split_sizes=split_sizes,
+            seed=int(data_config.get("synthetic_seed", 17)),
+            clean_pool_path=clean_pool_path,
+            config=config,
+        )
+    else:
+        quality_audit = audit_training_dataset(frame, active_rule_ids)
 
     frame.to_csv(output_path, index=False)
     for split, count in split_sizes.items():
@@ -264,8 +294,9 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
         registry_rows=target_rows,
         rejection_rows=rejection_rows,
         quality_audit=quality_audit,
-        backfill_attempt_rows=backfill_attempt_rows,
+        backfill_attempt_rows=_not_applicable_backfill_rows(candidate_rule_ids),
         capabilities=capabilities,
+        production_gates=production_gates,
     )
     _write_reports(
         frame,
@@ -274,7 +305,10 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
         registry_rows=target_rows,
         rejection_rows=rejection_rows,
         quality_audit=quality_audit,
-        backfill_attempt_rows=backfill_attempt_rows,
+        backfill_attempt_rows=_not_applicable_backfill_rows(candidate_rule_ids),
+        atomic_generation_rows=atomic_result.generation_rows,
+        atomic_rejection_rows=atomic_result.rejection_rows,
+        rules_without_atomic_positive=atomic_result.rules_without_atomic_positive,
     )
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -308,6 +342,279 @@ def _eligible_rule_ids(config: dict[str, Any], *, capabilities: list[Any]) -> tu
         result.discard(rule_id)
         excluded.setdefault(rule_id, "BLOCK_MISSING_MODULE")
     return sorted(result | set(excluded)), excluded
+
+
+def _requested_total_from_config(data_config: dict[str, Any], *, output_path: Path, manifest_path: Path) -> int:
+    configured = int(data_config.get("total_examples") or data_config.get("target_total_examples") or 200_000)
+    if _is_canonical_dataset_path(output_path=output_path, manifest_path=manifest_path):
+        return max(200_000, configured)
+    split_total = sum(
+        int(data_config.get(key, 0) or 0)
+        for key in ("train_examples", "val_examples", "test_examples")
+        if key in data_config
+    )
+    return split_total if split_total > 0 else max(1, configured)
+
+
+def _split_sizes_from_config(data_config: dict[str, Any], requested_total: int) -> dict[str, int]:
+    keys = {"train": "train_examples", "val": "val_examples", "test": "test_examples"}
+    if any(key in data_config for key in keys.values()):
+        split_sizes = {split: int(data_config.get(key, 0) or 0) for split, key in keys.items()}
+        if sum(split_sizes.values()) == requested_total:
+            return split_sizes
+    return _exact_split_sizes(requested_total)
+
+
+def _is_canonical_dataset_path(*, output_path: Path, manifest_path: Path) -> bool:
+    return (
+        output_path.as_posix() == Path("data/processed/correction_dataset.csv.gz").as_posix()
+        and manifest_path.as_posix() == Path("data/processed/dataset_manifest.json").as_posix()
+    )
+
+
+def _production_audit_enabled(*, output_path: Path, manifest_path: Path, requested_total: int) -> bool:
+    return _is_canonical_dataset_path(output_path=output_path, manifest_path=manifest_path) or requested_total >= 200_000
+
+
+def _clean_pool_path_from_config(config: dict[str, Any]) -> Path:
+    data_config = config.get("data", {}) or {}
+    core_config = data_config.get("training_dataset_core", {}) or {}
+    return Path(str(data_config.get("clean_pool_path") or core_config.get("clean_pool_path") or DEFAULT_CLEAN_POOL_PATH))
+
+
+def _clean_pool_chunksize(config: dict[str, Any]) -> int:
+    data_config = config.get("data", {}) or {}
+    core_config = data_config.get("training_dataset_core", {}) or {}
+    return max(1, int(data_config.get("clean_pool_chunksize") or core_config.get("clean_pool_chunksize") or DEFAULT_CLEAN_POOL_CHUNKSIZE))
+
+
+def _operator_rule_quota_config(config: dict[str, Any]) -> dict[str, Any]:
+    data_config = config.get("data", {}) or {}
+    core_config = data_config.get("training_dataset_core", {}) or {}
+    old_quota = dict(core_config.get("active_rule_quota", {}) or {})
+    old_caps = dict(core_config.get("rule_caps", {}) or {})
+    raw = dict(data_config.get("rule_quota", {}) or {})
+    min_total = int(raw.get("min_atomic_positives_per_active_rule") or old_quota.get("min_total_per_active_rule") or 1000)
+    preferred = int(raw.get("preferred_atomic_positives_per_active_rule") or old_quota.get("preferred_total_per_active_rule") or max(2500, min_total))
+    max_total = int(raw.get("max_total_per_rule_id") or old_caps.get("max_total_per_rule_id") or max(preferred, min_total))
+    rule_ids = raw.get("rule_ids") or old_quota.get("rule_ids") or []
+    return {
+        "min_atomic_positives_per_active_rule": max(0, min_total),
+        "preferred_atomic_positives_per_active_rule": max(min_total, preferred),
+        "max_total_per_rule_id": max(min_total, max_total),
+        "rule_ids": [str(rule_id) for rule_id in rule_ids if str(rule_id)],
+    }
+
+
+def _iter_clean_pool_records(clean_pool_path: Path, config: dict[str, Any]) -> Iterable[dict[str, Any]]:
+    usecols = {
+        "text",
+        "source_name",
+        "source_subcorpus",
+        "domain",
+        "style",
+        "license_status",
+        "source_doc_id",
+        "sentence_id",
+        "hash",
+    }
+    reader = pd.read_csv(
+        clean_pool_path,
+        usecols=lambda column: column in usecols,
+        chunksize=_clean_pool_chunksize(config),
+        low_memory=False,
+    )
+    for chunk in reader:
+        for row in chunk.fillna("").to_dict("records"):
+            yield row
+
+
+def generate_atomic_positive_rows_from_clean_pool(
+    clean_pool_path: str | Path,
+    registry: RuleOperatorRegistry,
+    candidate_rule_ids: Iterable[str],
+    config: dict[str, Any],
+    candidate_generator: Any,
+) -> AtomicPositiveGenerationResult:
+    path = Path(clean_pool_path)
+    quota_config = _operator_rule_quota_config(config)
+    preferred = int(quota_config["preferred_atomic_positives_per_active_rule"])
+    max_total = int(quota_config["max_total_per_rule_id"])
+    target_per_rule = min(preferred, max_total)
+    rule_ids = sorted({normalize_rule_id(rule_id) for rule_id in candidate_rule_ids if normalize_rule_id(rule_id)})
+    counts: Counter[str] = Counter()
+    attempts: Counter[str] = Counter()
+    opportunities_seen: Counter[str] = Counter()
+    rejection_counts: Counter[str] = Counter()
+    rows: list[dict[str, Any]] = []
+    rejections: list[dict[str, Any]] = []
+    seen_hashes: set[str] = set()
+
+    operators = {rule_id: registry.get(rule_id) for rule_id in rule_ids}
+    for rule_id, operator in operators.items():
+        if operator is None:
+            _reject(rejections, "registry", {"source": "", "target": ""}, rule_id, "BLOCK_NO_OPERATOR")
+
+    active_rule_ids = [rule_id for rule_id in rule_ids if operators.get(rule_id) is not None and target_per_rule > 0]
+    if not path.exists() or not active_rule_ids:
+        generation_rows = _atomic_generation_rows(rule_ids, counts, attempts, opportunities_seen, rejection_counts, quota_config)
+        return AtomicPositiveGenerationResult(
+            rows=[],
+            generation_rows=generation_rows,
+            rejection_rows=rejections,
+            rules_without_atomic_positive=_rules_without_atomic_positive(rule_ids, counts, operators=operators),
+        )
+
+    for pool_index, item in enumerate(_iter_clean_pool_records(path, config)):
+        if all(counts.get(rule_id, 0) >= target_per_rule for rule_id in active_rule_ids):
+            break
+        target = str(item.get("text", "")).strip()
+        if not target:
+            _reject(rejections, pool_index, {"source": "", "target": ""}, "", "empty_clean_target")
+            continue
+        clean_reasons = clean_or_hard_quality_reasons(target)
+        if clean_reasons or _contains_artificial_marker(target, target):
+            reason = ",".join(clean_reasons or ["artificial_marker"])
+            _reject(rejections, pool_index, {"source": target, "target": target}, "", reason)
+            continue
+
+        for rule_id in active_rule_ids:
+            if counts.get(rule_id, 0) >= target_per_rule:
+                continue
+            if not _rule_may_have_opportunity(rule_id, target):
+                continue
+            operator = operators[rule_id]
+            if operator is None:
+                continue
+            attempts[rule_id] += 1
+            try:
+                opportunities = operator.find_opportunities(target)
+            except Exception as exc:
+                reason = f"find_opportunities_error:{type(exc).__name__}"
+                rejection_counts[(rule_id, reason)] += 1
+                _reject(rejections, pool_index, {"source": target, "target": target}, rule_id, reason)
+                continue
+            if not opportunities:
+                continue
+            opportunities_seen[rule_id] += len(opportunities)
+            for opportunity in opportunities:
+                if counts.get(rule_id, 0) >= target_per_rule:
+                    break
+                try:
+                    result = operator.corrupt(target, opportunity)
+                except Exception as exc:
+                    reason = f"corrupt_error:{type(exc).__name__}"
+                    rejection_counts[(rule_id, reason)] += 1
+                    _reject(rejections, pool_index, {"source": target, "target": target}, rule_id, reason)
+                    continue
+                result_rule_id = normalize_rule_id(result.rule_id)
+                if result_rule_id != rule_id:
+                    reason = "operator_result_rule_mismatch"
+                    rejection_counts[(rule_id, reason)] += 1
+                    _reject(rejections, pool_index, {"source": result.source, "target": result.target}, rule_id, reason)
+                    continue
+                verification = verify_atomic_positive(
+                    result.source,
+                    result.target,
+                    result_rule_id,
+                    candidate_generator=candidate_generator,
+                )
+                if not verification.passed:
+                    rejection_counts[(rule_id, verification.reason)] += 1
+                    _reject(rejections, pool_index, {"source": result.source, "target": result.target}, rule_id, verification.reason)
+                    continue
+                pair_hash = normalized_pair_hash(result.source, result.target)
+                if pair_hash in seen_hashes:
+                    reason = "duplicate_pair"
+                    rejection_counts[(rule_id, reason)] += 1
+                    _reject(rejections, pool_index, {"source": result.source, "target": result.target}, rule_id, reason)
+                    continue
+                seen_hashes.add(pair_hash)
+                row = _row_from_corruption_result(
+                    result=result,
+                    verification=verification,
+                    source_item=item,
+                    pair_hash=pair_hash,
+                )
+                rows.append(row)
+                counts[rule_id] += 1
+
+    generation_rows = _atomic_generation_rows(rule_ids, counts, attempts, opportunities_seen, rejection_counts, quota_config)
+    return AtomicPositiveGenerationResult(
+        rows=rows,
+        generation_rows=generation_rows,
+        rejection_rows=rejections,
+        rules_without_atomic_positive=_rules_without_atomic_positive(rule_ids, counts, operators=operators),
+    )
+
+
+def _atomic_generation_rows(
+    rule_ids: list[str],
+    counts: Counter[str],
+    attempts: Counter[str],
+    opportunities_seen: Counter[str],
+    rejection_counts: Counter[Any],
+    quota_config: dict[str, Any],
+) -> list[dict[str, Any]]:
+    min_total = int(quota_config["min_atomic_positives_per_active_rule"])
+    preferred = int(quota_config["preferred_atomic_positives_per_active_rule"])
+    max_total = int(quota_config["max_total_per_rule_id"])
+    rows: list[dict[str, Any]] = []
+    for rule_id in rule_ids:
+        accepted = int(counts.get(rule_id, 0))
+        rejected = sum(int(count) for (rejected_rule_id, _reason), count in rejection_counts.items() if rejected_rule_id == rule_id)
+        rows.append(
+            {
+                "rule_id": rule_id,
+                "status": "ready" if accepted >= min_total else "underfilled",
+                "target_min_total": min_total,
+                "preferred_total": preferred,
+                "max_total": max_total,
+                "accepted_count": accepted,
+                "attempted_clean_targets": int(attempts.get(rule_id, 0)),
+                "opportunities_seen": int(opportunities_seen.get(rule_id, 0)),
+                "rejected_count": rejected,
+                "reason": "" if accepted >= min_total else "below_min_atomic_positive_quota",
+            }
+        )
+    return rows
+
+
+def _rules_without_atomic_positive(
+    rule_ids: list[str],
+    counts: Counter[str],
+    *,
+    operators: dict[str, Any],
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for rule_id in rule_ids:
+        accepted = int(counts.get(rule_id, 0))
+        if accepted > 0:
+            continue
+        rows.append(
+            {
+                "rule_id": rule_id,
+                "status": "missing",
+                "reason": "BLOCK_NO_OPERATOR" if operators.get(rule_id) is None else "no_atomic_positive_generated",
+            }
+        )
+    return rows
+
+
+def _not_applicable_backfill_rows(candidate_rule_ids: Iterable[str]) -> list[dict[str, Any]]:
+    return [
+        {
+            "rule_id": rule_id,
+            "initial_verified": 0,
+            "generated_corpus": 0,
+            "generated_fallback": 0,
+            "accepted_after_backfill": 0,
+            "activated_after_backfill": False,
+            "status": "not_applicable",
+            "reason": "canonical_operator_pipeline_generates_from_clean_pool",
+        }
+        for rule_id in sorted({str(rule_id) for rule_id in candidate_rule_ids if str(rule_id)})
+    ]
 
 
 def _verified_synthetic_rows(
@@ -538,8 +845,16 @@ def _row_from_corruption_result(
     pair_hash: str,
 ) -> dict[str, Any]:
     metadata = dict(result.metadata or {})
+    verification_payload = asdict(verification)
+    accepted_edits = list(getattr(verification, "edits", None) or result.edits)
     metadata.update(
         {
+            "dataset_contract": DATASET_CONTRACT,
+            "dataset_layer": LAYER_ATOMIC_POSITIVE,
+            "is_atomic": True,
+            "is_stress": False,
+            "count_toward_rule_quota": True,
+            "loss_weight": 1.0,
             "operator_based_generation": True,
             "operator_verify_passed": True,
             "semantic_alignment_pass": True,
@@ -549,7 +864,7 @@ def _row_from_corruption_result(
             "gold_edit_count": int(getattr(verification, "gold_edit_count", 0) or 0),
             "strict_validator_passed": bool(getattr(verification, "strict_validator_passed", False)),
             "matched_candidate": getattr(verification, "matched_candidate", None),
-            "operator_verification": {result.rule_id: asdict(verification)},
+            "operator_verification": {result.rule_id: verification_payload},
             "generation_strategy": result.generation_strategy,
             "error_bearing_sentence_source": "corpus",
             "error_bearing_span": list(result.error_bearing_span),
@@ -577,7 +892,7 @@ def _row_from_corruption_result(
         "source_type": SYNTHETIC_OPEN_CLEAN,
         "error_type": error_type,
         "rule_ids": json.dumps([result.rule_id], ensure_ascii=False),
-        "edits": json.dumps(result.edits, ensure_ascii=False),
+        "edits": json.dumps(accepted_edits, ensure_ascii=False),
         "metadata": json.dumps(metadata, ensure_ascii=False, sort_keys=True),
         "original_clean_source": result.target,
         "source_corpus": str(source_item.get("source_name") or ""),
@@ -592,7 +907,17 @@ def _row_from_corruption_result(
         "is_synthetic": True,
         "domain": str(source_item.get("domain") or "open_clean"),
         "rule_id": result.rule_id,
-        "edit_operations": json.dumps(result.edits, ensure_ascii=False),
+        "edit_operations": json.dumps(accepted_edits, ensure_ascii=False),
+        "dataset_contract": DATASET_CONTRACT,
+        "dataset_layer": LAYER_ATOMIC_POSITIVE,
+        "is_atomic": True,
+        "is_stress": False,
+        "count_toward_rule_quota": True,
+        "gold_edit_count": 1,
+        "loss_weight": 1.0,
+        "target_rule_id": result.rule_id,
+        "verification_status": "passed",
+        "rejection_reason": "",
     }
 
 
@@ -672,25 +997,43 @@ def _top_up_clean_hard_from_pool(
     existing_rows: list[dict[str, Any]],
     clean_needed: int,
     hard_needed: int,
+    clean_pool_path: str | Path | None = None,
+    config: dict[str, Any] | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    path = Path("data/processed/clean_sentence_pool.csv.gz")
+    config = config or {}
+    path = Path(clean_pool_path or _clean_pool_path_from_config(config))
     if not path.exists() or clean_needed + hard_needed <= 0:
         return [], []
-    pool = pd.read_csv(path, usecols=["text", "source_name", "source_subcorpus", "domain"]).fillna("")
     seen = {str(row.get("source", "")) for row in existing_rows}
     clean: list[dict[str, Any]] = []
     hard: list[dict[str, Any]] = []
-    for item in pool.itertuples(index=False):
-        text = str(item.text).strip()
+    for item in _iter_clean_pool_records(path, config):
+        text = str(item.get("text", "")).strip()
         if not text or text in seen:
             continue
         if _contains_artificial_marker(text, text) or not clean_or_hard_quality_pass(text):
             continue
         seen.add(text)
         if len(clean) < clean_needed:
-            clean.append(_identity_row(text, CLEAN_IDENTITY_OPEN, item.source_name, item.source_subcorpus, item.domain))
+            clean.append(
+                _identity_row(
+                    text,
+                    CLEAN_IDENTITY_OPEN,
+                    str(item.get("source_name") or ""),
+                    str(item.get("source_subcorpus") or ""),
+                    str(item.get("domain") or ""),
+                )
+            )
         elif len(hard) < hard_needed:
-            hard.append(_identity_row(text, HARD_NEGATIVE_OPEN, item.source_name, item.source_subcorpus, item.domain))
+            hard.append(
+                _identity_row(
+                    text,
+                    HARD_NEGATIVE_OPEN,
+                    str(item.get("source_name") or ""),
+                    str(item.get("source_subcorpus") or ""),
+                    str(item.get("domain") or ""),
+                )
+            )
         if len(clean) >= clean_needed and len(hard) >= hard_needed:
             break
     return clean, hard
@@ -743,6 +1086,7 @@ def _manifest(
     quality_audit: dict[str, Any],
     backfill_attempt_rows: list[dict[str, Any]],
     capabilities: list[Any],
+    production_gates: bool = True,
 ) -> dict[str, Any]:
     rule_counts = _rule_counts(frame)
     composition = _value_counts(frame, "source_type")
@@ -792,6 +1136,7 @@ def _manifest(
         diversity=diversity,
         extended_summary=extended_summary,
         semantic_summary=semantic_summary,
+        production_gates=production_gates,
     )
     audit_errors.extend(capability_training_audit_errors(rule_counts, capabilities))
     excluded_rows = [{"rule_id": rule_id, "reason": reason} for rule_id, reason in sorted(excluded_rule_ids.items())]
@@ -870,6 +1215,9 @@ def _write_reports(
     rejection_rows: list[dict[str, Any]],
     quality_audit: dict[str, Any],
     backfill_attempt_rows: list[dict[str, Any]],
+    atomic_generation_rows: list[dict[str, Any]] | None = None,
+    atomic_rejection_rows: list[dict[str, Any]] | None = None,
+    rules_without_atomic_positive: list[dict[str, Any]] | None = None,
 ) -> None:
     reports_dir.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(registry_rows).to_csv(reports_dir / "active_training_rules.csv", index=False)
@@ -883,6 +1231,15 @@ def _write_reports(
     pd.DataFrame(manifest["excluded_rule_ids"]).to_csv(reports_dir / "future_operator_backlog.csv", index=False)
     pd.DataFrame(backfill_attempt_rows).to_csv(reports_dir / "backfill_attempts_by_rule.csv", index=False)
     pd.DataFrame(manifest["excluded_rule_ids"]).to_csv(reports_dir / "excluded_rules_after_backfill.csv", index=False)
+    pd.DataFrame(atomic_generation_rows or []).to_csv(reports_dir / "atomic_positive_generation_report.csv", index=False)
+    pd.DataFrame(
+        atomic_rejection_rows or [],
+        columns=["row_index", "rule_id", "reason", "source", "target"],
+    ).to_csv(reports_dir / "atomic_positive_rejection_report.csv", index=False)
+    pd.DataFrame(
+        rules_without_atomic_positive or [],
+        columns=["rule_id", "status", "reason"],
+    ).to_csv(reports_dir / "rules_without_atomic_positive.csv", index=False)
     pd.DataFrame([row for row in manifest["excluded_rule_ids"] if "MISSING_MODULE" in row.get("reason", "")]).to_csv(
         reports_dir / "blocked_by_missing_module.csv", index=False
     )
@@ -923,7 +1280,14 @@ def _write_reports(
     ):
         path = reports_dir / name
         if not path.exists():
-            pd.DataFrame().to_csv(path, index=False)
+            pd.DataFrame(
+                [
+                    {
+                        "status": "not_applicable",
+                        "reason": "operator_dataset_builder_clean_pool_pipeline",
+                    }
+                ]
+            ).to_csv(path, index=False)
 
 
 def _candidate_reports(manifest: dict[str, Any], reports_dir: Path) -> None:
@@ -959,16 +1323,16 @@ def _write_dataset_generation_report(manifest: dict[str, Any], path: Path) -> No
     lines = [
         "# Operator Dataset Generation Report",
         "",
-        f"- verdict: {manifest['verdict']}",
-        f"- total: {manifest['total']}",
-        f"- split_sizes: {json.dumps(manifest['split_sizes'], ensure_ascii=False, sort_keys=True)}",
-        f"- active_rule_count: {manifest['active_rule_count']}",
-        f"- operator_based_generation: {manifest['operator_based_generation']}",
-        f"- semantic_alignment_failed_rows: {manifest['semantic_alignment_failed_rows']}",
-        f"- numeric_punctuation_mismatch_count: {manifest['numeric_punctuation_mismatch_count']}",
-        f"- corpus_opportunity_share: {manifest['corpus_opportunity_share']:.6f}",
-        f"- fallback_template_share: {manifest['fallback_template_share']:.6f}",
-        f"- audit_errors: {json.dumps(manifest['audit_errors'], ensure_ascii=False)}",
+        f"- verdict: {manifest.get('verdict', 'DATASET_BLOCKED')}",
+        f"- total: {manifest.get('total', 0)}",
+        f"- split_sizes: {json.dumps(manifest.get('split_sizes', {}), ensure_ascii=False, sort_keys=True)}",
+        f"- active_rule_count: {manifest.get('active_rule_count', 0)}",
+        f"- operator_based_generation: {manifest.get('operator_based_generation', True)}",
+        f"- semantic_alignment_failed_rows: {manifest.get('semantic_alignment_failed_rows', 0)}",
+        f"- numeric_punctuation_mismatch_count: {manifest.get('numeric_punctuation_mismatch_count', 0)}",
+        f"- corpus_opportunity_share: {float(manifest.get('corpus_opportunity_share', 0.0) or 0.0):.6f}",
+        f"- fallback_template_share: {float(manifest.get('fallback_template_share', 0.0) or 0.0):.6f}",
+        f"- audit_errors: {json.dumps(manifest.get('audit_errors', []), ensure_ascii=False)}",
     ]
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -990,39 +1354,41 @@ def _audit_errors(
     diversity: dict[str, Any],
     extended_summary: dict[str, Any],
     semantic_summary: dict[str, Any],
+    production_gates: bool = True,
 ) -> list[str]:
     errors: list[str] = []
     if total != requested_total:
         errors.append(f"dataset_size_below_requested:{total}!={requested_total}")
-    if split_sizes != _exact_split_sizes(total):
+    if production_gates and split_sizes != _exact_split_sizes(total):
         errors.append("split_sizes_not_exact_80_10_10")
-    if total < 200_000:
-        errors.append("total_below_200000")
-    if int(composition.get(CLEAN_IDENTITY_OPEN, 0)) < total * 0.10:
-        errors.append("clean_identity_below_10_percent")
-    if int(composition.get(HARD_NEGATIVE_OPEN, 0)) < total * 0.10:
-        errors.append("hard_negative_below_10_percent")
-    if int(composition.get(REAL_ERROR_PAIR, 0)) <= 0:
-        errors.append("missing_real_pairs")
-    stress = int(composition.get("multi_error_stress", 0))
-    if not (total * 0.03 <= stress <= total * 0.05):
-        errors.append("stress_ratio_outside_3_5_percent")
-    for rule_id in active_rule_ids:
-        if int(rule_counts.get(rule_id, 0)) < 1000:
-            errors.append(f"active_rule_under_min:{rule_id}")
+    if production_gates:
+        if total < 200_000:
+            errors.append("total_below_200000")
+        if int(composition.get(CLEAN_IDENTITY_OPEN, 0)) < total * 0.10:
+            errors.append("clean_identity_below_10_percent")
+        if int(composition.get(HARD_NEGATIVE_OPEN, 0)) < total * 0.10:
+            errors.append("hard_negative_below_10_percent")
+        if int(composition.get(REAL_ERROR_PAIR, 0)) <= 0:
+            errors.append("missing_real_pairs")
+        stress = int(composition.get("multi_error_stress", 0))
+        if not (total * 0.03 <= stress <= total * 0.05):
+            errors.append("stress_ratio_outside_3_5_percent")
+        for rule_id in active_rule_ids:
+            if int(rule_counts.get(rule_id, 0)) < 1000:
+                errors.append(f"active_rule_under_min:{rule_id}")
     if numeric_mismatch:
         errors.append("numeric_punctuation_mismatch_present")
     for group, counts in (("known_quality_bugs", known), ("quote_bracket_balance_bugs", quote), ("clean_hard_balance_bugs", clean_hard)):
         for name, count in counts.items():
             if int(count) != 0:
                 errors.append(f"{group}_present:{name}")
-    if corpus_share < 0.70:
+    if production_gates and corpus_share < 0.70:
         errors.append("corpus_opportunity_share_below_threshold")
-    if fallback_share > 0.20:
+    if production_gates and fallback_share > 0.20:
         errors.append("fallback_template_share_above_threshold")
-    if int(diversity.get("failed_rule_count", 0)) != 0:
+    if production_gates and int(diversity.get("failed_rule_count", 0)) != 0:
         errors.append("rule_diversity_gates_failed")
-    if int(extended_summary.get("blocking_issue_count", 0) or 0) != 0:
+    if production_gates and int(extended_summary.get("blocking_issue_count", 0) or 0) != 0:
         errors.append("extended_quality_audit_blocking_issues")
     if int(semantic_summary.get("failed_rows", 0) or 0) != 0:
         errors.append("rule_semantic_alignment_failed")
@@ -1036,12 +1402,6 @@ def _rule_diversity_summary(frame: pd.DataFrame, active_rule_ids: list[str]) -> 
         if len(rows) < 1000:
             failed.append(rule_id)
     return {"active_rule_count": len(active_rule_ids), "failed_rule_count": len(failed), "failed_rule_ids": failed}
-
-
-def _read_seed_dataset(path: Path) -> pd.DataFrame:
-    if not path.exists():
-        return pd.DataFrame()
-    return pd.read_csv(path, low_memory=False).fillna("")
 
 
 def _normalize_row(row: dict[str, Any]) -> dict[str, Any]:
@@ -1082,6 +1442,18 @@ def _json_dict(value: Any) -> dict[str, Any]:
             return {}
         return parsed if isinstance(parsed, dict) else {}
     return {}
+
+
+def _json_list(value: Any) -> list[Any]:
+    if isinstance(value, list):
+        return value
+    if isinstance(value, str) and value.strip():
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            return [part.strip() for part in value.split(",") if part.strip()]
+        return parsed if isinstance(parsed, list) else []
+    return []
 
 
 def _filter_row_rule_ids(row: dict[str, Any], active_rule_ids: set[str]) -> dict[str, Any]:
@@ -1142,6 +1514,8 @@ def _prune_failed_diversity_rules(
     requested_total: int,
     split_sizes: dict[str, int],
     seed: int,
+    clean_pool_path: Path | None = None,
+    config: dict[str, Any] | None = None,
 ) -> tuple[pd.DataFrame, list[str], dict[str, str], dict[str, Any]]:
     active = sorted(set(active_rule_ids))
     excluded = dict(excluded_rule_ids)
@@ -1168,6 +1542,8 @@ def _prune_failed_diversity_rules(
                 existing_rows=rows,
                 clean_needed=(requested_total - len(rows) + 1) // 2,
                 hard_needed=(requested_total - len(rows)) // 2,
+                clean_pool_path=clean_pool_path,
+                config=config,
             )
             rows.extend(clean_top)
             rows.extend(hard_top)
@@ -1214,13 +1590,46 @@ def _rule_counts(frame: pd.DataFrame) -> dict[str, int]:
 
 
 def _counts_toward_rule_quota(row: dict[str, Any]) -> bool:
+    if _row_dataset_layer_value(row) != LAYER_ATOMIC_POSITIVE:
+        return False
+    if _row_gold_edit_count_value(row) != 1:
+        return False
     value = row.get("count_toward_rule_quota")
     if not _is_blank(value):
         return _truthy(value)
     metadata = _json_dict(row.get("metadata"))
     if "count_toward_rule_quota" in metadata:
         return _truthy(metadata.get("count_toward_rule_quota"))
-    return True
+    return str(row.get("source_type", "")) == SYNTHETIC_OPEN_CLEAN
+
+
+def _row_dataset_layer_value(row: dict[str, Any]) -> str:
+    value = str(row.get("dataset_layer", "") or "").strip()
+    if value:
+        return value
+    metadata = _json_dict(row.get("metadata"))
+    value = str(metadata.get("dataset_layer", "") or "").strip()
+    if value:
+        return value
+    if str(row.get("source_type", "")) == SYNTHETIC_OPEN_CLEAN:
+        return "stress_multi_error" if _truthy(row.get("is_stress", metadata.get("is_stress", False))) else LAYER_ATOMIC_POSITIVE
+    return ""
+
+
+def _row_gold_edit_count_value(row: dict[str, Any]) -> int:
+    value = row.get("gold_edit_count")
+    if not _is_blank(value):
+        try:
+            return max(0, int(value))
+        except (TypeError, ValueError):
+            return 0
+    metadata = _json_dict(row.get("metadata"))
+    if "gold_edit_count" in metadata:
+        try:
+            return max(0, int(metadata.get("gold_edit_count", 0) or 0))
+        except (TypeError, ValueError):
+            return 0
+    return len(_json_list(row.get("edits") or row.get("edit_operations")))
 
 
 def _is_blank(value: Any) -> bool:
@@ -1327,3 +1736,8 @@ def _write_manifest_and_blocked_reports(manifest: dict[str, Any], manifest_path:
     reports_dir.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     _write_dataset_generation_report(manifest, reports_dir / "dataset_generation_report.md")
+    reason = ",".join(str(item) for item in manifest.get("audit_errors", []) if str(item)) or "blocked"
+    not_applicable = [{"status": "not_applicable", "reason": reason}]
+    pd.DataFrame(not_applicable).to_csv(reports_dir / "atomic_positive_generation_report.csv", index=False)
+    pd.DataFrame(not_applicable).to_csv(reports_dir / "atomic_positive_rejection_report.csv", index=False)
+    pd.DataFrame(not_applicable).to_csv(reports_dir / "rules_without_atomic_positive.csv", index=False)

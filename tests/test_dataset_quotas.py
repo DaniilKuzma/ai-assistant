@@ -4,8 +4,9 @@ from pathlib import Path
 import pandas as pd
 
 from src.config.load_config import load_config
-from src.data._training_dataset_builder import _effective_active_rule_ids
+from src.data._training_dataset_builder import _effective_active_rule_ids, _rule_counts_from_rows, _rule_id_counts
 from src.data.full_dataset_builder import build_dataset_from_config
+from src.data.operator_dataset_builder import _rule_counts as _operator_rule_counts
 from src.rules.capabilities import RuleCapability
 
 
@@ -120,6 +121,44 @@ def test_effective_active_rule_ids_filter_blocked_eval_and_mining_rules():
         quota_config=quota_config,
         capabilities=capabilities,
     ) == ["frequent_error_exact"]
+
+
+def test_rule_quota_counts_only_atomic_positive_contract_rows():
+    rows = [
+        {
+            "rule_ids": json.dumps(["unit_atomic"]),
+            "dataset_layer": "atomic_positive",
+            "count_toward_rule_quota": True,
+            "gold_edit_count": 1,
+            "edits": json.dumps([{"source": "млоко", "replacement": "молоко"}], ensure_ascii=False),
+        },
+        {
+            "rule_ids": json.dumps(["unit_atomic"]),
+            "dataset_layer": "stress_multi_error",
+            "count_toward_rule_quota": True,
+            "gold_edit_count": 2,
+            "edits": json.dumps([{}, {}]),
+        },
+        {
+            "rule_ids": json.dumps(["unit_atomic"]),
+            "dataset_layer": "atomic_positive",
+            "count_toward_rule_quota": False,
+            "gold_edit_count": 1,
+            "edits": json.dumps([{}]),
+        },
+        {
+            "rule_ids": json.dumps(["real_rule"]),
+            "dataset_layer": "real_atomic",
+            "count_toward_rule_quota": True,
+            "gold_edit_count": 1,
+            "edits": json.dumps([{}]),
+        },
+    ]
+    frame = pd.DataFrame(rows)
+
+    assert _operator_rule_counts(frame) == {"unit_atomic": 1}
+    assert _rule_counts_from_rows(rows) == {"unit_atomic": 1}
+    assert _rule_id_counts(frame) == {"unit_atomic": 1}
 
 
 def _capability(

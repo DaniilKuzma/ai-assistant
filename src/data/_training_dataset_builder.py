@@ -180,6 +180,10 @@ def _use_operator_dataset_pipeline(config: dict[str, Any], *, output_path: Path,
     core_config = data_config.get("training_dataset_core", {}) or {}
     if bool(core_config.get("legacy_builder", False)):
         return False
+    if str(data_config.get("dataset_contract", "")).strip() == "candidate_opportunity":
+        return True
+    if str(core_config.get("dataset_contract", "")).strip() == "candidate_opportunity":
+        return True
     canonical_output = Path("data/processed/correction_dataset.csv.gz")
     canonical_manifest = Path("data/processed/dataset_manifest.json")
     return output_path.as_posix() == canonical_output.as_posix() and manifest_path.as_posix() == canonical_manifest.as_posix()
@@ -3607,6 +3611,8 @@ def _increment_row_caps(row: dict[str, Any], rule_counts: Counter[str], error_co
 def _rule_counts_from_rows(rows: list[dict[str, Any]]) -> dict[str, int]:
     counter: Counter[str] = Counter()
     for row in rows:
+        if not _counts_toward_rule_quota(row):
+            continue
         for rule_id in _json_list(row.get("rule_ids")):
             counter[str(rule_id)] += 1
     return dict(counter)
@@ -3614,6 +3620,71 @@ def _rule_counts_from_rows(rows: list[dict[str, Any]]) -> dict[str, int]:
 
 def _error_counts_from_rows(rows: list[dict[str, Any]]) -> dict[str, int]:
     return dict(Counter(str(row.get("error_type") or "unknown") for row in rows))
+
+
+def _counts_toward_rule_quota(row: dict[str, Any]) -> bool:
+    if _row_dataset_layer_value(row) != "atomic_positive":
+        return False
+    if _row_gold_edit_count_value(row) != 1:
+        return False
+    value = row.get("count_toward_rule_quota")
+    if not _is_blank_contract_value(value):
+        return _truthy_contract_value(value)
+    metadata = _json_dict(row.get("metadata"))
+    if "count_toward_rule_quota" in metadata:
+        return _truthy_contract_value(metadata.get("count_toward_rule_quota"))
+    return str(row.get("source_type", "")) == SYNTHETIC_OPEN_CLEAN
+
+
+def _row_dataset_layer_value(row: dict[str, Any]) -> str:
+    value = str(row.get("dataset_layer", "") or "").strip()
+    if value:
+        return value
+    metadata = _json_dict(row.get("metadata"))
+    value = str(metadata.get("dataset_layer", "") or "").strip()
+    if value:
+        return value
+    if str(row.get("source_type", "")) == SYNTHETIC_OPEN_CLEAN:
+        is_stress = _truthy_contract_value(row.get("is_stress", metadata.get("is_stress", False)))
+        return "stress_multi_error" if is_stress else "atomic_positive"
+    return ""
+
+
+def _row_gold_edit_count_value(row: dict[str, Any]) -> int:
+    value = row.get("gold_edit_count")
+    if not _is_blank_contract_value(value):
+        try:
+            return max(0, int(value))
+        except (TypeError, ValueError):
+            return 0
+    metadata = _json_dict(row.get("metadata"))
+    if "gold_edit_count" in metadata:
+        try:
+            return max(0, int(metadata.get("gold_edit_count", 0) or 0))
+        except (TypeError, ValueError):
+            return 0
+    return len(_json_list(row.get("edits") or row.get("edit_operations")))
+
+
+def _is_blank_contract_value(value: Any) -> bool:
+    if value is None:
+        return True
+    if isinstance(value, str):
+        return value.strip().lower() in {"", "none", "null", "nan"}
+    return False
+
+
+def _truthy_contract_value(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return False
+    text = str(value).strip().lower()
+    if text in {"", "0", "false", "no", "off", "none", "null", "nan"}:
+        return False
+    if text in {"1", "true", "yes", "on"}:
+        return True
+    return bool(value)
 
 
 def _quota_row_min(row: Any, default: int) -> int:
@@ -3726,6 +3797,9 @@ def _quality_gate_exclusions(
     enforce_diversity_gates = int(quality_audit.get("total_rows", 0) or 0) >= int(
         audit_config.get("min_rows_for_rule_diversity_gates", 1000)
     )
+    enforce_candidate_gates = int(quality_audit.get("total_rows", 0) or 0) >= int(
+        audit_config.get("min_rows_for_candidate_gates", 1000)
+    )
 
     if enforce_diversity_gates:
         for rule_id in dict(quality_audit.get("rule_diversity_summary", {}) or {}).get("failed_rule_ids", []) or []:
@@ -3735,7 +3809,7 @@ def _quality_gate_exclusions(
 
     recall_threshold = float(audit_config.get("candidate_recall_min", 0.85))
     recall_frame = recall_reports.get("candidate_recall_by_rule", pd.DataFrame())
-    if not recall_frame.empty:
+    if enforce_candidate_gates and not recall_frame.empty:
         for row in recall_frame.to_dict("records"):
             rule = str(row.get("rule_id", ""))
             if rule not in active:
@@ -3751,7 +3825,7 @@ def _quality_gate_exclusions(
     gap_threshold = float(audit_config.get("gap_coverage_min", 0.85))
     gap_frame = recall_reports.get("gap_label_coverage_by_rule", pd.DataFrame())
     punctuation_active = active & _punctuation_rule_ids()
-    if not gap_frame.empty and punctuation_active:
+    if enforce_candidate_gates and not gap_frame.empty and punctuation_active:
         for row in gap_frame.to_dict("records"):
             rule = str(row.get("rule_id", ""))
             if rule not in punctuation_active:
@@ -4363,8 +4437,10 @@ def _counts_by_split(frame: pd.DataFrame, column: str, keys: Iterable[str] | Non
 
 def _rule_id_counts(frame: pd.DataFrame) -> dict[str, int]:
     counter: Counter[str] = Counter()
-    for value in frame.get("rule_ids", pd.Series(dtype=str)).tolist():
-        for rule_id in _json_list(value):
+    for row in frame.to_dict("records"):
+        if not _counts_toward_rule_quota(row):
+            continue
+        for rule_id in _json_list(row.get("rule_ids")):
             counter[str(rule_id)] += 1
     return dict(sorted(counter.items()))
 

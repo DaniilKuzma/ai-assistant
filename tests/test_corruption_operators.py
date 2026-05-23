@@ -5,8 +5,15 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.data.corruption_operators import Opportunity, RuleOperatorRegistry, _verification, build_default_operator_registry
-from src.data.operator_dataset_builder import _verified_synthetic_rows
+from src.candidates.candidate_generator import Candidate
+from src.data.corruption_operators import (
+    CorruptionResult,
+    Opportunity,
+    RuleOperatorRegistry,
+    _verification,
+    build_default_operator_registry,
+)
+from src.data.operator_dataset_builder import generate_atomic_positive_rows_from_clean_pool, _verified_synthetic_rows
 
 
 DATASET_PATH = Path("data/processed/correction_dataset.csv.gz")
@@ -25,6 +32,71 @@ class MissingCandidateOperator:
 
     def verify(self, source: str, target: str, opportunity: Opportunity):
         return _verification(self.rule_id, source, target, opportunity, candidate_generator=EmptyCandidateGenerator())
+
+
+class UnitCandidateGenerator:
+    def generate(self, text: str):
+        start = text.find("млоко")
+        if start >= 0:
+            return [
+                Candidate(
+                    source="млоко",
+                    replacement="молоко",
+                    edit_type="spelling",
+                    start=start,
+                    end=start + len("млоко"),
+                    rule_id="unit_atomic",
+                )
+            ]
+        return []
+
+
+class MultiEditCleanPoolOperator:
+    rule_id = "unit_atomic"
+    error_type = "spelling"
+    requires = ()
+
+    def find_opportunities(self, clean_sentence: str, syntax_analysis=None):
+        del syntax_analysis
+        if "молоко" not in clean_sentence:
+            return []
+        return [Opportunity(clean_sentence.index("молоко"), clean_sentence.index("молоко") + len("молоко"), "молоко", self.rule_id)]
+
+    def corrupt(self, clean_sentence: str, opportunity: Opportunity):
+        first_start = opportunity.start
+        first_end = opportunity.end
+        source = clean_sentence[:first_start] + "млоко" + clean_sentence[first_end:]
+        second_start = source.index("комиссии")
+        second_end = second_start + len("комиссии")
+        source = source[:second_start] + "кмиссии" + source[second_end:]
+        return CorruptionResult(
+            source=source,
+            target=clean_sentence,
+            rule_id=self.rule_id,
+            edits=[
+                {
+                    "source": "млоко",
+                    "replacement": "молоко",
+                    "edit_type": "spelling_replace",
+                    "start": first_start,
+                    "end": first_start + len("млоко"),
+                },
+                {
+                    "source": "кмиссии",
+                    "replacement": "комиссии",
+                    "edit_type": "spelling_replace",
+                    "start": second_start,
+                    "end": second_start + len("кмиссии"),
+                },
+            ],
+            error_bearing_span=(first_start, first_start + len("млоко")),
+            error_form="млоко",
+            target_form="молоко",
+            generation_strategy="unit_multi_edit",
+        )
+
+    def verify(self, source: str, target: str, opportunity: Opportunity):
+        return _verification(self.rule_id, source, target, opportunity, candidate_generator=UnitCandidateGenerator())
 
 
 def test_syntax_style_operator_uses_same_registry_interface():
@@ -144,6 +216,44 @@ def test_verified_synthetic_rows_reports_candidate_missing_despite_fake_metadata
     assert rows == []
     assert rejections
     assert rejections[0]["reason"] == "candidate_missing"
+
+
+def test_atomic_positive_generation_rejects_multi_edit_operator_result(tmp_path: Path):
+    clean_pool_path = tmp_path / "clean_sentence_pool.csv.gz"
+    pd.DataFrame(
+        [
+            {
+                "text": "В отчете комиссии встретилось слово молоко сегодня.",
+                "source_name": "unit",
+                "source_subcorpus": "unit",
+                "domain": "unit",
+                "sentence_id": "s1",
+                "hash": "h1",
+            }
+        ]
+    ).to_csv(clean_pool_path, index=False)
+    registry = RuleOperatorRegistry()
+    registry.register(MultiEditCleanPoolOperator())
+
+    result = generate_atomic_positive_rows_from_clean_pool(
+        clean_pool_path,
+        registry,
+        {"unit_atomic"},
+        {
+            "data": {
+                "clean_pool_chunksize": 1,
+                "rule_quota": {
+                    "min_atomic_positives_per_active_rule": 1,
+                    "preferred_atomic_positives_per_active_rule": 1,
+                    "max_total_per_rule_id": 1,
+                },
+            }
+        },
+        UnitCandidateGenerator(),
+    )
+
+    assert result.rows == []
+    assert any(row["rule_id"] == "unit_atomic" and row["reason"] == "non_atomic_edit_count" for row in result.rejection_rows)
 
 
 def test_canonical_synthetic_rows_record_operator_verification_pass():
