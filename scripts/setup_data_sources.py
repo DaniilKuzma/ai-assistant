@@ -59,6 +59,7 @@ def main(argv: list[str] | None = None) -> int:
 
     clean_config = _read_yaml(clean_config_path) if args.clean and clean_config_path.exists() else {}
     real_config = _read_yaml(real_config_path) if args.real and real_config_path.exists() else {}
+    _apply_top_level_data_overlays(config, clean_config=clean_config, real_config=real_config)
     if args.max_clean_sentences and clean_config:
         _limit_clean_sources(clean_config, args.max_clean_sentences)
     if args.max_real_pairs and real_config:
@@ -103,6 +104,7 @@ def main(argv: list[str] | None = None) -> int:
         real_config=real_config,
         notes=dry_run_notes,
         report_dir=report_dir,
+        dataset_contract=str((config.get("data", {}) or {}).get("dataset_contract") or ""),
     )
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     _write_summary_report(report_dir / "source_setup_summary.md", manifest)
@@ -143,6 +145,26 @@ def _read_yaml(path: Path) -> dict[str, Any]:
 def _source_config_path(config: dict[str, Any], key: str, default: str) -> Path:
     core = dict(config.get("data", {}).get("training_dataset_core", {}) or {})
     return Path(str(core.get(key) or default))
+
+
+def _apply_top_level_data_overlays(config: dict[str, Any], *, clean_config: dict[str, Any], real_config: dict[str, Any]) -> None:
+    data = config.get("data", {}) or {}
+    clean_pool = data.get("clean_pool", {}) or {}
+    if clean_pool and clean_config is not None:
+        pool = clean_config.setdefault("pool", {})
+        if isinstance(pool, dict):
+            pool.update(clean_pool)
+
+    real_pairs = data.get("real_pairs", {}) or {}
+    stress = data.get("stress", {}) or {}
+    if (real_pairs or stress) and real_config is not None:
+        validation = real_config.setdefault("validation", {})
+        if isinstance(validation, dict):
+            for key in ("train_policy", "unknown_rule_policy", "multi_edit_policy"):
+                if key in real_pairs:
+                    validation[key] = real_pairs[key]
+            if "loss_weight" in stress:
+                validation["stress_loss_weight"] = stress["loss_weight"]
 
 
 def _downloads_enabled() -> bool:
@@ -206,6 +228,7 @@ def _manifest(
     real_config: dict[str, Any],
     notes: list[str],
     report_dir: Path,
+    dataset_contract: str = "",
 ) -> dict[str, Any]:
     clean_size = clean_result.accepted_count if clean_result else 0
     real_accepted = real_result.accepted_count if real_result else 0
@@ -219,6 +242,10 @@ def _manifest(
     verdict = _verdict(clean_size, real_accepted, unsafe_sources=unsafe_sources, reports_exist=reports_exist, dry_run=dry_run)
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
+        "dataset_contract": dataset_contract,
+        "dataset_hash": "",
+        "audit_errors": [],
+        "layer_counts": {},
         "downloads_enabled": bool(downloads_enabled),
         "dry_run": bool(dry_run),
         "clean_sources": clean_reports,
@@ -305,7 +332,11 @@ def _write_summary_report(path: Path, manifest: dict[str, Any]) -> None:
     lines = [
         "# Source Setup Summary",
         "",
+        f"- dataset_contract: {manifest.get('dataset_contract', '')}",
+        f"- dataset_hash: {manifest.get('dataset_hash', '')}",
         f"- verdict: {manifest['verdict']}",
+        f"- audit_errors: {json.dumps(manifest.get('audit_errors', []), ensure_ascii=False)}",
+        f"- layer_counts: {json.dumps(manifest.get('layer_counts', {}), ensure_ascii=False, sort_keys=True)}",
         f"- downloads_enabled: {'yes' if manifest['downloads_enabled'] else 'no'}",
         f"- clean_pool_size: {manifest['clean_pool_size']}",
         f"- real_pair_accepted_count: {manifest['real_pair_accepted_count']}",
@@ -316,6 +347,10 @@ def _write_summary_report(path: Path, manifest: dict[str, Any]) -> None:
 
 
 def _print_final_summary(manifest: dict[str, Any], *, report_dir: Path, processed_dir: Path) -> None:
+    print(f"dataset contract: {manifest.get('dataset_contract', '')}")
+    print(f"dataset hash: {manifest.get('dataset_hash', '')}")
+    print(f"audit errors: {json.dumps(manifest.get('audit_errors', []), ensure_ascii=False)}")
+    print(f"layer counts: {json.dumps(manifest.get('layer_counts', {}), ensure_ascii=False, sort_keys=True)}")
     print(f"downloads enabled: {'yes' if manifest['downloads_enabled'] else 'no'}")
     print("dependencies installed/updated: requirements.txt updated")
     print(f"clean sources used: {_used_sources(manifest['clean_sources'], 'source_name')}")

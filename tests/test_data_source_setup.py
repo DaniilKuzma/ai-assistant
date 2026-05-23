@@ -5,6 +5,8 @@ import pandas as pd
 
 import scripts.setup_data_sources as setup_data_sources
 from scripts.setup_data_sources import main
+from src.data.clean_sentence_pool import CleanSentencePoolResult
+from src.data.real_error_sources import RealErrorLoadResult
 
 
 def test_setup_script_dry_run_writes_manifest_without_outputs(tmp_path: Path, monkeypatch):
@@ -147,3 +149,112 @@ def test_prepare_materialized_real_sources_rewrites_punctuation_hf_to_local_json
     spec = config["real_sources"]["spellcheck_punctuation_benchmark"]
     assert spec["type"] == "local_jsonl"
     assert spec["local_path"] == str(output_path)
+
+
+def test_setup_script_applies_top_level_contract_overlays_and_prints_summary(tmp_path: Path, monkeypatch, capsys):
+    clean_config = tmp_path / "clean.yaml"
+    clean_config.write_text(
+        "pool:\n"
+        "  reject_mixed_script_tokens: false\n"
+        "  reject_latin_confusable_inside_cyrillic_word: false\n"
+        "  reject_if_candidate_generator_finds_high_confidence_fix: false\n"
+        "clean_sources:\n"
+        "  unit:\n"
+        "    enabled: true\n",
+        encoding="utf-8",
+    )
+    real_config = tmp_path / "real.yaml"
+    real_config.write_text(
+        "validation:\n"
+        "  train_policy: old\n"
+        "  unknown_rule_policy: old\n"
+        "  multi_edit_policy: old\n"
+        "  stress_loss_weight: 1.0\n"
+        "real_sources:\n"
+        "  unit:\n"
+        "    enabled: true\n",
+        encoding="utf-8",
+    )
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        f"data:\n"
+        f"  dataset_contract: candidate_opportunity\n"
+        f"  clean_pool:\n"
+        f"    reject_mixed_script_tokens: true\n"
+        f"    reject_latin_confusable_inside_cyrillic_word: true\n"
+        f"    reject_if_candidate_generator_finds_high_confidence_fix: true\n"
+        f"  real_pairs:\n"
+        f"    train_policy: atomize_single_edit_known_rule_only\n"
+        f"    unknown_rule_policy: mining_only\n"
+        f"    multi_edit_policy: stress_or_eval_only\n"
+        f"  stress:\n"
+        f"    loss_weight: 0.4\n"
+        f"  training_dataset_core:\n"
+        f"    open_corpora_sources_path: {clean_config.as_posix()}\n"
+        f"    real_error_sources_path: {real_config.as_posix()}\n",
+        encoding="utf-8",
+    )
+    captured: dict[str, dict] = {}
+
+    def fake_build_clean_sentence_pool(config, *, output_path, reports_dir):
+        del output_path, reports_dir
+        captured["clean"] = config
+        return CleanSentencePoolResult(
+            accepted_count=1,
+            total_seen=1,
+            output_path=str(tmp_path / "clean.csv.gz"),
+            source_counts={"unit": 1},
+            subcorpus_counts={"unit": 1},
+            rejection_reason_counts={},
+            source_reports=[{"source_name": "unit", "accepted": 1, "used": True}],
+            dominance_violations=[],
+        )
+
+    def fake_load_real_error_pairs(config, *, candidate_generator, output_path, reports_dir):
+        del candidate_generator, output_path, reports_dir
+        captured["real"] = config
+        return RealErrorLoadResult(
+            rows=[{"source_dataset": "unit", "candidate_present": True}],
+            accepted_count=1,
+            rejected_count=0,
+            source_reports=[{"source_dataset": "unit", "accepted": 1, "used": True}],
+            rejection_reason_counts={},
+            output_path=str(tmp_path / "real.csv.gz"),
+        )
+
+    monkeypatch.setattr(setup_data_sources, "build_clean_sentence_pool", fake_build_clean_sentence_pool)
+    monkeypatch.setattr(setup_data_sources, "load_real_error_pairs", fake_load_real_error_pairs)
+    monkeypatch.chdir(tmp_path)
+
+    exit_code = main(
+        [
+            "--config",
+            str(config_path),
+            "--clean",
+            "--real",
+            "--report-dir",
+            str(tmp_path / "reports"),
+            "--processed-dir",
+            str(tmp_path / "processed"),
+            "--allow-partial",
+        ]
+    )
+
+    manifest = json.loads((tmp_path / "processed" / "source_ingestion_manifest.json").read_text(encoding="utf-8"))
+    stdout = capsys.readouterr().out
+    assert exit_code == 0
+    assert captured["clean"]["pool"]["reject_mixed_script_tokens"] is True
+    assert captured["clean"]["pool"]["reject_latin_confusable_inside_cyrillic_word"] is True
+    assert captured["clean"]["pool"]["reject_if_candidate_generator_finds_high_confidence_fix"] is True
+    assert captured["real"]["validation"]["train_policy"] == "atomize_single_edit_known_rule_only"
+    assert captured["real"]["validation"]["unknown_rule_policy"] == "mining_only"
+    assert captured["real"]["validation"]["multi_edit_policy"] == "stress_or_eval_only"
+    assert captured["real"]["validation"]["stress_loss_weight"] == 0.4
+    assert manifest["dataset_contract"] == "candidate_opportunity"
+    assert manifest["dataset_hash"] == ""
+    assert manifest["audit_errors"] == []
+    assert manifest["layer_counts"] == {}
+    assert "dataset contract: candidate_opportunity" in stdout
+    assert "dataset hash:" in stdout
+    assert "audit errors: []" in stdout
+    assert "layer counts: {}" in stdout

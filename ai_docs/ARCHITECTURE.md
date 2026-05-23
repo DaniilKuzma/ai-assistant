@@ -52,8 +52,13 @@ Entry point: `src/training/train.py`.
 Основные шаги:
 
 - загрузить `configs/config.yaml`;
-- взять готовый dataset или собрать synthetic fallback;
-- построить training features;
+- canonical dataset build читает `data.dataset_contract: candidate_opportunity`;
+- `scripts/build_dataset.py` / `scripts/rebuild_training_dataset.py` собирают layered atomic dataset без запуска model training;
+- `src.data.operator_dataset_builder` строит слои `atomic_positive`, `atomic_hard_negative`, `clean_identity`, `real_atomic`, `stress_multi_error`;
+- atomic positives требуют candidate coverage и `StrictValidator`, а stress rows получают пониженный `loss_weight`;
+- manifest пишет `dataset_hash`, `verdict`, `audit_errors`, `layer_counts` и отчеты quota/audit gates;
+- старые `training_dataset` / `training_dataset_core` ключи остаются fallback-совместимыми, но top-level `data` keys имеют приоритет;
+- training entrypoint берет готовый layered dataset и строит training features;
 - при `training.run_model_training: true` обучить encoder+heads;
 - сохранить adapters, heads, config, labels, thresholds;
 - запустить evaluation и записать reports.

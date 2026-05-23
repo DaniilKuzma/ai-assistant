@@ -7,6 +7,12 @@ from src.evaluation.candidate_recall import build_candidate_recall_reports
 from src.evaluation.candidate_recall import write_candidate_recall_reports
 
 
+class EmptyCandidateGenerator:
+    def generate(self, text: str):
+        del text
+        return []
+
+
 def test_candidate_recall_is_one_when_gold_edit_is_generated(tmp_path: Path):
     rows = [
         {
@@ -189,7 +195,7 @@ def test_gap_label_coverage_counts_punctuation_candidates_by_rule(tmp_path: Path
     assert gap_summary.loc["final_punctuation_default", "gap_candidate_recall"] == 1.0
 
 
-def test_candidate_recall_counts_pre_dataset_probe_rows_as_candidate_backed(tmp_path: Path):
+def test_candidate_recall_does_not_trust_pre_dataset_probe_metadata_by_default(tmp_path: Path):
     rows = [
         {
             "source": "Документ готов",
@@ -215,10 +221,15 @@ def test_candidate_recall_counts_pre_dataset_probe_rows_as_candidate_backed(tmp_
         }
     ]
 
-    reports = build_candidate_recall_reports(rows, rules_config_path=_rules_config(tmp_path))
+    reports = build_candidate_recall_reports(
+        rows,
+        candidate_generator=EmptyCandidateGenerator(),
+        rules_config_path=_rules_config(tmp_path),
+    )
 
     summary = reports["candidate_recall_by_rule"].set_index("rule_id")
-    assert summary.loc["final_punctuation_default", "candidate_recall"] == 1.0
+    assert summary.loc["final_punctuation_default", "candidate_present_count"] == 0
+    assert summary.loc["final_punctuation_default", "candidate_recall"] == 0.0
 
 
 def _rules_config(tmp_path: Path) -> Path:

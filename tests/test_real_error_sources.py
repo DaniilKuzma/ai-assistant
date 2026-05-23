@@ -162,6 +162,8 @@ def test_real_pair_loader_routes_only_single_edit_known_rule_to_atomic_train(tmp
     assert len(result.rows) == 1
     assert result.rows[0]["rule_id"] != "unknown"
     assert result.rows[0]["edit_count"] == 1
+    assert result.rows[0]["count_toward_rule_quota"] is False
+    assert json.loads(result.rows[0]["metadata"])["count_toward_rule_quota"] is False
     assert result.stress_rows == []
     assert result.mining_rows == []
     assert result.holdout_rows == []

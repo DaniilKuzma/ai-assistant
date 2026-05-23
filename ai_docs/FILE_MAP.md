@@ -11,6 +11,7 @@
 ## Конфиги
 
 - `configs/config.yaml` — главный конфиг модели, данных, thresholds, labels, metrics, paths.
+- `configs/config.yaml:data.dataset_contract` — canonical dataset contract; сейчас `candidate_opportunity`.
 - `configs/rules.yaml` — coverage matrix правил Орфограммки: implemented, partial, planned, model/syntax/dictionary required.
 
 ## Source Layout
@@ -27,6 +28,9 @@
 - `src/inference/incremental_corrector.py` — text incremental correction wrapper; переиспользует кеш неизмененных сегментов.
 - `src/evaluation/` — metrics, reports, threshold sweep, rule/candidate recall reports.
 - `src/data/` — dataset builders, external sources, clean corpus sources, splits, stats.
+- `src/data/dataset_contract.py` — contract constants, layer inference, contract columns, stable dataset hash.
+- `src/data/operator_dataset_builder.py` — canonical `candidate_opportunity` builder: clean-pool opportunities, atomic positives, hard negatives, real atomic rows, stress rows, layer files, manifest.
+- `src/data/training_quality_audit.py` — quality/audit gates for atomic purity, unknown rules, mixed script clean rows, real-pair atomization and report writers.
 - `src/docx/` — DOCX read/correct/write flow.
 - `src/app/` — Streamlit UI.
 - `src/nlp/` — Natasha syntax wrapper.
@@ -34,6 +38,9 @@
 ## Entry Points
 
 - Training: `python -m src.training.train configs/config.yaml`
+- Canonical layered dataset build: `python scripts/build_dataset.py --force`
+- Rebuild helper: `python scripts/rebuild_training_dataset.py`
+- Source setup: `python scripts/setup_data_sources.py --clean --real`
 - Evaluation helper: `src.training.train.evaluate_trained_model`
 - Streamlit: `streamlit run src/app/streamlit_app.py`
 - Notebook: `notebooks/main_pipeline.ipynb`
@@ -43,6 +50,8 @@
 
 - `data/raw/` — raw/external corpora.
 - `data/processed/correction_dataset.csv.gz` — processed correction dataset.
+- `data/processed/train_<layer>.csv.gz` — split/layer files for `candidate_opportunity` train rows.
+- `data/processed/dataset_manifest.json` — canonical manifest with `dataset_contract`, `dataset_hash`, `verdict`, `audit_errors`, `layer_counts`.
 - `models/current/adapters/` — LoRA adapter/config/labels/thresholds.
 - `models/current/heads/heads.pt` — custom heads checkpoint.
 - `reports/` — generated evaluation/training/dataset reports.

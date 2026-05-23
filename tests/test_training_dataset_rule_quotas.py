@@ -4,6 +4,7 @@ from pathlib import Path
 import yaml
 
 from src.data.training_dataset import compute_broad_dataset_targets, resolve_broad_active_training_rules
+from src.data.operator_dataset_builder import _rule_counts as _operator_rule_counts
 from src.data._training_dataset_builder import (
     CLEAN_IDENTITY_OPEN,
     HARD_NEGATIVE_OPEN,
@@ -132,6 +133,45 @@ def test_excluded_active_rules_do_not_remain_underfilled_after_quota_finalize():
 
     assert result["active_rule_ids"] == ["safe_rule"]
     assert result["low_count_active_rule_ids"] == []
+
+
+def test_candidate_opportunity_active_quota_counts_only_atomic_positive_layer():
+    frame = pd.DataFrame(
+        [
+            {
+                "rule_ids": json.dumps(["unit_atomic"], ensure_ascii=False),
+                "dataset_layer": "atomic_positive",
+                "gold_edit_count": 1,
+                "count_toward_rule_quota": True,
+            },
+            {
+                "rule_ids": json.dumps(["unit_real"], ensure_ascii=False),
+                "dataset_layer": "real_atomic",
+                "gold_edit_count": 1,
+                "count_toward_rule_quota": True,
+            },
+            {
+                "rule_ids": json.dumps(["unit_multi"], ensure_ascii=False),
+                "dataset_layer": "atomic_positive",
+                "gold_edit_count": 2,
+                "count_toward_rule_quota": True,
+            },
+            {
+                "rule_ids": json.dumps(["unit_stress_a", "unit_stress_b"], ensure_ascii=False),
+                "dataset_layer": "stress_multi_error",
+                "gold_edit_count": 2,
+                "count_toward_rule_quota": False,
+            },
+            {
+                "rule_ids": json.dumps(["unit_hard"], ensure_ascii=False),
+                "dataset_layer": "atomic_hard_negative",
+                "gold_edit_count": 0,
+                "count_toward_rule_quota": False,
+            },
+        ]
+    )
+
+    assert _operator_rule_counts(frame) == {"unit_atomic": 1}
 
 
 def test_final_targeted_fill_is_capped_by_fallback_share_budget():

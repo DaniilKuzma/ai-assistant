@@ -49,6 +49,12 @@
 ## Data And Evaluation
 
 - `src.data.full_dataset_builder.build_dataset_from_config` — сборка полного dataset по config.
+- `src.data.dataset_contract.ensure_contract_columns` — добавляет contract/layer/weight/quota columns к rows или DataFrame.
+- `src.data.dataset_contract.row_dataset_layer` — определяет слой строки по explicit metadata или legacy source type.
+- `src.data.dataset_contract.stable_dataset_hash` — стабильный hash по source/target/rule ids для manifest/report freshness.
+- `src.data.operator_dataset_builder.build_operator_training_dataset_from_config` — canonical builder для `candidate_opportunity`.
+- `src.data.operator_dataset_builder.generate_atomic_positive_rows_from_clean_pool` — генерирует verified atomic positives из clean pool opportunities.
+- `src.data.training_quality_audit.audit_training_dataset` — собирает audit frames и summaries для layered dataset gates.
 - `src.data.external_sources.load_external_pair_sources` — загрузка внешних пар.
 - `src.data.clean_corpus_sources.load_clean_corpus_sentences` — clean corpus source loader.
 - `src.data.synthetic_generator.SyntheticGenerator` — synthetic corruptions/identity examples.

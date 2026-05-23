@@ -6,17 +6,49 @@ from src.candidates.candidate_generator import CandidateGenerator
 from src.config.dictionary import dictionary_provider_from_config, load_dictionary_lexicon
 
 
-def test_main_config_is_canonical_train_profile_for_100k_dataset():
+def test_main_config_is_canonical_train_profile_for_candidate_opportunity_dataset():
     config = yaml.safe_load(Path("configs/config.yaml").read_text(encoding="utf-8"))
 
     assert config["training"]["mode"] == "train"
     assert config["training"]["run_model_training"] is True
-    assert config["training"]["max_train_examples"] == 80000
-    assert config["training"]["max_val_examples"] == 10000
-    assert config["training"]["max_test_examples"] == 10000
-    assert config["data"]["target_total_examples"] == 100000
+    assert config["training"]["max_train_examples"] == 160000
+    assert config["training"]["max_val_examples"] == 20000
+    assert config["training"]["max_test_examples"] == 20000
+    assert config["data"]["target_total_examples"] == 200000
+    assert config["data"]["total_examples"] == 200000
+    assert config["data"]["dataset_contract"] == "candidate_opportunity"
     assert config["data"]["processed_train_path"] == "data/processed/correction_dataset.csv.gz"
     assert config["data"]["manifest_path"] == "data/processed/dataset_manifest.json"
+    assert config["data"]["composition"] == {
+        "atomic_positive_ratio": 0.45,
+        "atomic_hard_negative_ratio": 0.35,
+        "clean_identity_ratio": 0.12,
+        "stress_multi_error_ratio": 0.05,
+        "real_atomic_train_ratio": 0.03,
+    }
+    assert config["data"]["clean_pool"]["reject_mixed_script_tokens"] is True
+    assert config["data"]["clean_pool"]["reject_latin_confusable_inside_cyrillic_word"] is True
+    assert config["data"]["clean_pool"]["reject_if_candidate_generator_finds_high_confidence_fix"] is True
+    assert config["data"]["synthetic"]["require_atomic_positive"] is True
+    assert config["data"]["synthetic"]["max_gold_edits_for_atomic"] == 1
+    assert config["data"]["synthetic"]["require_candidate_coverage"] is True
+    assert config["data"]["synthetic"]["require_strict_validator_acceptance"] is True
+    assert config["data"]["real_pairs"]["train_policy"] == "atomize_single_edit_known_rule_only"
+    assert config["data"]["real_pairs"]["unknown_rule_policy"] == "mining_only"
+    assert config["data"]["real_pairs"]["multi_edit_policy"] == "stress_or_eval_only"
+    assert config["data"]["stress"]["enabled"] is True
+    assert config["data"]["stress"]["count_toward_rule_quota"] is False
+    assert config["data"]["stress"]["loss_weight"] == 0.4
+    assert config["data"]["rule_quota"]["min_atomic_positives_per_active_rule"] == 1000
+    assert config["data"]["rule_quota"]["preferred_atomic_positives_per_active_rule"] == 2500
+    assert config["data"]["rule_quota"]["min_hard_negatives_per_active_rule"] == 500
+    assert config["data"]["rule_quota"]["disable_rule_if_quota_not_met"] is True
+    assert config["data"]["audit"]["fail_on_extra_edits_in_atomic"] is True
+    assert config["data"]["audit"]["fail_on_unknown_rule_in_train"] is True
+    assert config["data"]["audit"]["fail_on_stale_reports"] is True
+    assert config["data"]["audit"]["min_candidate_recall_for_active_rule"] == 0.95
+    assert "training_dataset" in config["data"]
+    assert "training_dataset_core" in config["data"]
     assert config["data"]["clean_corpus"]["enabled"] is True
     assert config["data"]["external_local_files_only"] is True
     assert config["data"]["punctuation_hard_negative_clean_ratio"] > 0.0

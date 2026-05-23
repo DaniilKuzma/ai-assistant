@@ -1395,6 +1395,10 @@ def _upgrade_result(result: dict[str, Any], manifest: dict[str, Any] | None) -> 
         upgraded["composition"] = manifest.get("composition", upgraded.get("composition", {}))
         upgraded["splits"] = manifest.get("split_sizes", upgraded.get("splits", {}))
         upgraded["verdict"] = manifest.get("verdict", upgraded.get("verdict", "BLOCKED"))
+        upgraded["dataset_contract"] = manifest.get("dataset_contract", upgraded.get("dataset_contract", ""))
+        upgraded["dataset_hash"] = manifest.get("dataset_hash", upgraded.get("dataset_hash", ""))
+        upgraded["audit_errors"] = manifest.get("audit_errors", upgraded.get("audit_errors", []))
+        upgraded["layer_counts"] = manifest.get("layer_counts", upgraded.get("layer_counts", {}))
         return upgraded
     if upgraded.get("verdict") == CORE_VERDICT_READY:
         upgraded["verdict"] = "BLOCKED"

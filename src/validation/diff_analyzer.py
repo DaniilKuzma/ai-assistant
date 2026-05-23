@@ -312,9 +312,18 @@ def _candidate_matches_word_alignment(source: str, target: str, start: int, end:
         if tag == "equal" or i1 > source_indexes[0] or i2 < source_indexes[-1] + 1:
             continue
         if source_indexes != list(range(i1, i2)):
+            if source_indexes[0] >= i1 and source_indexes[-1] < i2:
+                target_segment = [word.text.lower() for word in target_words[j1:j2]]
+                return _contains_contiguous(target_segment, replacement_words)
             continue
         return [word.text.lower() for word in target_words[j1:j2]] == replacement_words
     return False
+
+
+def _contains_contiguous(values: list[str], needle: list[str]) -> bool:
+    if not needle or len(needle) > len(values):
+        return False
+    return any(values[index : index + len(needle)] == needle for index in range(len(values) - len(needle) + 1))
 
 
 def _punctuation_inserts(position: int, inserted: str) -> list[Edit]:

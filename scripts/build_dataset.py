@@ -4,6 +4,7 @@ import argparse
 import json
 from pathlib import Path
 import sys
+from typing import Any
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
@@ -14,17 +15,39 @@ from src.data.training_dataset import build_training_dataset_from_config
 from src.evaluation.activation_plan import write_verified_activation_plan
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Build canonical training_dataset for Activation expansion.")
     parser.add_argument("--config", default="configs/config.yaml")
     parser.add_argument("--force", action="store_true")
-    args = parser.parse_args()
+    parser.add_argument("--fail-on-blocked", action="store_true")
+    args = parser.parse_args(argv)
 
     config = load_config(args.config)
     _write_activation_verified_reports()
     result = build_training_dataset_from_config(config, force=args.force)
     print(json.dumps(result, ensure_ascii=False, indent=2))
+    summary = _dataset_summary_payload(result, manifest_path=Path(config["data"]["manifest_path"]))
+    print("[dataset-build] " + json.dumps({"stage": "final_contract_summary", **summary}, ensure_ascii=False, sort_keys=True), flush=True)
     _print_final_audit_summary(Path(config["data"]["manifest_path"]))
+    if args.fail_on_blocked and str(summary.get("verdict", "")).endswith("BLOCKED"):
+        return 2
+    return 0
+
+
+def _dataset_summary_payload(result: dict[str, Any], manifest_path: Path | None) -> dict[str, Any]:
+    manifest: dict[str, Any] = {}
+    if manifest_path is not None and manifest_path.exists():
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            manifest = {}
+    return {
+        "dataset_contract": str(manifest.get("dataset_contract") or result.get("dataset_contract") or ""),
+        "dataset_hash": str(manifest.get("dataset_hash") or result.get("dataset_hash") or ""),
+        "verdict": str(manifest.get("verdict") or result.get("verdict") or ""),
+        "audit_errors": list(manifest.get("audit_errors", result.get("audit_errors", [])) or []),
+        "layer_counts": dict(manifest.get("layer_counts", result.get("layer_counts", {})) or {}),
+    }
 
 
 def _write_activation_verified_reports() -> None:
@@ -97,4 +120,4 @@ def _print_final_audit_summary(manifest_path: Path) -> None:
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

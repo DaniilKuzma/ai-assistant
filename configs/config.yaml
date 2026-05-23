@@ -109,6 +109,7 @@ evaluation:
   write_score_distribution_during_training: false
   write_rule_worse_examples_during_training: false
 data:
+  dataset_contract: candidate_opportunity
   synthetic_seed: 13
   processed_train_path: data/processed/correction_dataset.csv.gz
   manifest_path: data/processed/dataset_manifest.json
@@ -123,6 +124,33 @@ data:
     clean_identity_ratio: 0.12
     stress_multi_error_ratio: 0.05
     real_atomic_train_ratio: 0.03
+  clean_pool:
+    reject_mixed_script_tokens: true
+    reject_latin_confusable_inside_cyrillic_word: true
+    reject_if_candidate_generator_finds_high_confidence_fix: true
+  synthetic:
+    require_atomic_positive: true
+    max_gold_edits_for_atomic: 1
+    require_candidate_coverage: true
+    require_strict_validator_acceptance: true
+  real_pairs:
+    train_policy: atomize_single_edit_known_rule_only
+    unknown_rule_policy: mining_only
+    multi_edit_policy: stress_or_eval_only
+  stress:
+    enabled: true
+    count_toward_rule_quota: false
+    loss_weight: 0.4
+  rule_quota:
+    min_atomic_positives_per_active_rule: 1000
+    preferred_atomic_positives_per_active_rule: 2500
+    min_hard_negatives_per_active_rule: 500
+    disable_rule_if_quota_not_met: true
+  audit:
+    fail_on_extra_edits_in_atomic: true
+    fail_on_unknown_rule_in_train: true
+    fail_on_stale_reports: true
+    min_candidate_recall_for_active_rule: 0.95
   clean_identity_ratio: 0.1
   punctuation_hard_negative_clean_ratio: 0.25
   val_ratio: 0.05

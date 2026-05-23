@@ -551,7 +551,7 @@ def _atomic_real_row(row: dict[str, Any]) -> dict[str, Any]:
     result["split"] = "train"
     result["dataset_layer"] = "real_atomic"
     result["is_stress"] = False
-    result["count_toward_rule_quota"] = True
+    result["count_toward_rule_quota"] = False
     result["loss_weight"] = 1.0
     result["routing_category"] = "atomic_train"
     result["routing_reason"] = "single_edit_known_rule"
@@ -559,6 +559,7 @@ def _atomic_real_row(row: dict[str, Any]) -> dict[str, Any]:
         result.get("metadata"),
         routing_category="atomic_train",
         routing_reason="single_edit_known_rule",
+        count_toward_rule_quota=False,
     )
     return result
 
@@ -950,6 +951,7 @@ def _real_pair_row(
         "routing_category": routing_category,
         "routing_reason": routing_reason,
         "strict_validator_passed": bool(strict_validator_passed),
+        "count_toward_rule_quota": False,
     }
     primary_rule_id = normalized_rule_ids[0] if normalized_rule_ids else UNKNOWN_RULE_ID
     return {
@@ -981,7 +983,7 @@ def _real_pair_row(
         "edits": json.dumps([asdict(edit) for edit in edits], ensure_ascii=False),
         "dataset_layer": "real_atomic",
         "is_stress": False,
-        "count_toward_rule_quota": True,
+        "count_toward_rule_quota": False,
         "loss_weight": 1.0,
         "routing_category": routing_category,
         "routing_reason": routing_reason,

@@ -71,6 +71,17 @@ def test_clean_sentence_filter_rejects_mixed_script_tokens_by_default_and_allows
     ) == []
 
 
+def test_clean_sentence_filter_rejects_obezvrejdeno_confusable_regression():
+    metadata = {"source_name": "unit_news", "domain": "news", "style": "neutral"}
+    reasons = clean_sentence_rejection_reasons(
+        "В аэропорту обeзврежено взрывное устройство после проверки.",
+        metadata,
+    )
+
+    assert "mixed_script_token" in reasons
+    assert "latin_confusable_inside_cyrillic_word" in reasons
+
+
 def test_clean_sentence_filter_opt_in_high_confidence_candidate_rejection():
     metadata = {"source_name": "unit_news", "domain": "news", "style": "neutral"}
     text = "Эксперты сообщили, что жизнь в городе стала спокойнее после реформы."

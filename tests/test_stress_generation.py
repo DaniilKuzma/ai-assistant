@@ -8,7 +8,7 @@ import pandas as pd
 from src.candidates.candidate_generator import Candidate
 from src.data.corruption_operators import CorruptionResult, Opportunity
 from src.data.dataset_contract import DATASET_CONTRACT, LAYER_STRESS_MULTI_ERROR, SYNTHETIC_OPEN_CLEAN
-from src.data.operator_dataset_builder import _rule_counts
+from src.data.operator_dataset_builder import _rule_counts, _stress_count
 from src.data.stress_generation import generate_multi_error_stress_rows
 
 
@@ -165,13 +165,53 @@ def test_overlapping_opportunities_are_rejected():
 def test_rule_quota_counter_ignores_explicit_stress_rows():
     stress = {
         "rule_ids": json.dumps(["unit_missing_korova", "unit_missing_moloko"], ensure_ascii=False),
+        "dataset_layer": "stress_multi_error",
+        "gold_edit_count": 2,
         "count_toward_rule_quota": False,
         "metadata": json.dumps({"count_toward_rule_quota": False}, ensure_ascii=False),
     }
+    real_atomic = {
+        "rule_ids": json.dumps(["unit_real"], ensure_ascii=False),
+        "dataset_layer": "real_atomic",
+        "gold_edit_count": 1,
+        "count_toward_rule_quota": True,
+        "metadata": json.dumps({"count_toward_rule_quota": True}, ensure_ascii=False),
+    }
+    multi_edit_positive = {
+        "rule_ids": json.dumps(["unit_multi"], ensure_ascii=False),
+        "dataset_layer": "atomic_positive",
+        "gold_edit_count": 2,
+        "count_toward_rule_quota": True,
+        "metadata": json.dumps({"count_toward_rule_quota": True}, ensure_ascii=False),
+    }
     atomic = {
         "rule_ids": json.dumps(["unit_atomic"], ensure_ascii=False),
+        "dataset_layer": "atomic_positive",
+        "gold_edit_count": 1,
         "count_toward_rule_quota": True,
         "metadata": json.dumps({"count_toward_rule_quota": True}, ensure_ascii=False),
     }
 
-    assert _rule_counts(pd.DataFrame([stress, atomic])) == {"unit_atomic": 1}
+    assert _rule_counts(pd.DataFrame([stress, real_atomic, multi_edit_positive, atomic])) == {"unit_atomic": 1}
+
+
+def test_stress_counter_requires_stress_layer_and_multi_edit_gold_count():
+    metadata_only_fake_stress = {
+        "rule_ids": json.dumps(["unit_fake"], ensure_ascii=False),
+        "source_type": SYNTHETIC_OPEN_CLEAN,
+        "metadata": json.dumps({"is_stress": True}, ensure_ascii=False),
+    }
+    single_edit_fake_stress = {
+        "rule_ids": json.dumps(["unit_single"], ensure_ascii=False),
+        "dataset_layer": "stress_multi_error",
+        "gold_edit_count": 1,
+        "metadata": json.dumps({"is_stress": True, "gold_edit_count": 1}, ensure_ascii=False),
+    }
+    real_stress = {
+        "rule_ids": json.dumps(["unit_a", "unit_b"], ensure_ascii=False),
+        "dataset_layer": "stress_multi_error",
+        "gold_edit_count": 2,
+        "metadata": json.dumps({"is_stress": True, "gold_edit_count": 2}, ensure_ascii=False),
+    }
+
+    assert _stress_count(pd.DataFrame([metadata_only_fake_stress, single_edit_fake_stress, real_stress])) == 1

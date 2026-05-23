@@ -222,6 +222,10 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
                     "manifest_path": str(manifest_path),
                     "total": int(manifest.get("total", 0)),
                     "verdict": "DATASET_BLOCKED",
+                    "dataset_contract": str(manifest.get("dataset_contract") or DATASET_CONTRACT),
+                    "dataset_hash": str(manifest.get("dataset_hash") or ""),
+                    "audit_errors": list(manifest.get("audit_errors", []) or []),
+                    "layer_counts": dict(manifest.get("layer_counts", {}) or {}),
                 }
             return {
                 "status": "exists",
@@ -229,6 +233,10 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
                 "manifest_path": str(manifest_path),
                 "total": int(manifest.get("total", 0)),
                 "verdict": str(manifest.get("verdict", "DATASET_BLOCKED")),
+                "dataset_contract": str(manifest.get("dataset_contract") or DATASET_CONTRACT),
+                "dataset_hash": str(manifest.get("dataset_hash") or ""),
+                "audit_errors": list(manifest.get("audit_errors", []) or []),
+                "layer_counts": dict(manifest.get("layer_counts", {}) or {}),
             }
 
     _reset_dataset_build_reports_dir(reports_dir)
@@ -254,7 +262,16 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
             capabilities=capabilities,
         )
         _write_manifest_and_blocked_reports(manifest, manifest_path, reports_dir)
-        return {"status": "blocked", "verdict": "DATASET_BLOCKED", "total": 0, "manifest_path": str(manifest_path)}
+        return {
+            "status": "blocked",
+            "verdict": "DATASET_BLOCKED",
+            "total": 0,
+            "manifest_path": str(manifest_path),
+            "dataset_contract": DATASET_CONTRACT,
+            "dataset_hash": "",
+            "audit_errors": list(manifest.get("audit_errors", []) or []),
+            "layer_counts": dict(manifest.get("layer_counts", {}) or {}),
+        }
 
     quota_config = _operator_rule_quota_config(config)
     candidate_rule_ids = {row["rule_id"] for row in target_rows if bool(row.get("include"))}
@@ -295,6 +312,7 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
     seed = int(data_config.get("synthetic_seed", 17))
     layer_targets = _layer_targets_from_config(config, requested_total)
     strict_clean_rows = _strict_clean_pool_rows(clean_pool_path, config)
+    stress_loss_weight = _stress_loss_weight_from_config(config)
     real_atomic_path = _real_atomic_cache_path(config, output_path=output_path)
     real_stress_path = _real_stress_cache_path(config, output_path=output_path)
     real_atomic_rows = _load_real_atomic_rows_from_cache(
@@ -306,6 +324,7 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
         real_stress_path,
         target_count=layer_targets[LAYER_STRESS_MULTI_ERROR],
         seed=seed + 1,
+        loss_weight=stress_loss_weight,
     )
     synthetic_stress_target = max(0, layer_targets[LAYER_STRESS_MULTI_ERROR] - len(real_stress_rows))
     stress_result = generate_multi_error_stress_rows(
@@ -315,6 +334,7 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
         candidate_generator=candidate_generator,
         target_count=synthetic_stress_target,
         seed=seed + 2,
+        loss_weight=stress_loss_weight,
     )
     stress_rows = real_stress_rows + stress_result.rows
 
@@ -422,6 +442,10 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
         "manifest_path": str(manifest_path),
         "total": int(len(frame)),
         "verdict": manifest["verdict"],
+        "dataset_contract": manifest["dataset_contract"],
+        "dataset_hash": manifest["dataset_hash"],
+        "audit_errors": manifest["audit_errors"],
+        "layer_counts": manifest["layer_counts"],
         "composition": manifest["composition"],
         "splits": manifest["split_sizes"],
     }
@@ -501,13 +525,27 @@ def _operator_rule_quota_config(config: dict[str, Any]) -> dict[str, Any]:
     min_total = int(raw.get("min_atomic_positives_per_active_rule") or old_quota.get("min_total_per_active_rule") or 1000)
     preferred = int(raw.get("preferred_atomic_positives_per_active_rule") or old_quota.get("preferred_total_per_active_rule") or max(2500, min_total))
     max_total = int(raw.get("max_total_per_rule_id") or old_caps.get("max_total_per_rule_id") or max(preferred, min_total))
+    min_hard = int(raw.get("min_hard_negatives_per_active_rule") or old_quota.get("min_hard_negatives_per_active_rule") or 0)
     rule_ids = raw.get("rule_ids") or old_quota.get("rule_ids") or []
     return {
         "min_atomic_positives_per_active_rule": max(0, min_total),
         "preferred_atomic_positives_per_active_rule": max(min_total, preferred),
         "max_total_per_rule_id": max(min_total, max_total),
+        "min_hard_negatives_per_active_rule": max(0, min_hard),
+        "disable_rule_if_quota_not_met": _truthy(raw.get("disable_rule_if_quota_not_met", old_quota.get("disable_rule_if_quota_not_met", False))),
         "rule_ids": [str(rule_id) for rule_id in rule_ids if str(rule_id)],
     }
+
+
+def _stress_loss_weight_from_config(config: dict[str, Any]) -> float:
+    data_config = config.get("data", {}) or {}
+    stress_config = data_config.get("stress", {}) or {}
+    core_config = data_config.get("training_dataset_core", {}) or {}
+    raw = stress_config.get("loss_weight", core_config.get("stress_loss_weight", 0.4))
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return 0.4
 
 
 def _layer_targets_from_config(config: dict[str, Any], requested_total: int) -> dict[str, int]:
@@ -1268,9 +1306,13 @@ def _load_real_atomic_rows_from_cache(path: str | Path, *, target_count: int, se
     return _dedupe_pairs(_deterministic_rows([row for row in accepted if row is not None], seed=seed))[: max(0, int(target_count))]
 
 
-def _load_real_stress_rows_from_cache(path: str | Path, *, target_count: int, seed: int) -> list[dict[str, Any]]:
+def _load_real_stress_rows_from_cache(path: str | Path, *, target_count: int, seed: int, loss_weight: float = 0.4) -> list[dict[str, Any]]:
     rows = _read_real_cache_rows(path)
-    accepted = [_normalize_real_layer_row(row, layer=LAYER_STRESS_MULTI_ERROR) for row in rows if _is_valid_real_stress_row(row)]
+    accepted = [
+        _normalize_real_layer_row(row, layer=LAYER_STRESS_MULTI_ERROR, loss_weight=loss_weight)
+        for row in rows
+        if _is_valid_real_stress_row(row)
+    ]
     return _dedupe_pairs(_deterministic_rows([row for row in accepted if row is not None], seed=seed))[: max(0, int(target_count))]
 
 
@@ -1307,7 +1349,7 @@ def _is_valid_real_stress_row(row: dict[str, Any]) -> bool:
     return bool(rule_ids) and all(_is_known_training_rule_id(rule_id) for rule_id in rule_ids)
 
 
-def _normalize_real_layer_row(row: dict[str, Any], *, layer: str) -> dict[str, Any]:
+def _normalize_real_layer_row(row: dict[str, Any], *, layer: str, loss_weight: float | None = None) -> dict[str, Any]:
     result = _normalize_row(dict(row))
     edit_count = _real_gold_edit_count(result)
     result["source_type"] = REAL_ERROR_PAIR
@@ -1320,7 +1362,8 @@ def _normalize_real_layer_row(row: dict[str, Any], *, layer: str) -> dict[str, A
     result["is_atomic"] = layer == LAYER_REAL_ATOMIC
     result["is_stress"] = layer == LAYER_STRESS_MULTI_ERROR
     result["count_toward_rule_quota"] = False
-    result["loss_weight"] = float(result.get("loss_weight") or (0.4 if layer == LAYER_STRESS_MULTI_ERROR else 1.0))
+    default_loss_weight = float(loss_weight if loss_weight is not None else (0.4 if layer == LAYER_STRESS_MULTI_ERROR else 1.0))
+    result["loss_weight"] = float(result.get("loss_weight") or default_loss_weight)
     result["gold_edit_count"] = edit_count
     result["normalized_pair_hash"] = normalized_pair_hash(str(result.get("source", "")), str(result.get("target", "")))
     result["verification_status"] = "accepted"
@@ -1331,6 +1374,7 @@ def _normalize_real_layer_row(row: dict[str, Any], *, layer: str) -> dict[str, A
             "dataset_layer": layer,
             "is_stress": layer == LAYER_STRESS_MULTI_ERROR,
             "count_toward_rule_quota": False,
+            "loss_weight": result["loss_weight"],
             "gold_edit_count": edit_count,
             "operator_based_generation": False,
         }
@@ -1799,21 +1843,30 @@ def _write_active_rule_quota_report(
 ) -> None:
     atomic_counts = _rule_counts(frame)
     min_required = int(quota_config.get("min_atomic_positives_per_active_rule", 1000) or 0)
+    min_hard_required = int(quota_config.get("min_hard_negatives_per_active_rule", 0) or 0)
     preferred = int(quota_config.get("preferred_atomic_positives_per_active_rule", max(2500, min_required)) or min_required)
     rule_ids = sorted(set(active_rule_ids) | set(atomic_counts) | set(hard_negative_counts_by_rule))
     rows = []
     for rule_id in rule_ids:
         atomic_count = int(atomic_counts.get(rule_id, 0))
-        status = "ready" if atomic_count >= min_required else ("low_resource" if atomic_count > 0 else "disabled")
+        hard_negative_count = int(hard_negative_counts_by_rule.get(rule_id, 0))
+        status = "ready" if atomic_count >= min_required and hard_negative_count >= min_hard_required else ("low_resource" if atomic_count > 0 else "disabled")
+        if status == "ready":
+            reason = ""
+        elif atomic_count < min_required:
+            reason = "below_min_atomic_positive_quota"
+        else:
+            reason = "below_min_hard_negative_quota"
         rows.append(
             {
                 "rule_id": rule_id,
                 "atomic_positive_count": atomic_count,
-                "hard_negative_count": int(hard_negative_counts_by_rule.get(rule_id, 0)),
+                "hard_negative_count": hard_negative_count,
                 "min_required": min_required,
+                "hard_negative_min_required": min_hard_required,
                 "preferred": preferred,
                 "status": status,
-                "reason": "" if status == "ready" else "below_min_atomic_positive_quota",
+                "reason": reason,
             }
         )
     pd.DataFrame(
@@ -1823,6 +1876,7 @@ def _write_active_rule_quota_report(
             "atomic_positive_count",
             "hard_negative_count",
             "min_required",
+            "hard_negative_min_required",
             "preferred",
             "status",
             "reason",
@@ -2345,11 +2399,14 @@ def _metadata_counts(frame: pd.DataFrame, key: str) -> dict[str, int]:
 def _stress_count(frame: pd.DataFrame) -> int:
     if frame.empty:
         return 0
-    if "dataset_layer" in frame:
-        return int(frame["dataset_layer"].astype(str).eq(LAYER_STRESS_MULTI_ERROR).sum())
-    if "metadata" not in frame:
-        return 0
-    return int(sum(_truthy(_json_dict(value).get("is_stress", False)) for value in frame["metadata"].tolist()))
+    total = 0
+    for row in frame.to_dict("records"):
+        layer = str(row.get("dataset_layer", "") or "").strip()
+        if not layer:
+            layer = str(_json_dict(row.get("metadata")).get("dataset_layer", "") or "").strip()
+        if layer == LAYER_STRESS_MULTI_ERROR and _row_gold_edit_count_value(row) >= 2:
+            total += 1
+    return total
 
 
 def _hard_negative_counts_by_target_rule(frame: pd.DataFrame) -> dict[str, int]:
@@ -2374,7 +2431,12 @@ def _config_hash(config: dict[str, Any]) -> str:
 def _operator_audit_config(config: dict[str, Any]) -> dict[str, Any]:
     data = config.get("data", {}) or {}
     core = data.get("training_dataset_core", {}) or data.get("training_dataset", {}) or {}
-    return dict((core.get("audit", {}) if isinstance(core, dict) else {}) or {})
+    result = dict((core.get("audit", {}) if isinstance(core, dict) else {}) or {})
+    top_level = dict(data.get("audit", {}) or {})
+    if "min_candidate_recall_for_active_rule" in top_level:
+        top_level.setdefault("candidate_recall_min", top_level["min_candidate_recall_for_active_rule"])
+    result.update(top_level)
+    return result
 
 
 def _candidate_recall_min(config: dict[str, Any]) -> float:
@@ -2544,12 +2606,14 @@ def _blocked_manifest(
 ) -> dict[str, Any]:
     manifest = {
         "verdict": "DATASET_BLOCKED",
+        "dataset_contract": DATASET_CONTRACT,
         "total": 0,
         "requested_total": requested_total,
         "split_sizes": split_sizes,
         "operator_based_generation": True,
         "dataset_hash": "",
         "config_hash": _config_hash(config or {}),
+        "layer_counts": {layer: 0 for layer in LAYER_ORDER},
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "audit_errors": [reason],
     }
