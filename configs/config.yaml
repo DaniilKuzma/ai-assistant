@@ -117,6 +117,12 @@ data:
   train_examples: 160000
   val_examples: 20000
   test_examples: 20000
+  composition:
+    atomic_positive_ratio: 0.45
+    atomic_hard_negative_ratio: 0.35
+    clean_identity_ratio: 0.12
+    stress_multi_error_ratio: 0.05
+    real_atomic_train_ratio: 0.03
   clean_identity_ratio: 0.1
   punctuation_hard_negative_clean_ratio: 0.25
   val_ratio: 0.05

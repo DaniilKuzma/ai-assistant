@@ -87,8 +87,24 @@ def test_dynamic_targets_scale_from_active_rule_quotas_and_real_pair_count():
 def test_excluded_active_rules_do_not_remain_underfilled_after_quota_finalize():
     frame = pd.DataFrame(
         [
-            {"rule_ids": '["safe_rule"]', "split": "train", "error_type": "spelling"},
-            {"rule_ids": '["safe_rule"]', "split": "val", "error_type": "spelling"},
+            {
+                "rule_ids": '["safe_rule"]',
+                "split": "train",
+                "error_type": "spelling",
+                "dataset_layer": "atomic_positive",
+                "count_toward_rule_quota": True,
+                "gold_edit_count": 1,
+                "edits": json.dumps([{"rule_id": "safe_rule"}]),
+            },
+            {
+                "rule_ids": '["safe_rule"]',
+                "split": "val",
+                "error_type": "spelling",
+                "dataset_layer": "atomic_positive",
+                "count_toward_rule_quota": True,
+                "gold_edit_count": 1,
+                "edits": json.dumps([{"rule_id": "safe_rule"}]),
+            },
         ]
     )
     quota_state = {

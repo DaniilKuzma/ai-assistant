@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
+import hashlib
 import json
 from pathlib import Path
 import random
@@ -36,11 +37,18 @@ from src.data.dataset_contract import (
     CONTRACT_OPTIONAL_COLUMNS,
     DATASET_CONTRACT,
     HARD_NEGATIVE_OPEN,
+    LAYER_ATOMIC_HARD_NEGATIVE,
     LAYER_ATOMIC_POSITIVE,
+    LAYER_CLEAN_IDENTITY,
+    LAYER_REAL_ATOMIC,
+    LAYER_STRESS_MULTI_ERROR,
     REAL_ERROR_PAIR,
     SYNTHETIC_OPEN_CLEAN,
     ensure_contract_columns,
+    stable_dataset_hash,
 )
+from src.data.hard_negative_generation import generate_atomic_hard_negatives, write_hard_negative_reports
+from src.data.stress_generation import generate_multi_error_stress_rows
 from src.data.training_quality_audit import (
     audit_training_dataset,
     write_artificial_marker_reports,
@@ -59,7 +67,7 @@ from src.rules.capabilities import (
     load_rule_capabilities,
     write_rule_capability_reports,
 )
-from src.rules.rule_ids import normalize_rule_id
+from src.rules.rule_ids import UNKNOWN_RULE_ID, normalize_rule_id
 
 
 TRAINING_INCLUDE_DECISIONS = frozenset(
@@ -151,6 +159,27 @@ BACKFILL_MAX_SENTENCES_PER_RULE = 70_000
 REQUIRED_BACKFILL_RULE_IDS = frozenset({"hyphen_particles", "detached_participial_comma"})
 DEFAULT_CLEAN_POOL_PATH = Path("data/processed/clean_sentence_pool.csv.gz")
 DEFAULT_CLEAN_POOL_CHUNKSIZE = 25_000
+DEFAULT_LAYER_RATIOS = {
+    LAYER_ATOMIC_POSITIVE: 0.45,
+    LAYER_ATOMIC_HARD_NEGATIVE: 0.35,
+    LAYER_CLEAN_IDENTITY: 0.12,
+    LAYER_STRESS_MULTI_ERROR: 0.05,
+    LAYER_REAL_ATOMIC: 0.03,
+}
+LAYER_ORDER = [
+    LAYER_ATOMIC_POSITIVE,
+    LAYER_ATOMIC_HARD_NEGATIVE,
+    LAYER_CLEAN_IDENTITY,
+    LAYER_REAL_ATOMIC,
+    LAYER_STRESS_MULTI_ERROR,
+]
+LAYER_FILE_STEMS = {
+    LAYER_ATOMIC_POSITIVE: "atomic_positive",
+    LAYER_ATOMIC_HARD_NEGATIVE: "atomic_hard_negative",
+    LAYER_CLEAN_IDENTITY: "clean_identity",
+    LAYER_REAL_ATOMIC: "real_atomic",
+    LAYER_STRESS_MULTI_ERROR: "stress_multi_error",
+}
 
 
 @dataclass(frozen=True)
@@ -232,7 +261,6 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
     active_set = set(active_rule_ids)
     selected_synthetic = [row for row in selected_synthetic if any(rule_id in active_set for rule_id in _row_rule_ids(row))]
     selected_synthetic = [_filter_row_rule_ids(row, active_set) for row in selected_synthetic]
-    _ensure_stress_metadata(selected_synthetic, requested_total=requested_total)
 
     excluded_after_generation = {
         row["rule_id"]: row.get("reason") or "BLOCK_NO_OPERATOR"
@@ -242,28 +270,67 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
     for rule_id in sorted(candidate_rule_ids - active_set):
         excluded_after_generation[rule_id] = "insufficient_atomic_positives"
 
-    real_rows: list[dict[str, Any]] = []
-    clean_target, hard_target = _clean_hard_targets(requested_total, len(selected_synthetic), len(real_rows))
-    clean_rows, hard_rows = _top_up_clean_hard_from_pool(
-        existing_rows=selected_synthetic + real_rows,
-        clean_needed=clean_target,
-        hard_needed=hard_target,
-        clean_pool_path=clean_pool_path,
-        config=config,
+    seed = int(data_config.get("synthetic_seed", 17))
+    layer_targets = _layer_targets_from_config(config, requested_total)
+    strict_clean_rows = _strict_clean_pool_rows(clean_pool_path, config)
+    real_atomic_path = _real_atomic_cache_path(config, output_path=output_path)
+    real_stress_path = _real_stress_cache_path(config, output_path=output_path)
+    real_atomic_rows = _load_real_atomic_rows_from_cache(
+        real_atomic_path,
+        target_count=layer_targets[LAYER_REAL_ATOMIC],
+        seed=seed,
     )
-    rows = selected_synthetic + real_rows + clean_rows + hard_rows
-    if len(rows) < requested_total:
-        clean_top, hard_top = _top_up_clean_hard_from_pool(
-            existing_rows=rows,
-            clean_needed=(requested_total - len(rows) + 1) // 2,
-            hard_needed=(requested_total - len(rows)) // 2,
-            clean_pool_path=clean_pool_path,
-            config=config,
+    real_stress_rows = _load_real_stress_rows_from_cache(
+        real_stress_path,
+        target_count=layer_targets[LAYER_STRESS_MULTI_ERROR],
+        seed=seed + 1,
+    )
+    synthetic_stress_target = max(0, layer_targets[LAYER_STRESS_MULTI_ERROR] - len(real_stress_rows))
+    stress_result = generate_multi_error_stress_rows(
+        strict_clean_rows,
+        registry=registry,
+        rule_ids=active_rule_ids,
+        candidate_generator=candidate_generator,
+        target_count=synthetic_stress_target,
+        seed=seed + 2,
+    )
+    stress_rows = real_stress_rows + stress_result.rows
+
+    hard_negative_result = None
+    hard_negative_pool: list[dict[str, Any]] = []
+    hard_target_with_reserve = layer_targets[LAYER_ATOMIC_HARD_NEGATIVE] + max(
+        0,
+        layer_targets[LAYER_ATOMIC_POSITIVE] - min(len(selected_synthetic), layer_targets[LAYER_ATOMIC_POSITIVE]),
+    )
+    if active_rule_ids and hard_target_with_reserve > 0:
+        preferred_per_rule = max(1, (hard_target_with_reserve + len(active_rule_ids) - 1) // len(active_rule_ids))
+        hard_negative_result = generate_atomic_hard_negatives(
+            strict_clean_rows,
+            rule_ids=active_rule_ids,
+            candidate_generator=candidate_generator,
+            min_per_rule=0,
+            preferred_per_rule=preferred_per_rule,
+            seed=seed + 3,
+            max_scan_rows=len(strict_clean_rows),
+            fallback_templates_enabled=False,
         )
-        rows.extend(clean_top)
-        rows.extend(hard_top)
-    rows = rows[:requested_total]
-    _assign_splits(rows, split_sizes, seed=int(data_config.get("synthetic_seed", 17)))
+        hard_negative_pool = hard_negative_result.rows
+
+    clean_identity_pool = _clean_identity_rows_from_clean_pool(strict_clean_rows)
+    layer_rows = _compose_layer_rows(
+        {
+            LAYER_ATOMIC_POSITIVE: selected_synthetic,
+            LAYER_ATOMIC_HARD_NEGATIVE: hard_negative_pool,
+            LAYER_CLEAN_IDENTITY: clean_identity_pool,
+            LAYER_REAL_ATOMIC: real_atomic_rows,
+            LAYER_STRESS_MULTI_ERROR: stress_rows,
+        },
+        targets=layer_targets,
+        requested_total=requested_total,
+        seed=seed,
+    )
+    rows = [row for layer in LAYER_ORDER for row in layer_rows.get(layer, [])]
+    _assign_layered_splits(layer_rows, split_sizes, seed=seed)
     frame = _frame_from_rows(rows)
     production_gates = _production_audit_enabled(output_path=output_path, manifest_path=manifest_path, requested_total=requested_total)
     if production_gates:
@@ -281,8 +348,7 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
         quality_audit = audit_training_dataset(frame, active_rule_ids)
 
     frame.to_csv(output_path, index=False)
-    for split, count in split_sizes.items():
-        frame[frame["split"] == split].to_csv(output_path.parent / f"{split}.csv", index=False)
+    _write_split_and_layer_files(frame, output_path)
 
     manifest = _manifest(
         frame,
@@ -297,6 +363,9 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
         backfill_attempt_rows=_not_applicable_backfill_rows(candidate_rule_ids),
         capabilities=capabilities,
         production_gates=production_gates,
+        low_resource_rule_ids=sorted(candidate_rule_ids - active_set),
+        hard_negative_counts_by_rule=_hard_negative_counts_by_target_rule(frame),
+        real_stress_count=len(real_stress_rows),
     )
     _write_reports(
         frame,
@@ -309,6 +378,8 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
         atomic_generation_rows=atomic_result.generation_rows,
         atomic_rejection_rows=atomic_result.rejection_rows,
         rules_without_atomic_positive=atomic_result.rules_without_atomic_positive,
+        hard_negative_result=hard_negative_result,
+        quota_config=quota_config,
     )
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -406,6 +477,91 @@ def _operator_rule_quota_config(config: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _layer_targets_from_config(config: dict[str, Any], requested_total: int) -> dict[str, int]:
+    data_config = config.get("data", {}) or {}
+    composition = dict(data_config.get("composition", {}) or {})
+    if composition:
+        targets: dict[str, int] = {}
+        remaining_layers: list[str] = []
+        for layer in LAYER_ORDER:
+            target_key = _composition_target_key(layer)
+            if target_key in composition:
+                targets[layer] = max(0, int(composition.get(target_key) or 0))
+            else:
+                remaining_layers.append(layer)
+        remaining_total = max(0, requested_total - sum(targets.values()))
+        weights = {
+            layer: max(0.0, float(composition.get(_composition_ratio_key(layer), DEFAULT_LAYER_RATIOS[layer]) or 0.0))
+            for layer in remaining_layers
+        }
+        targets.update(_allocate_counts_by_weight(remaining_total, weights))
+        return _normalize_layer_targets(targets, requested_total)
+
+    core_config = data_config.get("training_dataset_core", {}) or {}
+    legacy_source_targets = dict(core_config.get("source_type_targets", {}) or {})
+    if legacy_source_targets:
+        stress_target = max(0, int(core_config.get("multi_error_stress_target", 0) or 0))
+        synthetic_target = int(legacy_source_targets.get(SYNTHETIC_OPEN_CLEAN, 0) or 0)
+        targets = {
+            LAYER_ATOMIC_POSITIVE: max(0, synthetic_target - stress_target),
+            LAYER_ATOMIC_HARD_NEGATIVE: max(0, int(legacy_source_targets.get(HARD_NEGATIVE_OPEN, 0) or 0)),
+            LAYER_CLEAN_IDENTITY: max(0, int(legacy_source_targets.get(CLEAN_IDENTITY_OPEN, 0) or 0)),
+            LAYER_REAL_ATOMIC: max(0, int(legacy_source_targets.get(REAL_ERROR_PAIR, 0) or 0)),
+            LAYER_STRESS_MULTI_ERROR: stress_target,
+        }
+        return _normalize_layer_targets(targets, requested_total)
+
+    targets = _allocate_counts_by_weight(requested_total, DEFAULT_LAYER_RATIOS)
+    return _normalize_layer_targets(targets, requested_total)
+
+
+def _composition_target_key(layer: str) -> str:
+    if layer == LAYER_REAL_ATOMIC:
+        return "real_atomic_train_target"
+    return f"{layer}_target"
+
+
+def _composition_ratio_key(layer: str) -> str:
+    if layer == LAYER_REAL_ATOMIC:
+        return "real_atomic_train_ratio"
+    return f"{layer}_ratio"
+
+
+def _allocate_counts_by_weight(total: int, weights: dict[str, float]) -> dict[str, int]:
+    if total <= 0 or not weights:
+        return {layer: 0 for layer in weights}
+    weight_sum = sum(max(0.0, weight) for weight in weights.values())
+    if weight_sum <= 0:
+        result = {layer: 0 for layer in weights}
+        result[next(iter(weights))] = total
+        return result
+    raw = {layer: total * max(0.0, weight) / weight_sum for layer, weight in weights.items()}
+    result = {layer: int(value) for layer, value in raw.items()}
+    remainder = total - sum(result.values())
+    for layer, _value in sorted(raw.items(), key=lambda item: (-(item[1] - int(item[1])), LAYER_ORDER.index(item[0]))):
+        if remainder <= 0:
+            break
+        result[layer] += 1
+        remainder -= 1
+    return result
+
+
+def _normalize_layer_targets(targets: dict[str, int], requested_total: int) -> dict[str, int]:
+    result = {layer: max(0, int(targets.get(layer, 0) or 0)) for layer in LAYER_ORDER}
+    delta = requested_total - sum(result.values())
+    if delta > 0:
+        result[LAYER_ATOMIC_POSITIVE] += delta
+    elif delta < 0:
+        excess = -delta
+        for layer in reversed(LAYER_ORDER):
+            removable = min(excess, result[layer])
+            result[layer] -= removable
+            excess -= removable
+            if excess <= 0:
+                break
+    return result
+
+
 def _iter_clean_pool_records(clean_pool_path: Path, config: dict[str, Any]) -> Iterable[dict[str, Any]]:
     usecols = {
         "text",
@@ -427,6 +583,90 @@ def _iter_clean_pool_records(clean_pool_path: Path, config: dict[str, Any]) -> I
     for chunk in reader:
         for row in chunk.fillna("").to_dict("records"):
             yield row
+
+
+def _strict_clean_pool_rows(clean_pool_path: Path, config: dict[str, Any]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for item in _iter_clean_pool_records(clean_pool_path, config):
+        text = str(item.get("text", "")).strip()
+        if not text:
+            continue
+        if _contains_artificial_marker(text, text) or not clean_or_hard_quality_pass(text):
+            continue
+        rows.append(dict(item))
+    return rows
+
+
+def _clean_identity_rows_from_clean_pool(clean_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        _identity_row(
+            str(row.get("text") or row.get("target") or row.get("source") or "").strip(),
+            CLEAN_IDENTITY_OPEN,
+            str(row.get("source_name") or row.get("source_corpus") or ""),
+            str(row.get("source_subcorpus") or ""),
+            str(row.get("domain") or ""),
+        )
+        for row in clean_rows
+        if str(row.get("text") or row.get("target") or row.get("source") or "").strip()
+    ]
+
+
+def _compose_layer_rows(
+    pools: dict[str, list[dict[str, Any]]],
+    *,
+    targets: dict[str, int],
+    requested_total: int,
+    seed: int,
+) -> dict[str, list[dict[str, Any]]]:
+    seen_hashes: set[str] = set()
+    selected: dict[str, list[dict[str, Any]]] = {layer: [] for layer in LAYER_ORDER}
+    for layer in LAYER_ORDER:
+        selected[layer] = _take_unique_rows(
+            _deterministic_rows(pools.get(layer, []), seed=seed + LAYER_ORDER.index(layer)),
+            target=targets.get(layer, 0),
+            seen_hashes=seen_hashes,
+        )
+
+    deficit = max(0, requested_total - sum(len(rows) for rows in selected.values()))
+    if deficit:
+        selected[LAYER_ATOMIC_HARD_NEGATIVE].extend(
+            _take_unique_rows(
+                _deterministic_rows(pools.get(LAYER_ATOMIC_HARD_NEGATIVE, []), seed=seed + 101),
+                target=deficit,
+                seen_hashes=seen_hashes,
+            )
+        )
+    deficit = max(0, requested_total - sum(len(rows) for rows in selected.values()))
+    if deficit:
+        selected[LAYER_CLEAN_IDENTITY].extend(
+            _take_unique_rows(
+                _deterministic_rows(pools.get(LAYER_CLEAN_IDENTITY, []), seed=seed + 102),
+                target=deficit,
+                seen_hashes=seen_hashes,
+            )
+        )
+    return selected
+
+
+def _deterministic_rows(rows: list[dict[str, Any]], *, seed: int) -> list[dict[str, Any]]:
+    result = [dict(row) for row in rows]
+    random.Random(seed).shuffle(result)
+    return result
+
+
+def _take_unique_rows(rows: list[dict[str, Any]], *, target: int, seen_hashes: set[str]) -> list[dict[str, Any]]:
+    result: list[dict[str, Any]] = []
+    for row in rows:
+        if len(result) >= target:
+            break
+        pair_hash = normalized_pair_hash(str(row.get("source", "")), str(row.get("target", "")))
+        if pair_hash in seen_hashes:
+            continue
+        item = dict(row)
+        item["normalized_pair_hash"] = pair_hash
+        seen_hashes.add(pair_hash)
+        result.append(item)
+    return result
 
 
 def generate_atomic_positive_rows_from_clean_pool(
@@ -956,6 +1196,146 @@ def _real_rows(frame: pd.DataFrame) -> list[dict[str, Any]]:
     return _dedupe_pairs(result)
 
 
+def _real_atomic_cache_path(config: dict[str, Any], *, output_path: Path) -> Path:
+    data_config = config.get("data", {}) or {}
+    explicit = data_config.get("real_error_pairs_atomic_path")
+    if explicit:
+        return Path(str(explicit))
+    validated = data_config.get("real_error_pairs_validated_path")
+    output_dir = output_path.parent
+    local_atomic = output_dir / "real_error_pairs_atomic.csv.gz"
+    if local_atomic.exists():
+        return local_atomic
+    if validated:
+        validated_path = Path(str(validated))
+        sibling_atomic = validated_path.with_name("real_error_pairs_atomic.csv.gz")
+        return sibling_atomic if sibling_atomic.exists() else validated_path
+    default_atomic = Path("data/processed/real_error_pairs_atomic.csv.gz")
+    return default_atomic if default_atomic.exists() else Path("data/processed/real_error_pairs_validated.csv.gz")
+
+
+def _real_stress_cache_path(config: dict[str, Any], *, output_path: Path) -> Path:
+    data_config = config.get("data", {}) or {}
+    explicit = data_config.get("real_error_pairs_stress_path")
+    if explicit:
+        return Path(str(explicit))
+    validated = data_config.get("real_error_pairs_validated_path")
+    output_dir = output_path.parent
+    local_stress = output_dir / "real_error_pairs_stress.csv.gz"
+    if local_stress.exists():
+        return local_stress
+    if validated:
+        return Path(str(validated)).with_name("real_error_pairs_stress.csv.gz")
+    return Path("data/processed/real_error_pairs_stress.csv.gz")
+
+
+def _load_real_atomic_rows_from_cache(path: str | Path, *, target_count: int, seed: int) -> list[dict[str, Any]]:
+    rows = _read_real_cache_rows(path)
+    accepted = [_normalize_real_layer_row(row, layer=LAYER_REAL_ATOMIC) for row in rows if _is_valid_real_atomic_train_row(row)]
+    return _dedupe_pairs(_deterministic_rows([row for row in accepted if row is not None], seed=seed))[: max(0, int(target_count))]
+
+
+def _load_real_stress_rows_from_cache(path: str | Path, *, target_count: int, seed: int) -> list[dict[str, Any]]:
+    rows = _read_real_cache_rows(path)
+    accepted = [_normalize_real_layer_row(row, layer=LAYER_STRESS_MULTI_ERROR) for row in rows if _is_valid_real_stress_row(row)]
+    return _dedupe_pairs(_deterministic_rows([row for row in accepted if row is not None], seed=seed))[: max(0, int(target_count))]
+
+
+def _read_real_cache_rows(path: str | Path) -> list[dict[str, Any]]:
+    cache_path = Path(path)
+    if not cache_path.exists():
+        return []
+    return pd.read_csv(cache_path, low_memory=False).fillna("").to_dict("records")
+
+
+def _is_valid_real_atomic_train_row(row: dict[str, Any]) -> bool:
+    if str(row.get("source", "")) == str(row.get("target", "")):
+        return False
+    if _real_gold_edit_count(row) != 1:
+        return False
+    if not _row_candidate_present(row):
+        return False
+    if not _row_strict_validator_passed(row):
+        return False
+    rule_ids = _row_rule_ids(row)
+    return bool(rule_ids) and all(_is_known_training_rule_id(rule_id) for rule_id in rule_ids)
+
+
+def _is_valid_real_stress_row(row: dict[str, Any]) -> bool:
+    if str(row.get("source", "")) == str(row.get("target", "")):
+        return False
+    if _real_gold_edit_count(row) <= 1:
+        return False
+    if not _row_candidate_present(row):
+        return False
+    if not _row_strict_validator_passed(row):
+        return False
+    rule_ids = _row_rule_ids(row)
+    return bool(rule_ids) and all(_is_known_training_rule_id(rule_id) for rule_id in rule_ids)
+
+
+def _normalize_real_layer_row(row: dict[str, Any], *, layer: str) -> dict[str, Any]:
+    result = _normalize_row(dict(row))
+    edit_count = _real_gold_edit_count(result)
+    result["source_type"] = REAL_ERROR_PAIR
+    result["dataset_contract"] = DATASET_CONTRACT
+    result["dataset_layer"] = layer
+    result["is_real_pair"] = True
+    result["is_synthetic"] = False
+    result["is_clean"] = False
+    result["is_hard_negative"] = False
+    result["is_atomic"] = layer == LAYER_REAL_ATOMIC
+    result["is_stress"] = layer == LAYER_STRESS_MULTI_ERROR
+    result["count_toward_rule_quota"] = False
+    result["loss_weight"] = float(result.get("loss_weight") or (0.4 if layer == LAYER_STRESS_MULTI_ERROR else 1.0))
+    result["gold_edit_count"] = edit_count
+    result["normalized_pair_hash"] = normalized_pair_hash(str(result.get("source", "")), str(result.get("target", "")))
+    result["verification_status"] = "accepted"
+    metadata = _json_dict(result.get("metadata"))
+    metadata.update(
+        {
+            "dataset_contract": DATASET_CONTRACT,
+            "dataset_layer": layer,
+            "is_stress": layer == LAYER_STRESS_MULTI_ERROR,
+            "count_toward_rule_quota": False,
+            "gold_edit_count": edit_count,
+            "operator_based_generation": False,
+        }
+    )
+    result["metadata"] = json.dumps(metadata, ensure_ascii=False, sort_keys=True)
+    return result
+
+
+def _real_gold_edit_count(row: dict[str, Any]) -> int:
+    for key in ("gold_edit_count", "edit_count"):
+        value = row.get(key)
+        if not _is_blank(value):
+            try:
+                return max(0, int(value))
+            except (TypeError, ValueError):
+                pass
+    return _row_gold_edit_count_value(row)
+
+
+def _row_candidate_present(row: dict[str, Any]) -> bool:
+    value = row.get("candidate_present")
+    if not _is_blank(value):
+        return _truthy(value)
+    return _truthy(_json_dict(row.get("metadata")).get("candidate_present", False))
+
+
+def _row_strict_validator_passed(row: dict[str, Any]) -> bool:
+    value = row.get("strict_validator_passed")
+    if not _is_blank(value):
+        return _truthy(value)
+    return _truthy(_json_dict(row.get("metadata")).get("strict_validator_passed", False))
+
+
+def _is_known_training_rule_id(rule_id: str) -> bool:
+    normalized = normalize_rule_id(rule_id)
+    return normalized not in {UNKNOWN_RULE_ID, "clean_identity", "clean_identity_hard_negative", "hard_negative"}
+
+
 def _clean_and_hard_rows(frame: pd.DataFrame, *, clean_target: int, hard_target: int) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     clean = _identity_rows_from_existing(frame, CLEAN_IDENTITY_OPEN, clean_target)
     hard = _identity_rows_from_existing(frame, HARD_NEGATIVE_OPEN, hard_target)
@@ -1042,10 +1422,17 @@ def _top_up_clean_hard_from_pool(
 def _identity_row(text: str, source_type: str, source_name: str, source_subcorpus: str, domain: str) -> dict[str, Any]:
     rule_id = "clean_identity" if source_type == CLEAN_IDENTITY_OPEN else "clean_identity_hard_negative"
     error_type = "clean_identity" if source_type == CLEAN_IDENTITY_OPEN else "hard_negative"
+    layer = LAYER_CLEAN_IDENTITY if source_type == CLEAN_IDENTITY_OPEN else LAYER_ATOMIC_HARD_NEGATIVE
     metadata = {
+        "dataset_contract": DATASET_CONTRACT,
+        "dataset_layer": layer,
         "operator_based_generation": False,
         "source_type": source_type,
         "candidate_present": False,
+        "is_atomic": source_type == HARD_NEGATIVE_OPEN,
+        "is_stress": False,
+        "count_toward_rule_quota": False,
+        "gold_edit_count": 0,
     }
     return {
         "source": text,
@@ -1070,6 +1457,20 @@ def _identity_row(text: str, source_type: str, source_name: str, source_subcorpu
         "domain": domain or "open_clean",
         "rule_id": rule_id,
         "edit_operations": "[]",
+        "dataset_contract": DATASET_CONTRACT,
+        "dataset_layer": layer,
+        "is_atomic": source_type == HARD_NEGATIVE_OPEN,
+        "is_stress": False,
+        "count_toward_rule_quota": False,
+        "loss_weight": 1.0,
+        "gold_edit_count": 0,
+        "target_rule_id": rule_id,
+        "candidate_source": "",
+        "candidate_replacement": "",
+        "candidate_start": -1,
+        "candidate_end": -1,
+        "verification_status": "",
+        "rejection_reason": "",
     }
 
 
@@ -1087,8 +1488,12 @@ def _manifest(
     backfill_attempt_rows: list[dict[str, Any]],
     capabilities: list[Any],
     production_gates: bool = True,
+    low_resource_rule_ids: list[str] | None = None,
+    hard_negative_counts_by_rule: dict[str, int] | None = None,
+    real_stress_count: int = 0,
 ) -> dict[str, Any]:
     rule_counts = _rule_counts(frame)
+    layer_counts = _value_counts(frame, "dataset_layer")
     composition = _value_counts(frame, "source_type")
     synthetic = frame[frame["source_type"].eq(SYNTHETIC_OPEN_CLEAN)]
     normalized_counts = Counter(frame["normalized_pair_hash"].astype(str).tolist())
@@ -1148,13 +1553,22 @@ def _manifest(
     failed_diversity_rule_ids = sorted(str(rule_id) for rule_id in diversity.get("failed_rule_ids", []) or [])
     manifest = {
         "verdict": "DATASET_BLOCKED" if audit_errors else "READY_FOR_TRAINING_DATASET",
+        "dataset_contract": DATASET_CONTRACT,
+        "dataset_hash": stable_dataset_hash(frame),
+        "config_hash": _config_hash(config),
         "total": int(len(frame)),
         "requested_total": int(requested_total),
         "requested_split_sizes": split_sizes,
         "split_sizes": split_sizes,
         "composition": {**composition, "clean_identity": int(composition.get(CLEAN_IDENTITY_OPEN, 0)), "hard_negative": int(composition.get(HARD_NEGATIVE_OPEN, 0)), "multi_error_stress": _stress_count(frame)},
         "composition_by_split": {split: _value_counts(frame[frame["split"].eq(split)], "source_type") for split in ("train", "val", "test")},
+        "layer_counts": {layer: int(layer_counts.get(layer, 0)) for layer in LAYER_ORDER},
+        "layer_counts_by_split": {
+            split: _value_counts(frame[frame["split"].eq(split)], "dataset_layer") for split in ("train", "val", "test")
+        },
         "rule_id_counts": rule_counts,
+        "rule_id_counts_atomic_positive_only": rule_counts,
+        "hard_negative_counts_by_target_rule": dict(sorted((hard_negative_counts_by_rule or {}).items())),
         "rule_id_counts_by_split": {split: _rule_counts(frame[frame["split"].eq(split)]) for split in ("train", "val", "test")},
         "error_type_counts": _value_counts(frame, "error_type"),
         "operator_based_generation": True,
@@ -1190,9 +1604,14 @@ def _manifest(
         "synthetic_top_normalized_pair_count": int(max(synthetic_norm_counts.values()) if synthetic_norm_counts else 0),
         "real_pair_count": int(composition.get(REAL_ERROR_PAIR, 0)),
         "real_error_pair_count": int(composition.get(REAL_ERROR_PAIR, 0)),
+        "real_atomic_count": int(layer_counts.get(LAYER_REAL_ATOMIC, 0)),
+        "real_stress_count": int(real_stress_count),
         "clean_identity_count": int(composition.get(CLEAN_IDENTITY_OPEN, 0)),
         "hard_negative_count": int(composition.get(HARD_NEGATIVE_OPEN, 0)),
         "stress_count": _stress_count(frame),
+        "low_resource_rule_ids": sorted(low_resource_rule_ids or []),
+        "eval_only_rule_ids": sorted(capability_fields.get("eval_only_rule_ids", [])),
+        "disabled_rule_ids": _disabled_rule_ids(capabilities, excluded_rule_ids=excluded_rule_ids),
         "hard_negative_accepted_bad_edits": 0,
         "audit_errors": audit_errors,
         "warnings": [],
@@ -1218,6 +1637,8 @@ def _write_reports(
     atomic_generation_rows: list[dict[str, Any]] | None = None,
     atomic_rejection_rows: list[dict[str, Any]] | None = None,
     rules_without_atomic_positive: list[dict[str, Any]] | None = None,
+    hard_negative_result: Any | None = None,
+    quota_config: dict[str, Any] | None = None,
 ) -> None:
     reports_dir.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(registry_rows).to_csv(reports_dir / "active_training_rules.csv", index=False)
@@ -1240,6 +1661,29 @@ def _write_reports(
         rules_without_atomic_positive or [],
         columns=["rule_id", "status", "reason"],
     ).to_csv(reports_dir / "rules_without_atomic_positive.csv", index=False)
+    if hard_negative_result is not None:
+        write_hard_negative_reports(hard_negative_result, reports_dir)
+    else:
+        pd.DataFrame(
+            [],
+            columns=[
+                "rule_id",
+                "min_per_rule",
+                "preferred_per_rule",
+                "generated_count",
+                "clean_count",
+                "fallback_count",
+                "rejected_count",
+                "status",
+            ],
+        ).to_csv(reports_dir / "hard_negative_coverage_report.csv", index=False)
+    _write_active_rule_quota_report(
+        frame,
+        active_rule_ids=manifest["active_rule_ids"],
+        quota_config=quota_config or {},
+        hard_negative_counts_by_rule=dict(manifest.get("hard_negative_counts_by_target_rule", {}) or {}),
+        path=reports_dir / "active_rule_quota_report.csv",
+    )
     pd.DataFrame([row for row in manifest["excluded_rule_ids"] if "MISSING_MODULE" in row.get("reason", "")]).to_csv(
         reports_dir / "blocked_by_missing_module.csv", index=False
     )
@@ -1265,11 +1709,9 @@ def _write_reports(
         "dataset_balance_by_error_type.csv",
         "dataset_balance_by_rule.csv",
         "dataset_balance_by_split.csv",
-        "active_rule_quota_report.csv",
         "excluded_active_rules_report.csv",
         "source_usage_report.csv",
         "real_pair_usage_report.csv",
-        "hard_negative_coverage_report.csv",
         "template_leakage_report.csv",
         "under_quota_canonical_report.csv",
         "candidate_recall_gate_report.csv",
@@ -1288,6 +1730,47 @@ def _write_reports(
                     }
                 ]
             ).to_csv(path, index=False)
+
+
+def _write_active_rule_quota_report(
+    frame: pd.DataFrame,
+    *,
+    active_rule_ids: list[str],
+    quota_config: dict[str, Any],
+    hard_negative_counts_by_rule: dict[str, int],
+    path: Path,
+) -> None:
+    atomic_counts = _rule_counts(frame)
+    min_required = int(quota_config.get("min_atomic_positives_per_active_rule", 1000) or 0)
+    preferred = int(quota_config.get("preferred_atomic_positives_per_active_rule", max(2500, min_required)) or min_required)
+    rule_ids = sorted(set(active_rule_ids) | set(atomic_counts) | set(hard_negative_counts_by_rule))
+    rows = []
+    for rule_id in rule_ids:
+        atomic_count = int(atomic_counts.get(rule_id, 0))
+        status = "ready" if atomic_count >= min_required else ("low_resource" if atomic_count > 0 else "disabled")
+        rows.append(
+            {
+                "rule_id": rule_id,
+                "atomic_positive_count": atomic_count,
+                "hard_negative_count": int(hard_negative_counts_by_rule.get(rule_id, 0)),
+                "min_required": min_required,
+                "preferred": preferred,
+                "status": status,
+                "reason": "" if status == "ready" else "below_min_atomic_positive_quota",
+            }
+        )
+    pd.DataFrame(
+        rows,
+        columns=[
+            "rule_id",
+            "atomic_positive_count",
+            "hard_negative_count",
+            "min_required",
+            "preferred",
+            "status",
+            "reason",
+        ],
+    ).to_csv(path, index=False)
 
 
 def _candidate_reports(manifest: dict[str, Any], reports_dir: Path) -> None:
@@ -1479,11 +1962,6 @@ def _dedupe_pairs(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return result
 
 
-def _ensure_stress_metadata(rows: list[dict[str, Any]], *, requested_total: int) -> None:
-    """Deprecated: stress rows must be generated as real multi-edit pairs."""
-    del rows, requested_total
-
-
 def _clean_hard_targets(total: int, synthetic_count: int, real_count: int) -> tuple[int, int]:
     remaining = max(0, total - synthetic_count - real_count)
     clean = (remaining + 1) // 2
@@ -1548,11 +2026,70 @@ def _prune_failed_diversity_rules(
             rows.extend(clean_top)
             rows.extend(hard_top)
         rows = rows[:requested_total]
-        _ensure_stress_metadata(rows, requested_total=requested_total)
         _assign_splits(rows, split_sizes, seed=seed)
         current = _frame_from_rows(rows)
         audit = audit_training_dataset(current, active)
     return current, active, excluded, audit
+
+
+def _assign_layered_splits(layer_rows: dict[str, list[dict[str, Any]]], split_sizes: dict[str, int], *, seed: int) -> None:
+    total = sum(len(rows) for rows in layer_rows.values())
+    if total <= 0:
+        return
+    effective_split_sizes = dict(split_sizes)
+    if sum(effective_split_sizes.values()) != total:
+        effective_split_sizes = _exact_split_sizes(total)
+    for layer in LAYER_ORDER:
+        rows = layer_rows.get(layer, [])
+        random.Random(seed + 200 + LAYER_ORDER.index(layer)).shuffle(rows)
+        counts = _proportional_split_counts(len(rows), effective_split_sizes, total)
+        offset = 0
+        for split in ("train", "val", "test"):
+            count = counts.get(split, 0)
+            for row in rows[offset : offset + count]:
+                row["split"] = split
+            offset += count
+
+    flat_rows = [row for rows in layer_rows.values() for row in rows]
+    _rebalance_split_sizes(flat_rows, effective_split_sizes, seed=seed)
+
+
+def _proportional_split_counts(layer_total: int, split_sizes: dict[str, int], total: int) -> dict[str, int]:
+    if layer_total <= 0 or total <= 0:
+        return {"train": 0, "val": 0, "test": 0}
+    raw = {split: layer_total * split_sizes[split] / total for split in ("train", "val", "test")}
+    counts = {split: int(raw[split]) for split in ("train", "val", "test")}
+    remainder = layer_total - sum(counts.values())
+    for split, _value in sorted(raw.items(), key=lambda item: (-(item[1] - int(item[1])), ("train", "val", "test").index(item[0]))):
+        if remainder <= 0:
+            break
+        counts[split] += 1
+        remainder -= 1
+    return counts
+
+
+def _rebalance_split_sizes(rows: list[dict[str, Any]], split_sizes: dict[str, int], *, seed: int) -> None:
+    random.Random(seed + 300).shuffle(rows)
+    for _iteration in range(len(rows) * 2 + 3):
+        counts = Counter(str(row.get("split", "")) for row in rows)
+        overfull = [split for split in ("train", "val", "test") if counts.get(split, 0) > split_sizes[split]]
+        underfull = [split for split in ("train", "val", "test") if counts.get(split, 0) < split_sizes[split]]
+        if not overfull or not underfull:
+            break
+        from_split = overfull[0]
+        to_split = underfull[0]
+        for row in rows:
+            if str(row.get("split", "")) == from_split:
+                row["split"] = to_split
+                break
+
+
+def _write_split_and_layer_files(frame: pd.DataFrame, output_path: Path) -> None:
+    for split in ("train", "val", "test"):
+        split_frame = frame[frame["split"].eq(split)]
+        split_frame.to_csv(output_path.parent / f"{split}.csv", index=False)
+        for layer, stem in LAYER_FILE_STEMS.items():
+            split_frame[split_frame["dataset_layer"].eq(layer)].to_csv(output_path.parent / f"{split}_{stem}.csv.gz", index=False)
 
 
 def _assign_splits(rows: list[dict[str, Any]], split_sizes: dict[str, int], *, seed: int) -> None:
@@ -1666,9 +2203,45 @@ def _metadata_counts(frame: pd.DataFrame, key: str) -> dict[str, int]:
 
 
 def _stress_count(frame: pd.DataFrame) -> int:
-    if frame.empty or "metadata" not in frame:
+    if frame.empty:
         return 0
-    return int(sum(_json_dict(value).get("is_stress") is True for value in frame["metadata"].tolist()))
+    if "dataset_layer" in frame:
+        return int(frame["dataset_layer"].astype(str).eq(LAYER_STRESS_MULTI_ERROR).sum())
+    if "metadata" not in frame:
+        return 0
+    return int(sum(_truthy(_json_dict(value).get("is_stress", False)) for value in frame["metadata"].tolist()))
+
+
+def _hard_negative_counts_by_target_rule(frame: pd.DataFrame) -> dict[str, int]:
+    counter: Counter[str] = Counter()
+    if frame.empty:
+        return {}
+    for row in frame.to_dict("records"):
+        if _row_dataset_layer_value(row) != LAYER_ATOMIC_HARD_NEGATIVE:
+            continue
+        target_rule_id = normalize_rule_id(str(row.get("target_rule_id") or _json_dict(row.get("metadata")).get("target_rule_id") or ""))
+        if target_rule_id == UNKNOWN_RULE_ID:
+            continue
+        counter[target_rule_id] += 1
+    return dict(sorted(counter.items()))
+
+
+def _config_hash(config: dict[str, Any]) -> str:
+    encoded = json.dumps(config, ensure_ascii=False, sort_keys=True, default=str).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _disabled_rule_ids(capabilities: list[Any], *, excluded_rule_ids: dict[str, str] | None = None) -> list[str]:
+    result = {
+        rule_id
+        for capability in capabilities
+        if str(getattr(capability, "training_decision", "")) == "BLOCK_DISABLED"
+        for rule_id in getattr(capability, "project_rule_ids", [])
+    }
+    for rule_id, reason in dict(excluded_rule_ids or {}).items():
+        if "disabled" in str(reason).lower():
+            result.add(rule_id)
+    return sorted(result)
 
 
 def _error_type_for_rules(rule_ids: list[str]) -> str:

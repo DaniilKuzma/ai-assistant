@@ -33,19 +33,32 @@ def test_canonical_config_uses_broad_dataset_targets_and_no_versioned_paths():
 
 class UnitCandidateGenerator:
     def generate(self, text: str):
-        start = text.find("млоко")
-        if start >= 0:
-            return [
+        candidates = []
+        typo_start = text.find("млоко")
+        if typo_start >= 0:
+            candidates.append(
                 Candidate(
                     source="млоко",
                     replacement="молоко",
                     edit_type="spelling",
-                    start=start,
-                    end=start + len("млоко"),
+                    start=typo_start,
+                    end=typo_start + len("млоко"),
                     rule_id="unit_atomic",
                 )
-            ]
-        return []
+            )
+        clean_start = text.find("молоко")
+        if clean_start >= 0:
+            candidates.append(
+                Candidate(
+                    source="молоко",
+                    replacement="млоко",
+                    edit_type="spelling",
+                    start=clean_start,
+                    end=clean_start + len("молоко"),
+                    rule_id="unit_atomic",
+                )
+            )
+        return candidates
 
 
 class UnitCandidateGeneratorFactory:
@@ -110,15 +123,38 @@ def test_candidate_contract_pipeline_builds_atomic_from_clean_pool_without_outpu
     frame = pd.read_csv(output_path)
     atomic = frame[frame["rule_id"].astype(str).eq("unit_atomic")]
 
-    assert result["total"] == 4
+    assert result["total"] == 10
     assert output_path.exists()
-    assert manifest["rule_id_counts"]["unit_atomic"] == 1
-    assert len(atomic) == 1
+    assert frame["split"].value_counts().to_dict() == {"train": 8, "val": 1, "test": 1}
+    assert manifest["dataset_contract"] == "candidate_opportunity"
+    assert len(manifest["dataset_hash"]) == 64
+    assert len(manifest["config_hash"]) == 64
+    assert manifest["layer_counts"]["atomic_positive"] == 2
+    assert manifest["rule_id_counts_atomic_positive_only"]["unit_atomic"] == 2
+    assert manifest["hard_negative_counts_by_target_rule"]["unit_atomic"] >= 1
+    assert len(atomic) == 2
     assert atomic.iloc[0]["source"] != atomic.iloc[0]["target"]
     assert atomic.iloc[0]["dataset_contract"] == "candidate_opportunity"
     assert atomic.iloc[0]["dataset_layer"] == "atomic_positive"
     assert bool(atomic.iloc[0]["count_toward_rule_quota"]) is True
     assert int(atomic.iloc[0]["gold_edit_count"]) == 1
+    assert not (frame["dataset_layer"].eq("atomic_positive") & frame["rule_id"].eq("clean_identity")).any()
+    assert (output_path.parent / "train_atomic_positive.csv.gz").exists()
+    assert (output_path.parent / "train_atomic_hard_negative.csv.gz").exists()
+    assert (output_path.parent / "train_clean_identity.csv.gz").exists()
+    assert (output_path.parent / "train_real_atomic.csv.gz").exists()
+    assert (output_path.parent / "train_stress_multi_error.csv.gz").exists()
+    quota = pd.read_csv(Path(config["paths"]["reports_dir"]) / "dataset_build" / "active_rule_quota_report.csv")
+    assert list(quota.columns) == [
+        "rule_id",
+        "atomic_positive_count",
+        "hard_negative_count",
+        "min_required",
+        "preferred",
+        "status",
+        "reason",
+    ]
+    assert quota.set_index("rule_id").loc["unit_atomic", "atomic_positive_count"] == 2
 
 
 def test_candidate_contract_pipeline_blocks_when_clean_pool_missing(tmp_path: Path, monkeypatch):
@@ -153,16 +189,23 @@ def _candidate_contract_config(tmp_path: Path, clean_pool_path: Path) -> dict:
     config["data"]["dataset_contract"] = "candidate_opportunity"
     config["data"]["clean_pool_path"] = str(clean_pool_path)
     config["data"]["clean_pool_chunksize"] = 2
-    config["data"]["total_examples"] = 4
-    config["data"]["target_total_examples"] = 4
-    config["data"]["train_examples"] = 4
-    config["data"]["val_examples"] = 0
-    config["data"]["test_examples"] = 0
+    config["data"]["total_examples"] = 10
+    config["data"]["target_total_examples"] = 10
+    config["data"]["train_examples"] = 8
+    config["data"]["val_examples"] = 1
+    config["data"]["test_examples"] = 1
+    config["data"]["composition"] = {
+        "atomic_positive_target": 4,
+        "atomic_hard_negative_target": 3,
+        "clean_identity_target": 3,
+        "stress_multi_error_target": 0,
+        "real_atomic_train_target": 0,
+    }
     config["data"]["rule_quota"] = {
         "rule_ids": ["unit_atomic"],
         "min_atomic_positives_per_active_rule": 1,
-        "preferred_atomic_positives_per_active_rule": 1,
-        "max_total_per_rule_id": 1,
+        "preferred_atomic_positives_per_active_rule": 2,
+        "max_total_per_rule_id": 2,
     }
     core = config["data"]["training_dataset_core"]
     core["dataset_contract"] = "candidate_opportunity"
@@ -170,10 +213,10 @@ def _candidate_contract_config(tmp_path: Path, clean_pool_path: Path) -> dict:
     core["active_rule_quota"] = {
         "rule_ids": ["unit_atomic"],
         "min_total_per_active_rule": 1,
-        "preferred_total_per_active_rule": 1,
+        "preferred_total_per_active_rule": 2,
         "split_minimums": {},
     }
-    core["rule_caps"]["max_total_per_rule_id"] = 1
+    core["rule_caps"]["max_total_per_rule_id"] = 2
     core["audit"]["require_all_source_types"] = False
     return config
 
@@ -181,9 +224,15 @@ def _candidate_contract_config(tmp_path: Path, clean_pool_path: Path) -> dict:
 def _write_unit_clean_pool(path: Path) -> Path:
     rows = [
         "В отчете комиссии встретилось слово молоко сегодня.",
-        "Редакция отметила, что библиотека открылась после долгой реконструкции.",
-        "Аналитики считают, что цифровой отчет помогает оценить работу региона.",
-        "Исследователи подчеркнули, что длинный период наблюдений повысил точность.",
+        "Редакция отметила, что свежее молоко поступило после долгой проверки.",
+        "Аналитики считают, что молоко помогает оценить работу нового рынка.",
+        "Исследователи подчеркнули, что молоко повысило точность эксперимента.",
+        "Комиссия решила, что молоко нужно проверить перед публикацией отчета.",
+        "Авторы сообщили, что молоко осталось в холодильнике после проверки.",
+        "Когда молоко будет готово, команда отправит образцы в архив.",
+        "Эксперты сообщили, что молоко в городе стало заметно дешевле.",
+        "Компания заявила, что молоко нового поставщика будет доступно осенью.",
+        "Докладчики отметили, что молоко прошло лабораторную проверку вчера.",
     ]
     pd.DataFrame(
         [
