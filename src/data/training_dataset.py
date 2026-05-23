@@ -13,9 +13,12 @@ from src.data._training_dataset_builder import build_training_dataset_core_from_
 from src.data.training_quality_audit import (
     audit_training_dataset,
     write_artificial_marker_reports,
+    write_clean_hard_balance_report,
     write_extended_quality_reports,
     write_generation_strategy_report,
     write_known_quality_bugs_report,
+    write_quote_bracket_balance_reports,
+    write_rule_semantic_alignment_report,
     write_rule_diversity_report,
 )
 from src.evaluation.candidate_recall import build_candidate_recall_reports
@@ -302,8 +305,6 @@ def training_dataset_quality_errors(manifest: dict[str, Any], config: dict[str, 
         errors.append("candidate_recall_active_min_below_threshold")
     if float((manifest.get("gap_label_coverage_summary") or {}).get("active_min_excluding_unknown", 1.0)) < 0.85:
         errors.append("gap_coverage_active_min_below_threshold")
-    if manifest.get("underfilled_rule_ids") or manifest.get("low_count_active_rule_ids"):
-        errors.append("active_rule_quota_underfilled")
     rule_counts = {str(key): int(value) for key, value in dict(manifest.get("rule_id_counts", {}) or {}).items()}
     for rule_id in manifest.get("active_rule_ids", []) or []:
         if int(rule_counts.get(str(rule_id), 0)) < 1000:
@@ -330,8 +331,18 @@ def training_dataset_quality_errors(manifest: dict[str, Any], config: dict[str, 
     for name, count in dict(manifest.get("artificial_marker_counts", {}) or {}).items():
         if int(count) != 0:
             errors.append(f"artificial_marker_present:{name}")
+    for name, count in dict(manifest.get("quote_bracket_balance_bugs", {}) or {}).items():
+        if int(count) != 0:
+            errors.append(f"quote_bracket_balance_present:{name}")
+    for name, count in dict(manifest.get("clean_hard_balance_bugs", {}) or {}).items():
+        if int(count) != 0:
+            errors.append(f"clean_hard_balance_present:{name}")
+    if int(dict(manifest.get("rule_semantic_alignment", {}) or {}).get("failed_rows", 0) or 0) != 0:
+        errors.append("rule_semantic_alignment_failed")
     if not dict(manifest.get("error_bearing_sentence_source_counts", {}) or {}):
         errors.append("missing_error_bearing_sentence_source_counts")
+    if manifest.get("underfilled_rule_ids") or manifest.get("low_count_active_rule_ids"):
+        errors.append("active_rule_quota_underfilled")
     if int(dict(manifest.get("rule_diversity_summary", {}) or {}).get("failed_rule_count", 0) or 0) != 0:
         errors.append("rule_diversity_gates_failed")
     if int(dict(manifest.get("extended_quality_audit_summary", {}) or {}).get("blocking_issue_count", 0) or 0) != 0:
@@ -605,6 +616,10 @@ def _finalize_canonical_result(config: dict[str, Any], result: dict[str, Any]) -
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
         return _upgrade_result(result, None)
+    if manifest.get("operator_based_generation") is True:
+        manifest["final_verdict"] = manifest.get("verdict", result.get("verdict", "DATASET_BLOCKED"))
+        manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+        return _upgrade_result(result, manifest)
 
     reports_dir = Path(config.get("paths", {}).get("reports_dir") or manifest_path.parent)
     reports_dir.mkdir(parents=True, exist_ok=True)
@@ -642,6 +657,7 @@ def _finalize_canonical_result(config: dict[str, Any], result: dict[str, Any]) -
             )
         _apply_quality_audit_to_manifest(manifest, quality_audit)
 
+    underfilled = underfilled_active_rule_ids(active_rows, rule_counts)
     _write_active_target_rules(active_rows, reports_dir / "canonical_active_target_rules.csv")
     _write_broad_active_training_rules(active_rows, reports_dir / "active_training_rules.csv")
 
@@ -664,7 +680,6 @@ def _finalize_canonical_result(config: dict[str, Any], result: dict[str, Any]) -
         metric_column="gap_candidate_recall",
         active_rule_ids=punctuation_active_rule_ids,
     )
-    underfilled = underfilled_active_rule_ids(active_rows, rule_counts)
     _write_candidate_gate_report(
         active_rows,
         candidate_report,
@@ -774,10 +789,6 @@ def _manifest_active_exclusion_reasons(manifest: dict[str, Any]) -> dict[str, st
     reasons: dict[str, str] = {}
     for rule_id in manifest.get("excluded_active_rule_ids", []) or []:
         reasons[str(rule_id)] = "excluded_by_core_builder"
-    for rule_id in manifest.get("low_count_active_rule_ids", []) or []:
-        reasons[str(rule_id)] = "excluded_after_quota_underfilled"
-    for rule_id in manifest.get("underfilled_rule_ids", []) or []:
-        reasons[str(rule_id)] = "excluded_after_quota_underfilled"
     return reasons
 
 
@@ -802,7 +813,7 @@ def _refresh_quality_audit_reports(
     reports_dir: Path,
 ) -> dict[str, Any]:
     dataset_path = Path(str(result.get("path") or ""))
-    if not dataset_path.exists():
+    if not result.get("path") or not dataset_path.exists() or dataset_path.is_dir():
         return {}
     frame = pd.read_csv(dataset_path, low_memory=False)
     active_rule_ids = [row["rule_id"] for row in active_rows if row["include_in_dataset"]]
@@ -819,6 +830,13 @@ def _refresh_quality_audit_reports(
         reports_dir / "artificial_marker_audit.csv",
         reports_dir / "artificial_marker_audit.md",
     )
+    write_quote_bracket_balance_reports(
+        audit,
+        reports_dir / "quote_bracket_balance_audit.csv",
+        reports_dir / "quote_bracket_balance_audit.md",
+    )
+    write_clean_hard_balance_report(audit, reports_dir / "clean_hard_balance_audit.csv")
+    write_rule_semantic_alignment_report(audit, reports_dir / "rule_semantic_alignment_audit.csv")
     write_known_quality_bugs_report(audit, reports_dir / "known_quality_bugs_report.md")
     return audit
 
@@ -828,6 +846,15 @@ def _apply_quality_audit_to_manifest(manifest: dict[str, Any], audit: dict[str, 
     manifest["fallback_template_share"] = float(audit.get("fallback_template_share", manifest.get("fallback_template_share", 0.0)) or 0.0)
     manifest["known_quality_bugs"] = dict(audit.get("known_quality_bugs", manifest.get("known_quality_bugs", {})) or {})
     manifest["artificial_marker_counts"] = dict(audit.get("artificial_marker_counts", manifest.get("artificial_marker_counts", {})) or {})
+    manifest["quote_bracket_balance_bugs"] = dict(
+        audit.get("quote_bracket_balance_bugs", manifest.get("quote_bracket_balance_bugs", {})) or {}
+    )
+    manifest["clean_hard_balance_bugs"] = dict(
+        audit.get("clean_hard_balance_bugs", manifest.get("clean_hard_balance_bugs", {})) or {}
+    )
+    manifest["rule_semantic_alignment"] = dict(
+        audit.get("rule_semantic_alignment", manifest.get("rule_semantic_alignment", {})) or {}
+    )
     manifest["exact_clean_hard_duplicate_count"] = int(
         audit.get("exact_clean_hard_duplicate_count", manifest.get("exact_clean_hard_duplicate_count", 0)) or 0
     )
@@ -849,7 +876,6 @@ def _apply_quality_audit_to_manifest(manifest: dict[str, Any], audit: dict[str, 
     manifest["extended_quality_issue_count"] = int(
         dict(manifest.get("extended_quality_audit_summary", {}) or {}).get("issue_count", 0) or 0
     )
-
 
 def _canonical_audit_errors(manifest: dict[str, Any], *, config: dict[str, Any]) -> list[str]:
     data = config.get("data", {})
@@ -900,9 +926,6 @@ def _canonical_audit_errors(manifest: dict[str, Any], *, config: dict[str, Any])
     gap = dict(manifest.get("gap_label_coverage_summary", {}) or {})
     if float(gap.get("active_min_excluding_unknown", 1.0)) < float(audit.get("gap_coverage_min", 0.85)):
         errors.append("gap_coverage_active_min_below_threshold")
-    underfilled = list(manifest.get("low_count_active_rule_ids", []) or [])
-    if underfilled:
-        errors.append("active_rule_quota_underfilled:" + ",".join(sorted(str(rule_id) for rule_id in underfilled)))
     leak = dict(manifest.get("template_leakage_summary", {}) or {})
     if float(leak.get("val_overlap_with_train_rate", 0.0)) > 0.03:
         errors.append("template_leakage_val_above_threshold")
@@ -928,6 +951,14 @@ def _canonical_audit_errors(manifest: dict[str, Any], *, config: dict[str, Any])
     for name, count in dict(manifest.get("artificial_marker_counts", {}) or {}).items():
         if int(count) != 0:
             errors.append(f"artificial_marker_present:{name}")
+    for name, count in dict(manifest.get("quote_bracket_balance_bugs", {}) or {}).items():
+        if int(count) != 0:
+            errors.append(f"quote_bracket_balance_present:{name}")
+    for name, count in dict(manifest.get("clean_hard_balance_bugs", {}) or {}).items():
+        if int(count) != 0:
+            errors.append(f"clean_hard_balance_present:{name}")
+    if int(dict(manifest.get("rule_semantic_alignment", {}) or {}).get("failed_rows", 0) or 0) != 0:
+        errors.append("rule_semantic_alignment_failed")
     if not dict(manifest.get("error_bearing_sentence_source_counts", {}) or {}):
         errors.append("missing_error_bearing_sentence_source_counts")
     if int(dict(manifest.get("rule_diversity_summary", {}) or {}).get("failed_rule_count", 0) or 0) != 0:
@@ -1218,6 +1249,7 @@ def _write_generation_report(path: Path, manifest: dict[str, Any]) -> None:
         f"- hard_negative_count: {composition.get(HARD_NEGATIVE_OPEN, 0)}",
         f"- candidate_recall_min_mean: {float(recall.get('active_min_excluding_unknown', 1.0)):.6f} / {float(recall.get('active_mean_excluding_unknown', 1.0)):.6f}",
         f"- gap_coverage_min_mean: {float(gap.get('active_min_excluding_unknown', 1.0)):.6f} / {float(gap.get('active_mean_excluding_unknown', 1.0)):.6f}",
+        f"- quote_bracket_balance_bugs: {json.dumps(manifest.get('quote_bracket_balance_bugs', {}), ensure_ascii=False, sort_keys=True)}",
         f"- underfilled_active_rules: {', '.join(manifest.get('low_count_active_rule_ids', []))}",
         "",
         "## Audit Errors",

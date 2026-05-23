@@ -1,3 +1,4 @@
 source_name,type,local_path,archive_path,reason
+taiga_hf_news_rest,hf_dataset,,,downloads_disabled
 corus_loader,python_loader,,,missing_local_path
 taiga_news_wiki,taiga,data\external\taiga,,missing_local_path

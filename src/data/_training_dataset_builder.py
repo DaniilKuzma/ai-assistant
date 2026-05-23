@@ -35,10 +35,20 @@ from src.data.synthetic_generator import (
 from src.data.training_quality_audit import (
     audit_training_dataset,
     artificial_marker_counts,
+    clean_hard_balance_counts,
+    rule_semantic_alignment_audit_frame,
+    rule_semantic_alignment_summary,
+    syntax_punctuation_rule_alignment,
+    quote_bracket_balance_counts,
+    target_has_quote_bracket_balance_bug,
+    text_has_quote_bracket_balance_bug,
     write_extended_quality_reports,
     write_artificial_marker_reports,
+    write_clean_hard_balance_report,
     write_generation_strategy_report,
     write_known_quality_bugs_report,
+    write_quote_bracket_balance_reports,
+    write_rule_semantic_alignment_report,
     write_rule_diversity_report,
 )
 from src.evaluation.candidate_recall import (
@@ -163,6 +173,16 @@ ACTIVE_SYNTHETIC_STATUSES = frozenset(
 _CURRENT_ACTIVE_RULE_IDS: set[str] | None = None
 
 
+def _use_operator_dataset_pipeline(config: dict[str, Any], *, output_path: Path, manifest_path: Path) -> bool:
+    data_config = config.get("data", {}) or {}
+    core_config = data_config.get("training_dataset_core", {}) or {}
+    if bool(core_config.get("legacy_builder", False)):
+        return False
+    canonical_output = Path("data/processed/correction_dataset.csv.gz")
+    canonical_manifest = Path("data/processed/dataset_manifest.json")
+    return output_path.as_posix() == canonical_output.as_posix() and manifest_path.as_posix() == canonical_manifest.as_posix()
+
+
 def _progress(stage: str, **payload: Any) -> None:
     if os.environ.get("RUSSIAN_CORRECTOR_DATASET_PROGRESS", "1").strip().lower() in {"0", "false", "no", "off"}:
         return
@@ -178,6 +198,10 @@ def build_training_dataset_core_from_config(config: dict[str, Any], force: bool 
     output_dir = output_path.parent
     reports_dir = Path(config.get("paths", {}).get("reports_dir") or "reports")
     manifest_path = Path(data_config.get("manifest_path") or reports_dir / "dataset_manifest.json")
+    if _use_operator_dataset_pipeline(config, output_path=output_path, manifest_path=manifest_path):
+        from src.data.operator_dataset_builder import build_operator_training_dataset_from_config
+
+        return build_operator_training_dataset_from_config(config, force=force)
     split_sizes = _split_sizes(data_config)
     total = sum(split_sizes.values())
     if total <= 0:
@@ -398,6 +422,45 @@ def build_training_dataset_core_from_config(config: dict[str, Any], force: bool 
     rows = [row for row in rows if not _row_contains_artificial_marker(row)]
     _progress("artificial_marker_filter_done", removed=before_marker_filter - len(rows), total_rows=len(rows))
 
+    before_quote_bracket_filter = len(rows)
+    rows = [row for row in rows if not _row_positive_target_quote_bracket_bug(row)]
+    quote_bracket_rejected_rows = before_quote_bracket_filter - len(rows)
+    _progress(
+        "quote_bracket_balance_filter_done",
+        removed=quote_bracket_rejected_rows,
+        total_rows=len(rows),
+    )
+
+    before_clean_hard_filter = len(rows)
+    rows = [row for row in rows if not _row_clean_hard_quote_bracket_bug(row)]
+    clean_hard_balance_rejected_rows = before_clean_hard_filter - len(rows)
+    _progress(
+        "clean_hard_balance_filter_done",
+        removed=clean_hard_balance_rejected_rows,
+        total_rows=len(rows),
+    )
+
+    before_semantic_filter = len(rows)
+    semantic_audit_for_filter = rule_semantic_alignment_audit_frame(
+        pd.DataFrame(rows, columns=CORE_COLUMNS),
+        active_rule_ids=active_rule_ids,
+    )
+    semantic_failed = (
+        semantic_audit_for_filter[~semantic_audit_for_filter["alignment_pass"].astype(bool)]
+        if not semantic_audit_for_filter.empty
+        else semantic_audit_for_filter
+    )
+    semantic_failed_indices = {int(value) for value in semantic_failed["row_index"].tolist()} if not semantic_failed.empty else set()
+    if semantic_failed_indices:
+        rows = [row for index, row in enumerate(rows) if index not in semantic_failed_indices]
+    semantic_rejected_rows = before_semantic_filter - len(rows)
+    _progress(
+        "rule_semantic_alignment_filter_done",
+        removed=semantic_rejected_rows,
+        failed_by_rule=rule_semantic_alignment_summary(semantic_audit_for_filter).get("failed_by_rule", {}),
+        total_rows=len(rows),
+    )
+
     top_up_needed = max(0, total - len(rows))
     if top_up_needed:
         _progress("safe_clean_hard_top_up_start", target=top_up_needed, total_rows=len(rows))
@@ -409,6 +472,16 @@ def build_training_dataset_core_from_config(config: dict[str, Any], force: bool 
         )
         rows.extend(top_up_rows)
         _progress("safe_clean_hard_top_up_done", rows=len(top_up_rows), total_rows=len(rows))
+
+    before_final_clean_hard_filter = len(rows)
+    rows = [row for row in rows if not _row_clean_hard_quote_bracket_bug(row)]
+    clean_hard_balance_rejected_rows += before_final_clean_hard_filter - len(rows)
+    if before_final_clean_hard_filter != len(rows):
+        _progress(
+            "clean_hard_balance_final_filter_done",
+            removed=before_final_clean_hard_filter - len(rows),
+            total_rows=len(rows),
+        )
 
     shortage_errors = _target_shortage_errors(rows, _quality_source_minimum_targets(source_targets, total))
     rows = rows[:total]
@@ -449,6 +522,20 @@ def build_training_dataset_core_from_config(config: dict[str, Any], force: bool 
     template_quality = _write_template_quality_report(frame, reports_dir / "template_quality_report.md")
     _progress("quality_audit_start")
     quality_audit = audit_training_dataset(frame, quota_state["active_rule_ids"])
+    quality_audit.setdefault("rule_semantic_alignment", {})["rejected_rows"] = int(semantic_rejected_rows)
+    quality_exclusions = _quality_gate_exclusions(
+        quota_state,
+        quality_audit=quality_audit,
+        recall_reports=recall_reports,
+        core_config=core_config,
+    )
+    if quality_exclusions:
+        quota_state = _apply_quality_gate_exclusions(quota_state, quality_exclusions)
+        quota_state = _finalize_quota_state(frame, quota_state, quota_config=quota_config, cap_config=cap_config)
+        _write_active_rule_quota_report(quota_state["quota_rows"], reports_dir / "active_rule_quota_report.csv")
+        _write_excluded_active_rules_report(quota_state["excluded_rows"], reports_dir / "excluded_active_rules_report.csv")
+        quality_audit = audit_training_dataset(frame, quota_state["active_rule_ids"])
+        quality_audit.setdefault("rule_semantic_alignment", {})["rejected_rows"] = int(semantic_rejected_rows)
     write_generation_strategy_report(quality_audit, reports_dir / "generation_strategy_report.csv")
     write_rule_diversity_report(quality_audit, reports_dir / "rule_diversity_report.csv")
     write_extended_quality_reports(
@@ -461,8 +548,21 @@ def build_training_dataset_core_from_config(config: dict[str, Any], force: bool 
         reports_dir / "artificial_marker_audit.csv",
         reports_dir / "artificial_marker_audit.md",
     )
+    write_quote_bracket_balance_reports(
+        quality_audit,
+        reports_dir / "quote_bracket_balance_audit.csv",
+        reports_dir / "quote_bracket_balance_audit.md",
+    )
+    write_clean_hard_balance_report(quality_audit, reports_dir / "clean_hard_balance_audit.csv")
+    write_rule_semantic_alignment_report(quality_audit, reports_dir / "rule_semantic_alignment_audit.csv")
     write_known_quality_bugs_report(quality_audit, reports_dir / "known_quality_bugs_report.md")
-    _progress("quality_audit_done", artificial_marker_counts=quality_audit.get("artificial_marker_counts", {}))
+    _progress(
+        "quality_audit_done",
+        artificial_marker_counts=quality_audit.get("artificial_marker_counts", {}),
+        quote_bracket_balance_bugs=quality_audit.get("quote_bracket_balance_bugs", {}),
+        clean_hard_balance_bugs=quality_audit.get("clean_hard_balance_bugs", {}),
+        rule_semantic_alignment=quality_audit.get("rule_semantic_alignment", {}),
+    )
 
     manifest = _manifest(
         frame,
@@ -481,6 +581,9 @@ def build_training_dataset_core_from_config(config: dict[str, Any], force: bool 
         reports_dir=reports_dir,
         quota_state=quota_state,
         quality_audit=quality_audit,
+        quote_bracket_balance_rejected_rows=quote_bracket_rejected_rows,
+        clean_hard_balance_rejected_rows=clean_hard_balance_rejected_rows,
+        rule_semantic_alignment_rejected_rows=semantic_rejected_rows,
     )
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -909,6 +1012,8 @@ def _real_rows(rows: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
         target = str(row.get("target", ""))
         if _contains_artificial_marker_text(source, target):
             continue
+        if target_has_quote_bracket_balance_bug(target):
+            continue
         edits = _json_list(row.get("edits") or row.get("edit_operations"))
         rule_ids = _rule_ids_from_edits(edits) or _json_list(row.get("rule_ids")) or [str(row.get("rule_id") or "unknown")]
         error_types = _error_types_from_edits(edits) or _json_list(row.get("error_types")) or [str(row.get("error_type") or "unknown")]
@@ -1087,6 +1192,8 @@ def _corpus_opportunity_rows_for_active_rules(
             return False
         if _row_contains_artificial_marker(row):
             return False
+        if _row_positive_target_quote_bracket_bug(row):
+            return False
         pair_key = (row["source"], row["target"])
         if pair_key in seen_pairs:
             return False
@@ -1200,6 +1307,8 @@ def _rule_specific_corpus_pair(rule_id: str, target: str, attempt_index: int) ->
     if len(target) < 20 or len(target) > 260:
         return None
     if _contains_known_bad_text(target):
+        return None
+    if target_has_quote_bracket_balance_bug(target):
         return None
     if rule_id == "final_punctuation_default":
         stripped = target.rstrip()
@@ -1379,7 +1488,10 @@ def _row_from_corpus_pair(
         or _contains_known_bad_text(source)
         or _contains_known_bad_text(target)
         or _contains_artificial_marker_text(source, target)
+        or target_has_quote_bracket_balance_bug(target)
     ):
+        return None
+    if not syntax_punctuation_rule_alignment(rule_id, source, target)[0]:
         return None
     edits = [edit for edit in analyzer.analyze(source, target, candidates=[]) if is_allowed_edit_type(edit.edit_type)]
     edits = _ensure_rule_ids(edits, [rule_id])
@@ -1504,6 +1616,22 @@ def _contains_artificial_marker_text(*texts: str) -> bool:
 
 def _row_contains_artificial_marker(row: dict[str, Any]) -> bool:
     return _contains_artificial_marker_text(str(row.get("source", "")), str(row.get("target", "")))
+
+
+def _row_positive_target_quote_bracket_bug(row: dict[str, Any]) -> bool:
+    if str(row.get("source_type") or "") not in {SYNTHETIC_OPEN_CLEAN, REAL_ERROR_PAIR}:
+        return False
+    return target_has_quote_bracket_balance_bug(str(row.get("target", "")))
+
+
+def _row_clean_hard_quote_bracket_bug(row: dict[str, Any]) -> bool:
+    if str(row.get("source_type") or "") not in {CLEAN_IDENTITY_OPEN, HARD_NEGATIVE_OPEN}:
+        return False
+    return text_has_quote_bracket_balance_bug(str(row.get("source", ""))) or text_has_quote_bracket_balance_bug(str(row.get("target", "")))
+
+
+def _clean_text_has_balance_bug(text: str) -> bool:
+    return text_has_quote_bracket_balance_bug(str(text))
 
 
 def _match_case(source: str, replacement: str) -> str:
@@ -1991,6 +2119,8 @@ def _targeted_carrier_rows(clean_rows: list[dict[str, Any]]) -> list[dict[str, A
 def _balanced_clean_rows(clean_rows: list[dict[str, Any]], *, limit: int | None = None) -> list[dict[str, Any]]:
     buckets: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in clean_rows:
+        if _clean_text_has_balance_bug(str(row.get("text", ""))):
+            continue
         buckets[str(row.get("source_name") or row.get("source_corpus") or "unknown")].append(row)
     result: list[dict[str, Any]] = []
     sources = sorted(buckets)
@@ -2016,6 +2146,8 @@ def _balanced_clean_items(items: list[tuple[dict[str, Any], list[str]]], *, limi
     buckets: dict[str, list[tuple[dict[str, Any], list[str]]]] = defaultdict(list)
     for item in items:
         row = item[0]
+        if _clean_text_has_balance_bug(str(row.get("text", ""))):
+            continue
         buckets[str(row.get("source_name") or row.get("source_corpus") or "unknown")].append(item)
     result: list[tuple[dict[str, Any], list[str]]] = []
     sources = sorted(buckets)
@@ -2131,9 +2263,12 @@ def _row_from_targeted_example(example: TargetedBackfillExample, clean: dict[str
         or _contains_known_bad_text(source)
         or _contains_known_bad_text(target)
         or _contains_artificial_marker_text(source, target)
+        or target_has_quote_bracket_balance_bug(target)
         or ("hyphen_po_adverbs" in example.rule_ids and _hyphen_po_bad_positive(source, target))
         or ("n_nn_short_form" in example.rule_ids and _n_nn_short_form_bad_positive(source, target))
     ):
+        return None
+    if any(not syntax_punctuation_rule_alignment(rule_id, source, target)[0] for rule_id in example.rule_ids):
         return None
     if any(rule_id in {"asyndetic_dash", "consequence_dash", "enumeration_dash"} for rule_id in example.rule_ids):
         if re.search(r"\S—\s|\s—\S", target):
@@ -2308,6 +2443,8 @@ def _combine_stress_components(components: list[dict[str, Any]], clean: dict[str
     target_text = " ".join(target_parts)
     if _contains_artificial_marker_text(source_text, target_text):
         return None
+    if target_has_quote_bracket_balance_bug(target_text):
+        return None
     metadata = _clean_metadata(clean)
     error_bearing_source = "corpus" if component_bearing_sources and all(source == "corpus" for source in component_bearing_sources) else "fallback_template"
     metadata.update(
@@ -2480,6 +2617,7 @@ def _row_from_synthetic_example(
         or _contains_known_bad_text(source)
         or _contains_known_bad_text(target)
         or _contains_artificial_marker_text(source, target)
+        or target_has_quote_bracket_balance_bug(target)
     ):
         return None
     rule_ids = [rule_id for rule_id in (example.rule_ids or []) if _is_active_rule(rule_id)]
@@ -2488,6 +2626,8 @@ def _row_from_synthetic_example(
     if "hyphen_po_adverbs" in rule_ids and _hyphen_po_bad_positive(source, target):
         return None
     if "n_nn_short_form" in rule_ids and _n_nn_short_form_bad_positive(source, target):
+        return None
+    if any(not syntax_punctuation_rule_alignment(rule_id, source, target)[0] for rule_id in rule_ids):
         return None
     if any(rule_id in {"asyndetic_dash", "consequence_dash", "enumeration_dash"} for rule_id in rule_ids):
         if re.search(r"\S—\s|\s—\S", target):
@@ -2648,6 +2788,8 @@ def _identity_rows_from_clean_pool(
                 continue
             if _contains_artificial_marker_text(text):
                 continue
+            if _clean_text_has_balance_bug(text):
+                continue
             key = _clean_row_key(clean)
             if key in used_clean_hashes and not allow_used:
                 continue
@@ -2707,6 +2849,8 @@ def _hard_negative_rows_from_clean_pool(
             continue
         if _contains_artificial_marker_text(text):
             continue
+        if _clean_text_has_balance_bug(text):
+            continue
         traps = detect_hard_negative_traps(text)
         clean_hash = _clean_row_key(clean)
         bucket_pair = (clean, traps if traps else ["natural_clean_guard"])
@@ -2731,6 +2875,8 @@ def _hard_negative_rows_from_clean_pool(
     for clean, traps in selected:
         text = str(clean.get("text", "")).strip()
         if _contains_artificial_marker_text(text):
+            continue
+        if _clean_text_has_balance_bug(text):
             continue
         used_clean_hashes.add(_clean_row_key(clean))
         metadata = _clean_metadata(clean)
@@ -3523,6 +3669,118 @@ def _finalize_quota_state(
     return quota_state
 
 
+def _quality_gate_exclusions(
+    quota_state: dict[str, Any],
+    *,
+    quality_audit: dict[str, Any],
+    recall_reports: dict[str, pd.DataFrame],
+    core_config: dict[str, Any],
+) -> dict[str, str]:
+    active = {str(rule_id) for rule_id in quota_state.get("active_rule_ids", [])}
+    if not active:
+        return {}
+    reasons: dict[str, list[str]] = {}
+
+    for rule_id in dict(quality_audit.get("rule_diversity_summary", {}) or {}).get("failed_rule_ids", []) or []:
+        rule = str(rule_id)
+        if rule in active:
+            reasons.setdefault(rule, []).append("excluded_after_rule_diversity_audit")
+
+    audit_config = dict(core_config.get("audit", {}) or {})
+    recall_threshold = float(audit_config.get("candidate_recall_min", 0.85))
+    recall_frame = recall_reports.get("candidate_recall_by_rule", pd.DataFrame())
+    if not recall_frame.empty:
+        for row in recall_frame.to_dict("records"):
+            rule = str(row.get("rule_id", ""))
+            if rule not in active:
+                continue
+            if int(row.get("gold_count", 0) or 0) <= 0:
+                continue
+            value = float(row.get("candidate_recall", 1.0) or 0.0)
+            if value < recall_threshold:
+                reasons.setdefault(rule, []).append(
+                    f"excluded_after_candidate_recall_audit:{value:.6f}<{recall_threshold:.6f}"
+                )
+
+    gap_threshold = float(audit_config.get("gap_coverage_min", 0.85))
+    gap_frame = recall_reports.get("gap_label_coverage_by_rule", pd.DataFrame())
+    punctuation_active = active & _punctuation_rule_ids()
+    if not gap_frame.empty and punctuation_active:
+        for row in gap_frame.to_dict("records"):
+            rule = str(row.get("rule_id", ""))
+            if rule not in punctuation_active:
+                continue
+            if int(row.get("gold_gap_count", 0) or 0) <= 0:
+                continue
+            value = float(row.get("gap_candidate_recall", 1.0) or 0.0)
+            if value < gap_threshold:
+                reasons.setdefault(rule, []).append(
+                    f"excluded_after_gap_coverage_audit:{value:.6f}<{gap_threshold:.6f}"
+                )
+
+    return {rule: ";".join(dict.fromkeys(rule_reasons)) for rule, rule_reasons in sorted(reasons.items())}
+
+
+def _apply_quality_gate_exclusions(quota_state: dict[str, Any], exclusions: dict[str, str]) -> dict[str, Any]:
+    if not exclusions:
+        return quota_state
+    active = {str(rule_id) for rule_id in quota_state.get("active_rule_ids", [])}
+    active.difference_update(exclusions)
+    existing_excluded = {str(rule_id) for rule_id in quota_state.get("excluded_active_rule_ids", [])}
+    existing_excluded.update(exclusions)
+
+    excluded_rows = list(quota_state.get("excluded_rows", []) or [])
+    existing_rows = {str(row.get("rule_id", "")): row for row in excluded_rows if isinstance(row, dict)}
+    for rule_id, reason in exclusions.items():
+        row = existing_rows.get(rule_id)
+        if row is None:
+            row = {
+                "rule_id": rule_id,
+                "reason": reason,
+                "previous_status": "active",
+                "new_status": "excluded_from_synthetic_target",
+                "why_not_generated": reason,
+            }
+            excluded_rows.append(row)
+            existing_rows[rule_id] = row
+        else:
+            row["reason"] = reason
+            row["previous_status"] = row.get("previous_status") or "active"
+            row["new_status"] = "excluded_from_synthetic_target"
+            row["why_not_generated"] = reason
+
+    quota_rows = list(quota_state.get("quota_rows", []) or [])
+    quota_by_rule = {str(row.get("rule_id", "")): row for row in quota_rows if isinstance(row, dict)}
+    for rule_id, reason in exclusions.items():
+        row = quota_by_rule.get(rule_id)
+        if row is None:
+            row = {
+                "rule_id": rule_id,
+                "status": "excluded",
+                "target_min_total": 0,
+                "preferred_total": 0,
+                "final_total": 0,
+                "train_count": 0,
+                "val_count": 0,
+                "test_count": 0,
+                "source": "quality_audit",
+                "action": "excluded",
+                "reason": reason,
+            }
+            quota_rows.append(row)
+            quota_by_rule[rule_id] = row
+        else:
+            row["status"] = "excluded"
+            row["action"] = "excluded"
+            row["reason"] = reason
+
+    quota_state["active_rule_ids"] = sorted(active)
+    quota_state["excluded_active_rule_ids"] = sorted(existing_excluded)
+    quota_state["excluded_rows"] = sorted(excluded_rows, key=lambda row: str(row.get("rule_id", "")))
+    quota_state["quota_rows"] = sorted(quota_rows, key=lambda row: str(row.get("rule_id", "")))
+    return quota_state
+
+
 def _write_active_rule_quota_report(rows: list[dict[str, Any]], path: Path) -> None:
     columns = [
         "rule_id",
@@ -3721,6 +3979,9 @@ def _manifest(
     reports_dir: Path,
     quota_state: dict[str, Any] | None = None,
     quality_audit: dict[str, Any] | None = None,
+    quote_bracket_balance_rejected_rows: int = 0,
+    clean_hard_balance_rejected_rows: int = 0,
+    rule_semantic_alignment_rejected_rows: int = 0,
 ) -> dict[str, Any]:
     quota_state = quota_state or {}
     quality_audit = quality_audit or {}
@@ -3790,6 +4051,35 @@ def _manifest(
             )
             or {}
         ),
+        "quote_bracket_balance_bugs": dict(
+            quality_audit.get(
+                "quote_bracket_balance_bugs",
+                quote_bracket_balance_counts(frame),
+            )
+            or {}
+        ),
+        "quote_bracket_balance_rejected_rows": int(quote_bracket_balance_rejected_rows),
+        "clean_hard_balance_bugs": dict(
+            quality_audit.get(
+                "clean_hard_balance_bugs",
+                clean_hard_balance_counts(frame),
+            )
+            or {}
+        ),
+        "clean_hard_balance_rejected_rows": int(clean_hard_balance_rejected_rows),
+        "rule_semantic_alignment": dict(
+            quality_audit.get(
+                "rule_semantic_alignment",
+                {
+                    "failed_rows": 0,
+                    "failed_by_rule": {},
+                    "rejected_rows": int(rule_semantic_alignment_rejected_rows),
+                    "excluded_rules": [],
+                },
+            )
+            or {}
+        ),
+        "rule_semantic_alignment_rejected_rows": int(rule_semantic_alignment_rejected_rows),
         "exact_clean_hard_duplicate_count": int(quality_audit.get("exact_clean_hard_duplicate_count", 0) or 0),
         "error_bearing_sentence_source_counts": dict(quality_audit.get("error_bearing_sentence_source_counts", {}) or {}),
         "rule_diversity_summary": dict(quality_audit.get("rule_diversity_summary", {}) or {}),
@@ -3809,6 +4099,7 @@ def _manifest(
             "rejected_real_pairs": real_result.rejected_count,
         },
         "real_pair_shortage_reason": f"accepted_real_pairs_below_target:{real_target - real_shortage}<{real_target}" if real_shortage else "",
+        "active_rule_count": int(len(active_rule_ids)),
         "active_rule_ids": active_rule_ids,
         "inactive_rule_ids": inactive_rule_ids,
         "excluded_rule_ids": excluded_rule_ids,
@@ -3878,6 +4169,14 @@ def _audit_errors(
     for name, count in dict(manifest.get("artificial_marker_counts", {}) or {}).items():
         if int(count) != 0:
             errors.append(f"artificial_marker_present:{name}")
+    for name, count in dict(manifest.get("quote_bracket_balance_bugs", {}) or {}).items():
+        if int(count) != 0:
+            errors.append(f"quote_bracket_balance_present:{name}")
+    for name, count in dict(manifest.get("clean_hard_balance_bugs", {}) or {}).items():
+        if int(count) != 0:
+            errors.append(f"clean_hard_balance_present:{name}")
+    if int(dict(manifest.get("rule_semantic_alignment", {}) or {}).get("failed_rows", 0) or 0) != 0:
+        errors.append("rule_semantic_alignment_failed")
     if not dict(manifest.get("error_bearing_sentence_source_counts", {}) or {}):
         errors.append("missing_error_bearing_sentence_source_counts")
     if int(dict(manifest.get("rule_diversity_summary", {}) or {}).get("failed_rule_count", 0) or 0) != 0:
@@ -4036,6 +4335,13 @@ def _write_generation_report(frame: pd.DataFrame, path: Path, manifest: dict[str
         f"- corpus_opportunity_share: {manifest.get('corpus_opportunity_share', 0.0):.6f}",
         f"- fallback_template_share: {manifest.get('fallback_template_share', 0.0):.6f}",
         f"- known_quality_bugs: {json.dumps(manifest.get('known_quality_bugs', {}), ensure_ascii=False, sort_keys=True)}",
+        f"- artificial_marker_counts: {json.dumps(manifest.get('artificial_marker_counts', {}), ensure_ascii=False, sort_keys=True)}",
+        f"- quote_bracket_balance_bugs: {json.dumps(manifest.get('quote_bracket_balance_bugs', {}), ensure_ascii=False, sort_keys=True)}",
+        f"- quote_bracket_balance_rejected_rows: {manifest.get('quote_bracket_balance_rejected_rows', 0)}",
+        f"- clean_hard_balance_bugs: {json.dumps(manifest.get('clean_hard_balance_bugs', {}), ensure_ascii=False, sort_keys=True)}",
+        f"- clean_hard_balance_rejected_rows: {manifest.get('clean_hard_balance_rejected_rows', 0)}",
+        f"- rule_semantic_alignment: {json.dumps(manifest.get('rule_semantic_alignment', {}), ensure_ascii=False, sort_keys=True)}",
+        f"- rule_semantic_alignment_rejected_rows: {manifest.get('rule_semantic_alignment_rejected_rows', 0)}",
         f"- rule_diversity_summary: {json.dumps(manifest.get('rule_diversity_summary', {}), ensure_ascii=False, sort_keys=True)}",
         f"- extended_quality_audit_summary: {json.dumps(manifest.get('extended_quality_audit_summary', {}), ensure_ascii=False, sort_keys=True)}",
         f"- active_rule_quota_summary: {json.dumps(manifest.get('active_rule_quota_summary', {}), ensure_ascii=False, sort_keys=True)}",

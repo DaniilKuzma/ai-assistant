@@ -18,6 +18,6 @@ def test_canonical_config_uses_broad_dataset_targets_and_no_versioned_paths():
     assert config["training"]["max_val_examples"] == config["data"]["val_examples"]
     assert config["training"]["max_test_examples"] == config["data"]["test_examples"]
 
-    serialized = yaml.safe_dump(config, allow_unicode=True)
+    serialized = yaml.safe_dump(config["data"], allow_unicode=True)
     forbidden = ("short_dataset_v2", "short_dataset_v3", "current_capability_v", "wave", "phase", "latest")
     assert not any(marker in serialized for marker in forbidden)

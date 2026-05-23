@@ -4,6 +4,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from src.data.training_quality_audit import quote_bracket_balance_audit_frame
+
 
 DATASET_PATH = Path("data/processed/correction_dataset.csv.gz")
 METKA = "\u043c\u0435\u0442\u043a\u0430"
@@ -136,3 +138,11 @@ def test_corpus_opportunity_rows_do_not_use_artificial_suffixes():
     assert not bool(combined.str.contains(METKA, regex=False, na=False).any())
     assert not bool(combined.str.contains(LATER_EDITOR_CHECKED_RECORD, regex=False, na=False).any())
     assert not bool(combined.str.contains(LATER_EDITOR_CHECKED_MATERIAL, regex=False, na=False).any())
+
+
+def test_positive_targets_have_balanced_quotes_and_brackets():
+    df = _dataset()
+    positive = df[df["source_type"].isin({"synthetic_augmented_from_open_clean", "real_error_pair"})]
+    audit = quote_bracket_balance_audit_frame(positive)
+
+    assert audit.empty, audit.head(20).to_dict("records")

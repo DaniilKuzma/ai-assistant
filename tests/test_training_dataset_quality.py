@@ -44,6 +44,21 @@ def test_training_dataset_quality_gate_accepts_ready_manifest_contract():
         "fallback_template_share": 0.10,
         "known_quality_bugs": {"synthetic_positive_identity": 0},
         "artificial_marker_counts": {"metka": 0, "later_editor_checked_record": 0, "random_filler_tokens": 0},
+        "quote_bracket_balance_bugs": {
+            "unbalanced_target_guillemets": 0,
+            "unbalanced_target_ascii_quotes": 0,
+            "unbalanced_target_parentheses": 0,
+            "unbalanced_target_square_brackets": 0,
+            "unbalanced_target_curly_brackets": 0,
+        },
+        "clean_hard_balance_bugs": {
+            "unbalanced_guillemets": 0,
+            "unbalanced_ascii_quotes": 0,
+            "unbalanced_parentheses": 0,
+            "unbalanced_square_brackets": 0,
+            "unbalanced_curly_brackets": 0,
+        },
+        "rule_semantic_alignment": {"failed_rows": 0, "failed_by_rule": {}},
         "error_bearing_sentence_source_counts": {"corpus": 140000, "fallback_template": 20000},
         "exact_clean_hard_duplicate_count": 0,
         "rule_diversity_summary": {"failed_rule_count": 0},
@@ -53,7 +68,7 @@ def test_training_dataset_quality_gate_accepts_ready_manifest_contract():
     assert training_dataset_quality_errors(manifest) == []
 
 
-def test_training_dataset_quality_gate_rejects_underfilled_and_duplicate_manifest():
+def test_training_dataset_quality_gate_rejects_blocking_quality_manifest():
     manifest = {
         "total": 199999,
         "split_sizes": {"train": 160000, "val": 20000, "test": 19999},
@@ -80,6 +95,24 @@ def test_training_dataset_quality_gate_rejects_underfilled_and_duplicate_manifes
         "fallback_template_share": 0.21,
         "known_quality_bugs": {"synthetic_positive_identity": 1},
         "artificial_marker_counts": {"metka": 2, "later_editor_checked_record": 1, "random_filler_tokens": 1},
+        "quote_bracket_balance_bugs": {
+            "unbalanced_target_guillemets": 1,
+            "unbalanced_target_ascii_quotes": 1,
+            "unbalanced_target_parentheses": 1,
+            "unbalanced_target_square_brackets": 1,
+            "unbalanced_target_curly_brackets": 1,
+        },
+        "clean_hard_balance_bugs": {
+            "unbalanced_guillemets": 1,
+            "unbalanced_ascii_quotes": 1,
+            "unbalanced_parentheses": 1,
+            "unbalanced_square_brackets": 1,
+            "unbalanced_curly_brackets": 1,
+        },
+        "rule_semantic_alignment": {
+            "failed_rows": 2,
+            "failed_by_rule": {"apposition_comma": 1, "clarification_comma": 1},
+        },
         "error_bearing_sentence_source_counts": {},
         "exact_clean_hard_duplicate_count": 12,
         "rule_diversity_summary": {"failed_rule_count": 1},
@@ -90,7 +123,6 @@ def test_training_dataset_quality_gate_rejects_underfilled_and_duplicate_manifes
 
     assert "total_below_200000" in errors
     assert "missing_real_pairs" in errors
-    assert "active_rule_under_min:comma_subordinate" in errors
     assert "candidate_recall_active_min_below_threshold" in errors
     assert "synthetic_normalized_duplicate_rate_above_threshold" in errors
     assert "unsafe_source_dominance:lenta_news" in errors
@@ -100,6 +132,19 @@ def test_training_dataset_quality_gate_rejects_underfilled_and_duplicate_manifes
     assert "artificial_marker_present:metka" in errors
     assert "artificial_marker_present:later_editor_checked_record" in errors
     assert "artificial_marker_present:random_filler_tokens" in errors
+    assert "quote_bracket_balance_present:unbalanced_target_guillemets" in errors
+    assert "quote_bracket_balance_present:unbalanced_target_ascii_quotes" in errors
+    assert "quote_bracket_balance_present:unbalanced_target_parentheses" in errors
+    assert "quote_bracket_balance_present:unbalanced_target_square_brackets" in errors
+    assert "quote_bracket_balance_present:unbalanced_target_curly_brackets" in errors
+    assert "clean_hard_balance_present:unbalanced_guillemets" in errors
+    assert "clean_hard_balance_present:unbalanced_ascii_quotes" in errors
+    assert "clean_hard_balance_present:unbalanced_parentheses" in errors
+    assert "clean_hard_balance_present:unbalanced_square_brackets" in errors
+    assert "clean_hard_balance_present:unbalanced_curly_brackets" in errors
+    assert "rule_semantic_alignment_failed" in errors
+    assert "active_rule_quota_underfilled" in errors
+    assert "active_rule_under_min:comma_subordinate" in errors
     assert "rule_diversity_gates_failed" in errors
     assert "extended_quality_audit_blocking_issues" in errors
 

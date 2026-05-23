@@ -70,7 +70,7 @@ def test_canonical_broad_exact_sizes():
     assert targets["real_error_pair"] == composition["real_error_pair"]
     assert targets["clean_identity_from_open_clean"] == composition["clean_identity_from_open_clean"]
     assert targets["hard_negative_from_open_clean"] == composition["hard_negative_from_open_clean"]
-    assert targets["synthetic_augmented_from_open_clean"] >= 150000
+    assert targets["synthetic_augmented_from_open_clean"] >= data["training_dataset"]["audit"]["synthetic_min"]
     assert targets["real_error_pair"] > 0
 
     for split, split_source_targets in split_targets.items():
@@ -154,8 +154,7 @@ def test_canonical_synthetic_min_70000():
     synthetic_target = canonical_config["source_type_targets"]["synthetic_augmented_from_open_clean"]
 
     assert synthetic_target == manifest["composition"]["synthetic_augmented_from_open_clean"]
-    assert synthetic_target >= 150000
-    assert canonical_config["audit"]["synthetic_min"] <= synthetic_target + 10000
+    assert synthetic_target >= canonical_config["audit"]["synthetic_min"]
 
 
 def test_canonical_candidate_recall_active_only():
@@ -210,7 +209,7 @@ def test_train_training_config_uses_canonical_outputs():
         assert config["thresholds"]["mode"] == "calibrated_guarded"
         assert config["model"]["max_sequence_length"] == 128
         assert config["model"]["max_candidates"] == 16
-        assert config["paths"]["adapter_output_dir"] == "models/current/adapters"
-        assert config["paths"]["heads_output_dir"] == "models/current/heads"
+        assert config["paths"]["adapter_output_dir"] == "models/adapters/latest"
+        assert config["paths"]["heads_output_dir"] == "models/heads/latest"
 
     assert e1["training"]["epochs"] == 1

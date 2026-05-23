@@ -1,6 +1,6 @@
 source_corpus,included_count,accepted_count,rejected_count,target,shortage
-sage_github_typo_ru,69,,,,
+sage_github_typo_ru,56,,,,
 sage_medspellchecker,96,,,,
-sage_multidomain_gold,1082,,,,
+sage_multidomain_gold,1075,,,,
 sage_ruspellru,722,,,,
-__summary__,1969,1969.0,0.0,1969.0,0.0
+__summary__,1949,1969.0,0.0,1959.0,10.0
