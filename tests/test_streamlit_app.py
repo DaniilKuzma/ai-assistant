@@ -1,4 +1,5 @@
 from pathlib import Path
+from types import SimpleNamespace
 
 from src.app import streamlit_app
 from src.inference.corrector import CorrectionResult
@@ -150,6 +151,38 @@ def test_build_feedback_rows_returns_compact_edit_rows():
             "reason": "allowed strict-scope edit",
         }
     ]
+
+
+def test_get_incremental_cache_key_depends_on_normalized_doc_id():
+    assert streamlit_app.get_incremental_cache_key("doc-a") == "doc-a"
+    assert streamlit_app.get_incremental_cache_key("doc-a") != streamlit_app.get_incremental_cache_key("doc-b")
+    assert streamlit_app.get_incremental_cache_key("  ") == "default"
+
+
+def test_build_incremental_summary_returns_segment_counts():
+    result = SimpleNamespace(checked_segments=3, reused_segments=2, changed_segments=1)
+
+    assert streamlit_app.build_incremental_summary(result) == {
+        "checked": 3,
+        "reused": 2,
+        "changed": 1,
+    }
+
+
+def test_docx_cache_key_depends_on_normalized_doc_id():
+    assert streamlit_app.docx_cache_key("doc-a") == "doc-a"
+    assert streamlit_app.docx_cache_key("doc-a") != streamlit_app.docx_cache_key("doc-b")
+    assert streamlit_app.docx_cache_key("  ") == "default"
+
+
+def test_build_docx_incremental_summary_returns_paragraph_counts_and_total_edits():
+    result = SimpleNamespace(checked_paragraphs=4, reused_paragraphs=2, edits=[object(), object(), object()])
+
+    assert streamlit_app.build_docx_incremental_summary(result) == {
+        "checked": 4,
+        "reused": 2,
+        "total_edits": 3,
+    }
 
 
 def test_render_highlighted_diff_marks_insertions_and_deletions():

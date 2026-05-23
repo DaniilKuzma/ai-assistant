@@ -8,6 +8,7 @@
 - Fine-tuning — PEFT/LoRA adapters плюс custom heads.
 - Seq2seq/generative correction intentionally absent.
 - Strict validator остается обязательной защитой после model scoring.
+- Contextual correction memory is pipeline-level adaptation, not model fine-tuning: память решений может менять selection/reuse/suppression в inference, но не обучает ruRoberta, LoRA adapters или custom heads.
 - Plain fallback corrector применяет только deterministic safe edits.
 - Trained inference грузит adapters из `models/current/adapters` и heads из `models/current/heads/heads.pt`.
 - `configs/rules.yaml` используется как coverage matrix, а не только список executable rules.

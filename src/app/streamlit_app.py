@@ -12,8 +12,10 @@ from typing import Any
 import streamlit as st
 
 from src.config.load_config import load_config
-from src.docx.docx_corrector import correct_docx
+from src.docx.docx_corrector import correct_docx, correct_docx_incremental
+from src.docx.docx_reader import read_paragraphs
 from src.inference.corrector import Corrector
+from src.inference.incremental_corrector import IncrementalCorrector
 from src.inference.model_corrector import TrainedModelCorrector
 from src.memory import CorrectionFeedbackService
 
@@ -48,7 +50,7 @@ def build_streamlit_corrector(
 @st.cache_resource(show_spinner="Загрузка модели корректора...")
 def _cached_streamlit_corrector(
     config_path: str = str(DEFAULT_CONFIG_PATH),
-    memory_enabled: bool = False,
+    memory_enabled: bool | None = False,
     doc_id: str = "default",
 ) -> StreamlitCorrectorLoadResult:
     return build_streamlit_corrector(config_path, memory_enabled=memory_enabled, doc_id=doc_id)
@@ -63,6 +65,7 @@ def main() -> None:
     with tab_text:
         use_memory = st.checkbox("Использовать контекстную память решений", value=False)
         doc_id = _normalize_doc_id(st.text_input("ID документа", value="default"))
+        use_incremental = st.checkbox("Проверять только изменённые фрагменты", value=False)
         load_result = _cached_streamlit_corrector(
             str(DEFAULT_CONFIG_PATH),
             memory_enabled=use_memory,
@@ -71,24 +74,76 @@ def main() -> None:
         corrector = load_result.corrector
         source = st.text_area("Исходный текст", height=180)
         if st.button("Исправить текст", type="primary") and source.strip():
-            result = corrector.correct(source)
-            st.session_state["latest_text_correction"] = {
+            cache_key = get_incremental_cache_key(doc_id)
+            previous_cache_by_doc_id = st.session_state.setdefault("previous_segment_cache_by_doc_id", {})
+            last_source_text_by_doc_id = st.session_state.setdefault("last_source_text_by_doc_id", {})
+            last_corrected_text_by_doc_id = st.session_state.setdefault("last_corrected_text_by_doc_id", {})
+            incremental_summary = None
+            if use_incremental:
+                previous_cache = previous_cache_by_doc_id.get(cache_key)
+                result = IncrementalCorrector(corrector).correct_incremental(source, previous_cache)
+                previous_cache_by_doc_id[cache_key] = result.segment_cache
+                incremental_summary = build_incremental_summary(result)
+            else:
+                result = corrector.correct(source)
+            last_source_text_by_doc_id[cache_key] = source
+            last_corrected_text_by_doc_id[cache_key] = result.corrected_text
+            latest_text_correction = {
                 "source": source,
                 "result": result,
                 "doc_id": doc_id,
             }
+            if incremental_summary is not None:
+                latest_text_correction["incremental_summary"] = incremental_summary
+            st.session_state["latest_text_correction"] = latest_text_correction
         _render_latest_text_correction(corrector, memory_enabled=use_memory)
 
     with tab_docx:
-        docx_load_result = _cached_streamlit_corrector(str(DEFAULT_CONFIG_PATH), memory_enabled=False, doc_id="default")
-        corrector = docx_load_result.corrector
         uploaded = st.file_uploader("Word-документ", type=["docx"])
         if uploaded is not None:
+            docx_doc_id = _normalize_doc_id(
+                st.text_input("ID документа", value=uploaded.name, key=f"docx_doc_id_{uploaded.name}")
+            )
+            use_docx_incremental = st.checkbox("Проверять только изменённые абзацы", value=False)
+            docx_load_result = _cached_streamlit_corrector(
+                str(DEFAULT_CONFIG_PATH),
+                memory_enabled=None,
+                doc_id=docx_doc_id,
+            )
+            corrector = docx_load_result.corrector
             with tempfile.TemporaryDirectory() as tmp:
                 input_path = Path(tmp) / "input.docx"
                 output_path = Path(tmp) / "corrected.docx"
                 input_path.write_bytes(uploaded.getvalue())
-                edits = correct_docx(input_path, output_path, corrector)
+                if use_docx_incremental:
+                    cache_key = docx_cache_key(docx_doc_id)
+                    paragraph_cache_by_doc_id = st.session_state.setdefault("docx_paragraph_cache_by_doc_id", {})
+                    result = correct_docx_incremental(
+                        input_path,
+                        output_path,
+                        corrector,
+                        previous_cache=paragraph_cache_by_doc_id.get(cache_key),
+                    )
+                    paragraph_cache_by_doc_id[cache_key] = result.paragraph_cache
+                    edits = result.edits
+                    docx_summary = build_docx_incremental_summary(result)
+                else:
+                    paragraphs = read_paragraphs(input_path)
+                    edits = correct_docx(input_path, output_path, corrector)
+                    docx_summary = {
+                        "checked": sum(1 for paragraph in paragraphs if paragraph.strip()),
+                        "reused": 0,
+                        "total_edits": len(edits),
+                    }
+                st.info(
+                    "\n".join(
+                        [
+                            f"Проверено абзацев: {docx_summary['checked']}",
+                            f"Переиспользовано абзацев: {docx_summary['reused']}",
+                            f"Всего исправлений: {docx_summary['total_edits']}",
+                        ]
+                    )
+                )
                 st.download_button(
                     "Скачать исправленный DOCX",
                     data=output_path.read_bytes(),
@@ -122,6 +177,31 @@ def build_feedback_rows(result: Any) -> list[dict[str, str]]:
     ]
 
 
+def get_incremental_cache_key(doc_id: Any) -> str:
+    return _normalize_doc_id(doc_id)
+
+
+def build_incremental_summary(result: Any) -> dict[str, int]:
+    return {
+        "checked": int(getattr(result, "checked_segments", 0)),
+        "reused": int(getattr(result, "reused_segments", 0)),
+        "changed": int(getattr(result, "changed_segments", 0)),
+    }
+
+
+def docx_cache_key(doc_id: Any) -> str:
+    return _normalize_doc_id(doc_id)
+
+
+def build_docx_incremental_summary(result: Any) -> dict[str, int]:
+    edits = getattr(result, "edits", []) or []
+    return {
+        "checked": int(getattr(result, "checked_paragraphs", 0)),
+        "reused": int(getattr(result, "reused_paragraphs", 0)),
+        "total_edits": len(edits),
+    }
+
+
 def _config_with_streamlit_overrides(
     config: dict[str, Any],
     *,
@@ -152,6 +232,17 @@ def _render_latest_text_correction(corrector: Any, *, memory_enabled: bool) -> N
     result = latest["result"]
     doc_id = _normalize_doc_id(latest.get("doc_id"))
     st.text_area("Исправленный текст", value=result.corrected_text, height=180)
+    summary = latest.get("incremental_summary")
+    if summary:
+        st.info(
+            "\n".join(
+                [
+                    f"Проверено фрагментов: {summary['checked']}",
+                    f"Переиспользовано без повторной проверки: {summary['reused']}",
+                    f"Изменено/добавлено: {summary['changed']}",
+                ]
+            )
+        )
     st.markdown("Подсветка исправлений")
     st.markdown(render_highlighted_diff(source, result.corrected_text), unsafe_allow_html=True)
     st.dataframe(build_feedback_rows(result), use_container_width=True)

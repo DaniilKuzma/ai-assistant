@@ -18,11 +18,13 @@
 - `src/preprocessing/` — tokenizer, sentence splitter, protected spans, punctuation gaps.
 - `src/rules/` — rule specs, orthography/punctuation/synthetic rules, registry, coverage validation.
 - `src/candidates/` — candidate generation, dictionary candidates, morphology, ranking, matching.
+- `src/memory/` — контекстная память решений, feedback service, document segment cache для incremental correction.
 - `src/validation/` — diff analyzer, edit classifier, strict validator.
 - `src/alignment/` — source-target alignment and label builders.
 - `src/model/` — encoder loading, multitask edit model, heads, losses.
 - `src/training/` — tensorization, trainer, train entrypoint, save/load artifacts.
 - `src/inference/` — plain corrector, trained corrector, edit realizer, postprocess.
+- `src/inference/incremental_corrector.py` — text incremental correction wrapper; переиспользует кеш неизмененных сегментов.
 - `src/evaluation/` — metrics, reports, threshold sweep, rule/candidate recall reports.
 - `src/data/` — dataset builders, external sources, clean corpus sources, splits, stats.
 - `src/docx/` — DOCX read/correct/write flow.
@@ -44,6 +46,7 @@
 - `models/current/adapters/` — LoRA adapter/config/labels/thresholds.
 - `models/current/heads/heads.pt` — custom heads checkpoint.
 - `reports/` — generated evaluation/training/dataset reports.
+- `docs/correction_memory.md` — краткое руководство по контекстной памяти решений и инкрементальной проверке.
 
 Некоторые файлы в `reports/`, `models/` и `data/processed/` уже изменены в рабочем дереве; не откатывай их без явной просьбы.
 

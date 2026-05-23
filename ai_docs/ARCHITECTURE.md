@@ -4,11 +4,14 @@
 
 1. Text preprocessing: токенизация, sentence split, protected spans.
 2. Candidate generation: орфография, split/join, hyphen, dictionary, punctuation candidates.
-3. Model scoring: ruRoberta encoder + LoRA + custom heads.
-4. Thresholding: rule/family/edit-type thresholds из `configs/config.yaml`.
-5. Validation: `StrictValidator` принимает только изменения в strict scope.
-6. Realization: accepted edits применяются к тексту.
-7. Iteration: correction loop повторяется до стабилизации или `decoder.max_passes`.
+3. `CorrectionMemory` lookup: поиск ранее принятого, отклоненного или проигнорированного решения для candidate в том же документе и контексте.
+4. Model scoring: ruRoberta encoder + LoRA + custom heads оценивают candidates и punctuation gaps.
+5. Thresholding: rule/family/edit-type thresholds из `configs/config.yaml`; memory can reuse accepted candidates or suppress rejected/ignored candidates according to config.
+6. Validation: `StrictValidator` принимает только изменения в strict scope.
+7. Realization: accepted edits применяются к тексту.
+8. `CorrectionMemory` feedback update: UI/service явно записывает `accepted/rejected/ignored/manual`; это не training и не изменение весов модели.
+9. Optional incremental correction: `IncrementalCorrector` или DOCX incremental path переиспользуют кеш неизмененных сегментов/абзацев.
+10. Iteration: correction loop повторяется до стабилизации или `decoder.max_passes`.
 
 ## Runtime Paths
 
@@ -24,6 +27,7 @@ Model-backed path:
 - грузит adapters из `models/current/adapters`;
 - грузит heads из `models/current/heads/heads.pt`;
 - выбирает candidates по thresholds;
+- может учитывать `CorrectionMemory` при selection, но не меняет веса модели;
 - передает trusted edits в validator.
 
 Streamlit path:
@@ -31,6 +35,7 @@ Streamlit path:
 - `src/app/streamlit_app.py`
 - сначала пытается загрузить trained model;
 - при ошибке или отсутствии артефактов показывает/использует rule fallback.
+- может включать контекстную память решений и инкрементальную проверку текста через session state.
 
 DOCX path:
 
@@ -38,6 +43,7 @@ DOCX path:
 - читает параграфы;
 - исправляет каждый параграф выбранным corrector;
 - пишет новый `.docx`, сохраняя базовую структуру и runs.
+- `correct_docx_incremental` переиспользует кеш неизмененных абзацев и проверяет только новые/измененные абзацы.
 
 ## Training Flow
 

@@ -11,6 +11,7 @@
 3. `ai_docs/FILE_MAP.md` — где лежат важные модули, конфиги, данные, модели и отчеты.
 4. `ai_docs/FUNCTIONS_MAP.md` — ключевые классы и функции по подсистемам.
 5. `ai_docs/OPEN_TASKS.md` — известные блокеры и хрупкие места.
+6. `docs/correction_memory.md` — краткое описание контекстной памяти решений и инкрементальной проверки.
 
 ## Документы
 
@@ -24,6 +25,7 @@
 - `ai_docs/DECISIONS.md` — принятые архитектурные решения.
 - `ai_docs/CHANGELOG_AI.md` — изменения AI-memory.
 - `ai_docs/OPEN_TASKS.md` — открытые задачи и риски.
+- `docs/correction_memory.md` — пользовательский словарь, контекстная память, feedback и incremental correction.
 
 `ai_docs/DATABASE.md` намеренно отсутствует: в проекте не найдено базы данных, ORM, миграций или DB-схемы.
 
@@ -34,9 +36,15 @@
 - Архитектура: candidate-aware edit-based correction, encoder-only ruRoberta, LoRA, custom heads.
 - Plain `Corrector` применяет только безопасные deterministic fallback-исправления.
 - Model-backed исправления проходят через `TrainedModelCorrector`, thresholds и `StrictValidator`.
+- Контекстная память решений хранит `accepted/rejected/ignored/manual` для конкретной правки в конкретном контексте; она меняет inference/pipeline, но не обучает веса модели.
+- Память не применяется в обход `StrictValidator`: memory-selected candidates остаются в strict scope и проходят validation.
+- Инкрементальная проверка переиспользует кеш исправленных сегментов текста или абзацев DOCX и заново проверяет только измененные части.
 - Главный конфиг: `configs/config.yaml`.
 - Coverage matrix правил: `configs/rules.yaml`.
 - Streamlit UI: `src/app/streamlit_app.py`.
+- Correction memory modules: `src/memory/`.
+- Incremental text correction: `src/inference/incremental_corrector.py`.
+- Incremental DOCX correction: `src/docx/docx_corrector.py`.
 - Training entrypoint: `python -m src.training.train configs/config.yaml`.
 - Старый README удален; package readme указывает на этот `AI_INDEX.md`.
 

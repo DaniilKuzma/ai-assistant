@@ -2,7 +2,7 @@ from pathlib import Path
 
 from docx import Document
 
-from src.docx.docx_corrector import correct_docx
+from src.docx.docx_corrector import correct_docx, correct_docx_incremental
 from src.inference.corrector import CorrectionResult
 from src.validation.diff_analyzer import Edit
 
@@ -116,3 +116,106 @@ def test_docx_correction_uses_injected_corrector_without_constructing_default(tm
     assert corrected.paragraphs[0].text == "Я не знаю, что делать."
     assert fake_corrector.calls == ["Я незнаю что делать"]
     assert edits == FAKE_EDITS
+
+
+def test_incremental_docx_first_run_checks_non_empty_paragraphs_and_writes_output(tmp_path: Path):
+    input_path = tmp_path / "incremental_first.docx"
+    output_path = tmp_path / "incremental_first_output.docx"
+
+    document = Document()
+    document.add_paragraph("Я незнаю что делать")
+    document.add_paragraph("")
+    document.add_paragraph("   ")
+    document.add_paragraph("Чистый текст.")
+    document.save(input_path)
+
+    fake_corrector = FakeCorrector({"Я незнаю что делать": "Я не знаю, что делать."})
+    result = correct_docx_incremental(input_path, output_path, corrector=fake_corrector)
+
+    corrected = Document(output_path)
+    paragraphs = [paragraph.text for paragraph in corrected.paragraphs]
+
+    assert output_path.exists()
+    assert paragraphs == ["Я не знаю, что делать.", "", "   ", "Чистый текст."]
+    assert fake_corrector.calls == ["Я незнаю что делать", "Чистый текст."]
+    assert result.checked_paragraphs == 2
+    assert result.reused_paragraphs == 0
+    assert len(result.paragraph_cache) == 2
+    assert result.edits == FAKE_EDITS
+
+
+def test_incremental_docx_second_run_reuses_same_document_paragraphs(tmp_path: Path):
+    input_path = tmp_path / "incremental_reuse.docx"
+    first_output_path = tmp_path / "incremental_reuse_first_output.docx"
+    second_output_path = tmp_path / "incremental_reuse_second_output.docx"
+
+    document = Document()
+    document.add_paragraph("Я незнаю что делать")
+    document.add_paragraph("")
+    document.add_paragraph("Чистый текст.")
+    document.save(input_path)
+
+    first_corrector = FakeCorrector({"Я незнаю что делать": "Я не знаю, что делать."})
+    first = correct_docx_incremental(input_path, first_output_path, corrector=first_corrector)
+
+    second_corrector = FakeCorrector({})
+    second = correct_docx_incremental(
+        input_path,
+        second_output_path,
+        corrector=second_corrector,
+        previous_cache=first.paragraph_cache,
+    )
+
+    corrected = Document(second_output_path)
+    paragraphs = [paragraph.text for paragraph in corrected.paragraphs]
+
+    assert second_output_path.exists()
+    assert paragraphs == ["Я не знаю, что делать.", "", "Чистый текст."]
+    assert second_corrector.calls == []
+    assert second.checked_paragraphs == 0
+    assert second.reused_paragraphs == 2
+    assert len(second.paragraph_cache) == 2
+    assert second.edits == FAKE_EDITS
+
+
+def test_incremental_docx_changed_paragraph_checks_only_changed_paragraph(tmp_path: Path):
+    first_input_path = tmp_path / "incremental_changed_first.docx"
+    second_input_path = tmp_path / "incremental_changed_second.docx"
+    first_output_path = tmp_path / "incremental_changed_first_output.docx"
+    second_output_path = tmp_path / "incremental_changed_second_output.docx"
+
+    first_document = Document()
+    first_document.add_paragraph("Первый незнаю")
+    first_document.add_paragraph("Второй текст.")
+    first_document.save(first_input_path)
+
+    second_document = Document()
+    second_document.add_paragraph("Первый незнаю")
+    second_document.add_paragraph("Второй незнаю")
+    second_document.save(second_input_path)
+
+    first_corrector = FakeCorrector(
+        {
+            "Первый незнаю": "Первый не знаю",
+            "Второй текст.": "Второй текст.",
+        }
+    )
+    first = correct_docx_incremental(first_input_path, first_output_path, corrector=first_corrector)
+
+    second_corrector = FakeCorrector({"Второй незнаю": "Второй не знаю"})
+    second = correct_docx_incremental(
+        second_input_path,
+        second_output_path,
+        corrector=second_corrector,
+        previous_cache=first.paragraph_cache,
+    )
+
+    corrected = Document(second_output_path)
+    paragraphs = [paragraph.text for paragraph in corrected.paragraphs]
+
+    assert second_output_path.exists()
+    assert paragraphs == ["Первый не знаю", "Второй не знаю"]
+    assert second_corrector.calls == ["Второй незнаю"]
+    assert second.checked_paragraphs == 1
+    assert second.reused_paragraphs == 1
+    assert len(second.paragraph_cache) == 2
