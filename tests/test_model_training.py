@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import torch
 
 from src.model.edit_model import CandidateAwareEditModel, EditModelConfig
-from src.model.losses import multitask_loss, multitask_loss_components
+from src.model.losses import multitask_loss, multitask_loss_components, multitask_loss_with_components
 
 
 class FakeEncoder(torch.nn.Module):
@@ -200,3 +200,69 @@ def test_multitask_loss_components_report_word_punctuation_confidence_and_error_
         assert key in components
         assert components[key].ndim == 0
         assert torch.isfinite(components[key])
+
+
+def test_sample_weight_scales_all_multitask_loss_components():
+    outputs, labels = _sample_weight_loss_fixture()
+
+    unweighted_total, unweighted_components = multitask_loss_with_components(outputs, labels, {})
+    weighted_total, weighted_components = multitask_loss_with_components(
+        outputs,
+        {**labels, "sample_weight": torch.tensor([0.5])},
+        {},
+    )
+
+    assert torch.isclose(weighted_total, unweighted_total * 0.5)
+    for key, unweighted_value in unweighted_components.items():
+        assert key in weighted_components
+        assert torch.isclose(weighted_components[key], unweighted_value * 0.5)
+
+
+def test_missing_sample_weight_matches_explicit_unit_sample_weight():
+    outputs, labels = _sample_weight_loss_fixture()
+
+    implicit_total, implicit_components = multitask_loss_with_components(outputs, labels, {})
+    explicit_total, explicit_components = multitask_loss_with_components(
+        outputs,
+        {**labels, "sample_weight": torch.tensor([1.0])},
+        {},
+    )
+
+    assert torch.isclose(explicit_total, implicit_total)
+    for key, implicit_value in implicit_components.items():
+        assert torch.isclose(explicit_components[key], implicit_value)
+
+
+def _sample_weight_loss_fixture():
+    outputs = {
+        "candidate_scores": torch.tensor([[0.3, -0.7, 1.2]]),
+        "punctuation_logits": torch.tensor([[[1.0, -0.5, 0.2], [0.1, 0.6, -0.2], [0.3, -0.1, 0.4], [-0.3, 0.2, 0.9]]]),
+        "punctuation_action_logits": torch.tensor(
+            [
+                [
+                    [0.2, -0.1, 0.7, -0.3, 0.1],
+                    [0.4, 0.2, -0.5, 0.3, -0.2],
+                    [-0.1, 0.5, 0.1, -0.4, 0.2],
+                    [0.3, -0.2, 0.2, 0.8, -0.6],
+                ]
+            ]
+        ),
+        "confidence_logits": torch.tensor([[0.5, -0.4, 1.0]]),
+        "error_type_logits": torch.tensor([[[0.1, 0.7, -0.2], [0.8, -0.3, 0.1], [0.4, 0.2, -0.5]]]),
+        "punctuation_confidence_logits": torch.tensor([[0.2, -0.8, 0.4, 1.1]]),
+        "punctuation_error_type_logits": torch.tensor(
+            [[[0.2, 0.1, 0.6], [0.9, -0.2, 0.1], [0.4, 0.5, -0.3], [0.1, 0.8, -0.4]]]
+        ),
+    }
+    labels = {
+        "candidate_labels": torch.tensor([[1.0, 0.0, 0.0]]),
+        "candidate_mask": torch.tensor([[1, 1, 0]], dtype=torch.bool),
+        "punctuation_labels": torch.tensor([[0, 1, 0, 2]]),
+        "punctuation_action_labels": torch.tensor([[0, 2, 0, 3]]),
+        "punctuation_mask": torch.tensor([[1, 1, 1, 0]], dtype=torch.bool),
+        "confidence_labels": torch.tensor([[1.0, 0.0, 0.0]]),
+        "error_type_labels": torch.tensor([[1, 0, -100]]),
+        "punctuation_confidence_labels": torch.tensor([[1.0, 0.0, 0.0, 0.0]]),
+        "punctuation_error_type_labels": torch.tensor([[2, 0, 0, -100]]),
+    }
+    return outputs, labels

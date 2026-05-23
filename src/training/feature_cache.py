@@ -14,7 +14,7 @@ from src.rules.registry import all_rules
 from src.training.tensorization import TrainingFeature
 
 
-CACHE_VERSION = 3
+CACHE_VERSION = 4
 
 
 @dataclass(frozen=True)

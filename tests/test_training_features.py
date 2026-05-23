@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pandas as pd
@@ -25,6 +26,7 @@ def test_training_feature_marks_gold_candidate_and_punctuation_labels():
         max_candidates=8,
     )
 
+    assert feature.sample_weight == 1.0
     gold_index = feature.candidate_replacements.index("не знаю")
     assert feature.candidate_labels[gold_index] == 1.0
     assert 1 in feature.punctuation_labels
@@ -257,6 +259,8 @@ def test_batch_collator_returns_tensors_with_candidate_masks():
     assert batch["punctuation_gap_indices"].shape == torch.Size([1, 12])
     assert batch["punctuation_right_gap_indices"].shape == torch.Size([1, 12])
     assert batch["labels"]["candidate_labels"].shape == torch.Size([1, 6])
+    assert batch["labels"]["sample_weight"].shape == torch.Size([1])
+    assert batch["labels"]["sample_weight"].item() == 1.0
     assert batch["labels"]["punctuation_mask"].sum().item() == 4
     assert batch["labels"]["punctuation_action_labels"].shape == torch.Size([1, 12])
     assert batch["labels"]["punctuation_confidence_labels"].shape == torch.Size([1, 12])
@@ -283,6 +287,114 @@ def test_build_features_supports_progress_option():
 
     assert len(features) == 1
     assert features[0].source == "Я незнаю что делать"
+
+
+def test_build_features_reads_sample_weight_from_row_loss_weight():
+    tokenizer = DebugTokenizer()
+
+    features = build_features_from_rows(
+        [{"source": "Я незнаю что делать", "target": "Я не знаю, что делать.", "loss_weight": 0.4}],
+        tokenizer=tokenizer,
+        punctuation_label_map={"NONE": 0, "COMMA": 1, "DOT": 2},
+        error_type_label_map={"keep": 0, "split_join": 1, "punctuation": 2, "final_punctuation": 3},
+        max_length=12,
+        max_candidates=6,
+    )
+
+    assert features[0].sample_weight == 0.4
+
+
+def test_build_features_reads_sample_weight_from_metadata_fallback():
+    tokenizer = DebugTokenizer()
+
+    features = build_features_from_rows(
+        [
+            {
+                "source": "Я незнаю что делать",
+                "target": "Я не знаю, что делать.",
+                "metadata": json.dumps({"loss_weight": 0.6}, ensure_ascii=False),
+            },
+            {
+                "source": "Кто то пришел",
+                "target": "Кто-то пришел.",
+                "metadata": {"loss_weight": 0.7},
+            },
+        ],
+        tokenizer=tokenizer,
+        punctuation_label_map={"NONE": 0, "COMMA": 1, "DOT": 2},
+        error_type_label_map={"keep": 0, "split_join": 1, "punctuation": 2, "final_punctuation": 3, "hyphen": 4},
+        max_length=12,
+        max_candidates=6,
+    )
+
+    assert features[0].sample_weight == 0.6
+    assert features[1].sample_weight == 0.7
+
+
+def test_build_features_clamps_invalid_sample_weight_and_profiles_warning():
+    class Profiler:
+        def __init__(self):
+            self.records = []
+
+        def should_profile(self, _row_index):
+            return True
+
+        def record(self, row):
+            self.records.append(row)
+
+    profiler = Profiler()
+
+    features = build_features_from_rows(
+        [{"source": "Я незнаю что делать", "target": "Я не знаю, что делать.", "loss_weight": -0.1}],
+        tokenizer=DebugTokenizer(),
+        punctuation_label_map={"NONE": 0, "COMMA": 1, "DOT": 2},
+        error_type_label_map={"keep": 0, "split_join": 1, "punctuation": 2, "final_punctuation": 3},
+        max_length=12,
+        max_candidates=6,
+        profiler=profiler,
+    )
+
+    assert features[0].sample_weight == 1.0
+    assert profiler.records[0]["invalid_sample_weight"] is True
+    assert profiler.records[0]["raw_sample_weight"] == -0.1
+
+
+def test_build_features_clamps_non_finite_sample_weight_to_default():
+    features = build_features_from_rows(
+        [{"source": "Я незнаю что делать", "target": "Я не знаю, что делать.", "loss_weight": float("nan")}],
+        tokenizer=DebugTokenizer(),
+        punctuation_label_map={"NONE": 0, "COMMA": 1, "DOT": 2},
+        error_type_label_map={"keep": 0, "split_join": 1, "punctuation": 2, "final_punctuation": 3},
+        max_length=12,
+        max_candidates=6,
+    )
+
+    assert features[0].sample_weight == 1.0
+
+
+def test_stress_row_loss_weight_passes_through_collator():
+    features = build_features_from_rows(
+        [
+            {
+                "source": "Я незнаю что делать",
+                "target": "Я не знаю, что делать.",
+                "dataset_layer": "stress_multi_error",
+                "is_stress": True,
+                "loss_weight": 0.4,
+            }
+        ],
+        tokenizer=DebugTokenizer(),
+        punctuation_label_map={"NONE": 0, "COMMA": 1, "DOT": 2},
+        error_type_label_map={"keep": 0, "split_join": 1, "punctuation": 2, "final_punctuation": 3},
+        max_length=12,
+        max_candidates=6,
+    )
+
+    batch = EditBatchCollator().collate(features)
+
+    assert features[0].sample_weight == 0.4
+    assert batch["labels"]["sample_weight"].shape == torch.Size([1])
+    assert torch.isclose(batch["labels"]["sample_weight"], torch.tensor([0.4])).all()
 
 
 def test_word_candidate_positive_labels_exist():

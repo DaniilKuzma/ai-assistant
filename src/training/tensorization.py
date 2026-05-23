@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
+import json
+import math
 import re
 import time
 from typing import Any
@@ -69,6 +72,7 @@ class TrainingFeature:
     candidate_groups: list[str]
     candidate_replacement_ids: list[list[int]]
     candidate_replacement_mask: list[list[bool]]
+    sample_weight: float = 1.0
 
 
 class DebugTokenizer:
@@ -126,6 +130,7 @@ def build_training_feature(
     profile: dict[str, Any] | None = None,
     dictionary_policy: str = "all",
     split: str = "train",
+    sample_weight: float = 1.0,
 ) -> TrainingFeature:
     total_started = time.perf_counter()
     tokenizer_started = time.perf_counter()
@@ -255,6 +260,7 @@ def build_training_feature(
         candidate_groups=groups,
         candidate_replacement_ids=replacement_ids,
         candidate_replacement_mask=replacement_masks,
+        sample_weight=_coerce_sample_weight(sample_weight)[0],
     )
 
 
@@ -299,6 +305,7 @@ class EditBatchCollator:
                 "punctuation_error_type_labels": torch.tensor(
                     [feature.punctuation_error_type_labels for feature in features], dtype=torch.long
                 ),
+                "sample_weight": torch.tensor([getattr(feature, "sample_weight", 1.0) for feature in features], dtype=torch.float),
             },
         }
 
@@ -331,6 +338,10 @@ def build_features_from_rows(
                 "source_length_tokens": len(tokenize_words(source_text)),
             }
         dictionary_policy = dictionary_policy_for_row(row) if dictionary_policy_for_row is not None else "all"
+        sample_weight, invalid_sample_weight_raw = _sample_weight_from_row(row)
+        if profile_row is not None and invalid_sample_weight_raw is not None:
+            profile_row["invalid_sample_weight"] = True
+            profile_row["raw_sample_weight"] = invalid_sample_weight_raw
         feature = build_training_feature(
             row["source"],
             row["target"],
@@ -344,6 +355,7 @@ def build_features_from_rows(
             profile=profile_row,
             dictionary_policy=dictionary_policy,
             split=str(row.get("split", split)),
+            sample_weight=sample_weight,
         )
         features.append(feature)
         if profile_row is not None:
@@ -399,6 +411,51 @@ def _to_list(value: Any) -> list[Any]:
 
 def _elapsed_ms(started_at: float) -> float:
     return (time.perf_counter() - started_at) * 1000.0
+
+
+_MISSING_SAMPLE_WEIGHT = object()
+
+
+def _sample_weight_from_row(row: dict[str, Any]) -> tuple[float, Any | None]:
+    raw_weight = _raw_sample_weight_from_row(row)
+    sample_weight, valid = _coerce_sample_weight(raw_weight)
+    return sample_weight, None if valid else raw_weight
+
+
+def _raw_sample_weight_from_row(row: dict[str, Any]) -> Any:
+    if "loss_weight" in row:
+        return row.get("loss_weight")
+    metadata = _metadata_dict(row.get("metadata", {}))
+    if "loss_weight" in metadata:
+        return metadata.get("loss_weight")
+    return _MISSING_SAMPLE_WEIGHT
+
+
+def _metadata_dict(value: Any) -> dict[str, Any]:
+    if isinstance(value, Mapping):
+        return dict(value)
+    if not isinstance(value, str):
+        return {}
+    stripped = value.strip()
+    if not stripped:
+        return {}
+    try:
+        parsed = json.loads(stripped)
+    except json.JSONDecodeError:
+        return {}
+    return dict(parsed) if isinstance(parsed, Mapping) else {}
+
+
+def _coerce_sample_weight(value: Any) -> tuple[float, bool]:
+    if value is _MISSING_SAMPLE_WEIGHT:
+        return 1.0, True
+    try:
+        sample_weight = float(value)
+    except (TypeError, ValueError):
+        return 1.0, False
+    if not math.isfinite(sample_weight) or sample_weight <= 0:
+        return 1.0, False
+    return sample_weight, True
 
 
 def _candidate_to_token_span(candidate: Candidate, offsets: list[tuple[int, int]]) -> tuple[int, int]:
