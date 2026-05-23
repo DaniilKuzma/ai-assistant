@@ -1651,7 +1651,25 @@ def _row_uses_training_eligible_rules(row: dict[str, Any], active_rule_ids: Iter
     rule_ids = [str(rule_id) for rule_id in _json_list(row.get("rule_ids")) if str(rule_id)]
     if not rule_ids:
         return True
+    if _is_atomic_real_pair_row(row, rule_ids):
+        return True
     return all(rule_id in service or rule_id in allowed for rule_id in rule_ids)
+
+
+def _is_atomic_real_pair_row(row: dict[str, Any], rule_ids: list[str]) -> bool:
+    if str(row.get("source_type") or "") != REAL_ERROR_PAIR:
+        return False
+    if any(rule_id in {"", "unknown"} for rule_id in rule_ids):
+        return False
+    edits = _json_list(row.get("edits") or row.get("edit_operations"))
+    if len(edits) != 1:
+        return False
+    metadata = _json_dict(row.get("metadata"))
+    return (
+        metadata.get("routing_category") == "atomic_train"
+        and bool(metadata.get("candidate_present", True))
+        and bool(metadata.get("strict_validator_passed", True))
+    )
 
 
 def _clean_text_has_balance_bug(text: str) -> bool:

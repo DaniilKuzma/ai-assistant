@@ -10,6 +10,12 @@ sources:
     write_reports: true
 
 validation:
+  train_policy: atomize_single_edit_known_rule_only
+  multi_edit_policy: stress_or_eval_only
+  unknown_rule_policy: mining_only
+  require_all_edits_candidate_covered: true
+  require_strict_validator: true
+  stress_loss_weight: 0.4
   min_tokens: 5
   max_tokens: 45
   max_char_edit_ratio: 0.25

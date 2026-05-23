@@ -77,10 +77,17 @@ def test_real_error_config_uses_controlled_download_schema():
     config = yaml.safe_load(Path("configs/real_error_sources.yaml").read_text(encoding="utf-8"))
 
     policy = config["sources"]["download_policy"]
+    validation = config["validation"]
     assert policy["mode"] == "local_first_with_controlled_downloads"
     assert policy["allow_downloads_env"] == "RUSSIAN_CORRECTOR_ALLOW_SOURCE_DOWNLOADS"
     assert policy["fail_if_insufficient_sources"] is False
     assert policy["write_reports"] is True
+    assert validation["train_policy"] == "atomize_single_edit_known_rule_only"
+    assert validation["multi_edit_policy"] == "stress_or_eval_only"
+    assert validation["unknown_rule_policy"] == "mining_only"
+    assert validation["require_all_edits_candidate_covered"] is True
+    assert validation["require_strict_validator"] is True
+    assert validation["stress_loss_weight"] == 0.4
     assert config["real_sources"]["spellcheck_benchmark"]["type"] == "huggingface_dataset"
     assert config["real_sources"]["spellcheck_benchmark"]["hf_id"] == "ai-forever/spellcheck_benchmark"
     assert config["real_sources"]["spellcheck_punctuation_benchmark"]["cap_share"] == 0.25
@@ -125,6 +132,205 @@ def test_real_pair_loader_reports_rejections(tmp_path: Path):
     assert (reports_dir / "rejected_real_pairs.csv").exists()
     assert (reports_dir / "rejected_real_pair_reasons.csv").exists()
     assert result.source_reports[0]["status"] == "loaded"
+
+
+def test_real_pair_loader_routes_only_single_edit_known_rule_to_atomic_train(tmp_path: Path):
+    source_path = tmp_path / "pairs.jsonl"
+    source_path.write_text(
+        '{"source": "В городе жызнь стала заметно спокойнее после проверки.", "target": "В городе жизнь стала заметно спокойнее после проверки."}\n',
+        encoding="utf-8",
+    )
+    output_path = tmp_path / "real_error_pairs_validated.csv.gz"
+
+    result = load_real_error_pairs(
+        {
+            "real_sources": {
+                "unit_pairs": {
+                    "enabled": True,
+                    "type": "local_jsonl",
+                    "local_path": str(source_path),
+                    "max_pairs": 10,
+                }
+            },
+            "validation": {"min_tokens": 5},
+        },
+        candidate_generator=CandidateGenerator(),
+        output_path=output_path,
+        reports_dir=tmp_path / "reports",
+    )
+
+    assert len(result.rows) == 1
+    assert result.rows[0]["rule_id"] != "unknown"
+    assert result.rows[0]["edit_count"] == 1
+    assert result.stress_rows == []
+    assert result.mining_rows == []
+    assert result.holdout_rows == []
+    assert output_path.exists()
+    assert Path(result.atomic_output_path).exists()
+    assert Path(result.atomic_output_path).name == "real_error_pairs_atomic.csv.gz"
+    assert pd.read_csv(output_path).shape[0] == 1
+    assert pd.read_csv(result.atomic_output_path).shape[0] == 1
+
+
+def test_real_pair_loader_routes_explicit_eval_split_to_holdout(tmp_path: Path):
+    source_path = tmp_path / "pairs.jsonl"
+    source_path.write_text(
+        '{"source": "В городе жызнь стала заметно спокойнее после проверки.", "target": "В городе жизнь стала заметно спокойнее после проверки.", "metadata": {"split": "test"}}\n',
+        encoding="utf-8",
+    )
+
+    result = load_real_error_pairs(
+        {
+            "real_sources": {
+                "unit_pairs": {
+                    "enabled": True,
+                    "type": "local_jsonl",
+                    "local_path": str(source_path),
+                    "max_pairs": 10,
+                }
+            },
+            "validation": {"min_tokens": 5},
+        },
+        candidate_generator=CandidateGenerator(),
+        output_path=tmp_path / "real_error_pairs_validated.csv.gz",
+        reports_dir=tmp_path / "reports",
+    )
+
+    assert result.rows == []
+    assert len(result.holdout_rows) == 1
+    metadata = json.loads(result.holdout_rows[0]["metadata"])
+    assert metadata["source_split"] == "test"
+    assert metadata["raw_split"] == "test"
+    assert metadata["holdout_reason"] == "explicit_source_split"
+    assert Path(result.holdout_output_path).exists()
+    assert pd.read_csv(result.output_path).empty
+
+
+def test_real_pair_loader_routes_multi_edit_known_rule_to_stress_not_train(tmp_path: Path):
+    source_path = tmp_path / "pairs.jsonl"
+    source_path.write_text(
+        '{"source": "В городе жызнь стала заметно спокойнее и жызнь продолжалась.", "target": "В городе жизнь стала заметно спокойнее и жизнь продолжалась."}\n',
+        encoding="utf-8",
+    )
+
+    result = load_real_error_pairs(
+        {
+            "real_sources": {
+                "unit_pairs": {
+                    "enabled": True,
+                    "type": "local_jsonl",
+                    "local_path": str(source_path),
+                    "max_pairs": 10,
+                }
+            },
+            "validation": {"min_tokens": 5},
+        },
+        candidate_generator=CandidateGenerator(),
+        output_path=tmp_path / "real_error_pairs_validated.csv.gz",
+        reports_dir=tmp_path / "reports",
+    )
+
+    assert result.rows == []
+    assert len(result.stress_rows) == 1
+    stress = result.stress_rows[0]
+    assert stress["edit_count"] == 2
+    assert stress["dataset_layer"] == "stress_multi_error"
+    assert stress["is_stress"] is True
+    assert stress["count_toward_rule_quota"] is False
+    assert stress["loss_weight"] == 0.4
+    assert Path(result.stress_output_path).exists()
+    assert pd.read_csv(result.output_path).empty
+
+
+def test_real_pair_loader_routes_unknown_rule_to_mining_not_train(tmp_path: Path):
+    source_path = tmp_path / "pairs.jsonl"
+    source_path.write_text(
+        '{"source": "В городе жызнь стала заметно спокойнее после ошипки.", "target": "В городе жизнь стала заметно спокойнее после ошибки."}\n',
+        encoding="utf-8",
+    )
+
+    result = load_real_error_pairs(
+        {
+            "real_sources": {
+                "unit_pairs": {
+                    "enabled": True,
+                    "type": "local_jsonl",
+                    "local_path": str(source_path),
+                    "max_pairs": 10,
+                }
+            },
+            "validation": {"min_tokens": 5},
+        },
+        candidate_generator=CandidateGenerator(),
+        output_path=tmp_path / "real_error_pairs_validated.csv.gz",
+        reports_dir=tmp_path / "reports",
+    )
+
+    assert result.rows == []
+    assert result.stress_rows == []
+    assert len(result.mining_rows) == 1
+    assert result.mining_rows[0]["routing_reason"] == "unknown_rule_mining_only"
+    assert Path(result.mining_output_path).exists()
+
+
+def test_candidate_present_requires_all_edits_covered():
+    validation = validate_real_error_pair(
+        "В городе жызнь стала заметно спокойнее и жызнь продолжалась.",
+        "В городе жизнь стала заметно спокойнее и жизнь продолжалась.",
+        source_dataset="unit",
+        candidate_generator=_FirstKnownEditOnlyCandidateGenerator(),
+    )
+
+    assert validation.accepted is False
+    assert validation.reason == "candidate_missing"
+    assert validation.candidate_present is False
+
+
+def test_real_pair_loader_writes_split_outputs_and_atomization_report(tmp_path: Path):
+    source_path = tmp_path / "pairs.jsonl"
+    source_path.write_text(
+        '{"source": "В городе жызнь стала заметно спокойнее после проверки.", "target": "В городе жизнь стала заметно спокойнее после проверки."}\n'
+        '{"source": "В городе жызнь стала заметно спокойнее и жызнь продолжалась.", "target": "В городе жизнь стала заметно спокойнее и жизнь продолжалась."}\n'
+        '{"source": "В городе жызнь стала заметно спокойнее после ошипки.", "target": "В городе жизнь стала заметно спокойнее после ошибки."}\n',
+        encoding="utf-8",
+    )
+    reports_dir = tmp_path / "reports"
+
+    result = load_real_error_pairs(
+        {
+            "real_sources": {
+                "unit_pairs": {
+                    "enabled": True,
+                    "type": "local_jsonl",
+                    "local_path": str(source_path),
+                    "max_pairs": 10,
+                }
+            },
+            "validation": {"min_tokens": 5},
+        },
+        candidate_generator=CandidateGenerator(),
+        output_path=tmp_path / "real_error_pairs_validated.csv.gz",
+        reports_dir=reports_dir,
+    )
+
+    assert Path(result.output_path).exists()
+    assert Path(result.atomic_output_path).exists()
+    assert Path(result.holdout_output_path).exists()
+    assert Path(result.stress_output_path).exists()
+    assert Path(result.mining_output_path).exists()
+    assert Path(result.rejected_output_path).exists()
+    assert (reports_dir / "real_pair_atomization_report.csv").exists()
+    filter_report = pd.read_csv(reports_dir / "real_pair_filter_report.csv")
+    assert {
+        "atomic_train",
+        "holdout",
+        "stress",
+        "mining",
+        "rejected",
+    } <= set(filter_report.columns)
+    assert len(result.rows) == 1
+    assert len(result.stress_rows) == 1
+    assert len(result.mining_rows) == 1
 
 
 def test_real_pair_loader_supports_alias_fields_and_writes_canonical_columns(tmp_path: Path):
@@ -390,3 +596,18 @@ def _candidate_backed_rows(prefix: str, count: int) -> list[str]:
         )
         for index in range(count)
     ]
+
+
+class _FirstKnownEditOnlyCandidateGenerator:
+    def __init__(self) -> None:
+        self._generator = CandidateGenerator()
+
+    def generate(self, source: str):
+        first_start = source.find("жызнь")
+        return [
+            candidate
+            for candidate in self._generator.generate(source)
+            if candidate.start == first_start
+            and candidate.source.lower() == "жызнь"
+            and candidate.replacement.lower() == "жизнь"
+        ][:1]
