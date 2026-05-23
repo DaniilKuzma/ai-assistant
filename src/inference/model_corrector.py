@@ -11,7 +11,7 @@ from src.config.thresholds import threshold_for_candidate, threshold_for_punctua
 from src.inference.corrector import CorrectionResult
 from src.inference.edit_realizer import apply_candidate
 from src.inference.postprocess import normalize_spacing
-from src.memory.correction_memory import CorrectionMemory
+from src.memory.correction_memory import CorrectionMemory, build_memory_from_config
 from src.model.edit_model import CandidateAwareEditModel, EditModelConfig
 from src.model.encoder import EncoderLoadConfig, ensure_pytorch_transformers_backend, load_encoder, load_tokenizer
 from src.preprocessing.punctuation_gaps import word_gap_context_token_indices
@@ -106,14 +106,8 @@ class TrainedModelCorrector:
         thresholds = threshold_config.get(mode, {})
         backend = TorchCandidateModelBackend.from_config(config)
         memory_config = config.get("correction_memory", {}) or {}
-        memory_enabled = bool(memory_config.get("enabled", False))
-        correction_memory = None
-        if memory_enabled:
-            correction_memory = CorrectionMemory(
-                storage_path=memory_config.get("storage_path"),
-                context_window_chars=int(memory_config.get("context_window_chars", 48)),
-            )
-            correction_memory.load()
+        correction_memory = build_memory_from_config(config)
+        memory_enabled = correction_memory is not None
         return cls(
             backend,
             thresholds=thresholds,
@@ -168,6 +162,11 @@ class TrainedModelCorrector:
             self.backend.predict_punctuation(proposed),
             self.thresholds,
             punctuation_candidates=punctuation_candidates,
+            correction_memory=self.correction_memory if self.memory_enabled else None,
+            doc_id=self.doc_id,
+            accepted_reuse=self.memory_accepted_reuse,
+            rejected_suppress=self.memory_rejected_suppress,
+            decision_trace=self.last_candidate_decisions,
         )
         return normalize_spacing(proposed), [*selected, *punctuation_edits]
 
@@ -611,6 +610,11 @@ def _apply_punctuation_predictions(
     thresholds: dict[str, float],
     *,
     punctuation_candidates: list[Candidate] | None = None,
+    correction_memory: CorrectionMemory | None = None,
+    doc_id: str = "default",
+    accepted_reuse: bool = True,
+    rejected_suppress: bool = True,
+    decision_trace: list[dict[str, Any]] | None = None,
 ) -> tuple[str, list[Candidate]]:
     proposed = text
     trusted_edits: list[Candidate] = []
@@ -627,24 +631,70 @@ def _apply_punctuation_predictions(
                 action=prediction.action,
                 rule_id=matched_candidate.rule_id,
             )
-        if prediction.confidence < threshold_for_punctuation_prediction(prediction, thresholds):
+        threshold = threshold_for_punctuation_prediction(prediction, thresholds)
+        threshold_passed = prediction.confidence >= threshold
+        memory_decision = ""
+        memory_applied = False
+        memory_reason = ""
+        selected_by_memory = False
+        memory_key = ""
+        if correction_memory is not None:
+            memory_match = correction_memory.lookup_candidate(text, matched_candidate, doc_id=doc_id)
+            if memory_match is not None:
+                memory_decision = memory_match.entry.decision
+                memory_reason = memory_match.reason
+                memory_key = memory_match.entry.key
+                if memory_decision in MEMORY_SUPPRESS_DECISIONS and rejected_suppress:
+                    memory_applied = True
+                elif memory_decision == "accepted" and accepted_reuse:
+                    memory_applied = True
+                    selected_by_memory = True
+
+        suppressed_by_memory = memory_decision in MEMORY_SUPPRESS_DECISIONS and rejected_suppress
+        selection_eligible = (threshold_passed or selected_by_memory) and not suppressed_by_memory
+        if not selection_eligible:
+            _record_punctuation_decision(
+                decision_trace,
+                matched_candidate,
+                prediction,
+                threshold=threshold,
+                threshold_passed=threshold_passed,
+                selected=False,
+                memory_decision=memory_decision,
+                memory_applied=memory_applied,
+                memory_reason=memory_reason,
+                selected_by_memory=selected_by_memory,
+                memory_key=memory_key,
+            )
             continue
         if prediction.action in {"KEEP_NONE", "KEEP_EXISTING"}:
+            _record_punctuation_decision(
+                decision_trace,
+                matched_candidate,
+                prediction,
+                threshold=threshold,
+                threshold_passed=threshold_passed,
+                selected=False,
+                memory_decision=memory_decision,
+                memory_applied=memory_applied,
+                memory_reason=memory_reason,
+                selected_by_memory=selected_by_memory,
+                memory_key=memory_key,
+            )
             continue
         before = proposed
+        prediction_edits: list[Candidate] = []
         if prediction.action == "DELETE":
             proposed = _delete_punctuation_after_word(proposed, prediction.gap_index)
-            trusted_edits.extend(_trusted_punctuation_candidates(before, proposed, prediction))
-            continue
-        if prediction.label == "NONE":
-            continue
-        if prediction.action not in {"INSERT", "REPLACE"}:
-            continue
-        if matched_candidate.rule_id == "direct_speech_dash" and prediction.label == "DASH":
+            prediction_edits = _trusted_punctuation_candidates(before, proposed, prediction)
+        elif prediction.label == "NONE":
+            prediction_edits = []
+        elif prediction.action not in {"INSERT", "REPLACE"}:
+            prediction_edits = []
+        elif matched_candidate.rule_id == "direct_speech_dash" and prediction.label == "DASH":
             proposed = _insert_punctuation_at_position(proposed, matched_candidate.start, _punctuation_mark(prediction.label))
-            trusted_edits.extend(_trusted_punctuation_candidates(before, proposed, prediction))
-            continue
-        if prediction.label in {"QUOTE_OPEN", "BRACKET_OPEN"}:
+            prediction_edits = _trusted_punctuation_candidates(before, proposed, prediction)
+        elif prediction.label in {"QUOTE_OPEN", "BRACKET_OPEN"}:
             proposed = _insert_punctuation_before_word(proposed, prediction.gap_index + 1, _punctuation_mark(prediction.label))
         elif prediction.label in {"DOT", "QUESTION", "EXCLAMATION", "ELLIPSIS"}:
             if _is_last_word_index(proposed, prediction.gap_index):
@@ -658,8 +708,67 @@ def _apply_punctuation_predictions(
             "BRACKET_CLOSE",
         }:
             proposed = _insert_punctuation_after_word(proposed, prediction.gap_index, _punctuation_mark(prediction.label))
-        trusted_edits.extend(_trusted_punctuation_candidates(before, proposed, prediction))
+        if not prediction_edits:
+            prediction_edits = _trusted_punctuation_candidates(before, proposed, prediction)
+        trusted_edits.extend(prediction_edits)
+        _record_punctuation_decision(
+            decision_trace,
+            matched_candidate,
+            prediction,
+            threshold=threshold,
+            threshold_passed=threshold_passed,
+            selected=bool(prediction_edits),
+            memory_decision=memory_decision,
+            memory_applied=memory_applied,
+            memory_reason=memory_reason,
+            selected_by_memory=selected_by_memory,
+            memory_key=memory_key,
+        )
     return proposed, trusted_edits
+
+
+def _record_punctuation_decision(
+    decision_trace: list[dict[str, Any]] | None,
+    candidate: Candidate,
+    prediction: ModelPunctuationPrediction,
+    *,
+    threshold: float,
+    threshold_passed: bool,
+    selected: bool,
+    memory_decision: str,
+    memory_applied: bool,
+    memory_reason: str,
+    selected_by_memory: bool,
+    memory_key: str,
+) -> None:
+    if decision_trace is None:
+        return
+    decision_trace.append(
+        {
+            "candidate": candidate,
+            "rule_id": prediction.rule_id or candidate.rule_id,
+            "edit_type": candidate.edit_type,
+            "source": candidate.source,
+            "replacement": candidate.replacement,
+            "start": candidate.start,
+            "end": candidate.end,
+            "score": float(prediction.confidence),
+            "confidence": float(prediction.confidence),
+            "threshold": float(threshold),
+            "threshold_passed": bool(threshold_passed),
+            "selected": bool(selected),
+            "conflict": False,
+            "validator_status": "",
+            "validator_reason": "",
+            "memory_decision": memory_decision,
+            "memory_applied": bool(memory_applied),
+            "memory_reason": memory_reason,
+            "selected_by_memory": bool(selected_by_memory),
+            "memory_key": memory_key,
+            "action": prediction.action,
+            "label": prediction.label,
+        }
+    )
 
 
 def _punctuation_candidates_for_text(generator: CandidateGenerator, text: str) -> list[Candidate]:

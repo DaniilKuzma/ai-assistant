@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from src.candidates.candidate_generator import Candidate
-from src.memory.correction_memory import CorrectionMemory
+from src.memory.correction_memory import CorrectionMemory, build_memory_from_config
 from src.validation.diff_analyzer import Edit
 
 
@@ -134,6 +134,66 @@ def test_jsonl_save_load_round_trip(tmp_path: Path) -> None:
     assert match is not None
     assert match.entry == entry
     assert storage_path.exists()
+
+
+def test_build_memory_from_config_returns_none_when_disabled(tmp_path: Path) -> None:
+    storage_path = tmp_path / "memory.jsonl"
+
+    memory = build_memory_from_config(
+        {
+            "correction_memory": {
+                "enabled": False,
+                "storage_path": str(storage_path),
+                "context_window_chars": 48,
+            }
+        }
+    )
+
+    assert memory is None
+    assert not storage_path.exists()
+
+
+def test_build_memory_from_config_loads_existing_jsonl_when_enabled(tmp_path: Path) -> None:
+    text = "Она пришла сдесь утром."
+    storage_path = tmp_path / "memory.jsonl"
+    saved = CorrectionMemory(storage_path)
+    saved.remember_edit(text, _edit(text), "accepted", doc_id="doc-1")
+    saved.save()
+
+    memory = build_memory_from_config(
+        {
+            "correction_memory": {
+                "enabled": True,
+                "storage_path": str(storage_path),
+                "context_window_chars": 48,
+            }
+        }
+    )
+
+    assert memory is not None
+    match = memory.lookup_edit(text, _edit(text), doc_id="doc-1")
+    assert match is not None
+    assert match.entry.decision == "accepted"
+
+
+def test_edit_type_aliases_allow_ui_edit_decision_to_match_generated_candidate() -> None:
+    text = "Она пришла сдесь утром."
+    memory = CorrectionMemory()
+    edit = _edit(text, edit_type="spelling_replace")
+    candidate = Candidate(
+        source="сдесь",
+        replacement="здесь",
+        edit_type="spelling",
+        start=edit.start,
+        end=edit.end,
+        rule_id=edit.rule_id,
+    )
+
+    memory.remember_edit(text, edit, "rejected", doc_id="doc-1")
+
+    match = memory.lookup_candidate(text, candidate, doc_id="doc-1")
+    assert match is not None
+    assert match.entry.decision == "rejected"
 
 
 def test_corrupted_jsonl_line_does_not_break_load(tmp_path: Path) -> None:

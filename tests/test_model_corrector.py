@@ -43,11 +43,36 @@ def _generated_candidate(corrector: TrainedModelCorrector, text: str, replacemen
     raise AssertionError(f"Candidate with replacement {replacement!r} was not generated")
 
 
+def _generated_punctuation_candidate(
+    corrector: TrainedModelCorrector,
+    text: str,
+    *,
+    rule_id: str,
+    label: str,
+    action: str,
+) -> Candidate:
+    for candidate in corrector.candidates.generate(text):
+        if candidate.rule_id == rule_id and candidate.label == label and candidate.action == action:
+            return candidate
+    raise AssertionError(f"Punctuation candidate {rule_id!r}/{label!r}/{action!r} was not generated")
+
+
 def _decision_for(result: CorrectionResult, replacement: str) -> dict:
     for decision in result.candidate_decisions:
         if decision.get("replacement") == replacement:
             return decision
     raise AssertionError(f"Decision for replacement {replacement!r} was not recorded")
+
+
+def _punctuation_decision_for(result: CorrectionResult, *, rule_id: str, replacement: str) -> dict:
+    for decision in result.candidate_decisions:
+        if (
+            decision.get("rule_id") == rule_id
+            and decision.get("replacement") == replacement
+            and decision.get("action")
+        ):
+            return decision
+    raise AssertionError(f"Punctuation decision for {rule_id!r}/{replacement!r} was not recorded")
 
 
 def test_trained_model_corrector_does_not_apply_whitelist_candidate_when_model_score_is_low():
@@ -553,6 +578,97 @@ def test_trained_model_corrector_uses_rule_specific_punctuation_threshold_before
     result = corrector.correct("Я думаю что важно.")
 
     assert result.corrected_text == "Я думаю, что важно."
+
+
+def test_punctuation_rejected_memory_suppresses_comma_insertion_even_when_confident():
+    text = "Я думаю что важно."
+    memory = CorrectionMemory(storage_path=None)
+    corrector = TrainedModelCorrector(
+        FakeBackend(
+            {},
+            punctuation=[ModelPunctuationPrediction(1, "COMMA", 0.99, action="INSERT", rule_id="comma_subordinate")],
+        ),
+        thresholds={"punctuation_threshold": 0.9},
+        correction_memory=memory,
+        doc_id="doc-1",
+    )
+    memory.remember_candidate(
+        text,
+        _generated_punctuation_candidate(corrector, text, rule_id="comma_subordinate", label="COMMA", action="INSERT"),
+        "rejected",
+        doc_id="doc-1",
+    )
+
+    result = corrector.correct(text)
+
+    assert result.corrected_text == text
+    decision = _punctuation_decision_for(result, rule_id="comma_subordinate", replacement=",")
+    assert decision["rule_id"] == "comma_subordinate"
+    assert decision["memory_decision"] == "rejected"
+    assert decision["memory_applied"] is True
+    assert decision["memory_reason"] == "exact_context_key"
+    assert decision["selected"] is False
+
+
+def test_punctuation_accepted_memory_allows_comma_insertion_below_threshold():
+    text = "Я думаю что важно."
+    memory = CorrectionMemory(storage_path=None)
+    corrector = TrainedModelCorrector(
+        FakeBackend(
+            {},
+            punctuation=[ModelPunctuationPrediction(1, "COMMA", 0.85, action="INSERT", rule_id="comma_subordinate")],
+        ),
+        thresholds={"punctuation_threshold": 0.9},
+        correction_memory=memory,
+        doc_id="doc-1",
+    )
+    memory.remember_candidate(
+        text,
+        _generated_punctuation_candidate(corrector, text, rule_id="comma_subordinate", label="COMMA", action="INSERT"),
+        "accepted",
+        doc_id="doc-1",
+    )
+
+    result = corrector.correct(text)
+
+    assert result.corrected_text == "Я думаю, что важно."
+    decision = _punctuation_decision_for(result, rule_id="comma_subordinate", replacement=",")
+    assert decision["rule_id"] == "comma_subordinate"
+    assert decision["memory_decision"] == "accepted"
+    assert decision["memory_applied"] is True
+    assert decision["selected_by_memory"] is True
+    assert decision["threshold_passed"] is False
+    assert decision["selected"] is True
+
+
+def test_punctuation_accepted_memory_still_goes_through_strict_validator():
+    text = "Он понял одно проект готов."
+    memory = CorrectionMemory(storage_path=None)
+    corrector = TrainedModelCorrector(
+        FakeBackend(
+            {},
+            punctuation=[ModelPunctuationPrediction(2, "COLON", 0.85, action="INSERT", rule_id="explanation_colon")],
+        ),
+        thresholds={"punctuation_threshold": 0.9},
+        correction_memory=memory,
+        doc_id="doc-1",
+    )
+    memory.remember_candidate(
+        text,
+        _generated_punctuation_candidate(corrector, text, rule_id="explanation_colon", label="COLON", action="INSERT"),
+        "accepted",
+        doc_id="doc-1",
+    )
+
+    result = corrector.correct(text)
+
+    assert result.corrected_text == text
+    assert any(edit.rule_id == "explanation_colon" and edit.status == "rejected" for edit in result.edits)
+    decision = _punctuation_decision_for(result, rule_id="explanation_colon", replacement=":")
+    assert decision["rule_id"] == "explanation_colon"
+    assert decision["selected_by_memory"] is True
+    assert decision["validator_status"] == "rejected"
+    assert decision["validator_reason"] == "unsafe_colon_candidate"
 
 
 def test_trained_model_corrector_does_not_select_low_score_tsya_candidate():

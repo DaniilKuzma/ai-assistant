@@ -13,6 +13,13 @@ from src.validation.diff_analyzer import Edit
 
 
 VALID_DECISIONS = {"accepted", "rejected", "ignored", "manual"}
+EDIT_TYPE_KEY_ALIASES = {
+    "spelling_replace": "spelling",
+    "split_word": "split_join",
+    "join_words": "split_join",
+    "hyphen_change": "hyphen",
+    "case_change": "case",
+}
 
 
 @dataclass(frozen=True)
@@ -51,7 +58,7 @@ def build_memory_key(
     payload = {
         "doc_id": _normalize_text(doc_id),
         "rule_id": _normalize_text(rule_id),
-        "edit_type": _normalize_text(edit_type),
+        "edit_type": _normalize_edit_type(edit_type),
         "source": _normalize_text(source),
         "replacement": _normalize_text(replacement),
         "left_context": _normalize_text(left_context),
@@ -59,6 +66,19 @@ def build_memory_key(
     }
     encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
+
+
+def build_memory_from_config(config: dict[str, Any]) -> CorrectionMemory | None:
+    memory_config = config.get("correction_memory", {}) or {}
+    if not bool(memory_config.get("enabled", False)):
+        return None
+
+    memory = CorrectionMemory(
+        storage_path=memory_config.get("storage_path"),
+        context_window_chars=int(memory_config.get("context_window_chars", 48)),
+    )
+    memory.load()
+    return memory
 
 
 class CorrectionMemory:
@@ -235,6 +255,10 @@ def _resolve_span(text: str, item: Candidate | Edit) -> tuple[int, int]:
 
 def _normalize_text(text: str) -> str:
     return re.sub(r"\s+", " ", str(text).lower().replace("ё", "е")).strip()
+
+
+def _normalize_edit_type(edit_type: str) -> str:
+    return _normalize_text(EDIT_TYPE_KEY_ALIASES.get(str(edit_type), str(edit_type)))
 
 
 def _entry_from_mapping(raw: Any) -> CorrectionMemoryEntry:

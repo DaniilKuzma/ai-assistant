@@ -1,6 +1,7 @@
 from src.candidates.candidate_generator import CandidateGenerator
 from src.inference.corrector import Corrector
 from src.inference.model_corrector import TorchCandidateModelBackend, TrainedModelCorrector
+from src.memory.correction_memory import CorrectionMemory
 
 
 class RecordingBackend:
@@ -122,6 +123,48 @@ def test_plain_corrector_does_not_apply_yo_e_candidate_without_scorer():
     assert not any(edit.rule_id == "yo_e_candidate" and edit.status == "accepted" for edit in result.edits)
 
 
+def test_plain_corrector_applies_deterministic_candidate_without_memory():
+    result = Corrector().correct("жыраф высокий.")
+
+    assert result.corrected_text == "жираф высокий."
+    assert any(edit.source == "жыраф" and edit.replacement == "жираф" and edit.status == "accepted" for edit in result.edits)
+
+
+def test_plain_corrector_rejected_memory_suppresses_deterministic_candidate():
+    text = "жыраф высокий."
+    memory = CorrectionMemory(storage_path=None)
+    candidate = _generated_candidate(CandidateGenerator(), text, "жираф")
+    memory.remember_candidate(text, candidate, "rejected", doc_id="doc-1")
+    corrector = Corrector(correction_memory=memory, doc_id="doc-1")
+
+    result = corrector.correct(text)
+
+    assert result.corrected_text == text
+    assert not result.edits
+    decision = _decision_for(result, "жираф")
+    assert decision["candidate"] == candidate
+    assert decision["rule_id"] == "pattern_жы_жи"
+    assert decision["source"] == "жыраф"
+    assert decision["replacement"] == "жираф"
+    assert decision["selected"] is False
+    assert decision["memory_decision"] == "rejected"
+    assert decision["memory_applied"] is True
+    assert decision["memory_reason"] == "exact_context_key"
+
+
+def test_plain_corrector_returns_candidate_decisions_trace():
+    result = Corrector().correct("жыраф высокий.")
+
+    decision = _decision_for(result, "жираф")
+    assert decision["rule_id"] == "pattern_жы_жи"
+    assert decision["source"] == "жыраф"
+    assert decision["replacement"] == "жираф"
+    assert decision["selected"] is True
+    assert decision["memory_decision"] == ""
+    assert decision["memory_applied"] is False
+    assert decision["memory_reason"] == ""
+
+
 def test_trained_corrector_from_config_uses_dictionary_provider(monkeypatch, tmp_path):
     lexicon_path = tmp_path / "russian_lexicon.txt"
     lexicon_path.write_text("библиотека\n", encoding="utf-8")
@@ -143,3 +186,17 @@ def test_trained_corrector_from_config_uses_dictionary_provider(monkeypatch, tmp
     corrector._single_pass_with_candidates("Библеотека открыта.")
 
     assert "dictionary_fuzzy" in backend.rule_ids
+
+
+def _generated_candidate(generator: CandidateGenerator, text: str, replacement: str):
+    for candidate in generator.generate(text):
+        if candidate.replacement == replacement and candidate.edit_type != "keep":
+            return candidate
+    raise AssertionError(f"Candidate with replacement {replacement!r} was not generated")
+
+
+def _decision_for(result, replacement: str) -> dict:
+    for decision in result.candidate_decisions:
+        if decision.get("replacement") == replacement:
+            return decision
+    raise AssertionError(f"Decision for replacement {replacement!r} was not recorded")

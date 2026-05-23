@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass
 import difflib
 import html
@@ -14,6 +15,7 @@ from src.config.load_config import load_config
 from src.docx.docx_corrector import correct_docx
 from src.inference.corrector import Corrector
 from src.inference.model_corrector import TrainedModelCorrector
+from src.memory import CorrectionFeedbackService
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -27,53 +29,59 @@ class StreamlitCorrectorLoadResult:
     error: str | None = None
 
 
-def build_streamlit_corrector(config_path: str | Path = DEFAULT_CONFIG_PATH) -> StreamlitCorrectorLoadResult:
+def build_streamlit_corrector(
+    config_path: str | Path = DEFAULT_CONFIG_PATH,
+    *,
+    memory_enabled: bool | None = None,
+    doc_id: str | None = None,
+) -> StreamlitCorrectorLoadResult:
     config_path = Path(config_path)
-    config = load_config(config_path)
+    config = _config_with_streamlit_overrides(load_config(config_path), memory_enabled=memory_enabled, doc_id=doc_id)
     if _trained_artifacts_exist(config):
         try:
             return StreamlitCorrectorLoadResult(TrainedModelCorrector.from_config(config), "trained_model")
         except Exception as exc:
-            return StreamlitCorrectorLoadResult(Corrector(), "rule_fallback", str(exc))
-    return StreamlitCorrectorLoadResult(Corrector(), "rule_fallback")
+            return StreamlitCorrectorLoadResult(Corrector.from_config(config), "rule_fallback", str(exc))
+    return StreamlitCorrectorLoadResult(Corrector.from_config(config), "rule_fallback")
 
 
 @st.cache_resource(show_spinner="Загрузка модели корректора...")
-def _cached_streamlit_corrector(config_path: str = str(DEFAULT_CONFIG_PATH)) -> StreamlitCorrectorLoadResult:
-    return build_streamlit_corrector(config_path)
+def _cached_streamlit_corrector(
+    config_path: str = str(DEFAULT_CONFIG_PATH),
+    memory_enabled: bool = False,
+    doc_id: str = "default",
+) -> StreamlitCorrectorLoadResult:
+    return build_streamlit_corrector(config_path, memory_enabled=memory_enabled, doc_id=doc_id)
 
 
 def main() -> None:
     st.set_page_config(page_title="Система исправления ошибок русского языка", layout="wide")
     st.title("Система исправления ошибок русского языка")
 
-    load_result = _cached_streamlit_corrector()
-    corrector = load_result.corrector
-
     tab_text, tab_docx = st.tabs(["Text", "DOCX"])
 
     with tab_text:
+        use_memory = st.checkbox("Использовать контекстную память решений", value=False)
+        doc_id = _normalize_doc_id(st.text_input("ID документа", value="default"))
+        load_result = _cached_streamlit_corrector(
+            str(DEFAULT_CONFIG_PATH),
+            memory_enabled=use_memory,
+            doc_id=doc_id,
+        )
+        corrector = load_result.corrector
         source = st.text_area("Исходный текст", height=180)
         if st.button("Исправить текст", type="primary") and source.strip():
             result = corrector.correct(source)
-            st.text_area("Исправленный текст", value=result.corrected_text, height=180)
-            st.markdown("Подсветка исправлений")
-            st.markdown(render_highlighted_diff(source, result.corrected_text), unsafe_allow_html=True)
-            st.dataframe(
-                [
-                    {
-                        "source": edit.source,
-                        "replacement": edit.replacement,
-                        "type": edit.edit_type,
-                        "status": edit.status,
-                        "reason": edit.reason,
-                    }
-                    for edit in result.edits
-                ],
-                use_container_width=True,
-            )
+            st.session_state["latest_text_correction"] = {
+                "source": source,
+                "result": result,
+                "doc_id": doc_id,
+            }
+        _render_latest_text_correction(corrector, memory_enabled=use_memory)
 
     with tab_docx:
+        docx_load_result = _cached_streamlit_corrector(str(DEFAULT_CONFIG_PATH), memory_enabled=False, doc_id="default")
+        corrector = docx_load_result.corrector
         uploaded = st.file_uploader("Word-документ", type=["docx"])
         if uploaded is not None:
             with tempfile.TemporaryDirectory() as tmp:
@@ -99,6 +107,142 @@ def main() -> None:
                     ],
                     use_container_width=True,
                 )
+
+
+def build_feedback_rows(result: Any) -> list[dict[str, str]]:
+    return [
+        {
+            "source": str(edit.source),
+            "replacement": str(edit.replacement),
+            "type": str(edit.edit_type),
+            "status": str(edit.status),
+            "reason": str(edit.reason),
+        }
+        for edit in getattr(result, "edits", [])
+    ]
+
+
+def _config_with_streamlit_overrides(
+    config: dict[str, Any],
+    *,
+    memory_enabled: bool | None,
+    doc_id: str | None,
+) -> dict[str, Any]:
+    config_copy = copy.deepcopy(config)
+    if memory_enabled is None and doc_id is None:
+        return config_copy
+
+    memory_config = config_copy.get("correction_memory")
+    if not isinstance(memory_config, dict):
+        memory_config = {}
+        config_copy["correction_memory"] = memory_config
+    if memory_enabled is not None:
+        memory_config["enabled"] = bool(memory_enabled)
+    if doc_id is not None:
+        memory_config["doc_id"] = _normalize_doc_id(doc_id)
+    return config_copy
+
+
+def _render_latest_text_correction(corrector: Any, *, memory_enabled: bool) -> None:
+    latest = st.session_state.get("latest_text_correction")
+    if not latest:
+        return
+
+    source = str(latest["source"])
+    result = latest["result"]
+    doc_id = _normalize_doc_id(latest.get("doc_id"))
+    st.text_area("Исправленный текст", value=result.corrected_text, height=180)
+    st.markdown("Подсветка исправлений")
+    st.markdown(render_highlighted_diff(source, result.corrected_text), unsafe_allow_html=True)
+    st.dataframe(build_feedback_rows(result), use_container_width=True)
+    _render_memory_feedback_controls(
+        source=source,
+        result=result,
+        corrector=corrector,
+        doc_id=doc_id,
+        memory_enabled=memory_enabled,
+    )
+    _render_candidate_decisions(result)
+
+
+def _render_memory_feedback_controls(
+    *,
+    source: str,
+    result: Any,
+    corrector: Any,
+    doc_id: str,
+    memory_enabled: bool,
+) -> None:
+    if not memory_enabled:
+        return
+    memory = getattr(corrector, "correction_memory", None)
+    if memory is None:
+        return
+
+    editable_edits = [
+        (index, edit)
+        for index, edit in enumerate(getattr(result, "edits", []))
+        if getattr(edit, "status", "") in {"accepted", "proposed"}
+    ]
+    if not editable_edits:
+        return
+
+    service = CorrectionFeedbackService(memory, doc_id=doc_id)
+    for index, edit in editable_edits:
+        st.caption(f"{edit.source or 'пусто'} -> {edit.replacement or 'пусто'}")
+        columns = st.columns(3)
+        key_prefix = _feedback_button_key(index, edit, doc_id)
+        with columns[0]:
+            if st.button("Запомнить: принимать", key=f"{key_prefix}_accept"):
+                service.accept_edit(source, edit, metadata={"origin": "streamlit"})
+                memory.save()
+                st.success("Решение запомнено для этого контекста")
+        with columns[1]:
+            if st.button("Запомнить: отклонять", key=f"{key_prefix}_reject"):
+                service.reject_edit(source, edit, metadata={"origin": "streamlit"})
+                memory.save()
+                st.success("Решение запомнено для этого контекста")
+        with columns[2]:
+            if st.button("Игнорировать в этом контексте", key=f"{key_prefix}_ignore"):
+                service.ignore_edit(source, edit, metadata={"origin": "streamlit"})
+                memory.save()
+                st.success("Решение запомнено для этого контекста")
+
+
+def _render_candidate_decisions(result: Any) -> None:
+    decisions = getattr(result, "candidate_decisions", []) or []
+    if not decisions:
+        return
+    with st.expander("Кандидаты модели"):
+        st.dataframe(_candidate_decision_rows(decisions), use_container_width=True)
+
+
+def _candidate_decision_rows(decisions: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for decision in decisions:
+        candidate = decision.get("candidate")
+        rows.append(
+            {
+                "source": str(decision.get("source", "")),
+                "replacement": str(decision.get("replacement", "")),
+                "type": str(decision.get("edit_type") or getattr(candidate, "edit_type", "")),
+                "selected": bool(decision.get("selected", False)),
+                "memory": str(decision.get("memory_decision", "")),
+                "status": str(decision.get("validator_status", "")),
+                "reason": str(decision.get("validator_reason", "")),
+            }
+        )
+    return rows
+
+
+def _feedback_button_key(index: int, edit: Any, doc_id: str) -> str:
+    doc_key = re.sub(r"\W+", "_", doc_id, flags=re.UNICODE).strip("_") or "default"
+    return f"memory_{doc_key}_{index}_{getattr(edit, 'start', -1)}_{getattr(edit, 'end', -1)}"
+
+
+def _normalize_doc_id(doc_id: Any) -> str:
+    normalized = str(doc_id or "").strip()
+    return normalized or "default"
 
 
 def _trained_artifacts_exist(config: dict[str, Any]) -> bool:
