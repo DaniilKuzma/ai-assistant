@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from collections import Counter
+from datetime import datetime, timezone
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -8,6 +10,7 @@ from typing import Any, Iterable
 
 import pandas as pd
 
+from src.data.clean_sentence_pool import has_latin_confusable_inside_cyrillic_word, mixed_script_tokens
 from src.data.dataset_verifiers import is_detached_participial_comma_pair
 
 
@@ -32,6 +35,8 @@ CLEAN_HARD_BALANCE_KEYS = (
     "unbalanced_curly_brackets",
 )
 CLEAN_HARD_BALANCE_SOURCE_TYPES = {CLEAN_IDENTITY_OPEN, HARD_NEGATIVE_OPEN}
+ATOMIC_POSITIVE_LAYER = "atomic_positive"
+REAL_ATOMIC_LAYER = "real_atomic"
 RULE_SEMANTIC_ALIGNMENT_SOURCE_TYPES = {SYNTHETIC_OPEN_CLEAN}
 SYNTAX_PUNCTUATION_ALIGNMENT_RULE_IDS = {
     "apposition_comma",
@@ -163,6 +168,11 @@ def audit_training_dataset(frame: pd.DataFrame, active_rule_ids: Iterable[str]) 
     quote_bracket_audit = quote_bracket_balance_audit_frame(frame)
     clean_hard_balance = clean_hard_balance_counts(frame)
     clean_hard_balance_audit = clean_hard_balance_audit_frame(frame)
+    atomic_purity_audit = atomic_purity_audit_frame(frame)
+    extra_edit_audit = extra_edit_audit_frame(frame)
+    unknown_rule_train_audit = unknown_rule_train_audit_frame(frame)
+    mixed_script_clean_audit = mixed_script_clean_audit_frame(frame)
+    real_pair_atomization_audit = real_pair_atomization_audit_frame(frame)
     semantic_alignment_audit = rule_semantic_alignment_audit_frame(frame, active_rule_ids=active)
     semantic_alignment_summary = rule_semantic_alignment_summary(semantic_alignment_audit)
     bearing_counts = error_bearing_sentence_source_counts(frame)
@@ -182,6 +192,16 @@ def audit_training_dataset(frame: pd.DataFrame, active_rule_ids: Iterable[str]) 
         "quote_bracket_balance_audit": quote_bracket_audit,
         "clean_hard_balance_bugs": clean_hard_balance,
         "clean_hard_balance_audit": clean_hard_balance_audit,
+        "atomic_purity_audit": atomic_purity_audit,
+        "atomic_purity_summary": _audit_frame_summary(atomic_purity_audit),
+        "extra_edit_audit": extra_edit_audit,
+        "extra_edit_summary": _audit_frame_summary(extra_edit_audit),
+        "unknown_rule_train_audit": unknown_rule_train_audit,
+        "unknown_rule_train_summary": _audit_frame_summary(unknown_rule_train_audit),
+        "mixed_script_clean_audit": mixed_script_clean_audit,
+        "mixed_script_clean_summary": _audit_frame_summary(mixed_script_clean_audit),
+        "real_pair_atomization_audit": real_pair_atomization_audit,
+        "real_pair_atomization_summary": _audit_frame_summary(real_pair_atomization_audit),
         "rule_semantic_alignment_audit": semantic_alignment_audit,
         "rule_semantic_alignment": semantic_alignment_summary,
         "exact_clean_hard_duplicate_count": exact_clean_hard_duplicate_count(frame),
@@ -322,6 +342,109 @@ def write_rule_semantic_alignment_report(audit: dict[str, Any], csv_path: Path) 
             ]
         )
     frame.to_csv(csv_path, index=False)
+
+
+def write_atomic_purity_report(audit: dict[str, Any], path: Path) -> None:
+    frame = _frame_or_empty(audit.get("atomic_purity_audit"))
+    if frame.empty:
+        frame = pd.DataFrame(columns=_ATOMIC_PURITY_COLUMNS)
+    frame.to_csv(path, index=False)
+
+
+def write_extra_edit_report(audit: dict[str, Any], path: Path) -> None:
+    frame = _frame_or_empty(audit.get("extra_edit_audit"))
+    if frame.empty:
+        frame = pd.DataFrame(columns=_EXTRA_EDIT_COLUMNS)
+    frame.to_csv(path, index=False)
+
+
+def write_unknown_rule_train_report(audit: dict[str, Any], path: Path) -> None:
+    frame = _frame_or_empty(audit.get("unknown_rule_train_audit"))
+    if frame.empty:
+        frame = pd.DataFrame(columns=_UNKNOWN_RULE_TRAIN_COLUMNS)
+    frame.to_csv(path, index=False)
+
+
+def write_mixed_script_clean_report(audit: dict[str, Any], path: Path) -> None:
+    frame = _frame_or_empty(audit.get("mixed_script_clean_audit"))
+    if frame.empty:
+        frame = pd.DataFrame(columns=_MIXED_SCRIPT_CLEAN_COLUMNS)
+    frame.to_csv(path, index=False)
+
+
+def write_real_pair_atomization_report(audit: dict[str, Any], path: Path) -> None:
+    frame = _frame_or_empty(audit.get("real_pair_atomization_audit"))
+    if frame.empty:
+        frame = pd.DataFrame(columns=_REAL_PAIR_ATOMIZATION_COLUMNS)
+    frame.to_csv(path, index=False)
+
+
+def write_training_quality_gate_reports(audit: dict[str, Any], reports_dir: Path) -> None:
+    write_atomic_purity_report(audit, reports_dir / "atomic_purity_report.csv")
+    write_extra_edit_report(audit, reports_dir / "extra_edit_report.csv")
+    write_unknown_rule_train_report(audit, reports_dir / "unknown_rule_train_report.csv")
+    write_mixed_script_clean_report(audit, reports_dir / "mixed_script_clean_report.csv")
+    write_real_pair_atomization_report(audit, reports_dir / "real_pair_atomization_report.csv")
+
+
+def write_report_manifest(
+    reports_dir: str | Path,
+    *,
+    dataset_hash: str,
+    config_hash: str,
+    generated_at: str | None = None,
+) -> dict[str, Any]:
+    output = Path(reports_dir)
+    output.mkdir(parents=True, exist_ok=True)
+    manifest = {
+        "dataset_hash": str(dataset_hash),
+        "config_hash": str(config_hash),
+        "generated_at": generated_at or datetime.now(timezone.utc).isoformat(),
+        "reports": _report_file_hashes(output),
+    }
+    (output / "report_manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    return manifest
+
+
+def report_manifest_errors(reports_dir: str | Path, *, dataset_hash: str, config_hash: str) -> list[str]:
+    root = Path(reports_dir)
+    path = root / "report_manifest.json"
+    if not path.exists():
+        return ["stale_reports_manifest_missing"]
+    try:
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return ["stale_reports_manifest_invalid"]
+    errors: list[str] = []
+    if str(manifest.get("dataset_hash") or "") != str(dataset_hash):
+        errors.append("stale_reports_dataset_hash_mismatch")
+    if str(manifest.get("config_hash") or "") != str(config_hash):
+        errors.append("stale_reports_config_hash_mismatch")
+    expected = {str(key): str(value) for key, value in dict(manifest.get("reports", {}) or {}).items()}
+    current = _report_file_hashes(root)
+    for rel_path, expected_hash in sorted(expected.items()):
+        current_hash = current.get(rel_path)
+        if current_hash is None:
+            errors.append(f"stale_reports_missing:{rel_path}")
+        elif current_hash != expected_hash:
+            errors.append(f"stale_reports_hash_mismatch:{rel_path}")
+    for rel_path in sorted(set(current) - set(expected)):
+        errors.append(f"stale_reports_untracked:{rel_path}")
+    return errors
+
+
+def _report_file_hashes(reports_dir: Path) -> dict[str, str]:
+    result: dict[str, str] = {}
+    if not reports_dir.exists():
+        return result
+    for path in sorted(item for item in reports_dir.rglob("*") if item.is_file()):
+        rel_path = path.relative_to(reports_dir).as_posix()
+        if rel_path == "report_manifest.json":
+            continue
+        if path.suffix.lower() not in {".csv", ".md"}:
+            continue
+        result[rel_path] = hashlib.sha256(path.read_bytes()).hexdigest()
+    return result
 
 
 def write_known_quality_bugs_report(audit: dict[str, Any], path: Path) -> None:
@@ -549,6 +672,192 @@ def clean_hard_balance_audit_frame(frame: pd.DataFrame, *, action: str = "kept")
             }
         )
     return pd.DataFrame(rows, columns=columns)
+
+
+_ATOMIC_PURITY_COLUMNS = [
+    "row_index",
+    "split",
+    "source_type",
+    "dataset_layer",
+    "rule_id",
+    "source",
+    "target",
+    "gold_edit_count",
+    "reason",
+]
+_EXTRA_EDIT_COLUMNS = [
+    "row_index",
+    "split",
+    "source_type",
+    "dataset_layer",
+    "rule_id",
+    "source",
+    "target",
+    "extra_edit_count",
+    "reason",
+]
+_UNKNOWN_RULE_TRAIN_COLUMNS = ["row_index", "split", "source_type", "dataset_layer", "rule_id", "rule_ids", "source", "target", "reason"]
+_MIXED_SCRIPT_CLEAN_COLUMNS = [
+    "row_index",
+    "split",
+    "source_type",
+    "dataset_layer",
+    "rule_id",
+    "source",
+    "target",
+    "text_field",
+    "token",
+    "reason",
+]
+_REAL_PAIR_ATOMIZATION_COLUMNS = [
+    "row_index",
+    "split",
+    "source_type",
+    "dataset_layer",
+    "rule_id",
+    "source",
+    "target",
+    "gold_edit_count",
+    "reason",
+]
+
+
+def atomic_purity_audit_frame(frame: pd.DataFrame) -> pd.DataFrame:
+    rows: list[dict[str, Any]] = []
+    if frame.empty:
+        return pd.DataFrame(columns=_ATOMIC_PURITY_COLUMNS)
+    for index, row in frame.iterrows():
+        if not _is_atomic_positive_row(row):
+            continue
+        gold_edit_count = _row_gold_edit_count(row)
+        if gold_edit_count == 1:
+            continue
+        rows.append(
+            {
+                "row_index": _row_index_value(index),
+                "split": str(row.get("split", "")),
+                "source_type": str(row.get("source_type", "")),
+                "dataset_layer": _row_dataset_layer(row),
+                "rule_id": str(row.get("rule_id", "")),
+                "source": str(row.get("source", "")),
+                "target": str(row.get("target", "")),
+                "gold_edit_count": int(gold_edit_count),
+                "reason": "atomic_gold_edit_count_not_one",
+            }
+        )
+    return pd.DataFrame(rows, columns=_ATOMIC_PURITY_COLUMNS)
+
+
+def extra_edit_audit_frame(frame: pd.DataFrame) -> pd.DataFrame:
+    rows: list[dict[str, Any]] = []
+    if frame.empty:
+        return pd.DataFrame(columns=_EXTRA_EDIT_COLUMNS)
+    for index, row in frame.iterrows():
+        if not _is_atomic_positive_row(row):
+            continue
+        extra_edit_count = _row_extra_edit_count(row)
+        if extra_edit_count <= 0:
+            continue
+        rows.append(
+            {
+                "row_index": _row_index_value(index),
+                "split": str(row.get("split", "")),
+                "source_type": str(row.get("source_type", "")),
+                "dataset_layer": _row_dataset_layer(row),
+                "rule_id": str(row.get("rule_id", "")),
+                "source": str(row.get("source", "")),
+                "target": str(row.get("target", "")),
+                "extra_edit_count": int(extra_edit_count),
+                "reason": "atomic_extra_edits_present",
+            }
+        )
+    return pd.DataFrame(rows, columns=_EXTRA_EDIT_COLUMNS)
+
+
+def unknown_rule_train_audit_frame(frame: pd.DataFrame) -> pd.DataFrame:
+    rows: list[dict[str, Any]] = []
+    if frame.empty:
+        return pd.DataFrame(columns=_UNKNOWN_RULE_TRAIN_COLUMNS)
+    split = frame["split"].astype(str) if "split" in frame else pd.Series([""] * len(frame), index=frame.index)
+    for index, row in frame[split.eq("train")].iterrows():
+        rule_ids = _row_rule_ids(row)
+        rule_id = str(row.get("rule_id", ""))
+        if rule_id != "unknown" and "unknown" not in rule_ids:
+            continue
+        rows.append(
+            {
+                "row_index": _row_index_value(index),
+                "split": str(row.get("split", "")),
+                "source_type": str(row.get("source_type", "")),
+                "dataset_layer": _row_dataset_layer(row),
+                "rule_id": rule_id,
+                "rule_ids": json.dumps(rule_ids, ensure_ascii=False),
+                "source": str(row.get("source", "")),
+                "target": str(row.get("target", "")),
+                "reason": "unknown_rule_in_train",
+            }
+        )
+    return pd.DataFrame(rows, columns=_UNKNOWN_RULE_TRAIN_COLUMNS)
+
+
+def mixed_script_clean_audit_frame(frame: pd.DataFrame) -> pd.DataFrame:
+    rows: list[dict[str, Any]] = []
+    if frame.empty:
+        return pd.DataFrame(columns=_MIXED_SCRIPT_CLEAN_COLUMNS)
+    source_type = (
+        frame["source_type"].astype(str)
+        if "source_type" in frame
+        else pd.Series([""] * len(frame), index=frame.index)
+    )
+    clean_hard = frame[source_type.isin(CLEAN_HARD_BALANCE_SOURCE_TYPES)]
+    for index, row in clean_hard.iterrows():
+        for field in ("source", "target"):
+            text = str(row.get(field, ""))
+            reason = _mixed_script_reason(text)
+            if not reason:
+                continue
+            rows.append(
+                {
+                    "row_index": _row_index_value(index),
+                    "split": str(row.get("split", "")),
+                    "source_type": str(row.get("source_type", "")),
+                    "dataset_layer": _row_dataset_layer(row),
+                    "rule_id": str(row.get("rule_id", "")),
+                    "source": str(row.get("source", "")),
+                    "target": str(row.get("target", "")),
+                    "text_field": field,
+                    "token": _mixed_script_token(text),
+                    "reason": reason,
+                }
+            )
+            break
+    return pd.DataFrame(rows, columns=_MIXED_SCRIPT_CLEAN_COLUMNS)
+
+
+def real_pair_atomization_audit_frame(frame: pd.DataFrame) -> pd.DataFrame:
+    rows: list[dict[str, Any]] = []
+    if frame.empty:
+        return pd.DataFrame(columns=_REAL_PAIR_ATOMIZATION_COLUMNS)
+    for index, row in frame.iterrows():
+        if not _is_real_atomic_row(row):
+            continue
+        gold_edit_count = _row_gold_edit_count(row)
+        if gold_edit_count == 1:
+            continue
+        rows.append(
+            {
+                "row_index": _row_index_value(index),
+                "split": str(row.get("split", "")),
+                "source_type": str(row.get("source_type", "")),
+                "dataset_layer": _row_dataset_layer(row),
+                "rule_id": str(row.get("rule_id", "")),
+                "source": str(row.get("source", "")),
+                "target": str(row.get("target", "")),
+                "gold_edit_count": int(gold_edit_count),
+                "reason": "real_atomic_gold_edit_count_not_one",
+            }
+        )
+    return pd.DataFrame(rows, columns=_REAL_PAIR_ATOMIZATION_COLUMNS)
 
 
 def _plain_quote_bracket_balance_flags(text: str) -> dict[str, bool]:
@@ -1076,6 +1385,25 @@ def extended_quality_audit_frame(frame: pd.DataFrame, active_rule_ids: Iterable[
                     "example": example,
                 }
             )
+    for check_name, audit_frame in (
+        ("atomic_positive_gold_edit_count_not_one", atomic_purity_audit_frame(frame)),
+        ("atomic_positive_extra_edits_present", extra_edit_audit_frame(frame)),
+        ("unknown_rule_in_train", unknown_rule_train_audit_frame(frame)),
+        ("mixed_script_clean_or_hard_present", mixed_script_clean_audit_frame(frame)),
+        ("real_pair_atomization_failed", real_pair_atomization_audit_frame(frame)),
+    ):
+        if audit_frame.empty:
+            continue
+        example_row = audit_frame.iloc[0]
+        issues.append(
+            {
+                "check_name": check_name,
+                "rule_id": str(example_row.get("rule_id", "")),
+                "severity": "blocking",
+                "count": int(len(audit_frame)),
+                "example": str(example_row.get("source", "")),
+            }
+        )
     semantic_audit = rule_semantic_alignment_audit_frame(frame, active_rule_ids)
     semantic = rule_semantic_alignment_summary(semantic_audit)
     for rule_id, count in dict(semantic.get("failed_by_rule", {}) or {}).items():
@@ -1425,6 +1753,131 @@ def _contains_n_nn_delta(source: str, target: str) -> bool:
         if "н" in left + right and abs(left.count("н") - right.count("н")) in {1, 2}:
             return True
     return False
+
+
+def _audit_frame_summary(frame: pd.DataFrame) -> dict[str, Any]:
+    if frame.empty:
+        return {"failed_rows": 0, "failed_by_rule": {}}
+    by_rule = frame["rule_id"].astype(str).value_counts().sort_index().to_dict() if "rule_id" in frame else {}
+    return {"failed_rows": int(len(frame)), "failed_by_rule": {str(key): int(value) for key, value in by_rule.items()}}
+
+
+def _row_index_value(index: Any) -> int | str:
+    return int(index) if isinstance(index, int) else str(index)
+
+
+def _is_atomic_positive_row(row: dict[str, Any] | pd.Series) -> bool:
+    layer = _row_dataset_layer(row)
+    if layer == ATOMIC_POSITIVE_LAYER:
+        return True
+    metadata = _json_dict(row.get("metadata", ""))
+    return (
+        str(row.get("source_type", "")) == SYNTHETIC_OPEN_CLEAN
+        and (
+            _truthy(row.get("count_toward_rule_quota", metadata.get("count_toward_rule_quota", False)))
+            or _truthy(row.get("is_atomic", metadata.get("is_atomic", False)))
+        )
+        and not _truthy(row.get("is_stress", metadata.get("is_stress", False)))
+        and str(row.get("source", "")) != str(row.get("target", ""))
+    )
+
+
+def _is_real_atomic_row(row: dict[str, Any] | pd.Series) -> bool:
+    if str(row.get("source_type", "")) != REAL_ERROR_PAIR:
+        return False
+    if _row_dataset_layer(row) == REAL_ATOMIC_LAYER:
+        return True
+    metadata = _json_dict(row.get("metadata", ""))
+    return _truthy(row.get("is_real_pair", metadata.get("is_real_pair", False))) and _truthy(
+        row.get("is_atomic", metadata.get("is_atomic", False))
+    )
+
+
+def _row_dataset_layer(row: dict[str, Any] | pd.Series) -> str:
+    value = row.get("dataset_layer", "")
+    if not _blank(value):
+        return str(value)
+    metadata = _json_dict(row.get("metadata", ""))
+    return str(metadata.get("dataset_layer") or "")
+
+
+def _row_gold_edit_count(row: dict[str, Any] | pd.Series) -> int:
+    for key in ("gold_edit_count", "edit_count"):
+        value = row.get(key, "")
+        if not _blank(value):
+            try:
+                return max(0, int(float(value)))
+            except (TypeError, ValueError):
+                pass
+    metadata = _json_dict(row.get("metadata", ""))
+    value = metadata.get("gold_edit_count")
+    if not _blank(value):
+        try:
+            return max(0, int(float(value)))
+        except (TypeError, ValueError):
+            pass
+    edits = _row_edits(row)
+    return len(edits)
+
+
+def _row_extra_edit_count(row: dict[str, Any] | pd.Series) -> int:
+    value = row.get("extra_edit_count", "")
+    if not _blank(value):
+        try:
+            return max(0, int(float(value)))
+        except (TypeError, ValueError):
+            pass
+    metadata = _json_dict(row.get("metadata", ""))
+    candidates: list[Any] = [metadata.get("extra_edit_count")]
+    atomic = metadata.get("atomic_verification")
+    if isinstance(atomic, dict):
+        candidates.append(atomic.get("extra_edit_count"))
+    operator = metadata.get("operator_verification")
+    if isinstance(operator, dict):
+        for payload in operator.values():
+            if isinstance(payload, dict):
+                candidates.append(payload.get("extra_edit_count"))
+    result = 0
+    for candidate in candidates:
+        if _blank(candidate):
+            continue
+        try:
+            result = max(result, int(float(candidate)))
+        except (TypeError, ValueError):
+            continue
+    return result
+
+
+def _mixed_script_reason(text: str) -> str:
+    if mixed_script_tokens(text):
+        return "mixed_script_token"
+    if has_latin_confusable_inside_cyrillic_word(text):
+        return "latin_confusable_inside_cyrillic_word"
+    return ""
+
+
+def _mixed_script_token(text: str) -> str:
+    tokens = mixed_script_tokens(text)
+    return tokens[0] if tokens else ""
+
+
+def _truthy(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if _blank(value):
+        return False
+    return str(value).strip().lower() in {"1", "true", "yes", "y"}
+
+
+def _blank(value: Any) -> bool:
+    if value is None:
+        return True
+    try:
+        if pd.isna(value):
+            return True
+    except (TypeError, ValueError):
+        pass
+    return str(value).strip() == ""
 
 
 def _rate(numerator: int, denominator: int) -> float:

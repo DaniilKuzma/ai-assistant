@@ -18,19 +18,6 @@ from src.rules.rule_ids import UNKNOWN_RULE_ID, normalize_rule_id
 from src.validation.diff_analyzer import DiffAnalyzer, Edit
 from src.validation.edit_classifier import PUNCTUATION_TYPES
 
-DICTIONARY_RECALL_RULE_IDS = frozenset(
-    {
-        "dictionary_fuzzy",
-        "double_consonant_candidate",
-        "keyboard_typo_candidate",
-        "swapped_letters_candidate",
-        "missing_letter_candidate",
-        "extra_letter_candidate",
-    }
-)
-_FAST_GENERATOR_CACHE: dict[int, CandidateGenerator] = {}
-
-
 CANDIDATE_RECALL_COLUMNS = [
     "rule_id",
     "group",
@@ -56,9 +43,8 @@ def build_candidate_recall_reports(
     max_candidates: int | None = None,
     rules_config_path: str | Path = "configs/rules.yaml",
     max_missing_examples: int = 20,
-    trust_candidate_backed_metadata: bool = True,
+    trust_candidate_backed_metadata: bool = False,
 ) -> dict[str, pd.DataFrame]:
-    del trust_candidate_backed_metadata
     generator = candidate_generator or CandidateGenerator()
     rule_groups = _load_rule_groups(rules_config_path)
     analyzer = DiffAnalyzer()
@@ -79,12 +65,12 @@ def build_candidate_recall_reports(
 
         candidates: list[Any] | None = None
         candidate_gap_keys: set[tuple[int | None, str, str]] | None = None
-        row_generator = _row_candidate_generator(generator, gold_edits)
+        trusted_metadata = bool(trust_candidate_backed_metadata) and _trusted_candidate_backed_row(row)
 
         def get_candidates() -> list[Any]:
             nonlocal candidates
             if candidates is None:
-                generated = row_generator.generate(source)
+                generated = generator.generate(source)
                 candidates = rank_candidates_for_budget(generated, int(max_candidates)) if max_candidates is not None else generated
             return candidates
 
@@ -101,11 +87,14 @@ def build_candidate_recall_reports(
         for edit in gold_edits:
             rule_id = normalize_rule_id(edit.rule_id)
             gold_counter[rule_id] += 1
-            cache_key = _candidate_match_cache_key(source, rule_id, edit)
-            candidate_present = candidate_match_cache.get(cache_key)
-            if candidate_present is None:
-                candidate_present = any(candidate_matches_edit(candidate, edit) for candidate in get_candidates())
-                candidate_match_cache[cache_key] = candidate_present
+            candidate_present = trusted_metadata
+            if not candidate_present:
+                cache_key = _candidate_match_cache_key(source, rule_id, edit)
+                cached = candidate_match_cache.get(cache_key)
+                if cached is None:
+                    cached = any(candidate_matches_edit(candidate, edit) for candidate in get_candidates())
+                    candidate_match_cache[cache_key] = cached
+                candidate_present = cached
             if candidate_present:
                 present_counter[rule_id] += 1
             else:
@@ -121,11 +110,14 @@ def build_candidate_recall_reports(
                 continue
             rule_id = normalize_rule_id(edit.rule_id)
             gold_gap_counter[rule_id] += 1
-            gap_cache_key = _gap_match_cache_key(source, rule_id, edit, action, label)
-            gap_present = gap_match_cache.get(gap_cache_key)
-            if gap_present is None:
-                gap_present = (gap_index, action, label) in get_candidate_gap_keys()
-                gap_match_cache[gap_cache_key] = gap_present
+            gap_present = trusted_metadata
+            if not gap_present:
+                gap_cache_key = _gap_match_cache_key(source, rule_id, edit, action, label)
+                cached_gap = gap_match_cache.get(gap_cache_key)
+                if cached_gap is None:
+                    cached_gap = (gap_index, action, label) in get_candidate_gap_keys()
+                    gap_match_cache[gap_cache_key] = cached_gap
+                gap_present = cached_gap
             if gap_present:
                 present_gap_counter[rule_id] += 1
             else:
@@ -153,25 +145,6 @@ def build_candidate_recall_reports(
             rule_groups,
         ),
     }
-
-
-def _row_candidate_generator(generator: CandidateGenerator, gold_edits: list[Edit]) -> CandidateGenerator:
-    if not isinstance(generator, CandidateGenerator):
-        return generator
-    if any(normalize_rule_id(edit.rule_id) in DICTIONARY_RECALL_RULE_IDS for edit in gold_edits):
-        return generator
-    cache_key = id(generator)
-    cached = _FAST_GENERATOR_CACHE.get(cache_key)
-    if cached is None:
-        cached = CandidateGenerator(
-            dictionary_lexicon=(),
-            dictionary_limit=0,
-            dictionary_min_score=getattr(generator, "dictionary_min_score", 85),
-            dictionary_yo_e_enabled=False,
-            syntax_provider=lambda _text: (),
-        )
-        _FAST_GENERATOR_CACHE[cache_key] = cached
-    return cached
 
 
 def _trusted_candidate_backed_row(row: dict[str, Any]) -> bool:
@@ -220,7 +193,7 @@ def write_candidate_recall_reports(
     max_candidates: int | None = None,
     rules_config_path: str | Path = "configs/rules.yaml",
     max_missing_examples: int = 20,
-    trust_candidate_backed_metadata: bool = True,
+    trust_candidate_backed_metadata: bool = False,
 ) -> None:
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)

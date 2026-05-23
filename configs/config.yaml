@@ -321,7 +321,7 @@ data:
       max_source_share: 0.6
       max_subcorpus_share: 0.7
     audit:
-      candidate_recall_min: 0.85
+      candidate_recall_min: 0.95
       gap_coverage_min: 0.85
       synthetic_min: 81775
       min_active_rule_count: 1000
@@ -398,7 +398,7 @@ data:
       max_source_share: 0.6
       max_subcorpus_share: 0.7
     audit:
-      candidate_recall_min: 0.85
+      candidate_recall_min: 0.95
       gap_coverage_min: 0.85
       synthetic_min: 81775
       min_active_rule_count: 1000

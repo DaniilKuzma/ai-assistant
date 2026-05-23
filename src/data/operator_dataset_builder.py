@@ -7,6 +7,7 @@ import hashlib
 import json
 from pathlib import Path
 import random
+import shutil
 from typing import Any, Iterable
 
 import pandas as pd
@@ -57,9 +58,13 @@ from src.data.training_quality_audit import (
     write_generation_strategy_report,
     write_known_quality_bugs_report,
     write_quote_bracket_balance_reports,
+    write_report_manifest,
     write_rule_diversity_report,
     write_rule_semantic_alignment_report,
+    write_training_quality_gate_reports,
+    report_manifest_errors,
 )
+from src.evaluation.candidate_recall import build_candidate_recall_reports
 from src.rules.capabilities import (
     active_rule_ids_for_training,
     capability_manifest_fields,
@@ -203,6 +208,21 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
     if output_path.exists() and manifest_path.exists() and not force:
         manifest = _read_json(manifest_path)
         if manifest.get("operator_based_generation") is True and int(manifest.get("total", 0) or 0) >= requested_total:
+            freshness_errors = _existing_report_freshness_errors(manifest, reports_dir, config=config)
+            if freshness_errors:
+                audit_errors = _dedupe_errors([*list(manifest.get("audit_errors", []) or []), *freshness_errors])
+                manifest["audit_errors"] = audit_errors
+                manifest["report_freshness"] = {"status": "stale", "errors": freshness_errors}
+                manifest["verdict"] = "DATASET_BLOCKED"
+                manifest["final_verdict"] = "DATASET_BLOCKED"
+                manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+                return {
+                    "status": "blocked",
+                    "path": str(output_path),
+                    "manifest_path": str(manifest_path),
+                    "total": int(manifest.get("total", 0)),
+                    "verdict": "DATASET_BLOCKED",
+                }
             return {
                 "status": "exists",
                 "path": str(output_path),
@@ -211,6 +231,7 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
                 "verdict": str(manifest.get("verdict", "DATASET_BLOCKED")),
             }
 
+    _reset_dataset_build_reports_dir(reports_dir)
     reports_dir.mkdir(parents=True, exist_ok=True)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     registry = build_default_operator_registry()
@@ -229,6 +250,7 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
             requested_total,
             split_sizes,
             "missing_clean_sentence_pool",
+            config=config,
             capabilities=capabilities,
         )
         _write_manifest_and_blocked_reports(manifest, manifest_path, reports_dir)
@@ -349,10 +371,12 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
 
     frame.to_csv(output_path, index=False)
     _write_split_and_layer_files(frame, output_path)
+    recall_reports = _build_candidate_recall_reports(frame, config)
 
     manifest = _manifest(
         frame,
         config=config,
+        recall_reports=recall_reports,
         requested_total=requested_total,
         split_sizes=split_sizes,
         active_rule_ids=active_rule_ids,
@@ -380,7 +404,16 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
         rules_without_atomic_positive=atomic_result.rules_without_atomic_positive,
         hard_negative_result=hard_negative_result,
         quota_config=quota_config,
+        config=config,
+        recall_reports=recall_reports,
     )
+    report_manifest = write_report_manifest(
+        reports_dir,
+        dataset_hash=str(manifest.get("dataset_hash") or ""),
+        config_hash=str(manifest.get("config_hash") or ""),
+        generated_at=str(manifest.get("generated_at") or ""),
+    )
+    manifest["report_freshness"] = {"status": "fresh", "errors": [], "report_count": len(report_manifest.get("reports", {}))}
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     return {
@@ -1478,6 +1511,7 @@ def _manifest(
     frame: pd.DataFrame,
     *,
     config: dict[str, Any],
+    recall_reports: dict[str, pd.DataFrame],
     requested_total: int,
     split_sizes: dict[str, int],
     active_rule_ids: list[str],
@@ -1509,18 +1543,26 @@ def _manifest(
     clean_hard = clean_hard_bug_summary(frame)
     numeric_mismatch = int(len(numeric_punctuation_mismatch_audit_frame(frame)))
     composition_for_audit = {**composition, "multi_error_stress": _stress_count(frame)}
-    recall_summary = {
-        "rules_with_gold": len([rule_id for rule_id in rule_counts if rule_id not in {"clean_identity", "clean_identity_hard_negative", "unknown"}]),
-        "active_rules_with_gold": len(active_rule_ids),
-        "min_excluding_unknown": 1.0,
-        "mean_excluding_unknown": 1.0,
-        "active_min_excluding_unknown": 1.0,
-        "active_mean_excluding_unknown": 1.0,
-    }
-    gap_summary = dict(recall_summary)
+    recall_summary = _metric_summary(
+        recall_reports["candidate_recall_by_rule"],
+        count_column="gold_count",
+        metric_column="candidate_recall",
+        active_rule_ids=set(active_rule_ids),
+    )
+    gap_summary = _metric_summary(
+        recall_reports["gap_label_coverage_by_rule"],
+        count_column="gold_gap_count",
+        metric_column="gap_candidate_recall",
+        active_rule_ids=set(active_rule_ids) & _punctuation_rule_ids(),
+    )
     diversity = dict(quality_audit.get("rule_diversity_summary", {}) or {})
     extended_summary = dict(quality_audit.get("extended_quality_audit_summary", {}) or {})
     semantic_summary = dict(quality_audit.get("rule_semantic_alignment", {}) or {})
+    atomic_purity_summary = dict(quality_audit.get("atomic_purity_summary", {}) or {})
+    extra_edit_summary = dict(quality_audit.get("extra_edit_summary", {}) or {})
+    unknown_rule_train_summary = dict(quality_audit.get("unknown_rule_train_summary", {}) or {})
+    mixed_script_clean_summary = dict(quality_audit.get("mixed_script_clean_summary", {}) or {})
+    real_pair_atomization_summary = dict(quality_audit.get("real_pair_atomization_summary", {}) or {})
     bearing_counts = dict(quality_audit.get("error_bearing_sentence_source_counts", {}) or {})
     corpus_share = float(quality_audit.get("corpus_opportunity_share", corpus_share) or 0.0)
     fallback_share = float(quality_audit.get("fallback_template_share", fallback_share) or 0.0)
@@ -1541,6 +1583,13 @@ def _manifest(
         diversity=diversity,
         extended_summary=extended_summary,
         semantic_summary=semantic_summary,
+        atomic_purity_summary=atomic_purity_summary,
+        extra_edit_summary=extra_edit_summary,
+        unknown_rule_train_summary=unknown_rule_train_summary,
+        mixed_script_clean_summary=mixed_script_clean_summary,
+        real_pair_atomization_summary=real_pair_atomization_summary,
+        recall_summary=recall_summary,
+        audit_config=_operator_audit_config(config),
         production_gates=production_gates,
     )
     audit_errors.extend(capability_training_audit_errors(rule_counts, capabilities))
@@ -1586,6 +1635,11 @@ def _manifest(
         "known_quality_bugs": known,
         "quote_bracket_balance_bugs": quote,
         "clean_hard_balance_bugs": clean_hard,
+        "atomic_purity_summary": atomic_purity_summary,
+        "extra_edit_summary": extra_edit_summary,
+        "unknown_rule_train_summary": unknown_rule_train_summary,
+        "mixed_script_clean_summary": mixed_script_clean_summary,
+        "real_pair_atomization_summary": real_pair_atomization_summary,
         "rule_semantic_alignment": semantic_summary,
         "candidate_recall_summary": recall_summary,
         "gap_label_coverage_summary": gap_summary,
@@ -1630,6 +1684,8 @@ def _write_reports(
     manifest: dict[str, Any],
     reports_dir: Path,
     *,
+    config: dict[str, Any],
+    recall_reports: dict[str, pd.DataFrame] | None = None,
     registry_rows: list[dict[str, Any]],
     rejection_rows: list[dict[str, Any]],
     quality_audit: dict[str, Any],
@@ -1687,13 +1743,14 @@ def _write_reports(
     pd.DataFrame([row for row in manifest["excluded_rule_ids"] if "MISSING_MODULE" in row.get("reason", "")]).to_csv(
         reports_dir / "blocked_by_missing_module.csv", index=False
     )
-    _candidate_reports(manifest, reports_dir)
+    _candidate_reports(frame, manifest, reports_dir, config=config, recall_reports=recall_reports)
     audits = balance_audit_frames(frame)
     audits["numeric_punctuation_mismatch_audit"].to_csv(reports_dir / "numeric_punctuation_mismatch_audit.csv", index=False)
     audit = quality_audit or audit_training_dataset(frame, manifest["active_rule_ids"])
     write_rule_semantic_alignment_report(audit, reports_dir / "rule_semantic_alignment_audit.csv")
     write_quote_bracket_balance_reports(audit, reports_dir / "quote_bracket_balance_audit.csv", reports_dir / "quote_bracket_balance_audit.md")
     write_clean_hard_balance_report(audit, reports_dir / "clean_hard_balance_audit.csv")
+    write_training_quality_gate_reports(audit, reports_dir)
     write_generation_strategy_report(audit, reports_dir / "generation_strategy_report.csv")
     write_rule_diversity_report(audit, reports_dir / "rule_diversity_report.csv")
     write_known_quality_bugs_report(audit, reports_dir / "known_quality_bugs_report.md")
@@ -1773,33 +1830,97 @@ def _write_active_rule_quota_report(
     ).to_csv(path, index=False)
 
 
-def _candidate_reports(manifest: dict[str, Any], reports_dir: Path) -> None:
-    candidate_rows = [
-        {
-            "rule_id": rule_id,
-            "group": rule_id,
-            "gold_count": int(count),
-            "candidate_present_count": int(count),
-            "candidate_recall": 1.0,
-            "missing_count": 0,
-            "missing_examples": "",
-        }
-        for rule_id, count in manifest["operator_acceptance_counts"].items()
-    ]
-    gap_rows = [
-        {
-            "rule_id": rule_id,
-            "group": rule_id,
-            "gold_gap_count": int(count),
-            "candidate_gap_present_count": int(count),
-            "gap_candidate_recall": 1.0,
-            "missing_examples": "",
-        }
-        for rule_id, count in manifest["operator_acceptance_counts"].items()
-        if any(token in rule_id for token in ("comma", "dash", "colon", "semicolon", "quote", "bracket", "punctuation", "final"))
-    ]
-    pd.DataFrame(candidate_rows).to_csv(reports_dir / "candidate_recall_by_rule.csv", index=False)
-    pd.DataFrame(gap_rows).to_csv(reports_dir / "gap_label_coverage_by_rule.csv", index=False)
+def _candidate_reports(
+    frame: pd.DataFrame,
+    manifest: dict[str, Any],
+    reports_dir: Path,
+    *,
+    config: dict[str, Any],
+    recall_reports: dict[str, pd.DataFrame] | None = None,
+) -> dict[str, pd.DataFrame]:
+    reports = recall_reports or _build_candidate_recall_reports(frame, config)
+    candidate_report = reports["candidate_recall_by_rule"]
+    gap_report = reports["gap_label_coverage_by_rule"]
+    candidate_report.to_csv(reports_dir / "candidate_recall_by_rule.csv", index=False)
+    gap_report.to_csv(reports_dir / "gap_label_coverage_by_rule.csv", index=False)
+    _write_candidate_recall_gate_report(
+        candidate_report,
+        reports_dir / "candidate_recall_gate_report.csv",
+        active_rule_ids=set(str(rule_id) for rule_id in manifest.get("active_rule_ids", []) or []),
+        min_required_recall=_candidate_recall_min(config),
+    )
+    return reports
+
+
+def _build_candidate_recall_reports(frame: pd.DataFrame, config: dict[str, Any]) -> dict[str, pd.DataFrame]:
+    return build_candidate_recall_reports(
+        frame.to_dict("records"),
+        candidate_generator=CandidateGenerator.from_config(config),
+        max_candidates=int((config.get("model", {}) or {}).get("max_candidates", 16)),
+        rules_config_path="configs/rules.yaml",
+        trust_candidate_backed_metadata=False,
+    )
+
+
+def _write_candidate_recall_gate_report(
+    candidate_report: pd.DataFrame,
+    path: Path,
+    *,
+    active_rule_ids: set[str],
+    min_required_recall: float,
+) -> pd.DataFrame:
+    rows: list[dict[str, Any]] = []
+    report_rows = candidate_report.to_dict("records") if isinstance(candidate_report, pd.DataFrame) else []
+    seen: set[str] = set()
+    for item in report_rows:
+        rule_id = str(item.get("rule_id") or "")
+        if not rule_id:
+            continue
+        seen.add(rule_id)
+        gold_count = int(float(item.get("gold_count", 0) or 0))
+        candidate_present_count = int(float(item.get("candidate_present_count", 0) or 0))
+        recall = float(item.get("candidate_recall", 0.0) or 0.0)
+        if gold_count <= 0 or rule_id not in active_rule_ids:
+            status = "not_applicable"
+        else:
+            status = "pass" if recall >= min_required_recall else "fail"
+        rows.append(
+            {
+                "rule_id": rule_id,
+                "gold_count": gold_count,
+                "candidate_present_count": candidate_present_count,
+                "candidate_recall": recall,
+                "min_required_recall": float(min_required_recall),
+                "status": status,
+                "missing_examples": item.get("missing_examples", ""),
+            }
+        )
+    for rule_id in sorted(active_rule_ids - seen):
+        rows.append(
+            {
+                "rule_id": rule_id,
+                "gold_count": 0,
+                "candidate_present_count": 0,
+                "candidate_recall": 0.0,
+                "min_required_recall": float(min_required_recall),
+                "status": "not_applicable",
+                "missing_examples": "",
+            }
+        )
+    output = pd.DataFrame(
+        rows,
+        columns=[
+            "rule_id",
+            "gold_count",
+            "candidate_present_count",
+            "candidate_recall",
+            "min_required_recall",
+            "status",
+            "missing_examples",
+        ],
+    )
+    output.to_csv(path, index=False)
+    return output
 
 
 def _write_dataset_generation_report(manifest: dict[str, Any], path: Path) -> None:
@@ -1837,6 +1958,13 @@ def _audit_errors(
     diversity: dict[str, Any],
     extended_summary: dict[str, Any],
     semantic_summary: dict[str, Any],
+    atomic_purity_summary: dict[str, Any],
+    extra_edit_summary: dict[str, Any],
+    unknown_rule_train_summary: dict[str, Any],
+    mixed_script_clean_summary: dict[str, Any],
+    real_pair_atomization_summary: dict[str, Any],
+    recall_summary: dict[str, Any],
+    audit_config: dict[str, Any],
     production_gates: bool = True,
 ) -> list[str]:
     errors: list[str] = []
@@ -1875,6 +2003,18 @@ def _audit_errors(
         errors.append("extended_quality_audit_blocking_issues")
     if int(semantic_summary.get("failed_rows", 0) or 0) != 0:
         errors.append("rule_semantic_alignment_failed")
+    if int(atomic_purity_summary.get("failed_rows", 0) or 0) != 0:
+        errors.append("atomic_positive_gold_edit_count_not_one")
+    if int(extra_edit_summary.get("failed_rows", 0) or 0) != 0:
+        errors.append("atomic_positive_extra_edits_present")
+    if int(unknown_rule_train_summary.get("failed_rows", 0) or 0) != 0:
+        errors.append("unknown_rule_in_train")
+    if int(mixed_script_clean_summary.get("failed_rows", 0) or 0) != 0:
+        errors.append("mixed_script_clean_or_hard_present")
+    if int(real_pair_atomization_summary.get("failed_rows", 0) or 0) != 0:
+        errors.append("real_pair_atomization_failed")
+    if float(recall_summary.get("active_min_excluding_unknown", 1.0) or 0.0) < float(audit_config.get("candidate_recall_min", 0.95)):
+        errors.append("candidate_recall_active_min_below_threshold")
     return errors
 
 
@@ -2231,6 +2371,116 @@ def _config_hash(config: dict[str, Any]) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
+def _operator_audit_config(config: dict[str, Any]) -> dict[str, Any]:
+    data = config.get("data", {}) or {}
+    core = data.get("training_dataset_core", {}) or data.get("training_dataset", {}) or {}
+    return dict((core.get("audit", {}) if isinstance(core, dict) else {}) or {})
+
+
+def _candidate_recall_min(config: dict[str, Any]) -> float:
+    return float(_operator_audit_config(config).get("candidate_recall_min", 0.95))
+
+
+def _metric_summary(
+    frame: pd.DataFrame,
+    *,
+    count_column: str,
+    metric_column: str,
+    active_rule_ids: set[str],
+) -> dict[str, Any]:
+    if frame.empty or count_column not in frame or metric_column not in frame:
+        return _empty_metric_summary()
+    working = frame.copy()
+    working[count_column] = pd.to_numeric(working[count_column], errors="coerce").fillna(0)
+    working[metric_column] = pd.to_numeric(working[metric_column], errors="coerce").fillna(0.0)
+    non_unknown = working[(working["rule_id"].astype(str) != UNKNOWN_RULE_ID) & (working[count_column] > 0)]
+    active = non_unknown[non_unknown["rule_id"].astype(str).isin(active_rule_ids)]
+    return {
+        "rules_with_gold": int(len(non_unknown)),
+        "active_rules_with_gold": int(len(active)),
+        "min_excluding_unknown": _safe_min(non_unknown, metric_column),
+        "mean_excluding_unknown": _safe_mean(non_unknown, metric_column),
+        "active_min_excluding_unknown": _safe_min(active, metric_column),
+        "active_mean_excluding_unknown": _safe_mean(active, metric_column),
+    }
+
+
+def _empty_metric_summary() -> dict[str, Any]:
+    return {
+        "rules_with_gold": 0,
+        "active_rules_with_gold": 0,
+        "min_excluding_unknown": 1.0,
+        "mean_excluding_unknown": 1.0,
+        "active_min_excluding_unknown": 1.0,
+        "active_mean_excluding_unknown": 1.0,
+    }
+
+
+def _safe_min(frame: pd.DataFrame, column: str) -> float:
+    return 1.0 if frame.empty else float(frame[column].min())
+
+
+def _safe_mean(frame: pd.DataFrame, column: str) -> float:
+    return 1.0 if frame.empty else float(frame[column].mean())
+
+
+def _punctuation_rule_ids() -> set[str]:
+    return {
+        "comma_subordinate",
+        "comma_conjunction",
+        "introductory_comma",
+        "address_comma",
+        "homogeneous_comma",
+        "detached_adverbial_comma",
+        "detached_participial_comma",
+        "apposition_comma",
+        "clarification_comma",
+        "comparative_turnover_comma",
+        "subject_predicate_dash",
+        "asyndetic_dash",
+        "consequence_dash",
+        "explanation_colon",
+        "enumeration_colon",
+        "enumeration_dash",
+        "semicolon",
+        "direct_speech_colon",
+        "direct_speech_dash",
+        "direct_speech_quotes",
+        "quote_pair_balance",
+        "bracket_pair_balance",
+        "punctuation_delete_replace",
+        "final_punctuation_default",
+    }
+
+
+def _dedupe_errors(errors: Iterable[str]) -> list[str]:
+    result: list[str] = []
+    seen: set[str] = set()
+    for error in errors:
+        value = str(error)
+        if not value or value in seen:
+            continue
+        seen.add(value)
+        result.append(value)
+    return result
+
+
+def _reset_dataset_build_reports_dir(reports_dir: Path) -> None:
+    if reports_dir.exists() and reports_dir.is_dir() and reports_dir.name == "dataset_build":
+        shutil.rmtree(reports_dir)
+
+
+def _existing_report_freshness_errors(manifest: dict[str, Any], reports_dir: Path, *, config: dict[str, Any]) -> list[str]:
+    dataset_hash = str(manifest.get("dataset_hash") or "")
+    config_hash = _config_hash(config)
+    if not dataset_hash or not config_hash:
+        return ["stale_reports_missing_dataset_or_config_hash"]
+    errors = report_manifest_errors(reports_dir, dataset_hash=dataset_hash, config_hash=config_hash)
+    if str(manifest.get("config_hash") or "") != config_hash:
+        errors.append("stale_manifest_config_hash_mismatch")
+    return _dedupe_errors(errors)
+
+
 def _disabled_rule_ids(capabilities: list[Any], *, excluded_rule_ids: dict[str, str] | None = None) -> list[str]:
     result = {
         rule_id
@@ -2289,6 +2539,7 @@ def _blocked_manifest(
     split_sizes: dict[str, int],
     reason: str,
     *,
+    config: dict[str, Any] | None = None,
     capabilities: list[Any] | None = None,
 ) -> dict[str, Any]:
     manifest = {
@@ -2297,6 +2548,9 @@ def _blocked_manifest(
         "requested_total": requested_total,
         "split_sizes": split_sizes,
         "operator_based_generation": True,
+        "dataset_hash": "",
+        "config_hash": _config_hash(config or {}),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
         "audit_errors": [reason],
     }
     if capabilities is not None:
@@ -2307,10 +2561,17 @@ def _blocked_manifest(
 def _write_manifest_and_blocked_reports(manifest: dict[str, Any], manifest_path: Path, reports_dir: Path) -> None:
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     reports_dir.mkdir(parents=True, exist_ok=True)
-    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     _write_dataset_generation_report(manifest, reports_dir / "dataset_generation_report.md")
     reason = ",".join(str(item) for item in manifest.get("audit_errors", []) if str(item)) or "blocked"
     not_applicable = [{"status": "not_applicable", "reason": reason}]
     pd.DataFrame(not_applicable).to_csv(reports_dir / "atomic_positive_generation_report.csv", index=False)
     pd.DataFrame(not_applicable).to_csv(reports_dir / "atomic_positive_rejection_report.csv", index=False)
     pd.DataFrame(not_applicable).to_csv(reports_dir / "rules_without_atomic_positive.csv", index=False)
+    report_manifest = write_report_manifest(
+        reports_dir,
+        dataset_hash=str(manifest.get("dataset_hash") or ""),
+        config_hash=str(manifest.get("config_hash") or ""),
+        generated_at=str(manifest.get("generated_at") or ""),
+    )
+    manifest["report_freshness"] = {"status": "fresh", "errors": [], "report_count": len(report_manifest.get("reports", {}))}
+    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
