@@ -1108,24 +1108,8 @@ def _dedupe_pairs(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def _ensure_stress_metadata(rows: list[dict[str, Any]], *, requested_total: int) -> None:
-    minimum = int(requested_total * 0.03)
-    maximum = int(requested_total * 0.05)
-    current = sum(_json_dict(row.get("metadata")).get("is_stress") is True for row in rows)
-    target = min(maximum, max(minimum, current))
-    if current >= target:
-        return
-    for row in rows:
-        if current >= target:
-            break
-        metadata = _json_dict(row.get("metadata"))
-        if metadata.get("is_stress") is True:
-            continue
-        rule_ids = _row_rule_ids(row)
-        metadata["is_stress"] = True
-        metadata["error_count"] = max(1, len(rule_ids))
-        metadata["rule_ids"] = rule_ids
-        row["metadata"] = json.dumps(metadata, ensure_ascii=False, sort_keys=True)
-        current += 1
+    """Deprecated: stress rows must be generated as real multi-edit pairs."""
+    del rows, requested_total
 
 
 def _clean_hard_targets(total: int, synthetic_count: int, real_count: int) -> tuple[int, int]:
@@ -1221,10 +1205,43 @@ def _rule_counts(frame: pd.DataFrame) -> dict[str, int]:
     counter: Counter[str] = Counter()
     if frame.empty:
         return {}
-    for value in frame["rule_ids"].tolist():
-        for rule_id in _row_rule_ids({"rule_ids": value}):
+    for row in frame.to_dict("records"):
+        if not _counts_toward_rule_quota(row):
+            continue
+        for rule_id in _row_rule_ids(row):
             counter[rule_id] += 1
     return dict(sorted(counter.items()))
+
+
+def _counts_toward_rule_quota(row: dict[str, Any]) -> bool:
+    value = row.get("count_toward_rule_quota")
+    if not _is_blank(value):
+        return _truthy(value)
+    metadata = _json_dict(row.get("metadata"))
+    if "count_toward_rule_quota" in metadata:
+        return _truthy(metadata.get("count_toward_rule_quota"))
+    return True
+
+
+def _is_blank(value: Any) -> bool:
+    if value is None:
+        return True
+    if isinstance(value, str):
+        return value.strip().lower() in {"", "none", "null", "nan"}
+    return False
+
+
+def _truthy(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return False
+    text = str(value).strip().lower()
+    if text in {"", "0", "false", "no", "off", "none", "null", "nan"}:
+        return False
+    if text in {"1", "true", "yes", "on"}:
+        return True
+    return bool(value)
 
 
 def _metadata_counts(frame: pd.DataFrame, key: str) -> dict[str, int]:
