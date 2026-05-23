@@ -1982,6 +1982,8 @@ def _write_dataset_generation_report(manifest: dict[str, Any], path: Path) -> No
         "# Operator Dataset Generation Report",
         "",
         f"- verdict: {manifest.get('verdict', 'DATASET_BLOCKED')}",
+        f"- dataset_hash: {manifest.get('dataset_hash', '')}",
+        f"- config_hash: {manifest.get('config_hash', '')}",
         f"- total: {manifest.get('total', 0)}",
         f"- split_sizes: {json.dumps(manifest.get('split_sizes', {}), ensure_ascii=False, sort_keys=True)}",
         f"- active_rule_count: {manifest.get('active_rule_count', 0)}",

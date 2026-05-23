@@ -270,6 +270,7 @@ data:
     test: 20000
   training_dataset:
     enabled: true
+    legacy_builder: false
     requested_total: 200000
     expected_total: 200000
     smoke:
@@ -362,6 +363,7 @@ data:
     multi_error_stress_target: 6000
   training_dataset_core:
     enabled: true
+    legacy_builder: false
     requested_total: 200000
     expected_total: 200000
     smoke:

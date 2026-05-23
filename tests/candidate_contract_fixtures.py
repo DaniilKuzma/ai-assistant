@@ -15,7 +15,7 @@ class UnitCandidateGenerator:
     def generate(self, text: str):
         candidates = []
         typo_start = text.find("млоко")
-        if typo_start >= 0:
+        while typo_start >= 0:
             candidates.append(
                 Candidate(
                     source="млоко",
@@ -26,8 +26,9 @@ class UnitCandidateGenerator:
                     rule_id="unit_atomic",
                 )
             )
+            typo_start = text.find("млоко", typo_start + len("млоко"))
         clean_start = text.find("молоко")
-        if clean_start >= 0:
+        while clean_start >= 0:
             candidates.append(
                 Candidate(
                     source="молоко",
@@ -38,6 +39,7 @@ class UnitCandidateGenerator:
                     rule_id="unit_atomic",
                 )
             )
+            clean_start = text.find("молоко", clean_start + len("молоко"))
         return candidates
 
 
@@ -188,6 +190,139 @@ def write_unit_real_jsonl(path: Path) -> Path:
     ]
     path.write_text("\n".join(json.dumps(row, ensure_ascii=False) for row in rows) + "\n", encoding="utf-8")
     return path
+
+
+def write_unit_real_outputs(data_dir: Path) -> dict[str, Path]:
+    data_dir.mkdir(parents=True, exist_ok=True)
+    atomic_path = data_dir / "real_error_pairs_atomic.csv.gz"
+    stress_path = data_dir / "real_error_pairs_stress.csv.gz"
+    mining_path = data_dir / "real_error_pairs_mining.csv.gz"
+    validated_path = data_dir / "real_error_pairs_validated.csv.gz"
+
+    atomic_rows = [
+        _unit_real_row(
+            "В городе млоко стало дешевле после проверки.",
+            "В городе молоко стало дешевле после проверки.",
+            edit_sources=["млоко"],
+            edit_replacements=["молоко"],
+            layer="real_atomic",
+        )
+    ]
+    stress_rows = [
+        _unit_real_row(
+            "В городе млоко и млоко стали дешевле после проверки.",
+            "В городе молоко и молоко стали дешевле после проверки.",
+            edit_sources=["млоко", "млоко"],
+            edit_replacements=["молоко", "молоко"],
+            layer="stress_multi_error",
+            loss_weight=0.4,
+        )
+    ]
+    mining_rows = [
+        _unit_real_row(
+            "В городе ошипка стала заметнее после проверки.",
+            "В городе ошибка стала заметнее после проверки.",
+            edit_sources=["ошипка"],
+            edit_replacements=["ошибка"],
+            rule_id="unknown",
+            layer="real_mining",
+            routing_category="mining",
+            routing_reason="unknown_rule_mining_only",
+            candidate_present=False,
+            strict_validator_passed=False,
+        )
+    ]
+
+    pd.DataFrame(atomic_rows).to_csv(atomic_path, index=False)
+    pd.DataFrame(stress_rows).to_csv(stress_path, index=False)
+    pd.DataFrame(mining_rows).to_csv(mining_path, index=False)
+    pd.DataFrame(atomic_rows).to_csv(validated_path, index=False)
+    return {
+        "atomic": atomic_path,
+        "stress": stress_path,
+        "mining": mining_path,
+        "validated": validated_path,
+    }
+
+
+def _unit_real_row(
+    source: str,
+    target: str,
+    *,
+    edit_sources: list[str],
+    edit_replacements: list[str],
+    rule_id: str = "unit_atomic",
+    layer: str,
+    loss_weight: float = 1.0,
+    routing_category: str | None = None,
+    routing_reason: str = "unit",
+    candidate_present: bool = True,
+    strict_validator_passed: bool = True,
+) -> dict:
+    edits = []
+    search_start = 0
+    for edit_source, replacement in zip(edit_sources, edit_replacements, strict=True):
+        start = source.index(edit_source, search_start)
+        edits.append(
+            {
+                "source": edit_source,
+                "replacement": replacement,
+                "edit_type": "spelling_replace",
+                "start": start,
+                "end": start + len(edit_source),
+                "rule_id": rule_id,
+            }
+        )
+        search_start = start + len(edit_source)
+    edit_count = len(edits)
+    is_stress = layer == "stress_multi_error"
+    category = routing_category or ("stress" if is_stress else "atomic_train")
+    metadata = {
+        "candidate_present": candidate_present,
+        "strict_validator_passed": strict_validator_passed,
+        "routing_category": category,
+        "routing_reason": routing_reason,
+        "gold_edit_count": edit_count,
+        "dataset_layer": layer,
+        "count_toward_rule_quota": False,
+        "loss_weight": loss_weight,
+    }
+    return {
+        "source": source,
+        "target": target,
+        "source_dataset": "unit_real",
+        "source_subdataset": "",
+        "domain": "real_error_pair",
+        "detected_error_types": json.dumps(["spelling"], ensure_ascii=False),
+        "candidate_present": candidate_present,
+        "candidate_rule_ids": json.dumps([rule_id], ensure_ascii=False),
+        "edit_count": edit_count,
+        "gold_edit_count": edit_count,
+        "char_edit_ratio": 0.05,
+        "token_edit_ratio": 0.05,
+        "is_real_pair": True,
+        "metadata": json.dumps(metadata, ensure_ascii=False, sort_keys=True),
+        "raw_id": "",
+        "raw_source_path": "",
+        "error_types": json.dumps(["spelling"], ensure_ascii=False),
+        "error_type": "spelling",
+        "source_type": "real_error_pair",
+        "is_clean": False,
+        "is_hard_negative": False,
+        "is_synthetic": False,
+        "split": "stress" if is_stress else ("mining" if layer == "real_mining" else "train"),
+        "rule_id": rule_id,
+        "rule_ids": json.dumps([rule_id], ensure_ascii=False),
+        "edit_operations": json.dumps(edits, ensure_ascii=False),
+        "edits": json.dumps(edits, ensure_ascii=False),
+        "dataset_layer": layer,
+        "is_stress": is_stress,
+        "count_toward_rule_quota": False,
+        "loss_weight": loss_weight,
+        "routing_category": category,
+        "routing_reason": routing_reason,
+        "strict_validator_passed": strict_validator_passed,
+    }
 
 
 def unit_capability() -> RuleCapability:

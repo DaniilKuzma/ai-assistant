@@ -10,6 +10,7 @@ from tests.candidate_contract_fixtures import (
     candidate_contract_config,
     patch_unit_operator_pipeline,
     write_unit_clean_pool,
+    write_unit_real_outputs,
 )
 
 
@@ -89,6 +90,111 @@ def test_candidate_contract_pipeline_builds_atomic_from_clean_pool_without_outpu
     ]
     assert quota.set_index("rule_id").loc["unit_atomic", "atomic_positive_count"] == 2
     assert quota.set_index("rule_id").loc["unit_atomic", "hard_negative_min_required"] == 1
+
+
+def test_candidate_contract_pipeline_smoke_links_real_outputs_and_prefers_composition(tmp_path: Path, monkeypatch):
+    import src.data.operator_dataset_builder as operator_builder
+
+    clean_pool_path = write_unit_clean_pool(tmp_path / "clean_sentence_pool.csv.gz")
+    config = candidate_contract_config(tmp_path, clean_pool_path)
+    real_paths = write_unit_real_outputs(Path(config["data"]["processed_train_path"]).parent)
+    config["data"]["total_examples"] = 8
+    config["data"]["target_total_examples"] = 8
+    config["data"]["train_examples"] = 6
+    config["data"]["val_examples"] = 1
+    config["data"]["test_examples"] = 1
+    config["data"]["exact_split_sizes"] = {"train": 6, "val": 1, "test": 1}
+    config["data"]["real_error_pairs_atomic_path"] = str(real_paths["atomic"])
+    config["data"]["real_error_pairs_stress_path"] = str(real_paths["stress"])
+    config["data"]["real_error_pairs_validated_path"] = str(real_paths["validated"])
+    config["data"]["composition"] = {
+        "atomic_positive_target": 2,
+        "atomic_hard_negative_target": 2,
+        "clean_identity_target": 2,
+        "real_atomic_train_target": 1,
+        "stress_multi_error_target": 1,
+    }
+    conflicting_legacy_targets = {
+        "synthetic_augmented_from_open_clean": 8,
+        "real_error_pair": 0,
+        "clean_identity_from_open_clean": 0,
+        "hard_negative_from_open_clean": 0,
+    }
+    config["data"]["training_dataset"]["source_type_targets"] = dict(conflicting_legacy_targets)
+    config["data"]["training_dataset_core"]["source_type_targets"] = dict(conflicting_legacy_targets)
+    patch_unit_operator_pipeline(monkeypatch)
+
+    def fail_if_output_is_read(path: Path):
+        raise AssertionError(f"output dataset must not be read as seed: {path}")
+
+    monkeypatch.setattr(operator_builder, "_read_seed_dataset", fail_if_output_is_read, raising=False)
+
+    result = build_dataset_from_config(config, force=True)
+    manifest = json.loads(Path(config["data"]["manifest_path"]).read_text(encoding="utf-8"))
+    frame = pd.read_csv(config["data"]["processed_train_path"])
+    reports_dir = Path(config["paths"]["reports_dir"]) / "dataset_build"
+
+    assert result["total"] == 8
+    assert result["dataset_hash"] == manifest["dataset_hash"]
+    assert manifest["layer_counts"] == {
+        "atomic_positive": 2,
+        "atomic_hard_negative": 2,
+        "clean_identity": 2,
+        "real_atomic": 1,
+        "stress_multi_error": 1,
+    }
+    atomic = frame[frame["dataset_layer"].eq("atomic_positive")]
+    real_atomic = frame[frame["dataset_layer"].eq("real_atomic")]
+    stress = frame[frame["dataset_layer"].eq("stress_multi_error")]
+    assert atomic["gold_edit_count"].astype(int).tolist() == [1, 1]
+    assert atomic["count_toward_rule_quota"].astype(bool).all()
+    assert real_atomic["gold_edit_count"].astype(int).tolist() == [1]
+    assert not real_atomic["count_toward_rule_quota"].astype(bool).any()
+    assert stress["gold_edit_count"].astype(int).tolist() == [2]
+    assert not stress["count_toward_rule_quota"].astype(bool).any()
+    assert stress["loss_weight"].astype(float).tolist() == [0.4]
+    assert Path(real_paths["mining"]).exists()
+    assert not frame["dataset_layer"].eq("real_mining").any()
+    assert (reports_dir / "active_rule_quota_report.csv").exists()
+    assert (reports_dir / "candidate_recall_by_rule.csv").exists()
+    assert (reports_dir / "candidate_recall_gate_report.csv").exists()
+    assert (reports_dir / "atomic_purity_report.csv").exists()
+    assert (reports_dir / "real_pair_atomization_report.csv").exists()
+
+
+def test_candidate_contract_pipeline_cleans_reports_and_blocks_stale_report_hashes(tmp_path: Path, monkeypatch):
+    clean_pool_path = write_unit_clean_pool(tmp_path / "clean_sentence_pool.csv.gz")
+    config = candidate_contract_config(tmp_path, clean_pool_path)
+    reports_dir = Path(config["paths"]["reports_dir"]) / "dataset_build"
+    reports_dir.mkdir(parents=True)
+    stale_path = reports_dir / "old_false_report.csv"
+    stale_path.write_text("stale,report\n1,1\n", encoding="utf-8")
+    patch_unit_operator_pipeline(monkeypatch)
+
+    build_dataset_from_config(config, force=True)
+    manifest = json.loads(Path(config["data"]["manifest_path"]).read_text(encoding="utf-8"))
+    generation_report = reports_dir / "dataset_generation_report.md"
+    generation_text = generation_report.read_text(encoding="utf-8")
+
+    assert not stale_path.exists()
+    assert f"- dataset_hash: {manifest['dataset_hash']}" in generation_text
+    assert f"- config_hash: {manifest['config_hash']}" in generation_text
+    assert (reports_dir / "report_manifest.json").exists()
+
+    candidate_report = reports_dir / "candidate_recall_by_rule.csv"
+    candidate_report.write_text(
+        candidate_report.read_text(encoding="utf-8").replace("1.0", "0.0", 1),
+        encoding="utf-8",
+    )
+
+    result = build_dataset_from_config(config, force=False)
+    blocked_manifest = json.loads(Path(config["data"]["manifest_path"]).read_text(encoding="utf-8"))
+
+    assert result["status"] == "blocked"
+    assert result["verdict"] == "DATASET_BLOCKED"
+    assert "stale_reports_hash_mismatch:candidate_recall_by_rule.csv" in result["audit_errors"]
+    assert blocked_manifest["report_freshness"]["status"] == "stale"
+    assert "stale_reports_hash_mismatch:candidate_recall_by_rule.csv" in blocked_manifest["report_freshness"]["errors"]
 
 
 def test_candidate_contract_pipeline_reads_top_level_audit_alias_first(tmp_path: Path, monkeypatch):

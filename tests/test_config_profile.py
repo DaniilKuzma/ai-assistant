@@ -49,6 +49,8 @@ def test_main_config_is_canonical_train_profile_for_candidate_opportunity_datase
     assert config["data"]["audit"]["min_candidate_recall_for_active_rule"] == 0.95
     assert "training_dataset" in config["data"]
     assert "training_dataset_core" in config["data"]
+    assert config["data"]["training_dataset"]["legacy_builder"] is False
+    assert config["data"]["training_dataset_core"]["legacy_builder"] is False
     assert config["data"]["clean_corpus"]["enabled"] is True
     assert config["data"]["external_local_files_only"] is True
     assert config["data"]["punctuation_hard_negative_clean_ratio"] > 0.0
