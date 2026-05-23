@@ -10,6 +10,12 @@ import pandas as pd
 
 from src.candidates.candidate_generator import CandidateGenerator
 from src.data._training_dataset_builder import build_training_dataset_core_from_config
+from src.data.dataset_contract import (
+    CLEAN_IDENTITY_OPEN,
+    HARD_NEGATIVE_OPEN,
+    REAL_ERROR_PAIR,
+    SYNTHETIC_OPEN_CLEAN,
+)
 from src.data.training_quality_audit import (
     audit_training_dataset,
     write_artificial_marker_reports,
@@ -22,6 +28,13 @@ from src.data.training_quality_audit import (
     write_rule_diversity_report,
 )
 from src.evaluation.candidate_recall import build_candidate_recall_reports
+from src.rules.capabilities import (
+    active_rule_ids_for_training,
+    capability_manifest_fields,
+    capability_training_audit_errors,
+    load_rule_capabilities,
+    write_rule_capability_reports,
+)
 from src.rules.coverage_matrix import iter_coverage_entries, load_rules_coverage
 from src.rules.registry import rule_by_id
 from src.rules.syntax_synthetic import (
@@ -36,11 +49,6 @@ VERDICT_SMOKE_ONLY = "READY_FOR_SMOKE_ONLY"
 VERDICT_PARTIAL = "DATASET_PARTIAL"
 VERDICT_BLOCKED = "DATASET_BLOCKED"
 CORE_VERDICT_READY = "READY_FOR_TRAINING_DATASET"
-
-SYNTHETIC_OPEN_CLEAN = "synthetic_augmented_from_open_clean"
-REAL_ERROR_PAIR = "real_error_pair"
-CLEAN_IDENTITY_OPEN = "clean_identity_from_open_clean"
-HARD_NEGATIVE_OPEN = "hard_negative_from_open_clean"
 
 ACTIVATION_RULE_IDS = frozenset(
     {
@@ -180,23 +188,24 @@ def build_training_dataset_from_config(config: dict[str, Any], force: bool = Fal
 def resolve_broad_active_training_rules(config: dict[str, Any]) -> list[dict[str, Any]]:
     """Resolve the canonical broad active rule set from rules.yaml plus syntax support."""
 
-    rules_by_id = _rules_yaml_training_entries()
-    candidates = set(rules_by_id) | set(SUPPORTED_SYNTAX_RULE_IDS) | set(LEGACY_CANDIDATE_BACKED_RULE_IDS)
+    capabilities = load_rule_capabilities("configs/rules.yaml")
+    active_rule_ids = set(active_rule_ids_for_training(capabilities))
+    capability_by_rule_id = _best_capability_by_rule_id(capabilities)
+    candidates = set(capability_by_rule_id) | set(SUPPORTED_SYNTAX_RULE_IDS) | set(LEGACY_CANDIDATE_BACKED_RULE_IDS)
     if not bool(config.get("dictionary", {}).get("yo_e", {}).get("enabled", False)):
         candidates.add("yo_e_candidate")
     candidates.update({"quote_open", "quote_close", "capitalization_ner", "neural_punctuation"})
 
     rows: list[dict[str, Any]] = []
     for rule_id in sorted(candidates):
-        entry = rules_by_id.get(rule_id, {})
-        dataset = dict(entry.get("dataset", {}) or {})
-        include, reason = _broad_include_decision(rule_id, dataset, config=config)
-        source = _broad_rule_source(rule_id, dataset)
+        capability = capability_by_rule_id.get(rule_id)
+        include, reason = _broad_include_decision(rule_id, capability, active_rule_ids=active_rule_ids, config=config)
+        source = _broad_rule_source(rule_id, capability)
         quota_min, quota_preferred = _broad_rule_quota(rule_id, include=include)
-        candidate_path = include or bool(dataset.get("current_candidate_path")) or rule_id in SUPPORTED_SYNTAX_RULE_IDS or rule_id in LEGACY_CANDIDATE_BACKED_RULE_IDS
-        synthetic_support = include or bool(dataset.get("current_synthetic_support")) or rule_id in SUPPORTED_SYNTAX_RULE_IDS
-        hard_negative_support = include or bool(dataset.get("current_hard_negative_support")) or rule_id in SUPPORTED_SYNTAX_RULE_IDS
-        decision = str(dataset.get("training_eligibility_decision") or "")
+        candidate_path = bool(capability.has_candidate_path) if capability is not None else False
+        synthetic_support = bool(capability.has_synthetic_support) if capability is not None else False
+        hard_negative_support = bool(capability.has_hard_negative_support) if capability is not None else False
+        decision = str(capability.training_decision if capability is not None else "")
         rows.append(
             {
                 "rule_id": rule_id,
@@ -204,7 +213,7 @@ def resolve_broad_active_training_rules(config: dict[str, Any]) -> list[dict[str
                 "include": bool(include),
                 "include_in_dataset": bool(include),
                 "reason": reason,
-                "risk_level": str(dataset.get("risk_level") or _broad_default_risk(rule_id)),
+                "risk_level": str(capability.risk_level if capability is not None else _broad_default_risk(rule_id)),
                 "needs_validator": decision == "INCLUDE_AFTER_VALIDATOR",
                 "needs_threshold_calibration": decision == "INCLUDE_AFTER_THRESHOLD_CALIBRATION",
                 "candidate_path_exists": bool(candidate_path),
@@ -217,7 +226,7 @@ def resolve_broad_active_training_rules(config: dict[str, Any]) -> list[dict[str
                 "quota_min": quota_min,
                 "quota_preferred": quota_preferred,
                 "quota_final": quota_preferred,
-                "candidate_recall": float(dataset.get("current_candidate_recall") or (1.0 if include else 0.0)),
+                "candidate_recall": 1.0 if include else 0.0,
                 "safety_status": "included" if include else "excluded",
             }
         )
@@ -414,7 +423,38 @@ def _rules_yaml_training_entries() -> dict[str, dict[str, Any]]:
     return result
 
 
-def _broad_include_decision(rule_id: str, dataset: dict[str, Any], *, config: dict[str, Any]) -> tuple[bool, str]:
+def _best_capability_by_rule_id(capabilities: list[Any]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for capability in capabilities:
+        for rule_id in capability.project_rule_ids:
+            current = result.get(rule_id)
+            if current is None or _capability_decision_priority(capability.training_decision) < _capability_decision_priority(current.training_decision):
+                result[rule_id] = capability
+    return result
+
+
+def _capability_decision_priority(decision: str) -> int:
+    order = {
+        "INCLUDE_NOW": 0,
+        "INCLUDE_AFTER_VALIDATOR": 1,
+        "INCLUDE_AFTER_THRESHOLD_CALIBRATION": 2,
+        "INCLUDE_AFTER_TRAINING": 3,
+        "EVAL_ONLY": 4,
+        "MINING_ONLY": 5,
+    }
+    text = str(decision or "")
+    if text.startswith("BLOCK_"):
+        return 6
+    return order.get(text, 7)
+
+
+def _broad_include_decision(
+    rule_id: str,
+    capability: Any | None,
+    *,
+    active_rule_ids: set[str],
+    config: dict[str, Any],
+) -> tuple[bool, str]:
     if rule_id in {"quote_open", "quote_close"}:
         return False, "broad_normalization_quote_id_excluded"
     if rule_id == "capitalization_ner":
@@ -427,27 +467,23 @@ def _broad_include_decision(rule_id: str, dataset: dict[str, Any], *, config: di
         return False, "excluded_by_broad_dataset_policy"
     if rule_by_id(rule_id) is None:
         return False, "no_registered_rule"
-    decision = str(dataset.get("training_eligibility_decision") or "")
-    eligible = bool(dataset.get("training_eligible_now")) or decision in TRAINING_INCLUDE_DECISIONS
-    if rule_id in SUPPORTED_SYNTAX_RULE_IDS:
-        return True, "syntax_supported_candidate_backed"
-    if rule_id in LEGACY_CANDIDATE_BACKED_RULE_IDS:
-        return True, "legacy_candidate_backed_current_capability"
-    if eligible and bool(dataset.get("current_candidate_path", True)):
-        return True, "rules_yaml_training_eligible_candidate_backed"
-    if eligible:
-        return False, "training_eligible_but_no_candidate_path"
-    blocker = decision or str(dataset.get("training_eligibility_reason") or "metadata_or_planned")
+    if rule_id in active_rule_ids:
+        return True, "capability_include_now"
+    if capability is None:
+        return False, "missing_from_capability_matrix"
+    blocker = str(capability.training_decision or capability.training_reason or "metadata_or_planned")
     return False, blocker
 
 
-def _broad_rule_source(rule_id: str, dataset: dict[str, Any]) -> str:
+def _broad_rule_source(rule_id: str, capability: Any | None) -> str:
+    if capability is None:
+        return "excluded"
     if rule_id in SUPPORTED_SYNTAX_RULE_IDS:
         return "syntax_supported"
     if rule_id in LEGACY_CANDIDATE_BACKED_RULE_IDS:
         return "legacy_stable"
-    if dataset:
-        return "current_capability"
+    if capability.training_decision:
+        return "runtime_capability"
     return "excluded"
 
 
@@ -623,6 +659,8 @@ def _finalize_canonical_result(config: dict[str, Any], result: dict[str, Any]) -
 
     reports_dir = Path(config.get("paths", {}).get("reports_dir") or manifest_path.parent)
     reports_dir.mkdir(parents=True, exist_ok=True)
+    capabilities = load_rule_capabilities("configs/rules.yaml")
+    write_rule_capability_reports(capabilities, reports_dir)
     active_rows = resolve_active_target_rules(config)
     rule_counts = {str(key): int(value) for key, value in dict(manifest.get("rule_id_counts", {}) or {}).items()}
     _attach_final_counts(active_rows, rule_counts)
@@ -729,6 +767,7 @@ def _upgrade_manifest_to_canonical(
     included_rows = [row for row in active_rows if row["include_in_dataset"]]
     excluded_rows = [row for row in active_rows if not row["include_in_dataset"]]
     active_rule_ids = sorted(row["rule_id"] for row in included_rows)
+    capability_fields = capability_manifest_fields(load_rule_capabilities("configs/rules.yaml"))
     stable_core_ids = sorted(row["rule_id"] for row in active_rows if "core" in str(row.get("source", "")).split("/") and row["include_in_dataset"])
     activation_ids = sorted(row["rule_id"] for row in included_rows if row["tier"] == "activation")
     bounded_ids = sorted(row["rule_id"] for row in included_rows if row["tier"] == "bounded_activation")
@@ -755,8 +794,13 @@ def _upgrade_manifest_to_canonical(
             "stable_core_rule_ids": stable_core_ids,
             "activation_rule_ids": activation_ids,
             "bounded_activation_rule_ids": bounded_ids,
-            "excluded_rule_ids": sorted(row["rule_id"] for row in excluded_rows),
-            "excluded_active_rule_ids": sorted(row["rule_id"] for row in excluded_rows),
+            "excluded_rule_ids": sorted(
+                {row["rule_id"] for row in excluded_rows}
+                | set(capability_fields.get("blocked_rule_ids", []))
+                | set(capability_fields.get("eval_only_rule_ids", []))
+                | set(capability_fields.get("mining_only_rule_ids", []))
+            ),
+            "excluded_active_rule_ids": sorted({row["rule_id"] for row in excluded_rows} | set(capability_fields.get("blocked_rule_ids", []))),
             "active_target_rule_count": len(active_rule_ids),
             "active_rule_count": len(active_rule_ids),
             "stable_core_rule_count": len(stable_core_ids),
@@ -782,6 +826,11 @@ def _upgrade_manifest_to_canonical(
             },
         }
     )
+    manifest.update(capability_fields)
+    manifest["active_rule_ids"] = active_rule_ids
+    manifest["active_target_rule_ids"] = active_rule_ids
+    manifest["active_rule_count"] = len(active_rule_ids)
+    manifest["active_target_rule_count"] = len(active_rule_ids)
     return manifest
 
 
@@ -965,6 +1014,7 @@ def _canonical_audit_errors(manifest: dict[str, Any], *, config: dict[str, Any])
         errors.append("rule_diversity_gates_failed")
     if int(dict(manifest.get("extended_quality_audit_summary", {}) or {}).get("blocking_issue_count", 0) or 0) != 0:
         errors.append("extended_quality_audit_blocking_issues")
+    errors.extend(capability_training_audit_errors(dict(manifest.get("rule_id_counts", {}) or {}).keys(), load_rule_capabilities("configs/rules.yaml")))
     errors.extend(_dominance_errors(manifest, config=config))
     return errors
 

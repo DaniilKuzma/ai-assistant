@@ -94,10 +94,15 @@ def test_open_corpora_config_uses_controlled_download_schema():
     config = yaml.safe_load(Path("configs/open_corpora_sources.yaml").read_text(encoding="utf-8"))
 
     policy = config["sources"]["download_policy"]
+    pool = config["pool"]
     assert policy["mode"] == "local_first_with_controlled_downloads"
     assert policy["allow_downloads_env"] == "RUSSIAN_CORRECTOR_ALLOW_SOURCE_DOWNLOADS"
     assert policy["fail_if_insufficient_sources"] is False
     assert policy["write_reports"] is True
+    assert pool["reject_mixed_script_tokens"] is True
+    assert pool["reject_latin_confusable_inside_cyrillic_word"] is True
+    assert pool["reject_if_candidate_generator_finds_high_confidence_fix"] is False
+    assert pool["high_confidence_candidate_threshold"] == 0.95
     assert config["clean_sources"]["lenta_news"]["type"] == "lenta_news"
     assert config["clean_sources"]["nerus_news"]["type"] == "nerus_conllu"
     assert config["clean_sources"]["opencorpora"]["archive_path"].endswith(".zip")
@@ -181,6 +186,26 @@ def test_clean_sentence_filter_rejects_meta_language_and_social_noise():
         "Ну что, чувак, это #тест от @user 😂",
         metadata,
     )
+    assert not is_clean_sentence_acceptable(
+        "В аэропорту обeзврежено взрывное устройство после проверки.",
+        metadata,
+    )
+    assert not is_clean_sentence_acceptable(
+        "Новая cистема обработки данных заработала утром.",
+        metadata,
+    )
+    assert is_clean_sentence_acceptable(
+        "Новая система обработки данных заработала утром.",
+        metadata,
+    )
+    assert is_clean_sentence_acceptable(
+        "Компания OpenAI представила новый сервис для русских пользователей.",
+        metadata,
+    )
+    assert is_clean_sentence_acceptable(
+        "Новая AI-модель обработки данных заработала утром после теста.",
+        metadata,
+    )
 
 
 def test_clean_sentence_filter_rejects_malformed_dash_spacing():
@@ -246,6 +271,7 @@ def test_clean_sentence_pool_writes_filter_report_and_deduplicates(tmp_path: Pat
             [
                 "Эксперты сообщили, что новый индекс вырос после публикации отчета.",
                 "Эксперты сообщили, что новый индекс вырос после публикации отчета.",
+                "Новая cистема обработки данных заработала утром.",
                 "В проверочном примере форма «зато» проверяет семейство context-pairs в серии 12.",
             ]
         )
@@ -279,4 +305,5 @@ def test_clean_sentence_pool_writes_filter_report_and_deduplicates(tmp_path: Pat
     assert output_path.exists()
     assert (reports_dir / "clean_source_filter_report.csv").exists()
     assert result.rejection_reason_counts["duplicate_normalized_text"] == 1
+    assert result.rejection_reason_counts["mixed_script_token"] == 1
     assert result.rejection_reason_counts["synthetic_meta_language"] == 1

@@ -24,6 +24,10 @@ from src.data.training_quality_audit import (
 SYNTAX_PUNCTUATION_RULE_IDS = frozenset(PUNCTUATION_RULE_FAMILIES) - frozenset({"final_punctuation_default"})
 POSITIVE_SOURCE_TYPES = frozenset({"synthetic_augmented_from_open_clean", "real_error_pair"})
 CLEAN_HARD_SOURCE_TYPES = frozenset({"clean_identity_from_open_clean", "hard_negative_from_open_clean"})
+STRICT_CLEAN_OR_HARD_POOL_CONFIG = {
+    "reject_mixed_script_tokens": True,
+    "reject_latin_confusable_inside_cyrillic_word": True,
+}
 
 
 def positive_target_quality_pass(text: str) -> bool:
@@ -46,7 +50,11 @@ def clean_or_hard_quality_pass(text: str) -> bool:
 
 
 def clean_or_hard_quality_reasons(text: str) -> list[str]:
-    reasons = clean_sentence_rejection_reasons(text, {"domain": "open_clean", "style": "neutral"})
+    reasons = clean_sentence_rejection_reasons(
+        text,
+        {"domain": "open_clean", "style": "neutral"},
+        pool_config=STRICT_CLEAN_OR_HARD_POOL_CONFIG,
+    )
     if text_has_quote_bracket_balance_bug(text):
         reasons.append("unbalanced_quote_or_bracket")
     return list(dict.fromkeys(reasons))
@@ -174,4 +182,3 @@ def _contains_known_bad_phrase(text: str) -> bool:
         "по-английски",
     )
     return any(phrase in lower for phrase in forbidden)
-

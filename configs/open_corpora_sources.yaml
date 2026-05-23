@@ -17,6 +17,10 @@ pool:
   preferred_max_source_share: 0.60
   max_subcorpus_share: 0.70
   enable_near_duplicate_filter: false
+  reject_mixed_script_tokens: true
+  reject_latin_confusable_inside_cyrillic_word: true
+  reject_if_candidate_generator_finds_high_confidence_fix: false
+  high_confidence_candidate_threshold: 0.95
 
 clean_sources:
   lenta_news:

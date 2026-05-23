@@ -4,7 +4,9 @@ from pathlib import Path
 import pandas as pd
 
 from src.config.load_config import load_config
+from src.data._training_dataset_builder import _effective_active_rule_ids
 from src.data.full_dataset_builder import build_dataset_from_config
+from src.rules.capabilities import RuleCapability
 
 
 def test_training_dataset_core_blocks_when_required_sources_missing_and_downloads_disabled(tmp_path: Path, monkeypatch):
@@ -55,6 +57,8 @@ def test_training_dataset_core_quota_backfill_uses_candidate_backed_rules_and_re
     manifest = json.loads((tmp_path / "reports" / "training_dataset_core" / "dataset_manifest.json").read_text(encoding="utf-8"))
     quota = pd.read_csv(tmp_path / "reports" / "training_dataset_core" / "active_rule_quota_report.csv")
     rejected = pd.read_csv(tmp_path / "reports" / "training_dataset_core" / "rejected_backfill_templates.csv")
+    blocked = pd.read_csv(tmp_path / "reports" / "training_dataset_core" / "blocked_rules_report.csv")
+    matrix = pd.read_csv(tmp_path / "reports" / "training_dataset_core" / "rule_capability_matrix.csv")
 
     assert result["verdict"] == "READY_FOR_TRAINING_DATASET"
     assert frame["split"].value_counts().to_dict() == {"train": 60, "val": 10, "test": 10}
@@ -65,24 +69,97 @@ def test_training_dataset_core_quota_backfill_uses_candidate_backed_rules_and_re
 
     expected_rules = {
         "comma_subordinate",
-        "homogeneous_comma",
         "subject_predicate_dash",
-        "enumeration_colon",
-        "direct_speech_colon",
-        "direct_speech_quotes",
+        "homogeneous_comma",
         "direct_speech_dash",
+        "address_comma",
+        "comma_conjunction",
+        "hyphen_whitelist",
     }
+    blocked_config_rules = {"capitalization_ner", "yo_e_candidate"}
+    assert expected_rules <= set(manifest["active_rule_ids"])
+    assert blocked_config_rules.isdisjoint(set(manifest["active_rule_ids"]))
+    assert blocked_config_rules.isdisjoint(set(frame["rule_ids"].astype(str)))
     assert expected_rules <= set(quota["rule_id"])
+    assert blocked_config_rules.isdisjoint(set(quota["rule_id"]))
     assert set(quota.set_index("rule_id").loc[list(expected_rules), "action"]) <= {"ok", "backfilled"}
     assert all(manifest["rule_id_counts"][rule_id] >= 3 for rule_id in expected_rules)
-    assert "no_existing_candidate_backed_pattern" in set(rejected["reason"])
+    assert "capitalization_ner" in " ".join(blocked["project_rule_ids"].astype(str).tolist())
+    assert "yo_e_candidate" in " ".join(blocked["project_rule_ids"].astype(str).tolist())
+    assert len(matrix) >= len(blocked)
+    assert (tmp_path / "reports" / "training_dataset_core" / "rule_eligibility_report.csv").exists()
+    assert (tmp_path / "reports" / "training_dataset_core" / "missing_module_rules_report.csv").exists()
+    assert {"rule_id", "reason"} <= set(rejected.columns)
     assert not frame["source"].str.contains("правило|серии|семейство|context-pairs", case=False, regex=True).any()
     assert not frame["target"].str.contains("правило|серии|семейство|context-pairs", case=False, regex=True).any()
 
 
+def test_effective_active_rule_ids_filter_blocked_eval_and_mining_rules():
+    config = load_config("configs/config.yaml")
+    core_config = dict(config["data"]["training_dataset_core"])
+    quota_config = {
+        "rule_ids": [
+            "dictionary_fuzzy",
+            "comma_subordinate",
+            "hyphen_whitelist",
+            "final_punctuation_default",
+            "frequent_error_exact",
+        ]
+    }
+    capabilities = [
+        _capability("dictionary_fuzzy", "BLOCK_NEEDS_DICTIONARY", requires=["dictionary"]),
+        _capability("comma_subordinate", "BLOCK_NEEDS_SYNTAX", requires=["syntax"]),
+        _capability("hyphen_whitelist", "EVAL_ONLY"),
+        _capability("final_punctuation_default", "MINING_ONLY"),
+        _capability("frequent_error_exact", "INCLUDE_NOW", eligible=True),
+    ]
+
+    assert _effective_active_rule_ids(
+        config,
+        core_config,
+        quota_config=quota_config,
+        capabilities=capabilities,
+    ) == ["frequent_error_exact"]
+
+
+def _capability(
+    rule_id: str,
+    decision: str,
+    *,
+    eligible: bool = False,
+    requires: list[str] | None = None,
+) -> RuleCapability:
+    return RuleCapability(
+        taxonomy_key=f"test_{rule_id}",
+        domain="test",
+        entry_type="rule",
+        title=rule_id,
+        orfogrammka_id="",
+        project_rule_ids=[rule_id],
+        implementation_status="current",
+        requires=requires or [],
+        executable=eligible,
+        training_eligible=eligible,
+        training_decision=decision,
+        training_reason=decision,
+        has_candidate_path=eligible,
+        has_synthetic_support=eligible,
+        has_hard_negative_support=eligible,
+        has_validator_support=eligible,
+        has_dictionary_support=False,
+        has_syntax_support=False,
+        has_morphology_support=False,
+        has_ner_support=False,
+        risk_level="low",
+    )
+
+
 def _tiny_quota_config(tmp_path: Path) -> dict:
-    clean_path = tmp_path / "clean.txt"
-    clean_path.write_text("\n".join(_clean_sentences(180)) + "\n", encoding="utf-8")
+    clean_sentences = _clean_sentences(240)
+    clean_path = tmp_path / "clean-a.txt"
+    clean_path.write_text("\n".join(clean_sentences[:120]) + "\n", encoding="utf-8")
+    clean_path_b = tmp_path / "clean-b.txt"
+    clean_path_b.write_text("\n".join(clean_sentences[120:]) + "\n", encoding="utf-8")
     real_path = tmp_path / "real.jsonl"
     real_path.write_text(
         '{"source": "Жызнь в городе стала заметно спокойнее.", "correction": "Жизнь в городе стала заметно спокойнее.", "domain": "unit"}\n',
@@ -99,15 +176,15 @@ def _tiny_quota_config(tmp_path: Path) -> dict:
     core = config["data"]["training_dataset_core"]
     core["source_type_targets"] = {
         "synthetic_augmented_from_open_clean": 40,
-        "real_error_pair": 1,
-        "clean_identity_from_open_clean": 19,
+        "real_error_pair": 0,
+        "clean_identity_from_open_clean": 20,
         "hard_negative_from_open_clean": 20,
     }
     core["split_source_type_targets"] = {
         "train": {
             "synthetic_augmented_from_open_clean": 30,
-            "real_error_pair": 1,
-            "clean_identity_from_open_clean": 14,
+            "real_error_pair": 0,
+            "clean_identity_from_open_clean": 15,
             "hard_negative_from_open_clean": 15,
         },
         "val": {
@@ -125,20 +202,25 @@ def _tiny_quota_config(tmp_path: Path) -> dict:
     }
     core["min_clean_pool_for_ready"] = 40
     core["min_clean_pool_hard_min"] = 40
+    core["multi_error_stress_target"] = 0
     core["pool"]["min_clean_sentences"] = 40
     core["pool"]["max_source_share"] = 1.0
     core["pool"]["max_subcorpus_share"] = 1.0
     core["audit"]["min_active_rule_count"] = 3
     core["audit"]["require_all_source_types"] = False
+    core["audit"]["corpus_opportunity_share_min"] = 0.0
+    core["audit"]["fallback_template_share_max"] = 1.0
     core["active_rule_quota"] = {
         "rule_ids": [
             "comma_subordinate",
-            "homogeneous_comma",
             "subject_predicate_dash",
-            "enumeration_colon",
-            "direct_speech_colon",
-            "direct_speech_quotes",
+            "homogeneous_comma",
             "direct_speech_dash",
+            "address_comma",
+            "comma_conjunction",
+            "hyphen_whitelist",
+            "capitalization_ner",
+            "yo_e_candidate",
         ],
         "min_total_per_active_rule": 3,
         "preferred_total_per_active_rule": 3,
@@ -146,7 +228,7 @@ def _tiny_quota_config(tmp_path: Path) -> dict:
     }
     core["open_corpora_sources"] = {
         "clean_sources": {
-            "unit_news": {
+            "unit_news_a": {
                 "enabled": True,
                 "type": "local_text",
                 "local_path": str(clean_path),
@@ -155,19 +237,22 @@ def _tiny_quota_config(tmp_path: Path) -> dict:
                 "style": "neutral",
                 "license_status": "unit",
                 "max_sentences": 200,
+            },
+            "unit_news_b": {
+                "enabled": True,
+                "type": "local_text",
+                "local_path": str(clean_path_b),
+                "source_subcorpus": "analysis",
+                "domain": "analysis",
+                "style": "neutral",
+                "license_status": "unit",
+                "max_sentences": 200,
             }
         },
         "download_policy": {"mode": "local_first"},
     }
     core["real_error_sources"] = {
-        "real_sources": {
-            "unit_pairs": {
-                "enabled": True,
-                "type": "local_jsonl",
-                "local_path": str(real_path),
-                "max_examples": 10,
-            }
-        },
+        "real_sources": {},
         "download_policy": {"mode": "local_first"},
     }
     return config

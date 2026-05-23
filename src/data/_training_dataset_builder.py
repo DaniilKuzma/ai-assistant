@@ -23,6 +23,15 @@ from src.data.clean_sentence_pool import (
     build_clean_sentence_pool,
     normalize_template_text,
 )
+from src.data.dataset_contract import (
+    CLEAN_IDENTITY_OPEN,
+    CORE_SOURCE_TYPES,
+    HARD_NEGATIVE_OPEN,
+    REAL_ERROR_PAIR,
+    SOURCE_TYPE_ALIASES,
+    SYNTHETIC_OPEN_CLEAN,
+    ensure_contract_columns,
+)
 from src.data.real_error_sources import RealErrorLoadResult, load_real_error_pairs
 from src.data.sage_sources import prepare_punctuation_jsonl_file, prepare_sage_jsonl_files
 from src.data.synthetic_generator import (
@@ -56,6 +65,13 @@ from src.evaluation.candidate_recall import (
     GAP_LABEL_COVERAGE_COLUMNS,
     build_candidate_recall_reports,
 )
+from src.rules.capabilities import (
+    active_rule_ids_for_training,
+    capability_manifest_fields,
+    capability_training_audit_errors,
+    load_rule_capabilities,
+    write_rule_capability_reports,
+)
 from src.rules.coverage_matrix import iter_coverage_entries, load_rules_coverage
 from src.rules.registry import rule_by_id
 from src.rules.rule_ids import normalize_rule_id
@@ -63,11 +79,6 @@ from src.validation.diff_analyzer import DiffAnalyzer, Edit
 from src.validation.edit_classifier import coarse_error_type, is_allowed_edit_type
 
 
-SYNTHETIC_OPEN_CLEAN = "synthetic_augmented_from_open_clean"
-REAL_ERROR_PAIR = "real_error_pair"
-CLEAN_IDENTITY_OPEN = "clean_identity_from_open_clean"
-HARD_NEGATIVE_OPEN = "hard_negative_from_open_clean"
-CORE_SOURCE_TYPES = (SYNTHETIC_OPEN_CLEAN, REAL_ERROR_PAIR, CLEAN_IDENTITY_OPEN, HARD_NEGATIVE_OPEN)
 ARTIFICIAL_METKA_SUBSTRING = "\u043c\u0435\u0442\u043a\u0430"
 ARTIFICIAL_LATER_EDITOR_PATTERNS = (
     "\u043f\u043e\u0437\u0436\u0435 \u0440\u0435\u0434\u0430\u043a\u0442\u043e\u0440 "
@@ -89,15 +100,6 @@ ARTIFICIAL_RANDOM_FILLER_RE = re.compile(
 )
 MAX_SYNTHETIC_DIFF_CHARS = 320
 MAX_SYNTHETIC_DIFF_WORDS = 55
-SOURCE_TYPE_ALIASES = {
-    "synthetic_augmented": SYNTHETIC_OPEN_CLEAN,
-    SYNTHETIC_OPEN_CLEAN: SYNTHETIC_OPEN_CLEAN,
-    "real_error_pair": REAL_ERROR_PAIR,
-    "clean_identity": CLEAN_IDENTITY_OPEN,
-    CLEAN_IDENTITY_OPEN: CLEAN_IDENTITY_OPEN,
-    "hard_negative": HARD_NEGATIVE_OPEN,
-    HARD_NEGATIVE_OPEN: HARD_NEGATIVE_OPEN,
-}
 CORE_COLUMNS = [
     "source",
     "target",
@@ -231,6 +233,8 @@ def build_training_dataset_core_from_config(config: dict[str, Any], force: bool 
 
     output_dir.mkdir(parents=True, exist_ok=True)
     reports_dir.mkdir(parents=True, exist_ok=True)
+    capabilities = load_rule_capabilities("configs/rules.yaml")
+    write_rule_capability_reports(capabilities, reports_dir)
     clean_config = _clean_source_config(config, core_config)
     real_config = _real_source_config(config, core_config)
     clean_pool_path = output_dir / "clean_sentence_pool.csv.gz"
@@ -241,6 +245,7 @@ def build_training_dataset_core_from_config(config: dict[str, Any], force: bool 
             requested_total=requested_total,
             requested_split_sizes=requested_split_sizes,
             source_precheck=source_precheck,
+            capabilities=capabilities,
         )
         manifest_path.parent.mkdir(parents=True, exist_ok=True)
         manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -300,7 +305,7 @@ def build_training_dataset_core_from_config(config: dict[str, Any], force: bool 
     strict_clean_rows = _strict_clean_rows(clean_rows)
     quota_config = _active_rule_quota_config(core_config)
     cap_config = _rule_cap_config(core_config, split_sizes)
-    active_rule_ids = _effective_active_rule_ids(config, core_config, quota_config=quota_config)
+    active_rule_ids = _effective_active_rule_ids(config, core_config, quota_config=quota_config, capabilities=capabilities)
     global _CURRENT_ACTIVE_RULE_IDS
     _CURRENT_ACTIVE_RULE_IDS = set(active_rule_ids)
     _progress("active_rules_ready", active_rule_count=len(active_rule_ids))
@@ -418,6 +423,11 @@ def build_training_dataset_core_from_config(config: dict[str, Any], force: bool 
     )
     _progress("hard_negative_done", total_rows=len(rows))
 
+    before_capability_filter = len(rows)
+    rows = [row for row in rows if _row_uses_training_eligible_rules(row, active_rule_ids)]
+    capability_rejected_rows = before_capability_filter - len(rows)
+    _progress("capability_rule_filter_done", removed=capability_rejected_rows, total_rows=len(rows))
+
     before_marker_filter = len(rows)
     rows = [row for row in rows if not _row_contains_artificial_marker(row)]
     _progress("artificial_marker_filter_done", removed=before_marker_filter - len(rows), total_rows=len(rows))
@@ -494,7 +504,7 @@ def build_training_dataset_core_from_config(config: dict[str, Any], force: bool 
     _assign_core_splits(rows, effective_split_sizes, core_config=split_core_config, seed=seed)
     _attach_template_fields(rows)
 
-    frame = pd.DataFrame(rows, columns=CORE_COLUMNS)
+    frame = ensure_contract_columns(pd.DataFrame(rows, columns=CORE_COLUMNS))
     _progress("write_dataset_start", rows=len(frame), output_path=str(output_path))
     frame.to_csv(output_path, index=False)
     for split in ("train", "val", "test"):
@@ -584,6 +594,8 @@ def build_training_dataset_core_from_config(config: dict[str, Any], force: bool 
         quote_bracket_balance_rejected_rows=quote_bracket_rejected_rows,
         clean_hard_balance_rejected_rows=clean_hard_balance_rejected_rows,
         rule_semantic_alignment_rejected_rows=semantic_rejected_rows,
+        capability_rule_rejected_rows=capability_rejected_rows,
+        capabilities=capabilities,
     )
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -643,6 +655,9 @@ def _clean_source_config(config: dict[str, Any], core_config: dict[str, Any]) ->
     pool = dict(source_config.get("pool", {}) or {})
     pool.update(dict(core_config.get("pool", {}) or {}))
     source_config["pool"] = pool
+    for key in ("dictionary", "nlp"):
+        if key in config and key not in source_config:
+            source_config[key] = config[key]
     return source_config
 
 
@@ -774,8 +789,9 @@ def _blocked_missing_sources_manifest(
     requested_total: int,
     requested_split_sizes: dict[str, int],
     source_precheck: dict[str, Any],
+    capabilities: list[Any] | None = None,
 ) -> dict[str, Any]:
-    return {
+    manifest = {
         "total": 0,
         "requested_total": int(requested_total),
         "requested_split_sizes": requested_split_sizes,
@@ -789,6 +805,9 @@ def _blocked_missing_sources_manifest(
         "config_path": str(config.get("data", {}).get("config_path", "configs/config.yaml")),
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
+    if capabilities is not None:
+        manifest.update(capability_manifest_fields(capabilities))
+    return manifest
 
 
 def _write_blocked_generation_report(path: Path, manifest: dict[str, Any]) -> None:
@@ -855,26 +874,22 @@ def _effective_active_rule_ids(
     core_config: dict[str, Any],
     *,
     quota_config: dict[str, Any],
+    capabilities: list[Any],
 ) -> list[str]:
+    capability_active = set(active_rule_ids_for_training(capabilities))
     configured = quota_config.get("rule_ids")
     if isinstance(configured, list) and configured:
-        return sorted(str(rule_id) for rule_id in configured if rule_by_id(str(rule_id)) is not None)
-    coverage = load_rules_coverage()
-    disabled = set(str(rule_id) for rule_id in coverage.get("synthetic_generation", {}).get("disabled", {}).keys())
+        return sorted(
+            str(rule_id)
+            for rule_id in configured
+            if str(rule_id) in capability_active and rule_by_id(str(rule_id)) is not None
+        )
+    disabled = set(str(rule_id) for rule_id in (load_rules_coverage().get("synthetic_generation", {}) or {}).get("disabled", {}).keys())
     disabled.update(str(rule_id) for rule_id in config.get("synthetic_generation", {}).get("disabled", {}).keys())
     excluded = set(SHORT_BROAD_EXCLUDED_RULE_IDS) | disabled
     if bool(core_config.get("include_yo_e_candidate", False)) and bool(config.get("dictionary", {}).get("yo_e", {}).get("enabled", False)):
         excluded.discard("yo_e_candidate")
-    result: set[str] = set()
-    for _domain, _group, entry in iter_coverage_entries(coverage):
-        status = str(entry.get("status") or "")
-        if status not in ACTIVE_SYNTHETIC_STATUSES:
-            continue
-        for raw_rule_id in entry.get("rules", []):
-            rule_id = normalize_rule_id(raw_rule_id)
-            if rule_id in excluded or rule_by_id(rule_id) is None:
-                continue
-            result.add(rule_id)
+    result = {rule_id for rule_id in capability_active if rule_id not in excluded and rule_by_id(rule_id) is not None}
     return sorted(result)
 
 
@@ -1628,6 +1643,15 @@ def _row_clean_hard_quote_bracket_bug(row: dict[str, Any]) -> bool:
     if str(row.get("source_type") or "") not in {CLEAN_IDENTITY_OPEN, HARD_NEGATIVE_OPEN}:
         return False
     return text_has_quote_bracket_balance_bug(str(row.get("source", ""))) or text_has_quote_bracket_balance_bug(str(row.get("target", "")))
+
+
+def _row_uses_training_eligible_rules(row: dict[str, Any], active_rule_ids: Iterable[str]) -> bool:
+    allowed = {str(rule_id) for rule_id in active_rule_ids}
+    service = {"", "unknown", "clean_identity", "clean_identity_hard_negative", "hard_negative", "unknown_real_validated"}
+    rule_ids = [str(rule_id) for rule_id in _json_list(row.get("rule_ids")) if str(rule_id)]
+    if not rule_ids:
+        return True
+    return all(rule_id in service or rule_id in allowed for rule_id in rule_ids)
 
 
 def _clean_text_has_balance_bug(text: str) -> bool:
@@ -3389,7 +3413,7 @@ def _remaining_fallback_template_budget(rows: list[dict[str, Any]], *, max_share
 
 def _quality_source_minimum_targets(source_targets: dict[str, int], total: int) -> dict[str, int]:
     minimum = (int(total) + 9) // 10
-    real_minimum = max(1, int(source_targets.get(REAL_ERROR_PAIR, 0)))
+    real_minimum = max(0, int(source_targets.get(REAL_ERROR_PAIR, 0)))
     return {
         REAL_ERROR_PAIR: real_minimum,
         CLEAN_IDENTITY_OPEN: minimum,
@@ -3680,13 +3704,17 @@ def _quality_gate_exclusions(
     if not active:
         return {}
     reasons: dict[str, list[str]] = {}
-
-    for rule_id in dict(quality_audit.get("rule_diversity_summary", {}) or {}).get("failed_rule_ids", []) or []:
-        rule = str(rule_id)
-        if rule in active:
-            reasons.setdefault(rule, []).append("excluded_after_rule_diversity_audit")
-
     audit_config = dict(core_config.get("audit", {}) or {})
+    enforce_diversity_gates = int(quality_audit.get("total_rows", 0) or 0) >= int(
+        audit_config.get("min_rows_for_rule_diversity_gates", 1000)
+    )
+
+    if enforce_diversity_gates:
+        for rule_id in dict(quality_audit.get("rule_diversity_summary", {}) or {}).get("failed_rule_ids", []) or []:
+            rule = str(rule_id)
+            if rule in active:
+                reasons.setdefault(rule, []).append("excluded_after_rule_diversity_audit")
+
     recall_threshold = float(audit_config.get("candidate_recall_min", 0.85))
     recall_frame = recall_reports.get("candidate_recall_by_rule", pd.DataFrame())
     if not recall_frame.empty:
@@ -3982,12 +4010,25 @@ def _manifest(
     quote_bracket_balance_rejected_rows: int = 0,
     clean_hard_balance_rejected_rows: int = 0,
     rule_semantic_alignment_rejected_rows: int = 0,
+    capability_rule_rejected_rows: int = 0,
+    capabilities: list[Any] | None = None,
 ) -> dict[str, Any]:
     quota_state = quota_state or {}
     quality_audit = quality_audit or {}
-    active_rule_ids = sorted(str(rule_id) for rule_id in (quota_state.get("active_rule_ids") or _active_rule_ids()))
+    capabilities = capabilities or load_rule_capabilities("configs/rules.yaml")
+    capability_fields = capability_manifest_fields(capabilities)
+    raw_active_rule_ids = quota_state.get("active_rule_ids")
+    if raw_active_rule_ids is None:
+        raw_active_rule_ids = _active_rule_ids()
+    active_rule_ids = sorted(str(rule_id) for rule_id in raw_active_rule_ids)
     excluded_active_rule_ids = sorted(str(rule_id) for rule_id in quota_state.get("excluded_active_rule_ids", []))
-    excluded_rule_ids = sorted(set(_excluded_rule_ids()) | set(excluded_active_rule_ids))
+    excluded_rule_ids = sorted(
+        set(_excluded_rule_ids())
+        | set(excluded_active_rule_ids)
+        | set(capability_fields.get("blocked_rule_ids", []))
+        | set(capability_fields.get("eval_only_rule_ids", []))
+        | set(capability_fields.get("mining_only_rule_ids", []))
+    )
     inactive_rule_ids = sorted(set(excluded_rule_ids) - set(active_rule_ids))
     normalized_counts = Counter(frame["normalized_pair_hash"].astype(str))
     synthetic = frame[frame["source_type"] == SYNTHETIC_OPEN_CLEAN]
@@ -4080,6 +4121,7 @@ def _manifest(
             or {}
         ),
         "rule_semantic_alignment_rejected_rows": int(rule_semantic_alignment_rejected_rows),
+        "capability_rule_rejected_rows": int(capability_rule_rejected_rows),
         "exact_clean_hard_duplicate_count": int(quality_audit.get("exact_clean_hard_duplicate_count", 0) or 0),
         "error_bearing_sentence_source_counts": dict(quality_audit.get("error_bearing_sentence_source_counts", {}) or {}),
         "rule_diversity_summary": dict(quality_audit.get("rule_diversity_summary", {}) or {}),
@@ -4122,9 +4164,15 @@ def _manifest(
         shortage_errors=shortage_errors,
         quality_audit=quality_audit,
     )
+    audit_errors.extend(capability_training_audit_errors(manifest.get("rule_id_counts", {}).keys(), capabilities))
     manifest["warnings"] = _audit_warnings(manifest=manifest, core_config=core_config, clean_result=clean_result)
     manifest["audit_errors"] = audit_errors
     manifest["verdict"] = "DATASET_BLOCKED" if audit_errors else "READY_FOR_TRAINING_DATASET"
+    manifest.update(capability_fields)
+    manifest["active_rule_ids"] = active_rule_ids
+    manifest["active_rule_count"] = int(len(active_rule_ids))
+    manifest["excluded_rule_ids"] = excluded_rule_ids
+    manifest["excluded_active_rule_ids"] = sorted(set(excluded_active_rule_ids) | set(capability_fields.get("blocked_rule_ids", [])))
     return manifest
 
 
@@ -4179,9 +4227,17 @@ def _audit_errors(
         errors.append("rule_semantic_alignment_failed")
     if not dict(manifest.get("error_bearing_sentence_source_counts", {}) or {}):
         errors.append("missing_error_bearing_sentence_source_counts")
-    if int(dict(manifest.get("rule_diversity_summary", {}) or {}).get("failed_rule_count", 0) or 0) != 0:
+    enforce_diversity_gates = manifest["total"] >= int(audit.get("min_rows_for_rule_diversity_gates", 1000))
+    if enforce_diversity_gates and int(dict(manifest.get("rule_diversity_summary", {}) or {}).get("failed_rule_count", 0) or 0) != 0:
         errors.append("rule_diversity_gates_failed")
-    if int(dict(manifest.get("extended_quality_audit_summary", {}) or {}).get("blocking_issue_count", 0) or 0) != 0:
+    blocking_issue_count = int(dict(manifest.get("extended_quality_audit_summary", {}) or {}).get("blocking_issue_count", 0) or 0)
+    if not enforce_diversity_gates and quality_audit is not None:
+        extended = quality_audit.get("extended_quality_audit")
+        if isinstance(extended, pd.DataFrame) and not extended.empty:
+            blocking = extended[extended["severity"].eq("blocking")]
+            blocking = blocking[~blocking["check_name"].eq("rule_diversity_gate_failed")]
+            blocking_issue_count = int(len(blocking))
+    if blocking_issue_count != 0:
         errors.append("extended_quality_audit_blocking_issues")
     enforce_candidate_gates = manifest["total"] >= int(audit.get("min_rows_for_candidate_gates", 1000))
     if enforce_candidate_gates:

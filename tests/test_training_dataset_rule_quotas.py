@@ -14,6 +14,7 @@ from src.data._training_dataset_builder import (
     _remaining_fallback_template_budget,
 )
 from src.rules.syntax_synthetic import SUPPORTED_SYNTAX_RULE_IDS
+from src.rules.capabilities import active_rule_ids_for_training, load_rule_capabilities
 
 import pandas as pd
 
@@ -25,26 +26,23 @@ def _config() -> dict:
 def test_broad_active_training_rules_include_syntax_and_legacy_candidate_backed_rules():
     rows = resolve_broad_active_training_rules(_config())
     active = {row["rule_id"]: row for row in rows if row["include"]}
+    capability_active = set(active_rule_ids_for_training(load_rule_capabilities("configs/rules.yaml")))
 
-    assert len(active) == 76
-    assert set(SUPPORTED_SYNTAX_RULE_IDS) <= set(active)
+    assert set(active) == capability_active
+    assert set(SUPPORTED_SYNTAX_RULE_IDS) & capability_active <= set(active)
     assert {
-        "frequent_error_exact",
-        "dictionary_fuzzy",
-        "double_consonant_candidate",
-        "keyboard_typo_candidate",
-        "swapped_letters_candidate",
-        "missing_letter_candidate",
-        "extra_letter_candidate",
         "hyphen_whitelist",
-        "final_punctuation_default",
-        "capitalization_sentence_start",
-        "abbreviation_case_protection",
-        "sdelat_prefix",
-        "cy_exception",
+        "comma_subordinate",
+        "subject_predicate_dash",
+        "homogeneous_comma",
+        "direct_speech_dash",
+        "address_comma",
     } <= set(active)
 
     excluded = {row["rule_id"]: row["reason"] for row in rows if not row["include"]}
+    assert excluded["dictionary_fuzzy"] == "INCLUDE_AFTER_VALIDATOR"
+    assert excluded["final_punctuation_default"] == "INCLUDE_AFTER_VALIDATOR"
+    assert excluded["ne_verb"] == "INCLUDE_AFTER_THRESHOLD_CALIBRATION"
     assert "capitalization_ner" in excluded
     assert "needs_NER" in excluded["capitalization_ner"]
     assert "quote_open" in excluded
@@ -61,22 +59,22 @@ def test_broad_active_training_rule_quotas_follow_dataset_plan():
 
     assert active["comma_subordinate"]["target_min_examples"] == 1500
     assert active["comma_subordinate"]["target_preferred_examples"] == 2500
-    assert active["ne_verb"]["target_min_examples"] == 1500
-    assert active["ne_verb"]["target_preferred_examples"] == 2500
-    assert active["dictionary_fuzzy"]["target_min_examples"] == 1000
-    assert active["dictionary_fuzzy"]["target_preferred_examples"] == 1800
-    assert active["final_punctuation_default"]["target_min_examples"] == 1000
-    assert active["final_punctuation_default"]["target_preferred_examples"] == 3000
+    assert active["subject_predicate_dash"]["target_min_examples"] == 1500
+    assert active["subject_predicate_dash"]["target_preferred_examples"] == 2500
+    assert active["hyphen_whitelist"]["target_min_examples"] == 1000
+    assert active["hyphen_whitelist"]["target_preferred_examples"] == 3000
 
 
 def test_dynamic_targets_scale_from_active_rule_quotas_and_real_pair_count():
     rows = resolve_broad_active_training_rules(_config())
     targets = compute_broad_dataset_targets(rows, real_pair_count=1236)
+    capability_active_count = len(active_rule_ids_for_training(load_rule_capabilities("configs/rules.yaml")))
 
-    assert targets["active_rule_count"] == 76
-    assert targets["targeted_synthetic_target"] == sum(
+    assert targets["active_rule_count"] == capability_active_count
+    assert targets["targeted_synthetic_base"] == sum(
         row["target_preferred_examples"] for row in rows if row["include"]
     )
+    assert targets["targeted_synthetic_target"] >= targets["targeted_synthetic_base"]
     assert targets["total_target"] >= 200000
     assert targets["split_sizes"]["train"] == int(targets["total_target"] * 0.8)
     assert targets["split_sizes"]["val"] == int(targets["total_target"] * 0.1)

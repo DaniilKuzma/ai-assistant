@@ -28,6 +28,13 @@ from src.data.dataset_quality import (
     numeric_punctuation_mismatch_audit_frame,
     quote_bracket_bug_summary,
 )
+from src.data.dataset_contract import (
+    CLEAN_IDENTITY_OPEN,
+    HARD_NEGATIVE_OPEN,
+    REAL_ERROR_PAIR,
+    SYNTHETIC_OPEN_CLEAN,
+    ensure_contract_columns,
+)
 from src.data.training_quality_audit import (
     audit_training_dataset,
     write_artificial_marker_reports,
@@ -39,14 +46,16 @@ from src.data.training_quality_audit import (
     write_rule_diversity_report,
     write_rule_semantic_alignment_report,
 )
-from src.rules.coverage_matrix import iter_coverage_entries, load_rules_coverage
+from src.rules.capabilities import (
+    active_rule_ids_for_training,
+    capability_manifest_fields,
+    capability_training_audit_errors,
+    load_rule_capabilities,
+    write_rule_capability_reports,
+)
 from src.rules.rule_ids import normalize_rule_id
 
 
-SYNTHETIC_OPEN_CLEAN = "synthetic_augmented_from_open_clean"
-REAL_ERROR_PAIR = "real_error_pair"
-CLEAN_IDENTITY_OPEN = "clean_identity_from_open_clean"
-HARD_NEGATIVE_OPEN = "hard_negative_from_open_clean"
 TRAINING_INCLUDE_DECISIONS = frozenset(
     {
         "INCLUDE_NOW",
@@ -159,7 +168,9 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
     reports_dir.mkdir(parents=True, exist_ok=True)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     registry = build_default_operator_registry()
-    eligible_rule_ids, pre_excluded = _eligible_rule_ids(config)
+    capabilities = load_rule_capabilities("configs/rules.yaml")
+    write_rule_capability_reports(capabilities, reports_dir)
+    eligible_rule_ids, pre_excluded = _eligible_rule_ids(config, capabilities=capabilities)
     target_rows = resolve_operator_training_targets(
         candidate_rule_ids=eligible_rule_ids,
         registry=registry,
@@ -169,7 +180,12 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
 
     seed_frame = _read_seed_dataset(output_path)
     if seed_frame.empty:
-        manifest = _blocked_manifest(requested_total, split_sizes, "missing_seed_dataset_for_operator_rebuild")
+        manifest = _blocked_manifest(
+            requested_total,
+            split_sizes,
+            "missing_seed_dataset_for_operator_rebuild",
+            capabilities=capabilities,
+        )
         _write_manifest_and_blocked_reports(manifest, manifest_path, reports_dir)
         return {"status": "blocked", "verdict": "DATASET_BLOCKED", "total": 0, "manifest_path": str(manifest_path)}
 
@@ -249,6 +265,7 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
         rejection_rows=rejection_rows,
         quality_audit=quality_audit,
         backfill_attempt_rows=backfill_attempt_rows,
+        capabilities=capabilities,
     )
     _write_reports(
         frame,
@@ -272,33 +289,23 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
     }
 
 
-def _eligible_rule_ids(config: dict[str, Any]) -> tuple[list[str], dict[str, str]]:
+def _eligible_rule_ids(config: dict[str, Any], *, capabilities: list[Any]) -> tuple[list[str], dict[str, str]]:
     excluded: dict[str, str] = {}
-    result: set[str] = set()
-    coverage = load_rules_coverage()
+    result: set[str] = set(active_rule_ids_for_training(capabilities))
     disabled = {str(rule_id) for rule_id in (config.get("synthetic_generation", {}) or {}).get("disabled", {}).keys()}
-    for domain, _group, entry in iter_coverage_entries(coverage):
-        status = str(entry.get("status") or "")
-        dataset = dict(entry.get("dataset", {}) or {})
-        decision = str(dataset.get("training_eligibility_decision") or "")
-        eligible = bool(dataset.get("training_eligible_now")) or decision in TRAINING_INCLUDE_DECISIONS
-        for raw_rule_id in entry.get("rules", []) or []:
-            rule_id = normalize_rule_id(str(raw_rule_id))
-            if not eligible:
-                continue
-            if status in {"metadata_only", "planned", "disabled"}:
-                excluded[rule_id] = f"BLOCK_{status.upper()}"
+    for capability in capabilities:
+        for rule_id in capability.project_rule_ids:
+            if rule_id not in result:
+                excluded[rule_id] = capability.training_decision
                 continue
             if rule_id in BROAD_EXCLUDED_RULE_IDS or rule_id in disabled:
                 excluded[rule_id] = "BLOCK_EXCLUDED_BY_OPERATOR_POLICY"
-                continue
-            if not bool(dataset.get("current_candidate_path", True)):
-                excluded[rule_id] = "BLOCK_NO_CANDIDATE_PATH"
-                continue
-            result.add(rule_id)
+                result.discard(rule_id)
     if not bool(((config.get("dictionary", {}) or {}).get("yo_e", {}) or {}).get("enabled", False)):
+        result.discard("yo_e_candidate")
         excluded["yo_e_candidate"] = "BLOCK_YO_E_DISABLED"
     for rule_id in MISSING_MODULE_RULE_IDS:
+        result.discard(rule_id)
         excluded.setdefault(rule_id, "BLOCK_MISSING_MODULE")
     return sorted(result | set(excluded)), excluded
 
@@ -721,6 +728,7 @@ def _manifest(
     rejection_rows: list[dict[str, Any]],
     quality_audit: dict[str, Any],
     backfill_attempt_rows: list[dict[str, Any]],
+    capabilities: list[Any],
 ) -> dict[str, Any]:
     rule_counts = _rule_counts(frame)
     composition = _value_counts(frame, "source_type")
@@ -753,6 +761,7 @@ def _manifest(
     bearing_counts = dict(quality_audit.get("error_bearing_sentence_source_counts", {}) or {})
     corpus_share = float(quality_audit.get("corpus_opportunity_share", corpus_share) or 0.0)
     fallback_share = float(quality_audit.get("fallback_template_share", fallback_share) or 0.0)
+    capability_fields = capability_manifest_fields(capabilities)
     audit_errors = _audit_errors(
         total=len(frame),
         requested_total=requested_total,
@@ -770,6 +779,7 @@ def _manifest(
         extended_summary=extended_summary,
         semantic_summary=semantic_summary,
     )
+    audit_errors.extend(capability_training_audit_errors(rule_counts, capabilities))
     excluded_rows = [{"rule_id": rule_id, "reason": reason} for rule_id, reason in sorted(excluded_rule_ids.items())]
     backfilled_rule_ids = sorted(
         str(row.get("rule_id"))
@@ -777,7 +787,7 @@ def _manifest(
         if int(row.get("generated_corpus", 0) or 0) + int(row.get("generated_fallback", 0) or 0) > 0
     )
     failed_diversity_rule_ids = sorted(str(rule_id) for rule_id in diversity.get("failed_rule_ids", []) or [])
-    return {
+    manifest = {
         "verdict": "DATASET_BLOCKED" if audit_errors else "READY_FOR_TRAINING_DATASET",
         "total": int(len(frame)),
         "requested_total": int(requested_total),
@@ -830,6 +840,11 @@ def _manifest(
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "seed": int((config.get("data", {}) or {}).get("synthetic_seed", 17)),
     }
+    manifest.update(capability_fields)
+    manifest["active_rule_ids"] = active_rule_ids
+    manifest["active_rule_count"] = int(len(active_rule_ids))
+    manifest["excluded_active_rule_ids"] = sorted(set(excluded_rule_ids) | set(capability_fields.get("blocked_rule_ids", [])))
+    return manifest
 
 
 def _write_reports(
@@ -1124,11 +1139,11 @@ def _clean_hard_targets(total: int, synthetic_count: int, real_count: int) -> tu
 def _frame_from_rows(rows: list[dict[str, Any]]) -> pd.DataFrame:
     frame = pd.DataFrame(rows, columns=DATASET_COLUMNS).fillna("")
     if frame.empty:
-        return pd.DataFrame(columns=DATASET_COLUMNS)
+        return ensure_contract_columns(pd.DataFrame(columns=DATASET_COLUMNS))
     frame["normalized_pair_hash"] = [
         normalized_pair_hash(str(row.source), str(row.target)) for row in frame.itertuples(index=False)
     ]
-    return frame
+    return ensure_contract_columns(frame)
 
 
 def _prune_failed_diversity_rules(
@@ -1266,8 +1281,14 @@ def _read_json(path: Path) -> dict[str, Any]:
         return {}
 
 
-def _blocked_manifest(requested_total: int, split_sizes: dict[str, int], reason: str) -> dict[str, Any]:
-    return {
+def _blocked_manifest(
+    requested_total: int,
+    split_sizes: dict[str, int],
+    reason: str,
+    *,
+    capabilities: list[Any] | None = None,
+) -> dict[str, Any]:
+    manifest = {
         "verdict": "DATASET_BLOCKED",
         "total": 0,
         "requested_total": requested_total,
@@ -1275,6 +1296,9 @@ def _blocked_manifest(requested_total: int, split_sizes: dict[str, int], reason:
         "operator_based_generation": True,
         "audit_errors": [reason],
     }
+    if capabilities is not None:
+        manifest.update(capability_manifest_fields(capabilities))
+    return manifest
 
 
 def _write_manifest_and_blocked_reports(manifest: dict[str, Any], manifest_path: Path, reports_dir: Path) -> None:

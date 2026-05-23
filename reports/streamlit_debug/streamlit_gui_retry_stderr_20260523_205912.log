@@ -1,0 +1,204 @@
+2026-05-23 20:59:12.657 No ASGI app assignments found in D:\projects\ai-assistant\src\app\streamlit_app.py
+2026-05-23 20:59:12.918 Filtered 179 packages down to 1 candidates for component scanning
+2026-05-23 20:59:12.930 Scanning 1 candidate packages for component manifests using 1 worker threads
+2026-05-23 20:59:12.977 Found 0 component manifests total
+2026-05-23 20:59:12.979 No asset roots to watch
+2026-05-23 20:59:12.981 File watching not started
+2026-05-23 20:59:12.983 Starting new event loop for server
+2026-05-23 20:59:12.986 Starting server...
+2026-05-23 20:59:13.035 Starting uvicorn server on 0.0.0.0:8501
+2026-05-23 20:59:13.068 Runtime state: RuntimeState.INITIAL -> RuntimeState.NO_SESSIONS_CONNECTED
+2026-05-23 20:59:13.068 Uvicorn server started on 0.0.0.0:8501
+2026-05-23 20:59:13.539 Setting up signal handler
+2026-05-23 20:59:13.553 AppSession initialized (id=4a4778f8-5034-4a32-86e2-54b1378b1d99)
+2026-05-23 20:59:13.554 Created new session for client 2401527217952. Session ID: 4a4778f8-5034-4a32-86e2-54b1378b1d99
+2026-05-23 20:59:13.554 Runtime state: RuntimeState.NO_SESSIONS_CONNECTED -> RuntimeState.ONE_OR_MORE_SESSIONS_CONNECTED
+2026-05-23 20:59:41.997 AppSession initialized (id=8fd3e6ed-b83d-4838-8d03-8d1b0fc14948)
+2026-05-23 20:59:41.997 Created new session for client 2401529312176. Session ID: 8fd3e6ed-b83d-4838-8d03-8d1b0fc14948
+2026-05-23 20:59:41.998 Runtime state: RuntimeState.ONE_OR_MORE_SESSIONS_CONNECTED -> RuntimeState.ONE_OR_MORE_SESSIONS_CONNECTED
+2026-05-23 20:59:42.001 Beginning script thread
+2026-05-23 20:59:42.001 Running script
+2026-05-23 20:59:42.001 Disconnecting files for session with ID 8fd3e6ed-b83d-4838-8d03-8d1b0fc14948
+2026-05-23 20:59:42.002 Sessions still active: dict_keys([])
+2026-05-23 20:59:42.002 Files: 0; Sessions with files: 0
+2026-05-23 20:59:42.317 Creating new ResourceCache (key=9b381442e545b91811190702cd2cb585)
+2026-05-23 20:59:42.318 Cache key: 26d9884aae32a4e3c135f534844c1927
+2026-05-23 20:59:52.829 Removing orphaned files...
+2026-05-23 20:59:52.834 Removing orphaned deferred callables...
+2026-05-23 21:00:06.862 Beginning script thread
+2026-05-23 21:00:06.863 Running script
+2026-05-23 21:00:06.863 Disconnecting files for session with ID 8fd3e6ed-b83d-4838-8d03-8d1b0fc14948
+2026-05-23 21:00:06.863 Sessions still active: dict_keys([])
+2026-05-23 21:00:06.864 Beginning script thread
+2026-05-23 21:00:06.864 Files: 0; Sessions with files: 0
+2026-05-23 21:00:06.864 Running script
+2026-05-23 21:00:06.864 Disconnecting files for session with ID 8fd3e6ed-b83d-4838-8d03-8d1b0fc14948
+2026-05-23 21:00:06.866 Ignoring event from non-current ScriptRunner: ScriptRunnerEvent.SCRIPT_STARTED
+2026-05-23 21:00:06.866 Ignoring event from non-current ScriptRunner: ScriptRunnerEvent.ENQUEUE_FORWARD_MSG
+2026-05-23 21:00:06.866 Removing orphaned files...
+2026-05-23 21:00:06.866 Ignoring event from non-current ScriptRunner: ScriptRunnerEvent.SCRIPT_STOPPED_WITH_SUCCESS
+2026-05-23 21:00:06.866 Sessions still active: dict_keys([])
+2026-05-23 21:00:06.866 Removing orphaned deferred callables...
+2026-05-23 21:00:06.867 Files: 0; Sessions with files: 0
+2026-05-23 21:00:06.966 Ignoring event from non-current ScriptRunner: ScriptRunnerEvent.SHUTDOWN
+2026-05-23 21:00:06.972 Cache key: 26d9884aae32a4e3c135f534844c1927
+D:\projects\ai-assistant\.venv\Lib\site-packages\pymorphy2\analyzer.py:114: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+2026-05-23 21:00:13.687 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-05-23 21:00:13.696 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-05-23 21:00:13.701 Removing orphaned files...
+2026-05-23 21:00:13.701 Removing orphaned deferred callables...
+2026-05-23 21:00:17.257 Beginning script thread
+2026-05-23 21:00:17.259 Beginning script thread
+2026-05-23 21:00:17.263 Ignoring event from non-current ScriptRunner: ScriptRunnerEvent.SHUTDOWN
+2026-05-23 21:00:17.263 Running script
+2026-05-23 21:00:17.263 Disconnecting files for session with ID 8fd3e6ed-b83d-4838-8d03-8d1b0fc14948
+2026-05-23 21:00:17.264 Sessions still active: dict_keys([])
+2026-05-23 21:00:17.264 Files: 0; Sessions with files: 0
+2026-05-23 21:00:17.270 Cache key: 26d9884aae32a4e3c135f534844c1927
+2026-05-23 21:00:19.587 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-05-23 21:00:19.591 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-05-23 21:00:19.596 Removing orphaned files...
+2026-05-23 21:00:19.596 Removing orphaned deferred callables...
+2026-05-23 21:00:27.678 Beginning script thread
+2026-05-23 21:00:27.679 Beginning script thread
+2026-05-23 21:00:27.688 Ignoring event from non-current ScriptRunner: ScriptRunnerEvent.SHUTDOWN
+2026-05-23 21:00:27.688 Running script
+2026-05-23 21:00:27.688 Disconnecting files for session with ID 8fd3e6ed-b83d-4838-8d03-8d1b0fc14948
+2026-05-23 21:00:27.689 Sessions still active: dict_keys([])
+2026-05-23 21:00:27.689 Files: 0; Sessions with files: 0
+2026-05-23 21:00:27.692 Cache key: 26d9884aae32a4e3c135f534844c1927
+2026-05-23 21:00:29.192 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-05-23 21:00:29.204 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-05-23 21:00:29.208 Removing orphaned files...
+2026-05-23 21:00:29.208 Removing orphaned deferred callables...
+2026-05-23 21:00:38.104 Beginning script thread
+2026-05-23 21:00:38.106 Beginning script thread
+2026-05-23 21:00:38.114 Ignoring event from non-current ScriptRunner: ScriptRunnerEvent.SHUTDOWN
+2026-05-23 21:00:38.114 Running script
+2026-05-23 21:00:38.115 Disconnecting files for session with ID 8fd3e6ed-b83d-4838-8d03-8d1b0fc14948
+2026-05-23 21:00:38.115 Sessions still active: dict_keys([])
+2026-05-23 21:00:38.115 Files: 0; Sessions with files: 0
+2026-05-23 21:00:38.122 Cache key: 26d9884aae32a4e3c135f534844c1927
+2026-05-23 21:00:39.612 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-05-23 21:00:39.624 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-05-23 21:00:39.628 Removing orphaned files...
+2026-05-23 21:00:39.629 Removing orphaned deferred callables...
+2026-05-23 21:00:48.498 Beginning script thread
+2026-05-23 21:00:48.499 Running script
+2026-05-23 21:00:48.499 Disconnecting files for session with ID 8fd3e6ed-b83d-4838-8d03-8d1b0fc14948
+2026-05-23 21:00:48.499 Sessions still active: dict_keys([])
+2026-05-23 21:00:48.499 Files: 0; Sessions with files: 0
+2026-05-23 21:00:48.500 Beginning script thread
+2026-05-23 21:00:48.500 Ignoring event from non-current ScriptRunner: ScriptRunnerEvent.SCRIPT_STARTED
+2026-05-23 21:00:48.500 Running script
+2026-05-23 21:00:48.500 Ignoring event from non-current ScriptRunner: ScriptRunnerEvent.ENQUEUE_FORWARD_MSG
+2026-05-23 21:00:48.500 Removing orphaned files...
+2026-05-23 21:00:48.501 Ignoring event from non-current ScriptRunner: ScriptRunnerEvent.SCRIPT_STOPPED_WITH_SUCCESS
+2026-05-23 21:00:48.501 Disconnecting files for session with ID 8fd3e6ed-b83d-4838-8d03-8d1b0fc14948
+2026-05-23 21:00:48.501 Removing orphaned deferred callables...
+2026-05-23 21:00:48.705 Sessions still active: dict_keys([])
+2026-05-23 21:00:48.705 Ignoring event from non-current ScriptRunner: ScriptRunnerEvent.SHUTDOWN
+2026-05-23 21:00:48.707 Files: 0; Sessions with files: 0
+2026-05-23 21:00:48.711 Cache key: 26d9884aae32a4e3c135f534844c1927
+2026-05-23 21:00:50.253 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-05-23 21:00:50.265 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-05-23 21:00:50.269 Removing orphaned files...
+2026-05-23 21:00:50.270 Removing orphaned deferred callables...
+2026-05-23 21:01:04.395 Beginning script thread
+2026-05-23 21:01:04.396 Running script
+2026-05-23 21:01:04.396 Disconnecting files for session with ID 8fd3e6ed-b83d-4838-8d03-8d1b0fc14948
+2026-05-23 21:01:04.397 Sessions still active: dict_keys([])
+2026-05-23 21:01:04.397 Beginning script thread
+2026-05-23 21:01:04.397 Files: 0; Sessions with files: 0
+2026-05-23 21:01:04.397 Running script
+2026-05-23 21:01:04.398 Ignoring event from non-current ScriptRunner: ScriptRunnerEvent.SCRIPT_STARTED
+2026-05-23 21:01:04.399 Disconnecting files for session with ID 8fd3e6ed-b83d-4838-8d03-8d1b0fc14948
+2026-05-23 21:01:04.399 Removing orphaned files...
+2026-05-23 21:01:04.399 Ignoring event from non-current ScriptRunner: ScriptRunnerEvent.ENQUEUE_FORWARD_MSG
+2026-05-23 21:01:04.399 Ignoring event from non-current ScriptRunner: ScriptRunnerEvent.SCRIPT_STOPPED_WITH_SUCCESS
+2026-05-23 21:01:04.399 Sessions still active: dict_keys([])
+2026-05-23 21:01:04.399 Removing orphaned deferred callables...
+2026-05-23 21:01:04.400 Files: 0; Sessions with files: 0
+2026-05-23 21:01:04.609 Ignoring event from non-current ScriptRunner: ScriptRunnerEvent.SHUTDOWN
+2026-05-23 21:01:04.622 Cache key: 26d9884aae32a4e3c135f534844c1927
+2026-05-23 21:01:06.160 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-05-23 21:01:06.173 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-05-23 21:01:06.177 Removing orphaned files...
+2026-05-23 21:01:06.178 Removing orphaned deferred callables...
+2026-05-23 21:01:14.775 Beginning script thread
+2026-05-23 21:01:14.777 Beginning script thread
+2026-05-23 21:01:14.785 Ignoring event from non-current ScriptRunner: ScriptRunnerEvent.SHUTDOWN
+2026-05-23 21:01:14.785 Running script
+2026-05-23 21:01:14.785 Disconnecting files for session with ID 8fd3e6ed-b83d-4838-8d03-8d1b0fc14948
+2026-05-23 21:01:14.785 Sessions still active: dict_keys([])
+2026-05-23 21:01:14.785 Files: 0; Sessions with files: 0
+2026-05-23 21:01:14.791 Cache key: 26d9884aae32a4e3c135f534844c1927
+2026-05-23 21:01:16.340 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-05-23 21:01:16.344 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-05-23 21:01:16.348 Removing orphaned files...
+2026-05-23 21:01:16.348 Removing orphaned deferred callables...
+2026-05-23 21:01:25.179 Beginning script thread
+2026-05-23 21:01:25.179 Beginning script thread
+2026-05-23 21:01:25.188 Ignoring event from non-current ScriptRunner: ScriptRunnerEvent.SHUTDOWN
+2026-05-23 21:01:25.188 Running script
+2026-05-23 21:01:25.189 Disconnecting files for session with ID 8fd3e6ed-b83d-4838-8d03-8d1b0fc14948
+2026-05-23 21:01:25.189 Sessions still active: dict_keys([])
+2026-05-23 21:01:25.189 Files: 0; Sessions with files: 0
+2026-05-23 21:01:25.196 Cache key: 26d9884aae32a4e3c135f534844c1927

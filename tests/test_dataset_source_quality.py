@@ -4,12 +4,22 @@ from pathlib import Path
 import pandas as pd
 
 from src.config.load_config import load_config
+from src.data.dataset_quality import clean_or_hard_quality_reasons
 from src.data.full_dataset_builder import build_dataset_from_config
+
+
+def test_clean_or_hard_quality_reasons_include_mixed_script_rejections():
+    reasons = clean_or_hard_quality_reasons("Новая cистема обработки данных заработала утром.")
+
+    assert "mixed_script_token" in reasons
+    assert "latin_confusable_inside_cyrillic_word" in reasons
 
 
 def test_training_dataset_core_builds_from_open_clean_sources_without_meta_templates(tmp_path: Path):
     clean_path = tmp_path / "clean.txt"
     clean_path.write_text("\n".join(_clean_sentences(120)) + "\n", encoding="utf-8")
+    clean_extra_path = tmp_path / "clean_extra.txt"
+    clean_extra_path.write_text("\n".join(_clean_sentences(120, variant=1)) + "\n", encoding="utf-8")
     real_path = tmp_path / "real.jsonl"
     real_path.write_text(
         '{"source": "Жызнь в городе стала заметно спокойнее.", "correction": "Жизнь в городе стала заметно спокойнее.", "domain": "unit"}\n',
@@ -67,7 +77,17 @@ def test_training_dataset_core_builds_from_open_clean_sources_without_meta_templ
                 "style": "neutral",
                 "license_status": "unit",
                 "max_sentences": 200,
-            }
+            },
+            "unit_reports": {
+                "enabled": True,
+                "type": "local_text",
+                "local_path": str(clean_extra_path),
+                "source_subcorpus": "reports",
+                "domain": "news",
+                "style": "neutral",
+                "license_status": "unit",
+                "max_sentences": 200,
+            },
         },
         "download_policy": {"mode": "local_first"},
     }
@@ -100,12 +120,13 @@ def test_training_dataset_core_builds_from_open_clean_sources_without_meta_templ
     assert manifest["verdict"] == "READY_FOR_TRAINING_DATASET"
     assert manifest["composition"]["synthetic_augmented_from_open_clean"] == 48
     assert manifest["composition"]["real_error_pair"] == 1
-    assert manifest["clean_source_counts"]["unit_news"] >= 40
+    assert sum(manifest["clean_source_counts"].values()) >= 40
+    assert {"unit_news", "unit_reports"} <= set(manifest["clean_source_counts"])
     assert manifest["unknown_count"] == manifest["rule_id_counts"].get("unknown", 0)
     assert "real_pair_shortage_reason" in manifest
 
 
-def _clean_sentences(count: int) -> list[str]:
+def _clean_sentences(count: int, *, variant: int = 0) -> list[str]:
     base = [
         "Эксперты сообщили, что жизнь в городе стала спокойнее после реформы.",
         "Редакция отметила, что библиотека открылась после долгой реконструкции.",
@@ -116,4 +137,12 @@ def _clean_sentences(count: int) -> list[str]:
         "Авторы сообщили: «Проект готов», и эксперты приняли итоговый отчет.",
         "Когда документ будет готов, команда отправит его в городской архив.",
     ]
+    if variant:
+        base = [
+            sentence.replace("Эксперты", "Специалисты")
+            .replace("Редакция", "Комиссия")
+            .replace("Аналитики", "Наблюдатели")
+            .replace("Компания", "Организация")
+            for sentence in base
+        ]
     return [sentence.replace(".", f" {index}.") for index in range(count) for sentence in [base[index % len(base)]]]

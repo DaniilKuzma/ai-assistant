@@ -7,6 +7,7 @@ import yaml
 
 from src.data._training_dataset_builder import _targeted_fill_rule_for_attempt
 import src.data.training_dataset as training
+from src.rules.capabilities import active_rule_ids_for_training, load_rule_capabilities
 
 
 ACTIVATION_INCLUDED_RULES = {
@@ -127,11 +128,14 @@ def test_canonical_no_60k_ready_fallback(monkeypatch, tmp_path: Path):
 def test_canonical_resolves_broad_active_rules():
     rows = training.resolve_active_target_rules(_load_canonical_config())
     active = {row["rule_id"]: row for row in rows if row["include_in_dataset"]}
+    capability_active = set(active_rule_ids_for_training(load_rule_capabilities("configs/rules.yaml")))
 
-    assert len(active) == 76
+    assert set(active) == capability_active
     assert active["comma_subordinate"]["quota_min"] == 1500
-    assert active["dictionary_fuzzy"]["quota_preferred"] == 1800
-    assert active["final_punctuation_default"]["quota_preferred"] == 3000
+    assert active["hyphen_whitelist"]["quota_preferred"] == 3000
+    excluded = {row["rule_id"]: row["reason"] for row in rows if not row["include_in_dataset"]}
+    assert excluded["dictionary_fuzzy"] == "INCLUDE_AFTER_VALIDATOR"
+    assert excluded["final_punctuation_default"] == "INCLUDE_AFTER_VALIDATOR"
 
 
 def test_canonical_includes_activation_rules():
@@ -139,12 +143,12 @@ def test_canonical_includes_activation_rules():
     by_rule = {row["rule_id"]: row for row in rows}
 
     assert ACTIVATION_INCLUDED_RULES <= {rule_id for rule_id, row in by_rule.items() if row["include_in_dataset"]}
-    assert all(by_rule[rule_id]["tier"] in {"syntax_supported", "legacy_stable", "current_capability"} for rule_id in ACTIVATION_INCLUDED_RULES)
+    assert all(by_rule[rule_id]["tier"] in {"syntax_supported", "legacy_stable", "runtime_capability"} for rule_id in ACTIVATION_INCLUDED_RULES)
     assert all(by_rule[rule_id]["quota_min"] >= 1000 for rule_id in ACTIVATION_INCLUDED_RULES)
     assert all(by_rule[rule_id]["quota_preferred"] >= 2500 for rule_id in ACTIVATION_INCLUDED_RULES)
     if "hyphen_whitelist" in by_rule:
         assert by_rule["hyphen_whitelist"]["include_in_dataset"] is True
-        assert by_rule["hyphen_whitelist"]["reason"] == "legacy_candidate_backed_current_capability"
+        assert by_rule["hyphen_whitelist"]["reason"] == "capability_include_now"
 
 
 def test_canonical_synthetic_min_70000():

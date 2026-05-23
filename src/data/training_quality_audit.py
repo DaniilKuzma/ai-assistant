@@ -175,6 +175,7 @@ def audit_training_dataset(frame: pd.DataFrame, active_rule_ids: Iterable[str]) 
     blocking = extended[extended["severity"].eq("blocking")] if not extended.empty else extended
 
     return {
+        "total_rows": int(len(frame)),
         "known_quality_bugs": known,
         "artificial_marker_counts": artificial,
         "quote_bracket_balance_bugs": quote_bracket,
