@@ -66,12 +66,20 @@ from src.data.training_quality_audit import (
 )
 from src.evaluation.candidate_recall import build_candidate_recall_reports
 from src.rules.capabilities import (
+    ACTIVE_RULE_ACTIVATION_STAGE_COLUMNS,
+    EXPANDED_ACTIVATION_BLOCKED_COLUMNS,
+    EXPANDED_ACTIVATION_CANDIDATE_COLUMNS,
+    SERVICE_RULE_IDS,
     active_rule_ids_for_training,
     activation_policy_from_config,
+    activation_policy_rows,
     activation_stage_counts_from_frame,
     annotate_activation_columns,
     capability_manifest_fields,
     capability_training_audit_errors,
+    expanded_activation_blocked_rows,
+    expanded_activation_candidate_rows,
+    expanded_activation_source_map,
     load_rule_capabilities,
     write_rule_capability_reports,
 )
@@ -198,6 +206,25 @@ class AtomicPositiveGenerationResult:
     rules_without_atomic_positive: list[dict[str, Any]]
 
 
+@dataclass(frozen=True)
+class SyntaxAtomicPositiveGenerationResult:
+    rows: list[dict[str, Any]]
+    generation_rows: list[dict[str, Any]]
+    rejection_rows: list[dict[str, Any]]
+    supported_rule_ids: list[str]
+    selected_rule_ids: list[str]
+    blocked_reason: str = ""
+
+
+@dataclass(frozen=True)
+class SyntaxHardNegativeGenerationResult:
+    rows: list[dict[str, Any]]
+    coverage_rows: list[dict[str, Any]]
+    rejection_rows: list[dict[str, Any]]
+    counts_by_rule: dict[str, int]
+    blocked_reason: str = ""
+
+
 def build_operator_training_dataset_from_config(config: dict[str, Any], force: bool = False) -> dict[str, Any]:
     data_config = config.get("data", {}) or {}
     output_path = Path(str(data_config.get("processed_train_path") or "data/processed/correction_dataset.csv.gz"))
@@ -246,10 +273,11 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
     reports_dir.mkdir(parents=True, exist_ok=True)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     registry = build_default_operator_registry()
-    capabilities = load_rule_capabilities("configs/rules.yaml")
+    capabilities = _load_rule_capabilities_for_config(config)
     activation_policy = activation_policy_from_config(config)
     write_rule_capability_reports(capabilities, reports_dir, policy=activation_policy)
     eligible_rule_ids, pre_excluded = _eligible_rule_ids(config, capabilities=capabilities, policy=activation_policy)
+    activation_candidate_rule_ids = {rule_id for rule_id in eligible_rule_ids if rule_id not in pre_excluded}
     target_rows = resolve_operator_training_targets(
         candidate_rule_ids=eligible_rule_ids,
         registry=registry,
@@ -280,9 +308,11 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
 
     quota_config = _operator_rule_quota_config(config)
     candidate_rule_ids = {row["rule_id"] for row in target_rows if bool(row.get("include"))}
+    syntax_candidate_rule_ids = set(activation_candidate_rule_ids)
     configured_rule_ids = set(quota_config.get("rule_ids", []) or [])
     if configured_rule_ids:
         candidate_rule_ids &= configured_rule_ids
+        syntax_candidate_rule_ids &= configured_rule_ids
     candidate_generator = CandidateGenerator.from_config(config)
     atomic_result = generate_atomic_positive_rows_from_clean_pool(
         clean_pool_path,
@@ -291,7 +321,13 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
         config=config,
         candidate_generator=candidate_generator,
     )
-    verified_rows = atomic_result.rows
+    syntax_atomic_result = _generate_atomic_positive_rows_from_syntax_synthetic_result(
+        syntax_candidate_rule_ids,
+        clean_pool_path,
+        candidate_generator,
+        config,
+    )
+    verified_rows = _merge_atomic_positive_rows(atomic_result.rows, syntax_atomic_result.rows)
     rejection_rows = atomic_result.rejection_rows
     rule_min = int(quota_config.get("min_atomic_positives_per_active_rule", 1000))
     verified_counts = Counter(rule_id for row in verified_rows for rule_id in _row_rule_ids(row) if _counts_toward_rule_quota(row))
@@ -299,7 +335,7 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
     active_set = set(active_rule_ids)
     selected_synthetic = [row for row in verified_rows if any(rule_id in active_set for rule_id in _row_rule_ids(row))]
     selected_synthetic = [_filter_row_rule_ids(row, active_set) for row in selected_synthetic]
-    selected_synthetic = _dedupe_pairs(selected_synthetic)
+    selected_synthetic = _dedupe_atomic_positive_rows(selected_synthetic)
     active_counts = Counter(rule_id for row in selected_synthetic for rule_id in _row_rule_ids(row))
     active_rule_ids = sorted(rule_id for rule_id in active_rule_ids if active_counts.get(rule_id, 0) >= rule_min)
     active_set = set(active_rule_ids)
@@ -311,7 +347,7 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
         for row in target_rows
         if not bool(row.get("include"))
     }
-    for rule_id in sorted(candidate_rule_ids - active_set):
+    for rule_id in sorted((candidate_rule_ids | set(syntax_atomic_result.selected_rule_ids)) - active_set):
         excluded_after_generation[rule_id] = "insufficient_atomic_positives"
 
     seed = int(data_config.get("synthetic_seed", 17))
@@ -362,6 +398,13 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
             fallback_templates_enabled=False,
         )
         hard_negative_pool = hard_negative_result.rows
+    syntax_hard_negative_result = _generate_syntax_hard_negative_rows(
+        active_rule_ids,
+        clean_pool_path=clean_pool_path,
+        candidate_generator=candidate_generator,
+        config=config,
+    )
+    hard_negative_pool = _merge_hard_negative_rows(hard_negative_pool, syntax_hard_negative_result.rows)
 
     clean_identity_pool = _clean_identity_rows_from_clean_pool(strict_clean_rows)
     layer_rows = _compose_layer_rows(
@@ -394,10 +437,55 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
     else:
         quality_audit = audit_training_dataset(frame, active_rule_ids)
     frame = annotate_activation_columns(frame, capabilities, policy=activation_policy)
-
+    recall_reports = _build_candidate_recall_reports(frame, config)
+    activation_evidence = _activation_evidence_by_rule(frame, recall_reports)
+    expanded_attempt_rule_ids = sorted(candidate_rule_ids | set(syntax_atomic_result.selected_rule_ids))
+    final_active_rule_ids, under_quota_rows, final_gate_blockers = _final_active_rule_ids_after_gates(
+        expanded_candidate_rule_ids=expanded_attempt_rule_ids,
+        provisional_active_rule_ids=active_rule_ids,
+        frame=frame,
+        recall_reports=recall_reports,
+        quota_config=quota_config,
+        config=config,
+    )
+    under_quota_rule_ids = sorted(row["rule_id"] for row in under_quota_rows if row.get("status") == "under_quota")
+    for row in under_quota_rows:
+        if row.get("status") == "under_quota":
+            excluded_after_generation[str(row["rule_id"])] = str(row.get("reason") or "under_quota")
+            activation_evidence.setdefault(str(row["rule_id"]), {})["reason"] = str(row.get("reason") or "under_quota")
+    for rule_id, reason in final_gate_blockers.items():
+        excluded_after_generation[rule_id] = reason
+        activation_evidence.setdefault(rule_id, {})["reason"] = reason
+    if set(final_active_rule_ids) != set(active_rule_ids):
+        frame = _filter_frame_to_final_active_rules(frame, set(final_active_rule_ids))
+        frame = annotate_activation_columns(frame, capabilities, policy=activation_policy)
+        quality_audit = audit_training_dataset(frame, final_active_rule_ids)
+        recall_reports = _build_candidate_recall_reports(frame, config)
+        activation_evidence = {
+            **activation_evidence,
+            **_activation_evidence_by_rule(frame, recall_reports),
+        }
+    expanded_candidate_rows = expanded_activation_candidate_rows(
+        capabilities,
+        policy=activation_policy,
+        config=config,
+        evidence_by_rule=activation_evidence,
+        final_active_rule_ids=final_active_rule_ids,
+        under_quota_rule_ids=under_quota_rule_ids,
+    )
+    expanded_blocked_rows = expanded_activation_blocked_rows(
+        capabilities,
+        policy=activation_policy,
+        config=config,
+        evidence_by_rule=activation_evidence,
+        final_active_rule_ids=final_active_rule_ids,
+        under_quota_rule_ids=under_quota_rule_ids,
+    )
+    expanded_blocked_counts = dict(Counter(str(row.get("blocker", "")) for row in expanded_blocked_rows if row.get("blocker")))
+    active_rule_ids = final_active_rule_ids
+    active_set = set(active_rule_ids)
     frame.to_csv(output_path, index=False)
     _write_split_and_layer_files(frame, output_path)
-    recall_reports = _build_candidate_recall_reports(frame, config)
 
     manifest = _manifest(
         frame,
@@ -414,8 +502,13 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
         capabilities=capabilities,
         activation_policy=activation_policy,
         production_gates=production_gates,
-        low_resource_rule_ids=sorted(candidate_rule_ids - active_set),
+        low_resource_rule_ids=sorted((candidate_rule_ids | set(syntax_atomic_result.selected_rule_ids)) - active_set),
         hard_negative_counts_by_rule=_hard_negative_counts_by_target_rule(frame),
+        syntax_atomic_result=syntax_atomic_result,
+        syntax_hard_negative_result=syntax_hard_negative_result,
+        expanded_training_candidate_rule_ids=expanded_attempt_rule_ids,
+        under_quota_rule_ids=under_quota_rule_ids,
+        expanded_activation_blocked_counts=expanded_blocked_counts,
         real_stress_count=len(real_stress_rows),
     )
     _write_reports(
@@ -430,6 +523,11 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
         atomic_rejection_rows=atomic_result.rejection_rows,
         rules_without_atomic_positive=atomic_result.rules_without_atomic_positive,
         hard_negative_result=hard_negative_result,
+        syntax_atomic_result=syntax_atomic_result,
+        syntax_hard_negative_result=syntax_hard_negative_result,
+        expanded_activation_candidate_rows=expanded_candidate_rows,
+        expanded_activation_blocked_rows=expanded_blocked_rows,
+        under_quota_rows=under_quota_rows,
         quota_config=quota_config,
         config=config,
         recall_reports=recall_reports,
@@ -745,6 +843,608 @@ def _take_unique_rows(rows: list[dict[str, Any]], *, target: int, seen_hashes: s
         seen_hashes.add(pair_hash)
         result.append(item)
     return result
+
+
+def _dedupe_atomic_positive_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    seen: set[tuple[str, str]] = set()
+    result: list[dict[str, Any]] = []
+    for row in rows:
+        pair_hash = normalized_pair_hash(str(row.get("source", "")), str(row.get("target", "")))
+        rule_id = normalize_rule_id(str(row.get("rule_id") or ""))
+        key = (pair_hash, rule_id)
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(row)
+    return result
+
+
+def generate_atomic_positive_rows_from_syntax_synthetic(
+    selected_rule_ids: Iterable[str],
+    clean_pool_path: str | Path,
+    candidate_generator: Any,
+    config: dict[str, Any],
+) -> list[dict[str, Any]]:
+    return _generate_atomic_positive_rows_from_syntax_synthetic_result(
+        selected_rule_ids,
+        clean_pool_path,
+        candidate_generator,
+        config,
+    ).rows
+
+
+def _generate_atomic_positive_rows_from_syntax_synthetic_result(
+    selected_rule_ids: Iterable[str],
+    clean_pool_path: str | Path,
+    candidate_generator: Any,
+    config: dict[str, Any],
+) -> SyntaxAtomicPositiveGenerationResult:
+    requested_rule_ids = sorted({normalize_rule_id(rule_id) for rule_id in selected_rule_ids if normalize_rule_id(rule_id)})
+    module, supported_rule_ids, blocked_reason = _load_syntax_synthetic_module(config)
+    selected_supported = [rule_id for rule_id in requested_rule_ids if rule_id in supported_rule_ids]
+    if blocked_reason:
+        report_rule_ids = selected_supported or requested_rule_ids
+        return SyntaxAtomicPositiveGenerationResult(
+            rows=[],
+            generation_rows=_syntax_atomic_generation_rows(report_rule_ids, Counter(), Counter(), blocked_reason),
+            rejection_rows=[_syntax_blocked_rejection(rule_id, blocked_reason) for rule_id in report_rule_ids],
+            supported_rule_ids=supported_rule_ids,
+            selected_rule_ids=selected_supported,
+            blocked_reason=blocked_reason,
+        )
+    if module is None or not selected_supported:
+        return SyntaxAtomicPositiveGenerationResult(
+            rows=[],
+            generation_rows=_syntax_atomic_generation_rows(selected_supported, Counter(), Counter(), ""),
+            rejection_rows=[],
+            supported_rule_ids=supported_rule_ids,
+            selected_rule_ids=selected_supported,
+        )
+
+    quota_config = _operator_rule_quota_config(config)
+    target_per_rule = min(int(quota_config["preferred_atomic_positives_per_active_rule"]), int(quota_config["max_total_per_rule_id"]))
+    if target_per_rule <= 0:
+        return SyntaxAtomicPositiveGenerationResult(
+            rows=[],
+            generation_rows=_syntax_atomic_generation_rows(selected_supported, Counter(), Counter(), "quota_target_zero"),
+            rejection_rows=[_syntax_blocked_rejection(rule_id, "quota_target_zero") for rule_id in selected_supported],
+            supported_rule_ids=supported_rule_ids,
+            selected_rule_ids=selected_supported,
+            blocked_reason="quota_target_zero",
+        )
+
+    try:
+        requested_examples_per_rule = target_per_rule + min(200, max(20, target_per_rule // 5))
+        raw_examples = module.build_syntax_eval_examples(
+            selected_rule_ids=selected_supported,
+            min_examples_per_rule=requested_examples_per_rule,
+            clean_pool_path=clean_pool_path,
+            candidate_generator=candidate_generator,
+        )
+    except Exception as exc:
+        reason = f"syntax_generation_failed:{type(exc).__name__}"
+        return SyntaxAtomicPositiveGenerationResult(
+            rows=[],
+            generation_rows=_syntax_atomic_generation_rows(selected_supported, Counter(), Counter(), reason),
+            rejection_rows=[_syntax_blocked_rejection(rule_id, reason) for rule_id in selected_supported],
+            supported_rule_ids=supported_rule_ids,
+            selected_rule_ids=selected_supported,
+            blocked_reason=reason,
+        )
+
+    frame = raw_examples if isinstance(raw_examples, pd.DataFrame) else pd.DataFrame(raw_examples or [])
+    counts: Counter[str] = Counter()
+    rejection_counts: Counter[str] = Counter()
+    rows: list[dict[str, Any]] = []
+    rejections: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    activation_by_rule = _activation_rows_by_rule(config)
+    selected_set = set(selected_supported)
+
+    for index, raw_row in enumerate(frame.fillna("").to_dict("records")):
+        rule_id = normalize_rule_id(str(raw_row.get("rule_id") or ""))
+        source = str(raw_row.get("source") or "")
+        target = str(raw_row.get("target") or "")
+        if rule_id not in selected_set:
+            reason = "syntax_rule_not_selected_or_supported"
+            rejection_counts[reason] += 1
+            _reject(rejections, index, raw_row, rule_id, reason)
+            continue
+        if counts.get(rule_id, 0) >= target_per_rule:
+            continue
+        verification = verify_atomic_positive(source, target, rule_id, candidate_generator=candidate_generator)
+        reason = _syntax_atomic_rejection_reason(verification, expected_rule_id=rule_id)
+        if reason:
+            rejection_counts[reason] += 1
+            _reject(rejections, index, {"source": source, "target": target}, rule_id, reason)
+            continue
+        pair_hash = normalized_pair_hash(source, target)
+        dedupe_key = (pair_hash, rule_id)
+        if dedupe_key in seen:
+            reason = "duplicate_syntax_pair"
+            rejection_counts[reason] += 1
+            _reject(rejections, index, {"source": source, "target": target}, rule_id, reason)
+            continue
+        seen.add(dedupe_key)
+        rows.append(
+            _row_from_syntax_atomic_positive(
+                raw_row=raw_row,
+                verification=verification,
+                rule_id=rule_id,
+                pair_hash=pair_hash,
+                activation_row=activation_by_rule.get(rule_id, {}),
+            )
+        )
+        counts[rule_id] += 1
+
+    return SyntaxAtomicPositiveGenerationResult(
+        rows=rows,
+        generation_rows=_syntax_atomic_generation_rows(selected_supported, counts, rejection_counts, ""),
+        rejection_rows=rejections,
+        supported_rule_ids=supported_rule_ids,
+        selected_rule_ids=selected_supported,
+    )
+
+
+def _load_syntax_synthetic_module(config: dict[str, Any]) -> tuple[Any | None, list[str], str]:
+    syntax_config = dict((config.get("nlp", {}) or {}).get("syntax", {}) or {})
+    if not bool(syntax_config.get("enabled", True)):
+        return None, [], "syntax_module_disabled"
+    try:
+        from src.rules import syntax_synthetic as module
+    except Exception:
+        return None, [], "syntax_module_missing"
+    if not hasattr(module, "SUPPORTED_SYNTAX_RULE_IDS") or not hasattr(module, "build_syntax_eval_examples"):
+        return None, [], "syntax_module_missing"
+    supported = sorted({normalize_rule_id(rule_id) for rule_id in getattr(module, "SUPPORTED_SYNTAX_RULE_IDS", ()) if normalize_rule_id(rule_id)})
+    return module, supported, ""
+
+
+def _activation_rows_by_rule(config: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    try:
+        capabilities = _load_rule_capabilities_for_config(config)
+        policy = activation_policy_from_config(config)
+        return {str(row["rule_id"]): row for row in activation_policy_rows(capabilities, policy=policy)}
+    except Exception:
+        return {}
+
+
+def _load_rule_capabilities_for_config(config: dict[str, Any]) -> list[Any]:
+    try:
+        return load_rule_capabilities("configs/rules.yaml", config=config)
+    except TypeError:
+        return load_rule_capabilities("configs/rules.yaml")
+
+
+def _syntax_atomic_rejection_reason(verification: Any, *, expected_rule_id: str) -> str:
+    if not bool(getattr(verification, "passed", False)):
+        return str(getattr(verification, "reason", "") or "atomic_verification_failed")
+    if normalize_rule_id(getattr(verification, "rule_id", "")) != expected_rule_id:
+        return "verification_rule_mismatch"
+    if int(getattr(verification, "gold_edit_count", 0) or 0) != 1:
+        return "non_atomic_edit_count"
+    if not bool(getattr(verification, "candidate_present", False)):
+        return "candidate_missing"
+    if not bool(getattr(verification, "strict_validator_passed", False)):
+        return "strict_validator_rejected"
+    if not bool(getattr(verification, "target_quality_passed", False)):
+        return "target_quality_failed"
+    if int(getattr(verification, "extra_edit_count", 0) or 0) != 0:
+        return "extra_edits_present"
+    matched = dict(getattr(verification, "matched_candidate", None) or {})
+    if normalize_rule_id(str(matched.get("rule_id") or "")) != expected_rule_id:
+        return "candidate_rule_mismatch"
+    return ""
+
+
+def _row_from_syntax_atomic_positive(
+    *,
+    raw_row: dict[str, Any],
+    verification: Any,
+    rule_id: str,
+    pair_hash: str,
+    activation_row: dict[str, Any],
+) -> dict[str, Any]:
+    source = str(raw_row.get("source") or "")
+    target = str(raw_row.get("target") or "")
+    edits = [_syntax_edit_payload(edit, rule_id) for edit in list(getattr(verification, "edits", []) or [])]
+    matched = dict(getattr(verification, "matched_candidate", None) or {})
+    metadata = _json_dict(raw_row.get("metadata"))
+    metadata.update(
+        {
+            "dataset_contract": DATASET_CONTRACT,
+            "dataset_layer": LAYER_ATOMIC_POSITIVE,
+            "source_type": SYNTHETIC_OPEN_CLEAN,
+            "is_atomic": True,
+            "is_stress": False,
+            "count_toward_rule_quota": True,
+            "loss_weight": 1.0,
+            "candidate_present": True,
+            "candidate_rule_ids": list(getattr(verification, "candidate_rule_ids", []) or []),
+            "gold_edit_count": 1,
+            "strict_validator_passed": True,
+            "target_quality_pass": True,
+            "target_quality_passed": True,
+            "extra_edit_count": int(getattr(verification, "extra_edit_count", 0) or 0),
+            "matched_candidate": matched,
+            "atomic_verification": asdict(verification),
+            "target_family": rule_id,
+            "rule_ids": [rule_id],
+            "activation_source": "syntax_synthetic",
+            "activation_stage": str(activation_row.get("activation_stage") or ""),
+            "production_ready": bool(activation_row.get("production_ready", False)),
+            "generation_strategy": "syntax_synthetic",
+            "generation_sources": ["syntax_synthetic"],
+            "original_syntax_source_type": str(raw_row.get("source_type") or ""),
+            "syntax_family": str(raw_row.get("syntax_family") or metadata.get("syntax_family") or ""),
+            "normalized_pair_hash": pair_hash,
+        }
+    )
+    error_type = _error_type_for_rules([rule_id])
+    return {
+        "source": source,
+        "target": target,
+        "split": "train",
+        "source_type": SYNTHETIC_OPEN_CLEAN,
+        "error_type": error_type,
+        "rule_ids": json.dumps([rule_id], ensure_ascii=False),
+        "edits": json.dumps(edits, ensure_ascii=False),
+        "metadata": json.dumps(metadata, ensure_ascii=False, sort_keys=True),
+        "original_clean_source": target,
+        "source_corpus": "syntax_synthetic",
+        "source_subcorpus": str(raw_row.get("syntax_family") or ""),
+        "is_hard_negative": False,
+        "is_real_pair": False,
+        "template_id": "",
+        "normalized_pair_hash": pair_hash,
+        "error_types": json.dumps([error_type], ensure_ascii=False),
+        "source_dataset": "syntax_synthetic",
+        "is_clean": False,
+        "is_synthetic": True,
+        "domain": "open_clean",
+        "rule_id": rule_id,
+        "edit_operations": json.dumps(edits, ensure_ascii=False),
+        "dataset_contract": DATASET_CONTRACT,
+        "dataset_layer": LAYER_ATOMIC_POSITIVE,
+        "is_atomic": True,
+        "is_stress": False,
+        "count_toward_rule_quota": True,
+        "gold_edit_count": 1,
+        "loss_weight": 1.0,
+        "target_rule_id": rule_id,
+        "candidate_source": str(matched.get("source") or ""),
+        "candidate_replacement": str(matched.get("replacement") or ""),
+        "candidate_start": int(matched.get("start", -1) if matched.get("start", -1) != "" else -1),
+        "candidate_end": int(matched.get("end", -1) if matched.get("end", -1) != "" else -1),
+        "verification_status": "passed",
+        "rejection_reason": "",
+        "activation_stage": str(activation_row.get("activation_stage") or ""),
+        "production_ready": bool(activation_row.get("production_ready", False)),
+        "activation_source": "syntax_synthetic",
+    }
+
+
+def _syntax_edit_payload(edit: dict[str, Any], rule_id: str) -> dict[str, Any]:
+    payload = dict(edit)
+    payload["rule_id"] = normalize_rule_id(str(payload.get("rule_id") or rule_id))
+    return payload
+
+
+def _syntax_atomic_generation_rows(
+    rule_ids: list[str],
+    counts: Counter[str],
+    rejection_counts: Counter[str],
+    blocked_reason: str,
+) -> list[dict[str, Any]]:
+    rejected_total = int(sum(rejection_counts.values()))
+    return [
+        {
+            "rule_id": rule_id,
+            "accepted": int(counts.get(rule_id, 0)),
+            "rejected": rejected_total,
+            "status": "blocked" if blocked_reason else ("accepted" if int(counts.get(rule_id, 0)) else "empty"),
+            "reason": blocked_reason,
+        }
+        for rule_id in sorted(rule_ids)
+    ]
+
+
+def _syntax_blocked_rejection(rule_id: str, reason: str) -> dict[str, Any]:
+    return {"row_index": "syntax_module", "rule_id": rule_id, "reason": reason, "source": "", "target": ""}
+
+
+def _merge_atomic_positive_rows(operator_rows: list[dict[str, Any]], syntax_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    result: list[dict[str, Any]] = []
+    index_by_key: dict[tuple[str, str], int] = {}
+    for row in operator_rows:
+        item = _with_generation_source(row, "operator")
+        key = _atomic_row_key(item)
+        index_by_key[key] = len(result)
+        result.append(item)
+    for row in syntax_rows:
+        key = _atomic_row_key(row)
+        if key in index_by_key:
+            result[index_by_key[key]] = _merge_generation_sources(result[index_by_key[key]], "syntax_synthetic")
+            continue
+        index_by_key[key] = len(result)
+        result.append(row)
+    return result
+
+
+def _atomic_row_key(row: dict[str, Any]) -> tuple[str, str]:
+    return (
+        normalized_pair_hash(str(row.get("source", "")), str(row.get("target", ""))),
+        normalize_rule_id(str(row.get("rule_id") or "")),
+    )
+
+
+def _with_generation_source(row: dict[str, Any], source: str) -> dict[str, Any]:
+    result = dict(row)
+    metadata = _json_dict(result.get("metadata"))
+    sources = _generation_sources(metadata)
+    if source not in sources:
+        sources.append(source)
+    metadata["generation_sources"] = sources
+    metadata.setdefault("activation_source", source)
+    result["metadata"] = json.dumps(metadata, ensure_ascii=False, sort_keys=True)
+    result.setdefault("activation_source", source)
+    return result
+
+
+def _merge_generation_sources(row: dict[str, Any], source: str) -> dict[str, Any]:
+    result = dict(row)
+    metadata = _json_dict(result.get("metadata"))
+    sources = _generation_sources(metadata)
+    if source not in sources:
+        sources.append(source)
+    metadata["generation_sources"] = sources
+    result["metadata"] = json.dumps(metadata, ensure_ascii=False, sort_keys=True)
+    return result
+
+
+def _generation_sources(metadata: dict[str, Any]) -> list[str]:
+    raw = metadata.get("generation_sources", [])
+    values = raw if isinstance(raw, list) else [raw]
+    result: list[str] = []
+    for value in values:
+        text = str(value or "")
+        if text and text not in result:
+            result.append(text)
+    return result
+
+
+def _generate_syntax_hard_negative_rows(
+    active_rule_ids: Iterable[str],
+    *,
+    clean_pool_path: str | Path,
+    candidate_generator: Any,
+    config: dict[str, Any],
+) -> SyntaxHardNegativeGenerationResult:
+    module, supported_rule_ids, blocked_reason = _load_syntax_synthetic_module(config)
+    active_supported = sorted({normalize_rule_id(rule_id) for rule_id in active_rule_ids if normalize_rule_id(rule_id) in set(supported_rule_ids)})
+    if blocked_reason:
+        return SyntaxHardNegativeGenerationResult(
+            rows=[],
+            coverage_rows=_syntax_hard_coverage_rows(active_supported, Counter(), blocked_reason),
+            rejection_rows=[_syntax_hard_rejection(rule_id, "", blocked_reason) for rule_id in active_supported],
+            counts_by_rule={rule_id: 0 for rule_id in active_supported},
+            blocked_reason=blocked_reason,
+        )
+    if module is None or not active_supported or not hasattr(module, "build_syntax_hard_negatives"):
+        reason = "" if module is not None else "syntax_module_missing"
+        return SyntaxHardNegativeGenerationResult(
+            rows=[],
+            coverage_rows=_syntax_hard_coverage_rows(active_supported, Counter(), reason),
+            rejection_rows=[],
+            counts_by_rule={rule_id: 0 for rule_id in active_supported},
+            blocked_reason=reason,
+        )
+
+    rule_to_family = dict(getattr(module, "RULE_TO_FAMILY", {}) or {})
+    selected_families = sorted({str(rule_to_family.get(rule_id) or "") for rule_id in active_supported if rule_to_family.get(rule_id)})
+    if not selected_families:
+        return SyntaxHardNegativeGenerationResult(
+            rows=[],
+            coverage_rows=_syntax_hard_coverage_rows(active_supported, Counter(), "syntax_family_missing"),
+            rejection_rows=[_syntax_hard_rejection(rule_id, "", "syntax_family_missing") for rule_id in active_supported],
+            counts_by_rule={rule_id: 0 for rule_id in active_supported},
+            blocked_reason="syntax_family_missing",
+        )
+
+    quota_config = _operator_rule_quota_config(config)
+    min_per_family = max(1, min(50, int(quota_config.get("min_hard_negatives_per_active_rule", 1) or 1)))
+    try:
+        raw_rows = module.build_syntax_hard_negatives(
+            selected_families=selected_families,
+            min_examples_per_family=min_per_family,
+            clean_pool_path=clean_pool_path,
+            candidate_generator=candidate_generator,
+        )
+    except Exception as exc:
+        reason = f"syntax_generation_failed:{type(exc).__name__}"
+        return SyntaxHardNegativeGenerationResult(
+            rows=[],
+            coverage_rows=_syntax_hard_coverage_rows(active_supported, Counter(), reason),
+            rejection_rows=[_syntax_hard_rejection(rule_id, "", reason) for rule_id in active_supported],
+            counts_by_rule={rule_id: 0 for rule_id in active_supported},
+            blocked_reason=reason,
+        )
+
+    frame = raw_rows if isinstance(raw_rows, pd.DataFrame) else pd.DataFrame(raw_rows or [])
+    active_set = set(active_supported)
+    rows: list[dict[str, Any]] = []
+    rejections: list[dict[str, Any]] = []
+    counts: Counter[str] = Counter()
+    seen: set[tuple[str, str, int, int, str]] = set()
+    for index, raw_row in enumerate(frame.fillna("").to_dict("records")):
+        rule_id = normalize_rule_id(str(raw_row.get("rule_id") or ""))
+        if rule_id not in active_set:
+            continue
+        source = str(raw_row.get("source") or "")
+        target = str(raw_row.get("target") or "")
+        if not source or source != target:
+            rejections.append(_syntax_hard_rejection(rule_id, source, "syntax_hard_negative_not_identity"))
+            continue
+        candidate = _syntax_hard_negative_candidate(source, rule_id, candidate_generator)
+        candidate_present_claim = _truthy(raw_row.get("candidate_present")) or _truthy(_json_dict(raw_row.get("metadata")).get("candidate_present"))
+        if candidate_present_claim and candidate is None:
+            rejections.append(_syntax_hard_rejection(rule_id, source, "candidate_missing"))
+            continue
+        dedupe_key = (
+            rule_id,
+            source,
+            int(getattr(candidate, "start", -1)) if candidate is not None else -1,
+            int(getattr(candidate, "end", -1)) if candidate is not None else -1,
+            str(getattr(candidate, "replacement", "")) if candidate is not None else "",
+        )
+        if dedupe_key in seen:
+            rejections.append(_syntax_hard_rejection(rule_id, source, "duplicate_syntax_hard_negative"))
+            continue
+        seen.add(dedupe_key)
+        rows.append(_row_from_syntax_hard_negative(raw_row, rule_id=rule_id, candidate=candidate))
+        counts[rule_id] += 1
+
+    return SyntaxHardNegativeGenerationResult(
+        rows=rows,
+        coverage_rows=_syntax_hard_coverage_rows(active_supported, counts, ""),
+        rejection_rows=rejections,
+        counts_by_rule={rule_id: int(counts.get(rule_id, 0)) for rule_id in active_supported},
+    )
+
+
+def _syntax_hard_negative_candidate(source: str, rule_id: str, candidate_generator: Any) -> Any | None:
+    try:
+        candidates = list(candidate_generator.generate(source))
+    except Exception:
+        return None
+    for candidate in candidates:
+        if normalize_rule_id(getattr(candidate, "rule_id", "")) == rule_id and _candidate_is_non_keep(candidate):
+            return candidate
+    return None
+
+
+def _candidate_is_non_keep(candidate: Any) -> bool:
+    edit_type = str(getattr(candidate, "edit_type", "") or "").lower()
+    action = str(getattr(candidate, "action", "") or "").upper()
+    if edit_type == "keep" or action in {"KEEP", "KEEP_NONE", "KEEP_EXISTING"}:
+        return False
+    return str(getattr(candidate, "source", "")) != str(getattr(candidate, "replacement", "")) or action in {"INSERT", "DELETE", "REPLACE"}
+
+
+def _row_from_syntax_hard_negative(raw_row: dict[str, Any], *, rule_id: str, candidate: Any | None) -> dict[str, Any]:
+    source = str(raw_row.get("source") or "")
+    candidate_source = str(getattr(candidate, "source", "")) if candidate is not None else ""
+    candidate_replacement = str(getattr(candidate, "replacement", "")) if candidate is not None else ""
+    candidate_start = int(getattr(candidate, "start", -1)) if candidate is not None else -1
+    candidate_end = int(getattr(candidate, "end", -1)) if candidate is not None else -1
+    metadata = _json_dict(raw_row.get("metadata"))
+    metadata.update(
+        {
+            "dataset_contract": DATASET_CONTRACT,
+            "dataset_layer": LAYER_ATOMIC_HARD_NEGATIVE,
+            "source_type": HARD_NEGATIVE_OPEN,
+            "rule_ids": ["clean_identity_hard_negative"],
+            "target_rule_id": rule_id,
+            "candidate_present": candidate is not None,
+            "candidate_rule_ids": [rule_id] if candidate is not None else [],
+            "candidate_source": candidate_source,
+            "candidate_replacement": candidate_replacement,
+            "candidate_start": candidate_start,
+            "candidate_end": candidate_end,
+            "is_atomic": True,
+            "is_hard_negative": True,
+            "count_toward_rule_quota": False,
+            "loss_weight": 1.0,
+            "gold_edit_count": 0,
+            "activation_source": "syntax_synthetic",
+            "generation_strategy": "syntax_hard_negative",
+            "generation_sources": ["syntax_synthetic"],
+            "hard_negative_kind": str(raw_row.get("hard_negative_kind") or metadata.get("hard_negative_kind") or ""),
+            "syntax_family": str(raw_row.get("syntax_family") or metadata.get("syntax_family") or ""),
+        }
+    )
+    return {
+        "source": source,
+        "target": source,
+        "split": "train",
+        "source_type": HARD_NEGATIVE_OPEN,
+        "error_type": "hard_negative",
+        "rule_ids": json.dumps(["clean_identity_hard_negative"], ensure_ascii=False),
+        "edits": "[]",
+        "metadata": json.dumps(metadata, ensure_ascii=False, sort_keys=True),
+        "original_clean_source": source,
+        "source_corpus": "syntax_synthetic",
+        "source_subcorpus": str(raw_row.get("syntax_family") or ""),
+        "is_hard_negative": True,
+        "is_real_pair": False,
+        "template_id": "",
+        "normalized_pair_hash": normalized_pair_hash(source, source),
+        "error_types": json.dumps(["hard_negative"], ensure_ascii=False),
+        "source_dataset": "syntax_synthetic",
+        "is_clean": True,
+        "is_synthetic": True,
+        "domain": "open_clean",
+        "rule_id": "clean_identity_hard_negative",
+        "edit_operations": "[]",
+        "dataset_contract": DATASET_CONTRACT,
+        "dataset_layer": LAYER_ATOMIC_HARD_NEGATIVE,
+        "is_atomic": True,
+        "is_stress": False,
+        "count_toward_rule_quota": False,
+        "loss_weight": 1.0,
+        "gold_edit_count": 0,
+        "target_rule_id": rule_id,
+        "candidate_source": candidate_source,
+        "candidate_replacement": candidate_replacement,
+        "candidate_start": candidate_start,
+        "candidate_end": candidate_end,
+        "verification_status": "passed",
+        "rejection_reason": "",
+        "activation_source": "syntax_synthetic",
+    }
+
+
+def _merge_hard_negative_rows(base_rows: list[dict[str, Any]], syntax_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    result = [dict(row) for row in base_rows]
+    seen = {
+        (
+            normalize_rule_id(str(row.get("target_rule_id") or _json_dict(row.get("metadata")).get("target_rule_id") or "")),
+            str(row.get("source") or ""),
+            int(row.get("candidate_start", -1) or -1),
+            int(row.get("candidate_end", -1) or -1),
+            str(row.get("candidate_replacement") or ""),
+        )
+        for row in result
+    }
+    for row in syntax_rows:
+        key = (
+            normalize_rule_id(str(row.get("target_rule_id") or "")),
+            str(row.get("source") or ""),
+            int(row.get("candidate_start", -1) or -1),
+            int(row.get("candidate_end", -1) or -1),
+            str(row.get("candidate_replacement") or ""),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(row)
+    return result
+
+
+def _syntax_hard_coverage_rows(rule_ids: list[str], counts: Counter[str], blocked_reason: str) -> list[dict[str, Any]]:
+    return [
+        {
+            "rule_id": rule_id,
+            "generated_count": int(counts.get(rule_id, 0)),
+            "status": "blocked" if blocked_reason else ("covered" if int(counts.get(rule_id, 0)) else "missing"),
+            "reason": blocked_reason,
+        }
+        for rule_id in sorted(rule_ids)
+    ]
+
+
+def _syntax_hard_rejection(rule_id: str, source: str, reason: str) -> dict[str, Any]:
+    return {"rule_id": rule_id, "source": source[:300], "reason": reason, "stage": "syntax_hard_negative"}
 
 
 def generate_atomic_positive_rows_from_clean_pool(
@@ -1174,6 +1874,8 @@ def _row_from_corruption_result(
             "count_toward_rule_quota": True,
             "loss_weight": 1.0,
             "operator_based_generation": True,
+            "activation_source": "operator",
+            "generation_sources": ["operator"],
             "operator_verify_passed": True,
             "semantic_alignment_pass": True,
             "target_quality_pass": True,
@@ -1236,6 +1938,7 @@ def _row_from_corruption_result(
         "target_rule_id": result.rule_id,
         "verification_status": "passed",
         "rejection_reason": "",
+        "activation_source": "operator",
     }
 
 
@@ -1576,9 +2279,24 @@ def _manifest(
     production_gates: bool = True,
     low_resource_rule_ids: list[str] | None = None,
     hard_negative_counts_by_rule: dict[str, int] | None = None,
+    syntax_atomic_result: SyntaxAtomicPositiveGenerationResult | None = None,
+    syntax_hard_negative_result: SyntaxHardNegativeGenerationResult | None = None,
+    expanded_training_candidate_rule_ids: list[str] | None = None,
+    under_quota_rule_ids: list[str] | None = None,
+    expanded_activation_blocked_counts: dict[str, int] | None = None,
     real_stress_count: int = 0,
 ) -> dict[str, Any]:
     rule_counts = _rule_counts(frame)
+    syntax_atomic_counts = _source_atomic_counts_by_rule(frame, "syntax_synthetic")
+    syntax_hard_counts = _syntax_hard_negative_counts_by_rule(frame)
+    syntax_supported_active = sorted(set(active_rule_ids) & set((syntax_atomic_result or _empty_syntax_atomic_result()).supported_rule_ids))
+    syntax_supported_training = sorted(set((syntax_atomic_result or _empty_syntax_atomic_result()).selected_rule_ids))
+    min_required_for_syntax = int(_operator_rule_quota_config(config).get("min_atomic_positives_per_active_rule", 1000) or 0)
+    syntax_under_quota = [
+        rule_id
+        for rule_id in syntax_supported_training
+        if int(syntax_atomic_counts.get(rule_id, 0)) < min_required_for_syntax
+    ]
     layer_counts = _value_counts(frame, "dataset_layer")
     composition = _value_counts(frame, "source_type")
     synthetic = frame[frame["source_type"].eq(SYNTHETIC_OPEN_CLEAN)]
@@ -1618,7 +2336,13 @@ def _manifest(
     bearing_counts = dict(quality_audit.get("error_bearing_sentence_source_counts", {}) or {})
     corpus_share = float(quality_audit.get("corpus_opportunity_share", corpus_share) or 0.0)
     fallback_share = float(quality_audit.get("fallback_template_share", fallback_share) or 0.0)
-    capability_fields = capability_manifest_fields(capabilities, policy=activation_policy)
+    capability_fields = capability_manifest_fields(
+        capabilities,
+        policy=activation_policy,
+        final_active_rule_ids=active_rule_ids,
+        under_quota_rule_ids=under_quota_rule_ids or [],
+        expanded_activation_blocked_counts=expanded_activation_blocked_counts or {},
+    )
     audit_errors = _audit_errors(
         total=len(frame),
         requested_total=requested_total,
@@ -1675,6 +2399,12 @@ def _manifest(
         "operator_based_generation": True,
         "active_rule_count": int(len(active_rule_ids)),
         "active_rule_ids": active_rule_ids,
+        "final_active_rule_ids": active_rule_ids,
+        "final_active_rule_count": int(len(active_rule_ids)),
+        "expanded_training_candidate_rule_ids": sorted(expanded_training_candidate_rule_ids or []),
+        "expanded_training_candidate_rule_count": int(len(expanded_training_candidate_rule_ids or [])),
+        "under_quota_rule_ids": sorted(under_quota_rule_ids or []),
+        "expanded_activation_blocked_counts": dict(sorted((expanded_activation_blocked_counts or {}).items())),
         "excluded_rule_ids": excluded_rows,
         "excluded_active_rule_ids": sorted(excluded_rule_ids),
         "rules_without_operator": sorted(row["rule_id"] for row in registry_rows if row.get("reason") == "BLOCK_NO_OPERATOR"),
@@ -1712,6 +2442,12 @@ def _manifest(
         "real_pair_count": int(composition.get(REAL_ERROR_PAIR, 0)),
         "real_error_pair_count": int(composition.get(REAL_ERROR_PAIR, 0)),
         "real_atomic_count": int(layer_counts.get(LAYER_REAL_ATOMIC, 0)),
+        "syntax_supported_active_rule_ids": syntax_supported_active,
+        "syntax_supported_training_candidate_rule_ids": syntax_supported_training,
+        "syntax_atomic_positive_count": int(sum(syntax_atomic_counts.values())),
+        "syntax_atomic_positive_count_by_rule": dict(sorted(syntax_atomic_counts.items())),
+        "syntax_hard_negative_count_by_rule": dict(sorted(syntax_hard_counts.items())),
+        "syntax_rules_under_quota": syntax_under_quota,
         "real_stress_count": int(real_stress_count),
         "clean_identity_count": int(composition.get(CLEAN_IDENTITY_OPEN, 0)),
         "hard_negative_count": int(composition.get(HARD_NEGATIVE_OPEN, 0)),
@@ -1728,8 +2464,19 @@ def _manifest(
     manifest.update(capability_fields)
     manifest["active_rule_ids"] = active_rule_ids
     manifest["active_rule_count"] = int(len(active_rule_ids))
+    manifest["final_active_rule_ids"] = active_rule_ids
+    manifest["final_active_rule_count"] = int(len(active_rule_ids))
     manifest["activation_stage_counts"] = activation_stage_counts_from_frame(frame)
     manifest["excluded_active_rule_ids"] = sorted(set(excluded_rule_ids) | set(capability_fields.get("blocked_rule_ids", [])))
+    activation_policy_fields = dict(manifest.get("activation_policy", {}) or {})
+    manifest["warnings"] = _dedupe_errors(
+        [*list(manifest.get("warnings", []) or []), *list(activation_policy_fields.get("warnings", []) or [])]
+    )
+    if production_gates:
+        manifest["audit_errors"] = _dedupe_errors(
+            [*list(manifest.get("audit_errors", []) or []), *list(activation_policy_fields.get("errors", []) or [])]
+        )
+        manifest["verdict"] = "DATASET_BLOCKED" if manifest["audit_errors"] else "READY_FOR_TRAINING_DATASET"
     return manifest
 
 
@@ -1748,6 +2495,11 @@ def _write_reports(
     atomic_rejection_rows: list[dict[str, Any]] | None = None,
     rules_without_atomic_positive: list[dict[str, Any]] | None = None,
     hard_negative_result: Any | None = None,
+    syntax_atomic_result: SyntaxAtomicPositiveGenerationResult | None = None,
+    syntax_hard_negative_result: SyntaxHardNegativeGenerationResult | None = None,
+    expanded_activation_candidate_rows: list[dict[str, Any]] | None = None,
+    expanded_activation_blocked_rows: list[dict[str, Any]] | None = None,
+    under_quota_rows: list[dict[str, Any]] | None = None,
     quota_config: dict[str, Any] | None = None,
 ) -> None:
     reports_dir.mkdir(parents=True, exist_ok=True)
@@ -1787,12 +2539,29 @@ def _write_reports(
                 "status",
             ],
         ).to_csv(reports_dir / "hard_negative_coverage_report.csv", index=False)
+    _write_syntax_generation_reports(
+        reports_dir,
+        syntax_atomic_result=syntax_atomic_result,
+        syntax_hard_negative_result=syntax_hard_negative_result,
+        active_rule_ids=manifest["active_rule_ids"],
+        quota_config=quota_config or {},
+        syntax_atomic_counts=dict(manifest.get("syntax_atomic_positive_count_by_rule", {}) or {}),
+        syntax_hard_counts=dict(manifest.get("syntax_hard_negative_count_by_rule", {}) or {}),
+        syntax_under_quota=list(manifest.get("syntax_rules_under_quota", []) or []),
+    )
     _write_active_rule_quota_report(
         frame,
         active_rule_ids=manifest["active_rule_ids"],
         quota_config=quota_config or {},
         hard_negative_counts_by_rule=dict(manifest.get("hard_negative_counts_by_target_rule", {}) or {}),
         path=reports_dir / "active_rule_quota_report.csv",
+    )
+    _write_expanded_activation_reports(
+        reports_dir,
+        capabilities_rows=expanded_activation_candidate_rows or [],
+        blocked_rows=expanded_activation_blocked_rows or [],
+        under_quota_rows=under_quota_rows or [],
+        config=config,
     )
     pd.DataFrame([row for row in manifest["excluded_rule_ids"] if "MISSING_MODULE" in row.get("reason", "")]).to_csv(
         reports_dir / "blocked_by_missing_module.csv", index=False
@@ -1843,6 +2612,178 @@ def _write_reports(
             ).to_csv(path, index=False)
 
 
+def _write_expanded_activation_reports(
+    reports_dir: Path,
+    *,
+    capabilities_rows: list[dict[str, Any]],
+    blocked_rows: list[dict[str, Any]],
+    under_quota_rows: list[dict[str, Any]],
+    config: dict[str, Any],
+) -> None:
+    del config
+    candidate_frame = pd.DataFrame(capabilities_rows, columns=[*EXPANDED_ACTIVATION_CANDIDATE_COLUMNS, "source"])
+    candidate_frame[EXPANDED_ACTIVATION_CANDIDATE_COLUMNS].to_csv(
+        reports_dir / "expanded_activation_candidate_report.csv",
+        index=False,
+    )
+    pd.DataFrame(blocked_rows, columns=EXPANDED_ACTIVATION_BLOCKED_COLUMNS).to_csv(
+        reports_dir / "expanded_activation_blocked_report.csv",
+        index=False,
+    )
+    stage_rows = [
+        {
+            "rule_id": row.get("rule_id", ""),
+            "activation_stage": row.get("activation_bucket", ""),
+            "production_ready": str(row.get("activation_bucket", "")) == "production_ready",
+            "source": row.get("source", ""),
+            "included": bool(row.get("included", False)),
+            "reason": row.get("reason", ""),
+        }
+        for row in capabilities_rows
+    ]
+    pd.DataFrame(stage_rows, columns=ACTIVE_RULE_ACTIVATION_STAGE_COLUMNS).to_csv(
+        reports_dir / "active_rule_activation_stage_report.csv",
+        index=False,
+    )
+    pd.DataFrame(
+        under_quota_rows,
+        columns=[
+            "rule_id",
+            "atomic_positive_count",
+            "min_atomic_required",
+            "hard_negative_count",
+            "min_hard_negative_required",
+            "status",
+            "reason",
+        ],
+    ).to_csv(reports_dir / "under_quota_active_rules_report.csv", index=False)
+
+
+def _empty_syntax_atomic_result() -> SyntaxAtomicPositiveGenerationResult:
+    return SyntaxAtomicPositiveGenerationResult(
+        rows=[],
+        generation_rows=[],
+        rejection_rows=[],
+        supported_rule_ids=[],
+        selected_rule_ids=[],
+    )
+
+
+def _write_syntax_generation_reports(
+    reports_dir: Path,
+    *,
+    syntax_atomic_result: SyntaxAtomicPositiveGenerationResult | None,
+    syntax_hard_negative_result: SyntaxHardNegativeGenerationResult | None,
+    active_rule_ids: list[str],
+    quota_config: dict[str, Any],
+    syntax_atomic_counts: dict[str, int],
+    syntax_hard_counts: dict[str, int],
+    syntax_under_quota: list[str],
+) -> None:
+    atomic_result = syntax_atomic_result or _empty_syntax_atomic_result()
+    hard_result = syntax_hard_negative_result or SyntaxHardNegativeGenerationResult([], [], [], {})
+    pd.DataFrame(
+        atomic_result.generation_rows,
+        columns=["rule_id", "accepted", "rejected", "status", "reason"],
+    ).to_csv(reports_dir / "syntax_atomic_positive_generation_report.csv", index=False)
+    pd.DataFrame(
+        atomic_result.rejection_rows,
+        columns=["row_index", "rule_id", "reason", "source", "target"],
+    ).to_csv(reports_dir / "syntax_atomic_positive_rejection_report.csv", index=False)
+    pd.DataFrame(
+        hard_result.coverage_rows,
+        columns=["rule_id", "generated_count", "status", "reason"],
+    ).to_csv(reports_dir / "syntax_hard_negative_coverage_report.csv", index=False)
+
+    min_required = int(quota_config.get("min_atomic_positives_per_active_rule", 1000) or 0)
+    active_set = set(active_rule_ids)
+    under_quota = set(syntax_under_quota)
+    coverage_rows = []
+    for rule_id in sorted(set(atomic_result.selected_rule_ids) | set(syntax_atomic_counts) | set(syntax_hard_counts)):
+        atomic_count = int(syntax_atomic_counts.get(rule_id, 0) or 0)
+        hard_count = int(syntax_hard_counts.get(rule_id, 0) or 0)
+        coverage_rows.append(
+            {
+                "rule_id": rule_id,
+                "syntax_atomic_positive_count": atomic_count,
+                "syntax_hard_negative_count": hard_count,
+                "active": rule_id in active_set,
+                "min_required": min_required,
+                "status": "active" if rule_id in active_set else ("under_quota" if rule_id in under_quota else "inactive"),
+                "reason": "below_min_atomic_positive_quota" if rule_id in under_quota else atomic_result.blocked_reason,
+            }
+        )
+    pd.DataFrame(
+        coverage_rows,
+        columns=[
+            "rule_id",
+            "syntax_atomic_positive_count",
+            "syntax_hard_negative_count",
+            "active",
+            "min_required",
+            "status",
+            "reason",
+        ],
+    ).to_csv(reports_dir / "syntax_active_rule_coverage_report.csv", index=False)
+
+
+def _source_atomic_counts_by_rule(frame: pd.DataFrame, activation_source: str) -> dict[str, int]:
+    counter: Counter[str] = Counter()
+    if frame.empty:
+        return {}
+    for row in frame.to_dict("records"):
+        if not _counts_toward_rule_quota(row):
+            continue
+        if _row_activation_source(row) != activation_source:
+            continue
+        for rule_id in _row_rule_ids(row):
+            counter[rule_id] += 1
+    return dict(sorted(counter.items()))
+
+
+def _real_atomic_counts_by_rule(frame: pd.DataFrame) -> dict[str, int]:
+    counter: Counter[str] = Counter()
+    if frame.empty:
+        return {}
+    for row in frame.to_dict("records"):
+        if _row_dataset_layer_value(row) != LAYER_REAL_ATOMIC:
+            continue
+        for rule_id in _row_rule_ids(row):
+            counter[rule_id] += 1
+    return dict(sorted(counter.items()))
+
+
+def _syntax_hard_negative_counts_by_rule(frame: pd.DataFrame) -> dict[str, int]:
+    counter: Counter[str] = Counter()
+    if frame.empty:
+        return {}
+    for row in frame.to_dict("records"):
+        if _row_dataset_layer_value(row) != LAYER_ATOMIC_HARD_NEGATIVE:
+            continue
+        if _row_activation_source(row) != "syntax_synthetic":
+            continue
+        target_rule_id = normalize_rule_id(str(row.get("target_rule_id") or _json_dict(row.get("metadata")).get("target_rule_id") or ""))
+        if target_rule_id != UNKNOWN_RULE_ID:
+            counter[target_rule_id] += 1
+    return dict(sorted(counter.items()))
+
+
+def _row_activation_source(row: dict[str, Any]) -> str:
+    value = str(row.get("activation_source") or "").strip()
+    if value:
+        return value
+    metadata = _json_dict(row.get("metadata"))
+    value = str(metadata.get("activation_source") or "").strip()
+    if value:
+        return value
+    sources = _generation_sources(metadata)
+    if "syntax_synthetic" in sources and len(sources) == 1:
+        return "syntax_synthetic"
+    if bool(metadata.get("operator_based_generation")):
+        return "operator"
+    return ""
+
+
 def _write_active_rule_quota_report(
     frame: pd.DataFrame,
     *,
@@ -1852,6 +2793,9 @@ def _write_active_rule_quota_report(
     path: Path,
 ) -> None:
     atomic_counts = _rule_counts(frame)
+    operator_atomic_counts = _source_atomic_counts_by_rule(frame, "operator")
+    syntax_atomic_counts = _source_atomic_counts_by_rule(frame, "syntax_synthetic")
+    real_atomic_counts = _real_atomic_counts_by_rule(frame)
     min_required = int(quota_config.get("min_atomic_positives_per_active_rule", 1000) or 0)
     min_hard_required = int(quota_config.get("min_hard_negatives_per_active_rule", 0) or 0)
     preferred = int(quota_config.get("preferred_atomic_positives_per_active_rule", max(2500, min_required)) or min_required)
@@ -1877,6 +2821,10 @@ def _write_active_rule_quota_report(
                 "preferred": preferred,
                 "status": status,
                 "reason": reason,
+                "operator_atomic_count": int(operator_atomic_counts.get(rule_id, 0)),
+                "syntax_synthetic_atomic_count": int(syntax_atomic_counts.get(rule_id, 0)),
+                "real_atomic_count": int(real_atomic_counts.get(rule_id, 0)),
+                "total_atomic_positive_count": atomic_count,
             }
         )
     pd.DataFrame(
@@ -1890,8 +2838,134 @@ def _write_active_rule_quota_report(
             "preferred",
             "status",
             "reason",
+            "operator_atomic_count",
+            "syntax_synthetic_atomic_count",
+            "real_atomic_count",
+            "total_atomic_positive_count",
         ],
     ).to_csv(path, index=False)
+
+
+def _activation_evidence_by_rule(frame: pd.DataFrame, recall_reports: dict[str, pd.DataFrame]) -> dict[str, dict[str, Any]]:
+    atomic_counts = _rule_counts(frame)
+    recall_by_rule = _candidate_recall_values(recall_reports.get("candidate_recall_by_rule", pd.DataFrame()))
+    result: dict[str, dict[str, Any]] = {}
+    for rule_id in sorted(set(atomic_counts) | set(recall_by_rule)):
+        atomic_count = int(atomic_counts.get(rule_id, 0) or 0)
+        result[rule_id] = {
+            "generated_probe_count": atomic_count,
+            "verifier_pass_count": atomic_count,
+            "candidate_recall": float(recall_by_rule.get(rule_id, 0.0) or 0.0),
+        }
+    return result
+
+
+def _candidate_recall_values(candidate_report: pd.DataFrame) -> dict[str, float]:
+    if candidate_report.empty or "rule_id" not in candidate_report:
+        return {}
+    result: dict[str, float] = {}
+    for row in candidate_report.to_dict("records"):
+        rule_id = normalize_rule_id(str(row.get("rule_id") or ""))
+        if not rule_id:
+            continue
+        result[rule_id] = float(row.get("candidate_recall", 0.0) or 0.0)
+    return result
+
+
+def _candidate_recall_gold_counts(candidate_report: pd.DataFrame) -> dict[str, int]:
+    if candidate_report.empty or "rule_id" not in candidate_report:
+        return {}
+    result: dict[str, int] = {}
+    for row in candidate_report.to_dict("records"):
+        rule_id = normalize_rule_id(str(row.get("rule_id") or ""))
+        if not rule_id:
+            continue
+        result[rule_id] = int(float(row.get("gold_count", 0) or 0))
+    return result
+
+
+def _final_active_rule_ids_after_gates(
+    *,
+    expanded_candidate_rule_ids: Iterable[str],
+    provisional_active_rule_ids: Iterable[str],
+    frame: pd.DataFrame,
+    recall_reports: dict[str, pd.DataFrame],
+    quota_config: dict[str, Any],
+    config: dict[str, Any],
+) -> tuple[list[str], list[dict[str, Any]], dict[str, str]]:
+    min_atomic = int(quota_config.get("min_atomic_positives_per_active_rule", 1000) or 0)
+    min_hard = int(quota_config.get("min_hard_negatives_per_active_rule", 0) or 0)
+    min_recall = _candidate_recall_min(config)
+    atomic_counts = _rule_counts(frame)
+    hard_counts = _hard_negative_counts_by_target_rule(frame)
+    recall_report = recall_reports.get("candidate_recall_by_rule", pd.DataFrame())
+    recall_by_rule = _candidate_recall_values(recall_report)
+    gold_counts = _candidate_recall_gold_counts(recall_report)
+    provisional_set = {normalize_rule_id(rule_id) for rule_id in provisional_active_rule_ids if normalize_rule_id(rule_id)}
+    expanded_set = {normalize_rule_id(rule_id) for rule_id in expanded_candidate_rule_ids if normalize_rule_id(rule_id)}
+    final_active: list[str] = []
+    under_quota_rows: list[dict[str, Any]] = []
+    blockers: dict[str, str] = {}
+
+    for rule_id in sorted(expanded_set | provisional_set):
+        atomic_count = int(atomic_counts.get(rule_id, 0) or 0)
+        hard_count = int(hard_counts.get(rule_id, 0) or 0)
+        status = "active"
+        reason = ""
+        if rule_id not in provisional_set or atomic_count < min_atomic:
+            status = "under_quota"
+            reason = "below_min_atomic_positive_quota"
+        elif hard_count < min_hard:
+            status = "under_quota"
+            reason = "below_min_hard_negative_quota"
+        elif int(gold_counts.get(rule_id, 0) or 0) > 0 and float(recall_by_rule.get(rule_id, 0.0) or 0.0) < min_recall:
+            status = "blocked"
+            reason = "candidate_recall_below_min"
+
+        if status == "active":
+            final_active.append(rule_id)
+        elif status == "blocked":
+            blockers[rule_id] = reason
+
+        if status in {"active", "under_quota"}:
+            under_quota_rows.append(
+                {
+                    "rule_id": rule_id,
+                    "atomic_positive_count": atomic_count,
+                    "min_atomic_required": min_atomic,
+                    "hard_negative_count": hard_count,
+                    "min_hard_negative_required": min_hard,
+                    "status": status,
+                    "reason": reason,
+                }
+            )
+
+    return sorted(final_active), under_quota_rows, blockers
+
+
+def _filter_frame_to_final_active_rules(frame: pd.DataFrame, final_active_rule_ids: set[str]) -> pd.DataFrame:
+    if frame.empty:
+        return frame
+    kept: list[dict[str, Any]] = []
+    for row in frame.to_dict("records"):
+        layer = _row_dataset_layer_value(row)
+        if layer == LAYER_CLEAN_IDENTITY:
+            kept.append(row)
+            continue
+        target_rule_id = normalize_rule_id(str(row.get("target_rule_id") or ""))
+        if target_rule_id and target_rule_id not in SERVICE_RULE_IDS:
+            if target_rule_id in final_active_rule_ids:
+                kept.append(row)
+            continue
+        rule_ids = [rule_id for rule_id in _row_rule_ids(row) if rule_id not in SERVICE_RULE_IDS]
+        if not rule_ids:
+            kept.append(row)
+            continue
+        if any(rule_id in final_active_rule_ids for rule_id in rule_ids):
+            kept.append(_filter_row_rule_ids(row, final_active_rule_ids))
+    if not kept:
+        return frame.iloc[0:0].copy()
+    return pd.DataFrame(kept, columns=frame.columns)
 
 
 def _candidate_reports(
@@ -1998,7 +3072,9 @@ def _write_dataset_generation_report(manifest: dict[str, Any], path: Path) -> No
         f"- split_sizes: {json.dumps(manifest.get('split_sizes', {}), ensure_ascii=False, sort_keys=True)}",
         f"- production_ready_rule_count: {manifest.get('production_ready_rule_count', 0)}",
         f"- training_candidate_rule_count: {manifest.get('training_candidate_rule_count', 0)}",
+        f"- expanded_training_candidate_rule_count: {manifest.get('expanded_training_candidate_rule_count', 0)}",
         f"- active_rule_count: {manifest.get('active_rule_count', 0)}",
+        f"- final_active_rule_count: {manifest.get('final_active_rule_count', 0)}",
         f"- activation_stage_counts: {json.dumps(manifest.get('activation_stage_counts', {}), ensure_ascii=False, sort_keys=True)}",
         f"- operator_based_generation: {manifest.get('operator_based_generation', True)}",
         f"- semantic_alignment_failed_rows: {manifest.get('semantic_alignment_failed_rows', 0)}",

@@ -8,7 +8,10 @@ from src.rules.capabilities import (
     active_rule_ids_for_training,
     capability_for_taxonomy_entry,
     capability_matrix_frame,
+    expanded_activation_source_map,
+    expanded_training_candidate_rule_ids,
     iter_taxonomy_rules,
+    load_rule_capabilities,
 )
 
 
@@ -185,3 +188,37 @@ def test_capability_matrix_frame_contains_all_taxonomy_entries(tmp_path: Path):
 
     assert set(frame["taxonomy_key"]) == {"metadata_group", "safe_rule"}
     assert len(frame) == len(entries) == 2
+
+
+def test_expanded_source_map_uses_live_runtime_sources_not_reports():
+    capabilities = load_rule_capabilities("configs/rules.yaml")
+    source_map = expanded_activation_source_map(capabilities)
+
+    assert "configs_rules_yaml" in source_map["pattern_жы_жи"]
+    assert "rule_registry" in source_map["pattern_жы_жи"]
+    assert "corruption_operator_registry" in source_map["pattern_жы_жи"]
+    assert "syntax_module" in source_map["comma_subordinate"]
+    assert "reports/pre_dataset_capability" not in set().union(*source_map.values())
+
+
+def test_expanded_training_candidates_keep_quote_open_close_blocked():
+    quote_open = capability_for_taxonomy_entry(
+        _entry(rule_ids=["quote_open"], existing_decision="INCLUDE_AFTER_THRESHOLD_CALIBRATION"),
+        available_modules=_modules(
+            candidate_rule_ids={"quote_open"},
+            synthetic_rule_ids={"quote_open"},
+            hard_negative_rule_ids={"quote_open"},
+            validator_rule_ids={"quote_open"},
+        ),
+    )
+    quote_pair = capability_for_taxonomy_entry(
+        _entry(key="quote_pair", rule_ids=["quote_pair_balance"], existing_decision="INCLUDE_AFTER_THRESHOLD_CALIBRATION"),
+        available_modules=_modules(
+            candidate_rule_ids={"quote_pair_balance"},
+            synthetic_rule_ids={"quote_pair_balance"},
+            hard_negative_rule_ids={"quote_pair_balance"},
+            validator_rule_ids={"quote_pair_balance"},
+        ),
+    )
+
+    assert expanded_training_candidate_rule_ids([quote_open, quote_pair]) == ["quote_pair_balance"]

@@ -3,8 +3,12 @@ from pathlib import Path
 
 import yaml
 
+from src.candidates.candidate_generator import Candidate
 from src.data.training_dataset import compute_broad_dataset_targets, resolve_broad_active_training_rules
-from src.data.operator_dataset_builder import _rule_counts as _operator_rule_counts
+from src.data.operator_dataset_builder import (
+    _rule_counts as _operator_rule_counts,
+    generate_atomic_positive_rows_from_syntax_synthetic,
+)
 from src.data._training_dataset_builder import (
     CLEAN_IDENTITY_OPEN,
     HARD_NEGATIVE_OPEN,
@@ -15,13 +19,171 @@ from src.data._training_dataset_builder import (
     _remaining_fallback_template_budget,
 )
 from src.rules.syntax_synthetic import SUPPORTED_SYNTAX_RULE_IDS
-from src.rules.capabilities import active_rule_ids_for_training, activation_policy_from_config, load_rule_capabilities
+from src.rules.capabilities import (
+    active_rule_ids_for_training,
+    activation_policy_from_config,
+    activation_policy_rows,
+    load_rule_capabilities,
+)
 
 import pandas as pd
 
 
 def _config() -> dict:
     return yaml.safe_load(Path("configs/config.yaml").read_text(encoding="utf-8"))
+
+
+class _CommaCandidateGenerator:
+    def generate(self, text: str):
+        candidates = []
+        for marker in ("готов", "завершен"):
+            index = text.find(marker)
+            if index < 0:
+                continue
+            start = index + len(marker)
+            candidates.append(
+                Candidate(
+                    source="",
+                    replacement=",",
+                    edit_type="punctuation_insert",
+                    start=start,
+                    end=start,
+                    rule_id="comma_subordinate",
+                    syntax_family="subordinate_clause_comma",
+                )
+            )
+        return candidates
+
+
+def _patch_syntax_eval_rows(monkeypatch, rows: list[dict[str, object]]) -> None:
+    import src.rules.syntax_synthetic as syntax_module
+
+    monkeypatch.setattr(syntax_module, "SUPPORTED_SYNTAX_RULE_IDS", ("comma_subordinate",))
+    monkeypatch.setattr(
+        syntax_module,
+        "build_syntax_eval_examples",
+        lambda **_kwargs: pd.DataFrame(rows),
+    )
+
+
+def _syntax_config() -> dict:
+    return {
+        "data": {
+            "rule_quota": {
+                "min_atomic_positives_per_active_rule": 1,
+                "preferred_atomic_positives_per_active_rule": 2,
+                "max_total_per_rule_id": 2,
+            }
+        },
+        "nlp": {"syntax": {"enabled": True}},
+    }
+
+
+def test_syntax_synthetic_atomic_positive_rows_are_verified(monkeypatch, tmp_path: Path):
+    _patch_syntax_eval_rows(
+        monkeypatch,
+        [
+            {
+                "source": "Когда отчет готов мы отправим письмо утром.",
+                "target": "Когда отчет готов, мы отправим письмо утром.",
+                "rule_id": "comma_subordinate",
+                "syntax_family": "subordinate_clause_comma",
+                "source_type": "syntax_synthetic_eval",
+                "candidate_present": False,
+                "candidate_rule_ids": "[]",
+                "hard_negative": False,
+                "metadata": json.dumps({"candidate_present": False}, ensure_ascii=False),
+            }
+        ],
+    )
+
+    rows = generate_atomic_positive_rows_from_syntax_synthetic(
+        ["comma_subordinate", "unit_atomic"],
+        tmp_path / "missing_clean_pool.csv.gz",
+        _CommaCandidateGenerator(),
+        _syntax_config(),
+    )
+
+    assert len(rows) == 1
+    row = rows[0]
+    metadata = json.loads(row["metadata"])
+    assert row["dataset_contract"] == "candidate_opportunity"
+    assert row["dataset_layer"] == "atomic_positive"
+    assert row["source_type"] == "synthetic_augmented_from_open_clean"
+    assert row["activation_source"] == "syntax_synthetic"
+    assert row["rule_id"] == "comma_subordinate"
+    assert json.loads(row["rule_ids"]) == ["comma_subordinate"]
+    assert row["source"] != row["target"]
+    assert int(row["gold_edit_count"]) == 1
+    assert bool(row["count_toward_rule_quota"]) is True
+    assert row["verification_status"] == "passed"
+    assert metadata["candidate_present"] is True
+    assert metadata["strict_validator_passed"] is True
+    assert metadata["target_quality_pass"] is True
+    assert metadata["extra_edit_count"] == 0
+    assert metadata["generation_sources"] == ["syntax_synthetic"]
+
+
+def test_syntax_synthetic_does_not_trust_fake_candidate_metadata(monkeypatch, tmp_path: Path):
+    _patch_syntax_eval_rows(
+        monkeypatch,
+        [
+            {
+                "source": "Когда отчет готов мы отправим письмо утром.",
+                "target": "Когда отчет готов, мы отправим письмо утром.",
+                "rule_id": "comma_subordinate",
+                "syntax_family": "subordinate_clause_comma",
+                "source_type": "syntax_synthetic_eval",
+                "candidate_present": True,
+                "candidate_rule_ids": json.dumps(["comma_subordinate"], ensure_ascii=False),
+                "hard_negative": False,
+                "metadata": json.dumps(
+                    {"candidate_present": True, "target_family": "comma_subordinate"},
+                    ensure_ascii=False,
+                ),
+            }
+        ],
+    )
+
+    rows = generate_atomic_positive_rows_from_syntax_synthetic(
+        ["comma_subordinate"],
+        tmp_path / "missing_clean_pool.csv.gz",
+        candidate_generator=type("NoCandidateGenerator", (), {"generate": lambda self, _text: []})(),
+        config=_syntax_config(),
+    )
+
+    assert rows == []
+
+
+def test_syntax_synthetic_rejects_multi_edit_targets(monkeypatch, tmp_path: Path):
+    _patch_syntax_eval_rows(
+        monkeypatch,
+        [
+            {
+                "source": "Когда отчет готов мы отправим письмо и когда архив завершен мы обновим журнал.",
+                "target": "Когда отчет готов, мы отправим письмо и когда архив завершен, мы обновим журнал.",
+                "rule_id": "comma_subordinate",
+                "syntax_family": "subordinate_clause_comma",
+                "source_type": "syntax_synthetic_eval",
+                "candidate_present": True,
+                "candidate_rule_ids": json.dumps(["comma_subordinate"], ensure_ascii=False),
+                "hard_negative": False,
+                "metadata": json.dumps(
+                    {"candidate_present": True, "target_family": "comma_subordinate"},
+                    ensure_ascii=False,
+                ),
+            }
+        ],
+    )
+
+    rows = generate_atomic_positive_rows_from_syntax_synthetic(
+        ["comma_subordinate"],
+        tmp_path / "missing_clean_pool.csv.gz",
+        _CommaCandidateGenerator(),
+        _syntax_config(),
+    )
+
+    assert rows == []
 
 
 def test_broad_active_training_rules_include_syntax_and_legacy_candidate_backed_rules():
@@ -31,7 +193,8 @@ def test_broad_active_training_rules_include_syntax_and_legacy_candidate_backed_
     capability_active = set(active_rule_ids_for_training(load_rule_capabilities("configs/rules.yaml"), policy=activation_policy_from_config(config)))
 
     assert set(active) == capability_active
-    assert set(SUPPORTED_SYNTAX_RULE_IDS) & capability_active <= set(active)
+    assert set(SUPPORTED_SYNTAX_RULE_IDS) <= set(active)
+    assert "quote_pair_balance" in active
     assert {
         "hyphen_whitelist",
         "comma_subordinate",
@@ -63,6 +226,18 @@ def test_broad_active_training_rule_quotas_follow_dataset_plan():
     assert active["subject_predicate_dash"]["target_preferred_examples"] == 2500
     assert active["hyphen_whitelist"]["target_min_examples"] == 1000
     assert active["hyphen_whitelist"]["target_preferred_examples"] == 3000
+
+
+def test_syntax_disabled_config_blocks_syntax_required_training_candidates():
+    config = _config()
+    config["nlp"]["syntax"]["enabled"] = False
+    capabilities = load_rule_capabilities("configs/rules.yaml", config=config)
+    policy = activation_policy_from_config(config)
+    active = set(active_rule_ids_for_training(capabilities, policy=policy))
+    activation = {row["rule_id"]: row for row in activation_policy_rows(capabilities, policy=policy)}
+
+    assert "comma_subordinate" not in active
+    assert activation["comma_subordinate"]["activation_exclusion_reason"] == "BLOCK_NEEDS_SYNTAX"
 
 
 def test_dynamic_targets_scale_from_active_rule_quotas_and_real_pair_count():

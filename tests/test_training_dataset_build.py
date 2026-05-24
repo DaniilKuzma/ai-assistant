@@ -4,14 +4,130 @@ import json
 import pandas as pd
 import yaml
 
+from src.candidates.candidate_generator import Candidate
 from src.data.full_dataset_builder import build_dataset_from_config
+from src.rules.capabilities import RuleCapability
 from tests.candidate_contract_fixtures import (
     UnitCandidateGenerator,
     candidate_contract_config,
     patch_unit_operator_pipeline,
+    unit_capability,
     write_unit_clean_pool,
     write_unit_real_outputs,
 )
+
+
+class UnitSyntaxCandidateGenerator(UnitCandidateGenerator):
+    def generate(self, text: str):
+        candidates = list(super().generate(text))
+        marker = "готов"
+        index = text.find(marker)
+        if index >= 0:
+            start = index + len(marker)
+            candidates.append(
+                Candidate(
+                    source="",
+                    replacement=",",
+                    edit_type="punctuation_insert",
+                    start=start,
+                    end=start,
+                    rule_id="comma_subordinate",
+                    syntax_family="subordinate_clause_comma",
+                )
+            )
+        return candidates
+
+
+class UnitSyntaxCandidateGeneratorFactory:
+    @classmethod
+    def from_config(cls, config: dict):
+        del config
+        return UnitSyntaxCandidateGenerator()
+
+
+def _syntax_capability() -> RuleCapability:
+    return RuleCapability(
+        taxonomy_key="unit_syntax",
+        domain="punctuation",
+        entry_type="rule",
+        title="unit syntax",
+        orfogrammka_id="",
+        project_rule_ids=["comma_subordinate"],
+        implementation_status="model_required",
+        requires=["syntax", "model", "validator"],
+        executable=True,
+        training_eligible=True,
+        training_decision="INCLUDE_AFTER_THRESHOLD_CALIBRATION",
+        training_reason="unit syntax",
+        has_candidate_path=True,
+        has_synthetic_support=True,
+        has_hard_negative_support=True,
+        has_validator_support=True,
+        has_dictionary_support=False,
+        has_syntax_support=True,
+        has_morphology_support=False,
+        has_ner_support=False,
+        risk_level="medium",
+    )
+
+
+def _patch_unit_syntax_pipeline(monkeypatch) -> None:
+    import src.data.operator_dataset_builder as operator_builder
+    import src.rules.syntax_synthetic as syntax_module
+
+    monkeypatch.setattr(operator_builder, "CandidateGenerator", UnitSyntaxCandidateGeneratorFactory, raising=False)
+    monkeypatch.setattr(operator_builder, "load_rule_capabilities", lambda _path, **_kwargs: [unit_capability(), _syntax_capability()])
+    monkeypatch.setattr(syntax_module, "SUPPORTED_SYNTAX_RULE_IDS", ("comma_subordinate",))
+    monkeypatch.setattr(
+        syntax_module,
+        "build_syntax_eval_examples",
+        lambda **_kwargs: pd.DataFrame(
+            [
+                {
+                    "source": "Когда отчет готов мы отправим письмо утром.",
+                    "target": "Когда отчет готов, мы отправим письмо утром.",
+                    "rule_id": "comma_subordinate",
+                    "syntax_family": "subordinate_clause_comma",
+                    "source_type": "syntax_synthetic_eval",
+                    "candidate_present": True,
+                    "candidate_rule_ids": json.dumps(["comma_subordinate"], ensure_ascii=False),
+                    "hard_negative": False,
+                    "metadata": json.dumps({"candidate_present": True}, ensure_ascii=False),
+                },
+                {
+                    "source": "Если архив готов мы обновим журнал вечером.",
+                    "target": "Если архив готов, мы обновим журнал вечером.",
+                    "rule_id": "comma_subordinate",
+                    "syntax_family": "subordinate_clause_comma",
+                    "source_type": "syntax_synthetic_eval",
+                    "candidate_present": True,
+                    "candidate_rule_ids": json.dumps(["comma_subordinate"], ensure_ascii=False),
+                    "hard_negative": False,
+                    "metadata": json.dumps({"candidate_present": True}, ensure_ascii=False),
+                },
+            ]
+        ),
+    )
+    monkeypatch.setattr(
+        syntax_module,
+        "build_syntax_hard_negatives",
+        lambda **_kwargs: pd.DataFrame(
+            [
+                {
+                    "source": "Когда отчет готов мы отправим письмо утром.",
+                    "target": "Когда отчет готов мы отправим письмо утром.",
+                    "rule_id": "comma_subordinate",
+                    "syntax_family": "subordinate_clause_comma",
+                    "source_type": "syntax_hard_negative_trap_candidate",
+                    "candidate_present": True,
+                    "candidate_rule_ids": json.dumps(["comma_subordinate"], ensure_ascii=False),
+                    "hard_negative": True,
+                    "metadata": json.dumps({"candidate_present": True}, ensure_ascii=False),
+                    "hard_negative_kind": "trap_candidate",
+                }
+            ]
+        ),
+    )
 
 
 def test_canonical_config_uses_broad_dataset_targets_and_no_versioned_paths():
@@ -78,7 +194,7 @@ def test_candidate_contract_pipeline_builds_atomic_from_clean_pool_without_outpu
     assert (output_path.parent / "train_real_atomic.csv.gz").exists()
     assert (output_path.parent / "train_stress_multi_error.csv.gz").exists()
     quota = pd.read_csv(Path(config["paths"]["reports_dir"]) / "dataset_build" / "active_rule_quota_report.csv")
-    assert list(quota.columns) == [
+    assert list(quota.columns)[:8] == [
         "rule_id",
         "atomic_positive_count",
         "hard_negative_count",
@@ -90,6 +206,93 @@ def test_candidate_contract_pipeline_builds_atomic_from_clean_pool_without_outpu
     ]
     assert quota.set_index("rule_id").loc["unit_atomic", "atomic_positive_count"] == 2
     assert quota.set_index("rule_id").loc["unit_atomic", "hard_negative_min_required"] == 1
+    assert {
+        "operator_atomic_count",
+        "syntax_synthetic_atomic_count",
+        "real_atomic_count",
+        "total_atomic_positive_count",
+    } <= set(quota.columns)
+    reports_dir = Path(config["paths"]["reports_dir"]) / "dataset_build"
+    assert manifest["expanded_training_candidate_rule_ids"] == ["unit_atomic"]
+    assert manifest["expanded_training_candidate_rule_count"] == 1
+    assert manifest["final_active_rule_ids"] == ["unit_atomic"]
+    assert manifest["final_active_rule_count"] == 1
+    assert manifest["active_rule_ids"] == manifest["final_active_rule_ids"]
+    assert manifest["training_candidate_rule_ids"] == manifest["expanded_training_candidate_rule_ids"]
+    assert manifest["under_quota_rule_ids"] == []
+    assert (reports_dir / "expanded_activation_candidate_report.csv").exists()
+    assert (reports_dir / "expanded_activation_blocked_report.csv").exists()
+    assert (reports_dir / "active_rule_activation_stage_report.csv").exists()
+    assert (reports_dir / "under_quota_active_rules_report.csv").exists()
+    candidate_report = pd.read_csv(reports_dir / "expanded_activation_candidate_report.csv").set_index("rule_id")
+    assert candidate_report.loc["unit_atomic", "included"] in (True, "True", "true")
+    assert candidate_report.loc["unit_atomic", "verifier_pass_count"] == 2
+    assert candidate_report.loc["unit_atomic", "candidate_recall"] == 1.0
+
+
+def test_candidate_contract_pipeline_reports_under_quota_rules_without_training_rows(tmp_path: Path, monkeypatch):
+    clean_pool_path = write_unit_clean_pool(tmp_path / "clean_sentence_pool.csv.gz")
+    config = candidate_contract_config(tmp_path, clean_pool_path)
+    config["data"]["rule_quota"]["min_hard_negatives_per_active_rule"] = 5
+    config["data"]["rule_activation"]["expected_min_final_active_rule_count"] = 0
+    config["data"]["rule_activation"]["fail_below_final_active_rule_count"] = False
+    patch_unit_operator_pipeline(monkeypatch)
+
+    build_dataset_from_config(config, force=True)
+    manifest = json.loads(Path(config["data"]["manifest_path"]).read_text(encoding="utf-8"))
+    frame = pd.read_csv(config["data"]["processed_train_path"])
+    reports_dir = Path(config["paths"]["reports_dir"]) / "dataset_build"
+    under_quota = pd.read_csv(reports_dir / "under_quota_active_rules_report.csv").set_index("rule_id")
+
+    assert "unit_atomic" in manifest["expanded_training_candidate_rule_ids"]
+    assert "unit_atomic" in manifest["under_quota_rule_ids"]
+    assert "unit_atomic" not in manifest["final_active_rule_ids"]
+    assert under_quota.loc["unit_atomic", "status"] == "under_quota"
+    assert under_quota.loc["unit_atomic", "reason"] == "below_min_hard_negative_quota"
+    assert not frame["rule_ids"].astype(str).str.contains("unit_atomic", regex=False).any()
+
+
+def test_candidate_contract_pipeline_counts_syntax_synthetic_rows_toward_quota(tmp_path: Path, monkeypatch):
+    clean_pool_path = write_unit_clean_pool(tmp_path / "clean_sentence_pool.csv.gz")
+    config = candidate_contract_config(tmp_path, clean_pool_path)
+    config["data"]["rule_quota"]["rule_ids"] = ["unit_atomic", "comma_subordinate"]
+    config["data"]["training_dataset_core"]["active_rule_quota"]["rule_ids"] = ["unit_atomic", "comma_subordinate"]
+    config["data"]["composition"]["atomic_positive_target"] = 4
+    config["data"]["composition"]["atomic_hard_negative_target"] = 4
+    config["data"]["composition"]["clean_identity_target"] = 2
+    patch_unit_operator_pipeline(monkeypatch)
+    _patch_unit_syntax_pipeline(monkeypatch)
+
+    result = build_dataset_from_config(config, force=True)
+    manifest = json.loads(Path(config["data"]["manifest_path"]).read_text(encoding="utf-8"))
+    frame = pd.read_csv(config["data"]["processed_train_path"])
+    reports_dir = Path(config["paths"]["reports_dir"]) / "dataset_build"
+    quota = pd.read_csv(reports_dir / "active_rule_quota_report.csv").set_index("rule_id")
+
+    syntax_atomic = frame[
+        frame["dataset_layer"].eq("atomic_positive")
+        & frame["rule_id"].eq("comma_subordinate")
+    ]
+    syntax_hard = frame[
+        frame["dataset_layer"].eq("atomic_hard_negative")
+        & frame["target_rule_id"].eq("comma_subordinate")
+    ]
+
+    assert result["dataset_contract"] == "candidate_opportunity"
+    assert len(syntax_atomic) == 2
+    assert syntax_atomic["activation_source"].eq("syntax_synthetic").all()
+    assert syntax_atomic["count_toward_rule_quota"].astype(bool).all()
+    assert int(quota.loc["comma_subordinate", "syntax_synthetic_atomic_count"]) == 2
+    assert int(quota.loc["comma_subordinate", "operator_atomic_count"]) == 0
+    assert int(quota.loc["comma_subordinate", "total_atomic_positive_count"]) == 2
+    assert int(manifest["syntax_atomic_positive_count_by_rule"]["comma_subordinate"]) == 2
+    assert "comma_subordinate" in manifest["syntax_supported_training_candidate_rule_ids"]
+    assert "comma_subordinate" in manifest["syntax_supported_active_rule_ids"]
+    assert (reports_dir / "syntax_atomic_positive_generation_report.csv").exists()
+    assert (reports_dir / "syntax_atomic_positive_rejection_report.csv").exists()
+    assert (reports_dir / "syntax_active_rule_coverage_report.csv").exists()
+    assert (reports_dir / "syntax_hard_negative_coverage_report.csv").exists()
+    assert not syntax_hard["count_toward_rule_quota"].astype(bool).any()
 
 
 def test_candidate_contract_pipeline_smoke_links_real_outputs_and_prefers_composition(tmp_path: Path, monkeypatch):

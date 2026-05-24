@@ -130,6 +130,10 @@ data:
     target_training_candidate_rule_count: 69
     fail_below_min_training_candidate_rule_count: true
     warn_below_target_training_candidate_rule_count: true
+    fail_below_final_active_rule_count: true
+    expected_min_final_active_rule_count: 43
+    target_final_active_rule_count: 69
+    warn_below_target_final_active_rule_count: true
   synthetic_seed: 13
   processed_train_path: data/processed/correction_dataset.csv.gz
   manifest_path: data/processed/dataset_manifest.json
@@ -148,6 +152,7 @@ data:
     reject_mixed_script_tokens: true
     reject_latin_confusable_inside_cyrillic_word: true
     reject_if_candidate_generator_finds_high_confidence_fix: true
+    high_confidence_candidate_threshold: 0.95
   synthetic:
     require_atomic_positive: true
     max_gold_edits_for_atomic: 1

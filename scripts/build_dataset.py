@@ -13,6 +13,7 @@ if str(ROOT_DIR) not in sys.path:
 from src.config.load_config import load_config
 from src.data.training_dataset import build_training_dataset_from_config
 from src.evaluation.activation_plan import write_verified_activation_plan
+from scripts.preflight_candidate_dataset import PreflightOptions, print_preflight_summary, run_preflight
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -23,6 +24,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     config = load_config(args.config)
+    preflight_result = run_preflight(_preflight_options_for_build(config, args))
+    print_preflight_summary(preflight_result)
+    if not preflight_result["ok"]:
+        return 1
     _write_activation_verified_reports()
     result = build_training_dataset_from_config(config, force=args.force)
     print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -32,6 +37,19 @@ def main(argv: list[str] | None = None) -> int:
     if args.fail_on_blocked and str(summary.get("verdict", "")).endswith("BLOCKED"):
         return 2
     return 0
+
+
+def _preflight_options_for_build(config: dict[str, Any], args: argparse.Namespace) -> PreflightOptions:
+    data_config = dict(config.get("data", {}) or {})
+    processed_path = Path(str(data_config.get("processed_train_path") or "data/processed/correction_dataset.csv.gz"))
+    reports_root = Path(str((config.get("paths", {}) or {}).get("reports_dir") or "reports"))
+    reports_dir = reports_root if reports_root.name == "dataset_build" else reports_root / "dataset_build"
+    return PreflightOptions(
+        config_path=args.config,
+        processed_dir=processed_path.parent,
+        reports_dir=reports_dir,
+        block_stale_artifacts=not bool(args.force),
+    )
 
 
 def _dataset_summary_payload(result: dict[str, Any], manifest_path: Path | None) -> dict[str, Any]:

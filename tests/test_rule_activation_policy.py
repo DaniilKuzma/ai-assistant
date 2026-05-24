@@ -15,6 +15,8 @@ from src.rules.capabilities import (
     activation_stage_for_rule,
     active_rule_ids_for_training,
     capability_manifest_fields,
+    expanded_activation_blocked_rows,
+    expanded_activation_candidate_rows,
     production_ready_rule_ids,
     training_candidate_rule_ids,
 )
@@ -180,6 +182,87 @@ def test_policy_manifest_flags_training_candidate_count_below_minimum():
     assert "training_candidate_rule_count_below_min:1<2" in fields["activation_policy"]["errors"]
 
 
+def test_policy_manifest_flags_final_active_count_thresholds():
+    capabilities = [
+        _capability("prod_rule", "INCLUDE_NOW"),
+        _capability("threshold_rule", "INCLUDE_AFTER_THRESHOLD_CALIBRATION"),
+    ]
+    policy = _expanded_policy(
+        expected_min_final_active_rule_count=3,
+        target_final_active_rule_count=4,
+        fail_below_final_active_rule_count=True,
+        warn_below_target_final_active_rule_count=True,
+    )
+
+    fields = capability_manifest_fields(capabilities, policy=policy, final_active_rule_ids=["prod_rule"])
+
+    assert fields["final_active_rule_count"] == 1
+    assert fields["target_final_active_rule_count"] == 4
+    assert "final_active_rule_count_below_min:1<3" in fields["activation_policy"]["errors"]
+    assert "final_active_rule_count_below_target:1<4" in fields["activation_policy"]["warnings"]
+
+
+def test_expanded_activation_candidate_rows_include_report_gates_and_validator_probe(monkeypatch):
+    capabilities = [
+        _capability("prod_rule", "INCLUDE_NOW"),
+        _capability("threshold_rule", "INCLUDE_AFTER_THRESHOLD_CALIBRATION"),
+        _capability("validator_rule", "INCLUDE_AFTER_VALIDATOR", validator=False),
+        _capability("blocked_rule", "BLOCK_PLANNED"),
+    ]
+    policy = _expanded_policy(include_decisions=["INCLUDE_NOW"])
+
+    def fake_probe(capability: RuleCapability, current_policy: RuleActivationPolicy) -> dict[str, object]:
+        del current_policy
+        return {
+            "rule_id": capability.project_rule_ids[0],
+            "status": "pass",
+            "passed_examples": 3,
+            "example_count": 3,
+            "reason": "",
+            "empirical_validator_support": True,
+        }
+
+    monkeypatch.setattr("src.rules.capabilities._empirical_validator_probe_for_capability", fake_probe)
+
+    rows = expanded_activation_candidate_rows(
+        capabilities,
+        policy=policy,
+        evidence_by_rule={
+            "prod_rule": {"generated_probe_count": 4, "verifier_pass_count": 4, "candidate_recall": 1.0},
+            "threshold_rule": {"generated_probe_count": 3, "verifier_pass_count": 3, "candidate_recall": 1.0},
+            "validator_rule": {"generated_probe_count": 3, "verifier_pass_count": 3, "candidate_recall": 1.0},
+        },
+        final_active_rule_ids=["prod_rule", "threshold_rule", "validator_rule"],
+    )
+    by_rule = {row["rule_id"]: row for row in rows}
+
+    assert by_rule["prod_rule"]["activation_bucket"] == "production_ready"
+    assert by_rule["threshold_rule"]["activation_bucket"] == "threshold_calibration"
+    assert by_rule["validator_rule"]["activation_bucket"] == "validator_dependent"
+    assert by_rule["validator_rule"]["empirical_validator_support"] is True
+    assert by_rule["validator_rule"]["included"] is True
+    assert by_rule["blocked_rule"]["included"] is False
+    assert by_rule["prod_rule"]["generated_probe_count"] == 4
+    assert by_rule["prod_rule"]["verifier_pass_count"] == 4
+    assert by_rule["prod_rule"]["candidate_recall"] == 1.0
+
+
+def test_expanded_activation_blocked_rows_explain_gate_failures():
+    capabilities = [
+        _capability("ner_rule", "INCLUDE_AFTER_TRAINING", requires=["ner"], ner=False),
+        _capability("quote_open", "INCLUDE_AFTER_THRESHOLD_CALIBRATION"),
+        _capability("mining_rule", "MINING_ONLY"),
+    ]
+    policy = _expanded_policy()
+
+    blocked = expanded_activation_blocked_rows(capabilities, policy=policy)
+    by_rule = {row["rule_id"]: row for row in blocked}
+
+    assert by_rule["ner_rule"]["blocker"] == "needs_NER"
+    assert by_rule["quote_open"]["blocker"] == "broad_normalization_bucket"
+    assert by_rule["mining_rule"]["blocker"] == "MINING_ONLY"
+
+
 def test_dataset_contract_adds_activation_columns():
     frame = pd.DataFrame(
         [
@@ -202,4 +285,3 @@ def test_dataset_contract_adds_activation_columns():
     assert upgraded.loc[0, "activation_stage"] == "threshold_calibration"
     assert bool(upgraded.loc[0, "production_ready"]) is False
     assert operator_rule_counts(upgraded) == {"ne_verb": 1}
-

@@ -29,6 +29,7 @@ def test_main_config_is_canonical_train_profile_for_candidate_opportunity_datase
     assert config["data"]["clean_pool"]["reject_mixed_script_tokens"] is True
     assert config["data"]["clean_pool"]["reject_latin_confusable_inside_cyrillic_word"] is True
     assert config["data"]["clean_pool"]["reject_if_candidate_generator_finds_high_confidence_fix"] is True
+    assert config["data"]["clean_pool"]["high_confidence_candidate_threshold"] == 0.95
     assert config["data"]["synthetic"]["require_atomic_positive"] is True
     assert config["data"]["synthetic"]["max_gold_edits_for_atomic"] == 1
     assert config["data"]["synthetic"]["require_candidate_coverage"] is True
