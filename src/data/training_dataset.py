@@ -325,6 +325,23 @@ def training_dataset_quality_errors(manifest: dict[str, Any], config: dict[str, 
     for rule_id in manifest.get("active_rule_ids", []) or []:
         if int(rule_counts.get(str(rule_id), 0)) < 1000:
             errors.append(f"active_rule_under_min:{rule_id}")
+    expected_final = int(manifest.get("expected_min_final_active_rule_count", 0) or 0)
+    final_active_count = int(manifest.get("final_active_rule_count", manifest.get("active_rule_count", 0)) or 0)
+    if expected_final and final_active_count < expected_final:
+        errors.append(f"final_active_rule_count_below_min:{final_active_count}<{expected_final}")
+    for row in manifest.get("active_rule_coverage", []) or []:
+        rule_id = str(row.get("rule_id") or "")
+        reason = str(row.get("reason") or "")
+        if not rule_id or str(row.get("status") or "") != "fail":
+            continue
+        if reason == "atomic_positive_under_min":
+            errors.append(f"atomic_positive_under_min:{rule_id}")
+        elif reason == "candidate_recall_under_min":
+            errors.append(f"candidate_recall_under_min:{rule_id}")
+    for row in manifest.get("hard_negative_coverage", []) or []:
+        rule_id = str(row.get("target_rule_id") or "")
+        if rule_id and str(row.get("status") or "") == "fail":
+            errors.append(f"hard_negative_under_min:{rule_id}")
     if float(manifest.get("synthetic_normalized_pair_duplicate_rate", 0.0) or 0.0) > 0.25:
         errors.append("synthetic_normalized_duplicate_rate_above_threshold")
     if int(manifest.get("top_normalized_pair_count", 0) or 0) > 20:
@@ -370,6 +387,8 @@ def training_dataset_quality_errors(manifest: dict[str, Any], config: dict[str, 
     if not dict(manifest.get("error_bearing_sentence_source_counts", {}) or {}):
         errors.append("missing_error_bearing_sentence_source_counts")
     if manifest.get("underfilled_rule_ids") or manifest.get("low_count_active_rule_ids"):
+        errors.append("active_rule_quota_underfilled")
+    if manifest.get("under_quota_rule_ids") or manifest.get("rules_under_hard_negative_min"):
         errors.append("active_rule_quota_underfilled")
     if int(dict(manifest.get("rule_diversity_summary", {}) or {}).get("failed_rule_count", 0) or 0) != 0:
         errors.append("rule_diversity_gates_failed")

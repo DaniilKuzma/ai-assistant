@@ -6,6 +6,10 @@ import yaml
 from src.candidates.candidate_generator import Candidate
 from src.data.training_dataset import compute_broad_dataset_targets, resolve_broad_active_training_rules
 from src.data.operator_dataset_builder import (
+    LAYER_ATOMIC_POSITIVE,
+    _operator_rule_quota_config,
+    _requested_layer_targets_from_config,
+    _resolve_effective_layer_targets,
     _rule_counts as _operator_rule_counts,
     generate_atomic_positive_rows_from_syntax_synthetic,
 )
@@ -258,6 +262,115 @@ def test_dynamic_targets_scale_from_active_rule_quotas_and_real_pair_count():
     assert targets["clean_identity_target"] >= int(targets["total_target"] * 0.10)
     assert targets["hard_negative_target"] >= int(targets["total_target"] * 0.10)
     assert 0.03 <= targets["multi_error_stress_target"] / targets["total_target"] <= 0.05
+
+
+def test_effective_atomic_target_adjusts_to_final_active_rule_capacity():
+    config = {
+        "data": {
+            "composition": {
+                "atomic_positive_ratio": 0.45,
+                "atomic_hard_negative_ratio": 0.35,
+                "clean_identity_ratio": 0.12,
+                "stress_multi_error_ratio": 0.05,
+                "real_atomic_train_ratio": 0.03,
+                "allow_layer_target_adjustment": True,
+                "fail_on_unadjusted_layer_deficit": True,
+            },
+            "rule_quota": {
+                "min_atomic_positives_per_active_rule": 1000,
+                "preferred_atomic_positives_per_active_rule": 2500,
+            },
+        }
+    }
+    requested = _requested_layer_targets_from_config(config, 200000)
+    quota = _operator_rule_quota_config(config)
+
+    effective, adjustments, warnings, audit_errors = _resolve_effective_layer_targets(
+        config,
+        requested,
+        final_active_rule_count=43,
+        quota_config=quota,
+    )
+
+    assert requested[LAYER_ATOMIC_POSITIVE] == 90000
+    assert effective[LAYER_ATOMIC_POSITIVE] == 90000
+    assert adjustments == {}
+    assert warnings == []
+    assert audit_errors == []
+
+
+def test_effective_atomic_target_records_adjustment_when_requested_exceeds_capacity():
+    config = {
+        "data": {
+            "composition": {
+                "atomic_positive_ratio": 0.45,
+                "atomic_hard_negative_ratio": 0.35,
+                "clean_identity_ratio": 0.12,
+                "stress_multi_error_ratio": 0.05,
+                "real_atomic_train_ratio": 0.03,
+                "allow_layer_target_adjustment": True,
+                "fail_on_unadjusted_layer_deficit": True,
+            },
+            "rule_quota": {
+                "min_atomic_positives_per_active_rule": 1000,
+                "preferred_atomic_positives_per_active_rule": 1500,
+            },
+        }
+    }
+    requested = _requested_layer_targets_from_config(config, 200000)
+    quota = _operator_rule_quota_config(config)
+
+    effective, adjustments, warnings, audit_errors = _resolve_effective_layer_targets(
+        config,
+        requested,
+        final_active_rule_count=43,
+        quota_config=quota,
+    )
+
+    assert requested[LAYER_ATOMIC_POSITIVE] == 90000
+    assert effective[LAYER_ATOMIC_POSITIVE] == 64500
+    assert adjustments[LAYER_ATOMIC_POSITIVE] == {
+        "requested": 90000,
+        "feasible": 64500,
+        "selected": 64500,
+        "reason": "requested_exceeds_per_rule_capacity",
+    }
+    assert warnings == ["atomic_positive_target_adjusted"]
+    assert audit_errors == []
+
+
+def test_effective_atomic_target_can_use_explicit_raised_max_without_adjustment():
+    config = {
+        "data": {
+            "composition": {
+                "atomic_positive_ratio": 0.45,
+                "atomic_hard_negative_ratio": 0.35,
+                "clean_identity_ratio": 0.12,
+                "stress_multi_error_ratio": 0.05,
+                "real_atomic_train_ratio": 0.03,
+                "allow_layer_target_adjustment": True,
+            },
+            "rule_quota": {
+                "min_atomic_positives_per_active_rule": 1000,
+                "preferred_atomic_positives_per_active_rule": 1500,
+                "max_total_per_rule_id": 3000,
+            },
+        }
+    }
+    requested = _requested_layer_targets_from_config(config, 200000)
+    quota = _operator_rule_quota_config(config)
+
+    effective, adjustments, warnings, audit_errors = _resolve_effective_layer_targets(
+        config,
+        requested,
+        final_active_rule_count=43,
+        quota_config=quota,
+    )
+
+    assert effective[LAYER_ATOMIC_POSITIVE] == 90000
+    assert adjustments == {}
+    assert warnings == []
+    assert audit_errors == []
 
 
 def test_excluded_active_rules_do_not_remain_underfilled_after_quota_finalize():

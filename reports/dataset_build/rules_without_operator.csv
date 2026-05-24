@@ -1,6 +1,0 @@
-rule_id,include,reason,operator,error_type,requires
-capitalization_ner,False,BLOCK_MISSING_MODULE,,,
-neural_punctuation,False,BLOCK_MISSING_MODULE,,,
-quote_close,False,BLOCK_EXCLUDED_BY_OPERATOR_POLICY,,,
-quote_open,False,BLOCK_EXCLUDED_BY_OPERATOR_POLICY,,,
-yo_e_candidate,False,BLOCK_YO_E_DISABLED,,,

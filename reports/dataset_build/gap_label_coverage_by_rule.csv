@@ -1,6 +1,0 @@
-rule_id,group,gold_gap_count,candidate_gap_present_count,gap_candidate_recall,missing_examples
-bracket_pair_balance,bracket_pair_balance,2379,2379,1.0,
-comma_conjunction,comma_conjunction,2271,2271,1.0,
-comma_subordinate,comma_subordinate,2577,2577,1.0,
-final_punctuation_default,final_punctuation_default,2411,2411,1.0,
-punctuation_delete_replace,punctuation_delete_replace,1549,1549,1.0,

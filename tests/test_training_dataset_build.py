@@ -17,6 +17,23 @@ from tests.candidate_contract_fixtures import (
 )
 
 
+def _write_limited_unit_clean_pool(path: Path, count: int) -> Path:
+    labels = ["сегодня", "утром", "вечером", "завтра", "позже"]
+    rows = [
+        {
+            "text": f"Редакция отметила, что молоко поступило после проверки {labels[index]}.",
+            "source_name": "unit",
+            "source_subcorpus": "unit",
+            "domain": "unit",
+            "sentence_id": f"limited-{index}",
+            "hash": f"limited-{index}",
+        }
+        for index in range(count)
+    ]
+    pd.DataFrame(rows).to_csv(path, index=False)
+    return path
+
+
 class UnitSyntaxCandidateGenerator(UnitCandidateGenerator):
     def generate(self, text: str):
         candidates = list(super().generate(text))
@@ -224,6 +241,23 @@ def test_candidate_contract_pipeline_builds_atomic_from_clean_pool_without_outpu
     assert (reports_dir / "expanded_activation_blocked_report.csv").exists()
     assert (reports_dir / "active_rule_activation_stage_report.csv").exists()
     assert (reports_dir / "under_quota_active_rules_report.csv").exists()
+    assert (reports_dir / "layer_target_report.csv").exists()
+    assert (reports_dir / "active_rule_coverage_report.csv").exists()
+    assert (reports_dir / "hard_negative_coverage_report.csv").exists()
+    assert manifest["requested_layer_targets"]["atomic_positive"] == 4
+    assert manifest["effective_layer_targets"]["atomic_positive"] == 2
+    assert manifest["layer_target_adjustments"]["atomic_positive"]["reason"] == "requested_exceeds_per_rule_capacity"
+    assert "atomic_positive_target_adjusted" in manifest["warnings"]
+    layer_report = pd.read_csv(reports_dir / "layer_target_report.csv").set_index("layer")
+    assert int(layer_report.loc["atomic_positive", "requested_target"]) == 4
+    assert int(layer_report.loc["atomic_positive", "effective_target"]) == 2
+    assert int(layer_report.loc["atomic_positive", "selected_count"]) == 2
+    assert int(layer_report.loc["atomic_positive", "deficit"]) == 2
+    assert layer_report.loc["atomic_positive", "adjustment_reason"] == "requested_exceeds_per_rule_capacity"
+    active_coverage = pd.read_csv(reports_dir / "active_rule_coverage_report.csv").set_index("rule_id")
+    assert active_coverage.loc["unit_atomic", "status"] == "pass"
+    hard_coverage = pd.read_csv(reports_dir / "hard_negative_coverage_report.csv").set_index("target_rule_id")
+    assert hard_coverage.loc["unit_atomic", "status"] == "pass"
     candidate_report = pd.read_csv(reports_dir / "expanded_activation_candidate_report.csv").set_index("rule_id")
     assert candidate_report.loc["unit_atomic", "included"] in (True, "True", "true")
     assert candidate_report.loc["unit_atomic", "verifier_pass_count"] == 2
@@ -234,22 +268,23 @@ def test_candidate_contract_pipeline_reports_under_quota_rules_without_training_
     clean_pool_path = write_unit_clean_pool(tmp_path / "clean_sentence_pool.csv.gz")
     config = candidate_contract_config(tmp_path, clean_pool_path)
     config["data"]["rule_quota"]["min_hard_negatives_per_active_rule"] = 5
-    config["data"]["rule_activation"]["expected_min_final_active_rule_count"] = 0
-    config["data"]["rule_activation"]["fail_below_final_active_rule_count"] = False
     patch_unit_operator_pipeline(monkeypatch)
 
-    build_dataset_from_config(config, force=True)
+    result = build_dataset_from_config(config, force=True)
     manifest = json.loads(Path(config["data"]["manifest_path"]).read_text(encoding="utf-8"))
     frame = pd.read_csv(config["data"]["processed_train_path"])
     reports_dir = Path(config["paths"]["reports_dir"]) / "dataset_build"
-    under_quota = pd.read_csv(reports_dir / "under_quota_active_rules_report.csv").set_index("rule_id")
+    hard_coverage = pd.read_csv(reports_dir / "hard_negative_coverage_report.csv").set_index("target_rule_id")
 
+    assert result["verdict"] == "DATASET_BLOCKED"
     assert "unit_atomic" in manifest["expanded_training_candidate_rule_ids"]
     assert "unit_atomic" in manifest["under_quota_rule_ids"]
-    assert "unit_atomic" not in manifest["final_active_rule_ids"]
-    assert under_quota.loc["unit_atomic", "status"] == "under_quota"
-    assert under_quota.loc["unit_atomic", "reason"] == "below_min_hard_negative_quota"
-    assert not frame["rule_ids"].astype(str).str.contains("unit_atomic", regex=False).any()
+    assert "unit_atomic" in manifest["final_active_rule_ids"]
+    assert "hard_negative_under_min:unit_atomic" in manifest["audit_errors"]
+    assert manifest["rules_under_hard_negative_min"] == ["unit_atomic"]
+    assert hard_coverage.loc["unit_atomic", "status"] == "fail"
+    assert hard_coverage.loc["unit_atomic", "reason"] == "hard_negative_under_min"
+    assert frame["rule_ids"].astype(str).str.contains("unit_atomic", regex=False).any()
 
 
 def test_candidate_contract_pipeline_counts_syntax_synthetic_rows_toward_quota(tmp_path: Path, monkeypatch):
@@ -412,6 +447,7 @@ def test_candidate_contract_pipeline_reads_top_level_audit_alias_first(tmp_path:
 
     assert result["verdict"] == "DATASET_BLOCKED"
     assert "candidate_recall_active_min_below_threshold" in result["audit_errors"]
+    assert "candidate_recall_under_min:unit_atomic" in result["audit_errors"]
     assert manifest["audit_errors"] == result["audit_errors"]
 
 
@@ -478,3 +514,67 @@ def test_candidate_contract_pipeline_blocks_when_clean_pool_missing(tmp_path: Pa
     assert result["verdict"] == "DATASET_BLOCKED"
     assert manifest["audit_errors"] == ["missing_clean_sentence_pool"]
     assert not output_path.exists()
+
+
+def test_candidate_contract_pipeline_blocks_atomic_positive_under_min(tmp_path: Path, monkeypatch):
+    clean_pool_path = _write_limited_unit_clean_pool(tmp_path / "clean_sentence_pool.csv.gz", 2)
+    config = candidate_contract_config(tmp_path, clean_pool_path)
+    config["data"]["total_examples"] = 4
+    config["data"]["target_total_examples"] = 4
+    config["data"]["train_examples"] = 2
+    config["data"]["val_examples"] = 1
+    config["data"]["test_examples"] = 1
+    config["data"]["exact_split_sizes"] = {"train": 2, "val": 1, "test": 1}
+    config["data"]["composition"]["atomic_positive_target"] = 3
+    config["data"]["composition"]["atomic_hard_negative_target"] = 1
+    config["data"]["composition"]["clean_identity_target"] = 0
+    config["data"]["rule_quota"]["min_atomic_positives_per_active_rule"] = 3
+    config["data"]["rule_quota"]["preferred_atomic_positives_per_active_rule"] = 3
+    config["data"]["rule_quota"]["max_total_per_rule_id"] = 3
+    patch_unit_operator_pipeline(monkeypatch)
+
+    result = build_dataset_from_config(config, force=True)
+    manifest = json.loads(Path(config["data"]["manifest_path"]).read_text(encoding="utf-8"))
+    reports_dir = Path(config["paths"]["reports_dir"]) / "dataset_build"
+    active_coverage = pd.read_csv(reports_dir / "active_rule_coverage_report.csv").set_index("rule_id")
+
+    assert result["verdict"] == "DATASET_BLOCKED"
+    assert "atomic_positive_under_min:unit_atomic" in manifest["audit_errors"]
+    assert active_coverage.loc["unit_atomic", "status"] == "fail"
+    assert active_coverage.loc["unit_atomic", "reason"] == "atomic_positive_under_min"
+
+
+def test_candidate_contract_pipeline_warns_atomic_below_preferred_without_block(tmp_path: Path, monkeypatch):
+    clean_pool_path = write_unit_clean_pool(tmp_path / "clean_sentence_pool.csv.gz")
+    config = candidate_contract_config(tmp_path, clean_pool_path)
+    config["data"]["rule_quota"]["min_atomic_positives_per_active_rule"] = 1
+    config["data"]["rule_quota"]["preferred_atomic_positives_per_active_rule"] = 3
+    config["data"]["rule_quota"]["max_total_per_rule_id"] = 2
+    patch_unit_operator_pipeline(monkeypatch)
+
+    result = build_dataset_from_config(config, force=True)
+    manifest = json.loads(Path(config["data"]["manifest_path"]).read_text(encoding="utf-8"))
+    reports_dir = Path(config["paths"]["reports_dir"]) / "dataset_build"
+    active_coverage = pd.read_csv(reports_dir / "active_rule_coverage_report.csv").set_index("rule_id")
+
+    assert result["verdict"] == "READY_FOR_TRAINING_DATASET"
+    assert manifest["audit_errors"] == []
+    assert "active_rule_below_preferred:unit_atomic" in manifest["warnings"]
+    assert manifest["active_rules_below_preferred"] == ["unit_atomic"]
+    assert active_coverage.loc["unit_atomic", "status"] == "warning"
+    assert active_coverage.loc["unit_atomic", "reason"] == "active_rule_below_preferred"
+
+
+def test_candidate_contract_pipeline_final_active_count_gate_blocks(tmp_path: Path, monkeypatch):
+    clean_pool_path = write_unit_clean_pool(tmp_path / "clean_sentence_pool.csv.gz")
+    config = candidate_contract_config(tmp_path, clean_pool_path)
+    config["data"]["rule_activation"]["expected_min_final_active_rule_count"] = 43
+    config["data"]["rule_activation"]["fail_below_final_active_rule_count"] = True
+    patch_unit_operator_pipeline(monkeypatch)
+
+    result = build_dataset_from_config(config, force=True)
+    manifest = json.loads(Path(config["data"]["manifest_path"]).read_text(encoding="utf-8"))
+
+    assert result["verdict"] == "DATASET_BLOCKED"
+    assert manifest["final_active_rule_count"] == 1
+    assert "final_active_rule_count_below_min:1<43" in manifest["audit_errors"]

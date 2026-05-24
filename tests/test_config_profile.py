@@ -25,6 +25,8 @@ def test_main_config_is_canonical_train_profile_for_candidate_opportunity_datase
         "clean_identity_ratio": 0.12,
         "stress_multi_error_ratio": 0.05,
         "real_atomic_train_ratio": 0.03,
+        "allow_layer_target_adjustment": True,
+        "fail_on_unadjusted_layer_deficit": True,
     }
     assert config["data"]["clean_pool"]["reject_mixed_script_tokens"] is True
     assert config["data"]["clean_pool"]["reject_latin_confusable_inside_cyrillic_word"] is True

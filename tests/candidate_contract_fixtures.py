@@ -125,6 +125,10 @@ def candidate_contract_config(tmp_path: Path, clean_pool_path: Path) -> dict:
         "min_hard_negatives_per_active_rule": 1,
         "disable_rule_if_quota_not_met": True,
     }
+    config["data"]["rule_activation"]["expected_min_final_active_rule_count"] = 0
+    config["data"]["rule_activation"]["target_final_active_rule_count"] = 0
+    config["data"]["rule_activation"]["fail_below_final_active_rule_count"] = False
+    config["data"]["rule_activation"]["warn_below_target_final_active_rule_count"] = False
     config["data"]["audit"] = {
         "min_candidate_recall_for_active_rule": 0.95,
     }

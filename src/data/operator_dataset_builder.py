@@ -73,6 +73,7 @@ from src.rules.capabilities import (
     active_rule_ids_for_training,
     activation_policy_from_config,
     activation_policy_rows,
+    activation_stage_for_rule,
     activation_stage_counts_from_frame,
     annotate_activation_columns,
     capability_manifest_fields,
@@ -81,6 +82,7 @@ from src.rules.capabilities import (
     expanded_activation_candidate_rows,
     expanded_activation_source_map,
     load_rule_capabilities,
+    production_ready_flag_for_rule,
     write_rule_capability_reports,
 )
 from src.rules.rule_ids import UNKNOWN_RULE_ID, normalize_rule_id
@@ -329,29 +331,26 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
     )
     verified_rows = _merge_atomic_positive_rows(atomic_result.rows, syntax_atomic_result.rows)
     rejection_rows = atomic_result.rejection_rows
-    rule_min = int(quota_config.get("min_atomic_positives_per_active_rule", 1000))
-    verified_counts = Counter(rule_id for row in verified_rows for rule_id in _row_rule_ids(row) if _counts_toward_rule_quota(row))
-    active_rule_ids = sorted(rule_id for rule_id, count in verified_counts.items() if count >= rule_min)
+    active_rule_ids = sorted(candidate_rule_ids | set(syntax_atomic_result.selected_rule_ids))
     active_set = set(active_rule_ids)
     selected_synthetic = [row for row in verified_rows if any(rule_id in active_set for rule_id in _row_rule_ids(row))]
     selected_synthetic = [_filter_row_rule_ids(row, active_set) for row in selected_synthetic]
     selected_synthetic = _dedupe_atomic_positive_rows(selected_synthetic)
-    active_counts = Counter(rule_id for row in selected_synthetic for rule_id in _row_rule_ids(row))
-    active_rule_ids = sorted(rule_id for rule_id in active_rule_ids if active_counts.get(rule_id, 0) >= rule_min)
-    active_set = set(active_rule_ids)
-    selected_synthetic = [row for row in selected_synthetic if any(rule_id in active_set for rule_id in _row_rule_ids(row))]
-    selected_synthetic = [_filter_row_rule_ids(row, active_set) for row in selected_synthetic]
 
     excluded_after_generation = {
         row["rule_id"]: row.get("reason") or "BLOCK_NO_OPERATOR"
         for row in target_rows
         if not bool(row.get("include"))
     }
-    for rule_id in sorted((candidate_rule_ids | set(syntax_atomic_result.selected_rule_ids)) - active_set):
-        excluded_after_generation[rule_id] = "insufficient_atomic_positives"
 
     seed = int(data_config.get("synthetic_seed", 17))
-    layer_targets = _layer_targets_from_config(config, requested_total)
+    requested_layer_targets = _requested_layer_targets_from_config(config, requested_total)
+    layer_targets, layer_target_adjustments, layer_target_warnings, layer_target_audit_errors = _resolve_effective_layer_targets(
+        config,
+        requested_layer_targets,
+        final_active_rule_count=len(active_rule_ids),
+        quota_config=quota_config,
+    )
     strict_clean_rows = _strict_clean_pool_rows(clean_pool_path, config)
     stress_loss_weight = _stress_loss_weight_from_config(config)
     real_atomic_path = _real_atomic_cache_path(config, output_path=output_path)
@@ -407,6 +406,13 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
     hard_negative_pool = _merge_hard_negative_rows(hard_negative_pool, syntax_hard_negative_result.rows)
 
     clean_identity_pool = _clean_identity_rows_from_clean_pool(strict_clean_rows)
+    layer_available_counts = {
+        LAYER_ATOMIC_POSITIVE: len(selected_synthetic),
+        LAYER_ATOMIC_HARD_NEGATIVE: len(hard_negative_pool),
+        LAYER_CLEAN_IDENTITY: len(clean_identity_pool),
+        LAYER_REAL_ATOMIC: len(real_atomic_rows),
+        LAYER_STRESS_MULTI_ERROR: len(stress_rows),
+    }
     layer_rows = _compose_layer_rows(
         {
             LAYER_ATOMIC_POSITIVE: selected_synthetic,
@@ -484,6 +490,22 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
     expanded_blocked_counts = dict(Counter(str(row.get("blocker", "")) for row in expanded_blocked_rows if row.get("blocker")))
     active_rule_ids = final_active_rule_ids
     active_set = set(active_rule_ids)
+    active_rule_coverage = _active_rule_coverage_rows(
+        frame,
+        active_rule_ids=active_rule_ids,
+        recall_reports=recall_reports,
+        quota_config=quota_config,
+        config=config,
+        capabilities=capabilities,
+        activation_policy=activation_policy,
+    )
+    hard_negative_coverage = _hard_negative_coverage_rows(
+        frame,
+        active_rule_ids=active_rule_ids,
+        quota_config=quota_config,
+        capabilities=capabilities,
+        activation_policy=activation_policy,
+    )
     frame.to_csv(output_path, index=False)
     _write_split_and_layer_files(frame, output_path)
 
@@ -504,6 +526,14 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
         production_gates=production_gates,
         low_resource_rule_ids=sorted((candidate_rule_ids | set(syntax_atomic_result.selected_rule_ids)) - active_set),
         hard_negative_counts_by_rule=_hard_negative_counts_by_target_rule(frame),
+        requested_layer_targets=requested_layer_targets,
+        effective_layer_targets=layer_targets,
+        layer_target_adjustments=layer_target_adjustments,
+        layer_target_warnings=layer_target_warnings,
+        layer_target_audit_errors=layer_target_audit_errors,
+        layer_available_counts=layer_available_counts,
+        active_rule_coverage=active_rule_coverage,
+        hard_negative_coverage=hard_negative_coverage,
         syntax_atomic_result=syntax_atomic_result,
         syntax_hard_negative_result=syntax_hard_negative_result,
         expanded_training_candidate_rule_ids=expanded_attempt_rule_ids,
@@ -629,13 +659,15 @@ def _operator_rule_quota_config(config: dict[str, Any]) -> dict[str, Any]:
     raw = dict(data_config.get("rule_quota", {}) or {})
     min_total = int(raw.get("min_atomic_positives_per_active_rule") or old_quota.get("min_total_per_active_rule") or 1000)
     preferred = int(raw.get("preferred_atomic_positives_per_active_rule") or old_quota.get("preferred_total_per_active_rule") or max(2500, min_total))
+    max_total_explicit = "max_total_per_rule_id" in raw
     max_total = int(raw.get("max_total_per_rule_id") or old_caps.get("max_total_per_rule_id") or max(preferred, min_total))
-    min_hard = int(raw.get("min_hard_negatives_per_active_rule") or old_quota.get("min_hard_negatives_per_active_rule") or 0)
+    min_hard = int(raw.get("min_hard_negatives_per_active_rule") or old_quota.get("min_hard_negatives_per_active_rule") or 500)
     rule_ids = raw.get("rule_ids") or old_quota.get("rule_ids") or []
     return {
         "min_atomic_positives_per_active_rule": max(0, min_total),
         "preferred_atomic_positives_per_active_rule": max(min_total, preferred),
         "max_total_per_rule_id": max(min_total, max_total),
+        "max_total_per_rule_id_explicit": max_total_explicit,
         "min_hard_negatives_per_active_rule": max(0, min_hard),
         "disable_rule_if_quota_not_met": _truthy(raw.get("disable_rule_if_quota_not_met", old_quota.get("disable_rule_if_quota_not_met", False))),
         "rule_ids": [str(rule_id) for rule_id in rule_ids if str(rule_id)],
@@ -653,7 +685,7 @@ def _stress_loss_weight_from_config(config: dict[str, Any]) -> float:
         return 0.4
 
 
-def _layer_targets_from_config(config: dict[str, Any], requested_total: int) -> dict[str, int]:
+def _requested_layer_targets_from_config(config: dict[str, Any], requested_total: int) -> dict[str, int]:
     data_config = config.get("data", {}) or {}
     composition = dict(data_config.get("composition", {}) or {})
     if composition:
@@ -689,6 +721,54 @@ def _layer_targets_from_config(config: dict[str, Any], requested_total: int) -> 
 
     targets = _allocate_counts_by_weight(requested_total, DEFAULT_LAYER_RATIOS)
     return _normalize_layer_targets(targets, requested_total)
+
+
+def _layer_targets_from_config(config: dict[str, Any], requested_total: int) -> dict[str, int]:
+    return _requested_layer_targets_from_config(config, requested_total)
+
+
+def _resolve_effective_layer_targets(
+    config: dict[str, Any],
+    requested_layer_targets: dict[str, int],
+    *,
+    final_active_rule_count: int,
+    quota_config: dict[str, Any],
+) -> tuple[dict[str, int], dict[str, dict[str, Any]], list[str], list[str]]:
+    effective = {layer: max(0, int(requested_layer_targets.get(layer, 0) or 0)) for layer in LAYER_ORDER}
+    adjustments: dict[str, dict[str, Any]] = {}
+    warnings: list[str] = []
+    audit_errors: list[str] = []
+    requested_atomic = int(effective.get(LAYER_ATOMIC_POSITIVE, 0) or 0)
+    capacity_per_rule = _atomic_target_capacity_per_rule(quota_config)
+    feasible_atomic = max(0, int(final_active_rule_count)) * max(0, int(capacity_per_rule))
+    if requested_atomic <= feasible_atomic:
+        return effective, adjustments, warnings, audit_errors
+
+    selected_atomic = feasible_atomic
+    reason = "requested_exceeds_per_rule_capacity"
+    adjustments[LAYER_ATOMIC_POSITIVE] = {
+        "requested": requested_atomic,
+        "feasible": feasible_atomic,
+        "selected": selected_atomic,
+        "reason": reason,
+    }
+    if _allow_layer_target_adjustment(config):
+        effective[LAYER_ATOMIC_POSITIVE] = selected_atomic
+        warnings.append("atomic_positive_target_adjusted")
+    else:
+        audit_errors.append("atomic_positive_target_exceeds_feasible")
+    return effective, adjustments, warnings, audit_errors
+
+
+def _atomic_target_capacity_per_rule(quota_config: dict[str, Any]) -> int:
+    if bool(quota_config.get("max_total_per_rule_id_explicit", False)):
+        return int(quota_config.get("max_total_per_rule_id", 0) or 0)
+    return int(quota_config.get("preferred_atomic_positives_per_active_rule", 0) or 0)
+
+
+def _allow_layer_target_adjustment(config: dict[str, Any]) -> bool:
+    composition = dict(((config.get("data", {}) or {}).get("composition", {}) or {}))
+    return _truthy(composition.get("allow_layer_target_adjustment", True))
 
 
 def _composition_target_key(layer: str) -> str:
@@ -843,6 +923,33 @@ def _take_unique_rows(rows: list[dict[str, Any]], *, target: int, seen_hashes: s
         seen_hashes.add(pair_hash)
         result.append(item)
     return result
+
+
+def _layer_target_report_rows(
+    *,
+    requested_layer_targets: dict[str, int],
+    effective_layer_targets: dict[str, int],
+    layer_available_counts: dict[str, int],
+    layer_selected_counts: dict[str, int],
+    layer_target_adjustments: dict[str, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for layer in LAYER_ORDER:
+        requested = int(requested_layer_targets.get(layer, 0) or 0)
+        selected = int(layer_selected_counts.get(layer, 0) or 0)
+        adjustment = dict(layer_target_adjustments.get(layer, {}) or {})
+        rows.append(
+            {
+                "layer": layer,
+                "requested_target": requested,
+                "effective_target": int(effective_layer_targets.get(layer, requested) or 0),
+                "available_count": int(layer_available_counts.get(layer, 0) or 0),
+                "selected_count": selected,
+                "deficit": max(0, requested - selected),
+                "adjustment_reason": str(adjustment.get("reason") or ""),
+            }
+        )
+    return rows
 
 
 def _dedupe_atomic_positive_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -2279,6 +2386,14 @@ def _manifest(
     production_gates: bool = True,
     low_resource_rule_ids: list[str] | None = None,
     hard_negative_counts_by_rule: dict[str, int] | None = None,
+    requested_layer_targets: dict[str, int] | None = None,
+    effective_layer_targets: dict[str, int] | None = None,
+    layer_target_adjustments: dict[str, dict[str, Any]] | None = None,
+    layer_target_warnings: list[str] | None = None,
+    layer_target_audit_errors: list[str] | None = None,
+    layer_available_counts: dict[str, int] | None = None,
+    active_rule_coverage: list[dict[str, Any]] | None = None,
+    hard_negative_coverage: list[dict[str, Any]] | None = None,
     syntax_atomic_result: SyntaxAtomicPositiveGenerationResult | None = None,
     syntax_hard_negative_result: SyntaxHardNegativeGenerationResult | None = None,
     expanded_training_candidate_rule_ids: list[str] | None = None,
@@ -2298,6 +2413,18 @@ def _manifest(
         if int(syntax_atomic_counts.get(rule_id, 0)) < min_required_for_syntax
     ]
     layer_counts = _value_counts(frame, "dataset_layer")
+    requested_layer_targets = {layer: int((requested_layer_targets or {}).get(layer, 0) or 0) for layer in LAYER_ORDER}
+    effective_layer_targets = {layer: int((effective_layer_targets or requested_layer_targets).get(layer, 0) or 0) for layer in LAYER_ORDER}
+    layer_target_adjustments = dict(layer_target_adjustments or {})
+    active_rule_coverage = list(active_rule_coverage or [])
+    hard_negative_coverage = list(hard_negative_coverage or [])
+    layer_target_report = _layer_target_report_rows(
+        requested_layer_targets=requested_layer_targets,
+        effective_layer_targets=effective_layer_targets,
+        layer_available_counts=layer_available_counts or {},
+        layer_selected_counts=layer_counts,
+        layer_target_adjustments=layer_target_adjustments,
+    )
     composition = _value_counts(frame, "source_type")
     synthetic = frame[frame["source_type"].eq(SYNTHETIC_OPEN_CLEAN)]
     normalized_counts = Counter(frame["normalized_pair_hash"].astype(str).tolist())
@@ -2368,7 +2495,19 @@ def _manifest(
         audit_config=_operator_audit_config(config),
         production_gates=production_gates,
     )
+    audit_errors.extend(layer_target_audit_errors or [])
+    audit_errors.extend(_coverage_audit_errors(active_rule_coverage, hard_negative_coverage))
     audit_errors.extend(capability_training_audit_errors(rule_counts, capabilities))
+    active_rules_below_preferred = sorted(
+        str(row.get("rule_id"))
+        for row in active_rule_coverage
+        if str(row.get("status") or "") == "warning" and str(row.get("rule_id") or "")
+    )
+    rules_under_hard_negative_min = sorted(
+        str(row.get("target_rule_id"))
+        for row in hard_negative_coverage
+        if str(row.get("status") or "") == "fail" and str(row.get("target_rule_id") or "")
+    )
     excluded_rows = [{"rule_id": rule_id, "reason": reason} for rule_id, reason in sorted(excluded_rule_ids.items())]
     backfilled_rule_ids = sorted(
         str(row.get("rule_id"))
@@ -2391,9 +2530,15 @@ def _manifest(
         "layer_counts_by_split": {
             split: _value_counts(frame[frame["split"].eq(split)], "dataset_layer") for split in ("train", "val", "test")
         },
+        "requested_layer_targets": requested_layer_targets,
+        "effective_layer_targets": effective_layer_targets,
+        "layer_target_adjustments": layer_target_adjustments,
+        "layer_target_report": layer_target_report,
         "rule_id_counts": rule_counts,
         "rule_id_counts_atomic_positive_only": rule_counts,
         "hard_negative_counts_by_target_rule": dict(sorted((hard_negative_counts_by_rule or {}).items())),
+        "active_rule_coverage": active_rule_coverage,
+        "hard_negative_coverage": hard_negative_coverage,
         "rule_id_counts_by_split": {split: _rule_counts(frame[frame["split"].eq(split)]) for split in ("train", "val", "test")},
         "error_type_counts": _value_counts(frame, "error_type"),
         "operator_based_generation": True,
@@ -2404,6 +2549,8 @@ def _manifest(
         "expanded_training_candidate_rule_ids": sorted(expanded_training_candidate_rule_ids or []),
         "expanded_training_candidate_rule_count": int(len(expanded_training_candidate_rule_ids or [])),
         "under_quota_rule_ids": sorted(under_quota_rule_ids or []),
+        "active_rules_below_preferred": active_rules_below_preferred,
+        "rules_under_hard_negative_min": rules_under_hard_negative_min,
         "expanded_activation_blocked_counts": dict(sorted((expanded_activation_blocked_counts or {}).items())),
         "excluded_rule_ids": excluded_rows,
         "excluded_active_rule_ids": sorted(excluded_rule_ids),
@@ -2457,7 +2604,13 @@ def _manifest(
         "disabled_rule_ids": _disabled_rule_ids(capabilities, excluded_rule_ids=excluded_rule_ids),
         "hard_negative_accepted_bad_edits": 0,
         "audit_errors": audit_errors,
-        "warnings": [],
+        "warnings": _dedupe_errors(
+            [
+                *(layer_target_warnings or []),
+                *_layer_target_deficit_warnings(layer_target_report),
+                *_coverage_warnings(active_rule_coverage),
+            ]
+        ),
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "seed": int((config.get("data", {}) or {}).get("synthetic_seed", 17)),
     }
@@ -2469,15 +2622,66 @@ def _manifest(
     manifest["activation_stage_counts"] = activation_stage_counts_from_frame(frame)
     manifest["excluded_active_rule_ids"] = sorted(set(excluded_rule_ids) | set(capability_fields.get("blocked_rule_ids", [])))
     activation_policy_fields = dict(manifest.get("activation_policy", {}) or {})
+    manifest["expected_min_final_active_rule_count"] = int(activation_policy_fields.get("expected_min_final_active_rule_count", 0) or 0)
+    manifest["target_final_active_rule_count"] = int(activation_policy_fields.get("target_final_active_rule_count", 0) or 0)
     manifest["warnings"] = _dedupe_errors(
         [*list(manifest.get("warnings", []) or []), *list(activation_policy_fields.get("warnings", []) or [])]
     )
-    if production_gates:
-        manifest["audit_errors"] = _dedupe_errors(
-            [*list(manifest.get("audit_errors", []) or []), *list(activation_policy_fields.get("errors", []) or [])]
-        )
-        manifest["verdict"] = "DATASET_BLOCKED" if manifest["audit_errors"] else "READY_FOR_TRAINING_DATASET"
+    activation_errors = [str(error) for error in activation_policy_fields.get("errors", []) or []]
+    if not production_gates:
+        activation_errors = [error for error in activation_errors if error.startswith("final_active_rule_count_below_min:")]
+    manifest["audit_errors"] = _dedupe_errors(
+        [*list(manifest.get("audit_errors", []) or []), *activation_errors]
+    )
+    manifest["verdict"] = "DATASET_BLOCKED" if manifest["audit_errors"] else "READY_FOR_TRAINING_DATASET"
     return manifest
+
+
+def _write_layer_target_report(manifest: dict[str, Any], path: Path) -> None:
+    pd.DataFrame(
+        manifest.get("layer_target_report", []) or [],
+        columns=[
+            "layer",
+            "requested_target",
+            "effective_target",
+            "available_count",
+            "selected_count",
+            "deficit",
+            "adjustment_reason",
+        ],
+    ).to_csv(path, index=False)
+
+
+def _write_active_rule_coverage_report(manifest: dict[str, Any], path: Path) -> None:
+    pd.DataFrame(
+        manifest.get("active_rule_coverage", []) or [],
+        columns=[
+            "rule_id",
+            "activation_stage",
+            "production_ready",
+            "atomic_positive_count",
+            "min_required",
+            "preferred",
+            "candidate_recall",
+            "status",
+            "reason",
+        ],
+    ).to_csv(path, index=False)
+
+
+def _write_hard_negative_gate_report(manifest: dict[str, Any], path: Path) -> None:
+    pd.DataFrame(
+        manifest.get("hard_negative_coverage", []) or [],
+        columns=[
+            "target_rule_id",
+            "activation_stage",
+            "production_ready",
+            "hard_negative_count",
+            "min_required",
+            "status",
+            "reason",
+        ],
+    ).to_csv(path, index=False)
 
 
 def _write_reports(
@@ -2539,6 +2743,9 @@ def _write_reports(
                 "status",
             ],
         ).to_csv(reports_dir / "hard_negative_coverage_report.csv", index=False)
+    _write_layer_target_report(manifest, reports_dir / "layer_target_report.csv")
+    _write_active_rule_coverage_report(manifest, reports_dir / "active_rule_coverage_report.csv")
+    _write_hard_negative_gate_report(manifest, reports_dir / "hard_negative_coverage_report.csv")
     _write_syntax_generation_reports(
         reports_dir,
         syntax_atomic_result=syntax_atomic_result,
@@ -2860,6 +3067,141 @@ def _activation_evidence_by_rule(frame: pd.DataFrame, recall_reports: dict[str, 
     return result
 
 
+def _active_rule_coverage_rows(
+    frame: pd.DataFrame,
+    *,
+    active_rule_ids: list[str],
+    recall_reports: dict[str, pd.DataFrame],
+    quota_config: dict[str, Any],
+    config: dict[str, Any],
+    capabilities: list[Any],
+    activation_policy: Any | None,
+) -> list[dict[str, Any]]:
+    atomic_counts = _rule_counts(frame)
+    recall_by_rule = _candidate_recall_values(recall_reports.get("candidate_recall_by_rule", pd.DataFrame()))
+    min_required = int(quota_config.get("min_atomic_positives_per_active_rule", 1000) or 0)
+    preferred = int(quota_config.get("preferred_atomic_positives_per_active_rule", max(2500, min_required)) or min_required)
+    min_recall = _candidate_recall_min(config)
+    activation = _activation_metadata_by_rule(capabilities, activation_policy)
+    rows: list[dict[str, Any]] = []
+    for rule_id in sorted({normalize_rule_id(rule_id) for rule_id in active_rule_ids if normalize_rule_id(rule_id)}):
+        atomic_count = int(atomic_counts.get(rule_id, 0) or 0)
+        candidate_recall = float(recall_by_rule.get(rule_id, 0.0) or 0.0)
+        status = "pass"
+        reason = ""
+        if atomic_count < min_required:
+            status = "fail"
+            reason = "atomic_positive_under_min"
+        elif candidate_recall < min_recall:
+            status = "fail"
+            reason = "candidate_recall_under_min"
+        elif atomic_count < preferred:
+            status = "warning"
+            reason = "active_rule_below_preferred"
+        metadata = activation.get(rule_id, {})
+        rows.append(
+            {
+                "rule_id": rule_id,
+                "activation_stage": str(metadata.get("activation_stage", "")),
+                "production_ready": bool(metadata.get("production_ready", False)),
+                "atomic_positive_count": atomic_count,
+                "min_required": min_required,
+                "preferred": preferred,
+                "candidate_recall": candidate_recall,
+                "status": status,
+                "reason": reason,
+            }
+        )
+    return rows
+
+
+def _hard_negative_coverage_rows(
+    frame: pd.DataFrame,
+    *,
+    active_rule_ids: list[str],
+    quota_config: dict[str, Any],
+    capabilities: list[Any],
+    activation_policy: Any | None,
+) -> list[dict[str, Any]]:
+    hard_counts = _hard_negative_counts_by_target_rule(frame)
+    min_required = int(quota_config.get("min_hard_negatives_per_active_rule", 500) or 0)
+    activation = _activation_metadata_by_rule(capabilities, activation_policy)
+    rows: list[dict[str, Any]] = []
+    for rule_id in sorted({normalize_rule_id(rule_id) for rule_id in active_rule_ids if normalize_rule_id(rule_id)}):
+        hard_count = int(hard_counts.get(rule_id, 0) or 0)
+        status = "pass"
+        reason = ""
+        if hard_count < min_required:
+            status = "fail"
+            reason = "hard_negative_under_min"
+        metadata = activation.get(rule_id, {})
+        rows.append(
+            {
+                "target_rule_id": rule_id,
+                "activation_stage": str(metadata.get("activation_stage", "")),
+                "production_ready": bool(metadata.get("production_ready", False)),
+                "hard_negative_count": hard_count,
+                "min_required": min_required,
+                "status": status,
+                "reason": reason,
+            }
+        )
+    return rows
+
+
+def _activation_metadata_by_rule(capabilities: list[Any], activation_policy: Any | None) -> dict[str, dict[str, Any]]:
+    result: dict[str, dict[str, Any]] = {}
+    if activation_policy is None:
+        return result
+    for capability in capabilities:
+        for raw_rule_id in getattr(capability, "project_rule_ids", []) or []:
+            rule_id = normalize_rule_id(str(raw_rule_id))
+            if not rule_id or rule_id in SERVICE_RULE_IDS:
+                continue
+            result.setdefault(
+                rule_id,
+                {
+                    "activation_stage": activation_stage_for_rule(capability, activation_policy),
+                    "production_ready": production_ready_flag_for_rule(capability),
+                },
+            )
+    return result
+
+
+def _coverage_audit_errors(active_rule_coverage: list[dict[str, Any]], hard_negative_coverage: list[dict[str, Any]]) -> list[str]:
+    errors: list[str] = []
+    for row in active_rule_coverage:
+        rule_id = str(row.get("rule_id") or "")
+        reason = str(row.get("reason") or "")
+        if not rule_id or str(row.get("status") or "") != "fail":
+            continue
+        if reason == "atomic_positive_under_min":
+            errors.append(f"atomic_positive_under_min:{rule_id}")
+        elif reason == "candidate_recall_under_min":
+            errors.append(f"candidate_recall_under_min:{rule_id}")
+    for row in hard_negative_coverage:
+        rule_id = str(row.get("target_rule_id") or "")
+        if rule_id and str(row.get("status") or "") == "fail":
+            errors.append(f"hard_negative_under_min:{rule_id}")
+    return _dedupe_errors(errors)
+
+
+def _coverage_warnings(active_rule_coverage: list[dict[str, Any]]) -> list[str]:
+    return [
+        f"active_rule_below_preferred:{row['rule_id']}"
+        for row in active_rule_coverage
+        if str(row.get("status") or "") == "warning" and str(row.get("rule_id") or "")
+    ]
+
+
+def _layer_target_deficit_warnings(layer_target_report: list[dict[str, Any]]) -> list[str]:
+    return [
+        f"layer_target_deficit:{row['layer']}"
+        for row in layer_target_report
+        if int(row.get("deficit", 0) or 0) > 0 and str(row.get("layer") or "")
+    ]
+
+
 def _candidate_recall_values(candidate_report: pd.DataFrame) -> dict[str, float]:
     if candidate_report.empty or "rule_id" not in candidate_report:
         return {}
@@ -2903,7 +3245,7 @@ def _final_active_rule_ids_after_gates(
     gold_counts = _candidate_recall_gold_counts(recall_report)
     provisional_set = {normalize_rule_id(rule_id) for rule_id in provisional_active_rule_ids if normalize_rule_id(rule_id)}
     expanded_set = {normalize_rule_id(rule_id) for rule_id in expanded_candidate_rule_ids if normalize_rule_id(rule_id)}
-    final_active: list[str] = []
+    final_active: list[str] = sorted(provisional_set)
     under_quota_rows: list[dict[str, Any]] = []
     blockers: dict[str, str] = {}
 
@@ -2922,23 +3264,20 @@ def _final_active_rule_ids_after_gates(
             status = "blocked"
             reason = "candidate_recall_below_min"
 
-        if status == "active":
-            final_active.append(rule_id)
-        elif status == "blocked":
+        if status == "blocked":
             blockers[rule_id] = reason
 
-        if status in {"active", "under_quota"}:
-            under_quota_rows.append(
-                {
-                    "rule_id": rule_id,
-                    "atomic_positive_count": atomic_count,
-                    "min_atomic_required": min_atomic,
-                    "hard_negative_count": hard_count,
-                    "min_hard_negative_required": min_hard,
-                    "status": status,
-                    "reason": reason,
-                }
-            )
+        under_quota_rows.append(
+            {
+                "rule_id": rule_id,
+                "atomic_positive_count": atomic_count,
+                "min_atomic_required": min_atomic,
+                "hard_negative_count": hard_count,
+                "min_hard_negative_required": min_hard,
+                "status": status,
+                "reason": reason,
+            }
+        )
 
     return sorted(final_active), under_quota_rows, blockers
 
@@ -3075,15 +3414,27 @@ def _write_dataset_generation_report(manifest: dict[str, Any], path: Path) -> No
         f"- expanded_training_candidate_rule_count: {manifest.get('expanded_training_candidate_rule_count', 0)}",
         f"- active_rule_count: {manifest.get('active_rule_count', 0)}",
         f"- final_active_rule_count: {manifest.get('final_active_rule_count', 0)}",
+        f"- expected_min_final_active_rule_count: {manifest.get('expected_min_final_active_rule_count', 0)}",
+        f"- target_final_active_rule_count: {manifest.get('target_final_active_rule_count', 0)}",
         f"- activation_stage_counts: {json.dumps(manifest.get('activation_stage_counts', {}), ensure_ascii=False, sort_keys=True)}",
+        f"- requested_layer_targets: {json.dumps(manifest.get('requested_layer_targets', {}), ensure_ascii=False, sort_keys=True)}",
+        f"- effective_layer_targets: {json.dumps(manifest.get('effective_layer_targets', {}), ensure_ascii=False, sort_keys=True)}",
+        f"- layer_target_adjustments: {json.dumps(manifest.get('layer_target_adjustments', {}), ensure_ascii=False, sort_keys=True)}",
+        f"- active_rule_coverage_summary: {json.dumps(_coverage_status_summary(manifest.get('active_rule_coverage', []) or []), ensure_ascii=False, sort_keys=True)}",
+        f"- hard_negative_coverage_summary: {json.dumps(_coverage_status_summary(manifest.get('hard_negative_coverage', []) or []), ensure_ascii=False, sort_keys=True)}",
         f"- operator_based_generation: {manifest.get('operator_based_generation', True)}",
         f"- semantic_alignment_failed_rows: {manifest.get('semantic_alignment_failed_rows', 0)}",
         f"- numeric_punctuation_mismatch_count: {manifest.get('numeric_punctuation_mismatch_count', 0)}",
         f"- corpus_opportunity_share: {float(manifest.get('corpus_opportunity_share', 0.0) or 0.0):.6f}",
         f"- fallback_template_share: {float(manifest.get('fallback_template_share', 0.0) or 0.0):.6f}",
+        f"- warnings: {json.dumps(manifest.get('warnings', []), ensure_ascii=False)}",
         f"- audit_errors: {json.dumps(manifest.get('audit_errors', []), ensure_ascii=False)}",
     ]
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def _coverage_status_summary(rows: list[dict[str, Any]]) -> dict[str, int]:
+    return dict(sorted(Counter(str(row.get("status") or "") for row in rows if str(row.get("status") or "")).items()))
 
 
 def _audit_errors(
@@ -3696,6 +4047,7 @@ def _blocked_manifest(
     capabilities: list[Any] | None = None,
     activation_policy: Any | None = None,
 ) -> dict[str, Any]:
+    requested_layer_targets = _requested_layer_targets_from_config(config or {}, requested_total)
     manifest = {
         "verdict": "DATASET_BLOCKED",
         "dataset_contract": DATASET_CONTRACT,
@@ -3706,11 +4058,33 @@ def _blocked_manifest(
         "dataset_hash": "",
         "config_hash": _config_hash(config or {}),
         "layer_counts": {layer: 0 for layer in LAYER_ORDER},
+        "requested_layer_targets": requested_layer_targets,
+        "effective_layer_targets": requested_layer_targets,
+        "layer_target_adjustments": {},
+        "layer_target_report": _layer_target_report_rows(
+            requested_layer_targets=requested_layer_targets,
+            effective_layer_targets=requested_layer_targets,
+            layer_available_counts={},
+            layer_selected_counts={},
+            layer_target_adjustments={},
+        ),
+        "active_rule_coverage": [],
+        "hard_negative_coverage": [],
+        "expected_min_final_active_rule_count": 0,
+        "target_final_active_rule_count": 0,
+        "final_active_rule_count": 0,
+        "under_quota_rule_ids": [],
+        "active_rules_below_preferred": [],
+        "rules_under_hard_negative_min": [],
+        "warnings": [],
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "audit_errors": [reason],
     }
     if capabilities is not None:
-        manifest.update(capability_manifest_fields(capabilities, policy=activation_policy))
+        manifest.update(capability_manifest_fields(capabilities, policy=activation_policy, final_active_rule_ids=[]))
+        activation_policy_fields = dict(manifest.get("activation_policy", {}) or {})
+        manifest["expected_min_final_active_rule_count"] = int(activation_policy_fields.get("expected_min_final_active_rule_count", 0) or 0)
+        manifest["target_final_active_rule_count"] = int(activation_policy_fields.get("target_final_active_rule_count", 0) or 0)
     return manifest
 
 
@@ -3723,6 +4097,9 @@ def _write_manifest_and_blocked_reports(manifest: dict[str, Any], manifest_path:
     pd.DataFrame(not_applicable).to_csv(reports_dir / "atomic_positive_generation_report.csv", index=False)
     pd.DataFrame(not_applicable).to_csv(reports_dir / "atomic_positive_rejection_report.csv", index=False)
     pd.DataFrame(not_applicable).to_csv(reports_dir / "rules_without_atomic_positive.csv", index=False)
+    _write_layer_target_report(manifest, reports_dir / "layer_target_report.csv")
+    _write_active_rule_coverage_report(manifest, reports_dir / "active_rule_coverage_report.csv")
+    _write_hard_negative_gate_report(manifest, reports_dir / "hard_negative_coverage_report.csv")
     report_manifest = write_report_manifest(
         reports_dir,
         dataset_hash=str(manifest.get("dataset_hash") or ""),
