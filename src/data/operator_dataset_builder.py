@@ -1181,6 +1181,7 @@ def _row_from_syntax_atomic_positive(
             "activation_stage": str(activation_row.get("activation_stage") or ""),
             "production_ready": bool(activation_row.get("production_ready", False)),
             "generation_strategy": "syntax_synthetic",
+            "error_bearing_sentence_source": metadata.get("error_bearing_sentence_source") or "corpus",
             "generation_sources": ["syntax_synthetic"],
             "original_syntax_source_type": str(raw_row.get("source_type") or ""),
             "syntax_family": str(raw_row.get("syntax_family") or metadata.get("syntax_family") or ""),

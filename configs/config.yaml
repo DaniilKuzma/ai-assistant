@@ -126,13 +126,13 @@ data:
     min_empirical_validator_passes: 3
     max_empirical_validator_examples: 10
     expected_min_production_ready_rule_count: 12
-    expected_min_training_candidate_rule_count: 43
-    target_training_candidate_rule_count: 69
+    expected_min_training_candidate_rule_count: 76
+    target_training_candidate_rule_count: 76
     fail_below_min_training_candidate_rule_count: true
     warn_below_target_training_candidate_rule_count: true
     fail_below_final_active_rule_count: true
-    expected_min_final_active_rule_count: 43
-    target_final_active_rule_count: 69
+    expected_min_final_active_rule_count: 76
+    target_final_active_rule_count: 76
     warn_below_target_final_active_rule_count: true
   synthetic_seed: 13
   processed_train_path: data/processed/correction_dataset.csv.gz

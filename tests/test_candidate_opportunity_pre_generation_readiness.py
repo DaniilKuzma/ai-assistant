@@ -22,17 +22,17 @@ from tests.candidate_contract_fixtures import (
 class ReadinessCandidateGenerator(UnitCandidateGenerator):
     def generate(self, text: str):
         candidates = list(super().generate(text))
-        marker = "готов"
-        index = text.find(marker)
-        if index >= 0:
-            start = index + len(marker)
+        for marker in (" когда", " если"):
+            index = text.find(marker)
+            if index < 0:
+                continue
             candidates.append(
                 Candidate(
                     source="",
                     replacement=",",
                     edit_type="punctuation_insert",
-                    start=start,
-                    end=start,
+                    start=index,
+                    end=index,
                     rule_id="comma_subordinate",
                     syntax_family="subordinate_clause_comma",
                 )
@@ -117,8 +117,8 @@ def _patch_readiness_pipeline(monkeypatch) -> None:
         lambda **_kwargs: pd.DataFrame(
             [
                 {
-                    "source": "Когда отчет готов мы отправим письмо утром.",
-                    "target": "Когда отчет готов, мы отправим письмо утром.",
+                    "source": "Мы отправим письмо когда отчет готов утром.",
+                    "target": "Мы отправим письмо, когда отчет готов утром.",
                     "rule_id": "comma_subordinate",
                     "syntax_family": "subordinate_clause_comma",
                     "source_type": "syntax_synthetic_eval",
@@ -128,8 +128,8 @@ def _patch_readiness_pipeline(monkeypatch) -> None:
                     "metadata": json.dumps({"candidate_present": True}, ensure_ascii=False),
                 },
                 {
-                    "source": "Если архив готов мы обновим журнал вечером.",
-                    "target": "Если архив готов, мы обновим журнал вечером.",
+                    "source": "Мы обновим журнал если архив готов вечером.",
+                    "target": "Мы обновим журнал, если архив готов вечером.",
                     "rule_id": "comma_subordinate",
                     "syntax_family": "subordinate_clause_comma",
                     "source_type": "syntax_synthetic_eval",
@@ -147,8 +147,8 @@ def _patch_readiness_pipeline(monkeypatch) -> None:
         lambda **_kwargs: pd.DataFrame(
             [
                 {
-                    "source": "Когда отчет готов мы отправим письмо утром.",
-                    "target": "Когда отчет готов мы отправим письмо утром.",
+                    "source": "Мы отправим письмо когда отчет готов утром.",
+                    "target": "Мы отправим письмо когда отчет готов утром.",
                     "rule_id": "comma_subordinate",
                     "syntax_family": "subordinate_clause_comma",
                     "source_type": "syntax_hard_negative_trap_candidate",
@@ -178,8 +178,8 @@ def _readiness_config(tmp_path: Path) -> tuple[dict, Path]:
     config["data"]["real_error_pairs_validated_path"] = str(real_paths["validated"])
     config["data"]["composition"] = {
         "atomic_positive_target": 4,
-        "atomic_hard_negative_target": 4,
-        "clean_identity_target": 2,
+        "atomic_hard_negative_target": 3,
+        "clean_identity_target": 3,
         "real_atomic_train_target": 1,
         "stress_multi_error_target": 1,
     }
@@ -275,10 +275,18 @@ def test_tiny_candidate_opportunity_pre_generation_readiness(tmp_path: Path, mon
     assert not frame["target_rule_id"].astype(str).str.contains("blocked_unit", regex=False).any()
     assert config["data"]["training_dataset"]["legacy_builder"] is False
     assert config["data"]["training_dataset_core"]["legacy_builder"] is False
+    assert manifest["requested_layer_targets"] == {
+        "atomic_positive": 4,
+        "atomic_hard_negative": 3,
+        "clean_identity": 3,
+        "real_atomic": 1,
+        "stress_multi_error": 1,
+    }
+    assert manifest["effective_layer_targets"] == manifest["requested_layer_targets"]
     assert manifest["layer_counts"] == {
         "atomic_positive": 4,
-        "atomic_hard_negative": 4,
-        "clean_identity": 2,
+        "atomic_hard_negative": 3,
+        "clean_identity": 3,
         "real_atomic": 1,
         "stress_multi_error": 1,
     }

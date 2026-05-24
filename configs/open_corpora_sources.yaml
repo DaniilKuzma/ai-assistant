@@ -19,7 +19,7 @@ pool:
   enable_near_duplicate_filter: false
   reject_mixed_script_tokens: true
   reject_latin_confusable_inside_cyrillic_word: true
-  reject_if_candidate_generator_finds_high_confidence_fix: false
+  reject_if_candidate_generator_finds_high_confidence_fix: true
   high_confidence_candidate_threshold: 0.95
 
 clean_sources:
