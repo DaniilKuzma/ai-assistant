@@ -35,6 +35,7 @@ from src.data.training_quality_audit import (
 from src.evaluation.candidate_recall import build_candidate_recall_reports
 from src.rules.capabilities import (
     active_rule_ids_for_training,
+    activation_policy_from_config,
     capability_manifest_fields,
     capability_training_audit_errors,
     load_rule_capabilities,
@@ -194,7 +195,8 @@ def resolve_broad_active_training_rules(config: dict[str, Any]) -> list[dict[str
     """Resolve the canonical broad active rule set from rules.yaml plus syntax support."""
 
     capabilities = load_rule_capabilities("configs/rules.yaml")
-    active_rule_ids = set(active_rule_ids_for_training(capabilities))
+    activation_policy = activation_policy_from_config(config)
+    active_rule_ids = set(active_rule_ids_for_training(capabilities, policy=activation_policy))
     capability_by_rule_id = _best_capability_by_rule_id(capabilities)
     candidates = set(capability_by_rule_id) | set(SUPPORTED_SYNTAX_RULE_IDS) | set(LEGACY_CANDIDATE_BACKED_RULE_IDS)
     if not bool(config.get("dictionary", {}).get("yo_e", {}).get("enabled", False)):
@@ -485,7 +487,7 @@ def _broad_include_decision(
     if rule_by_id(rule_id) is None:
         return False, "no_registered_rule"
     if rule_id in active_rule_ids:
-        return True, "capability_include_now"
+        return True, "capability_training_candidate"
     if capability is None:
         return False, "missing_from_capability_matrix"
     blocker = str(capability.training_decision or capability.training_reason or "metadata_or_planned")
@@ -677,7 +679,8 @@ def _finalize_canonical_result(config: dict[str, Any], result: dict[str, Any]) -
     reports_dir = Path(config.get("paths", {}).get("reports_dir") or manifest_path.parent)
     reports_dir.mkdir(parents=True, exist_ok=True)
     capabilities = load_rule_capabilities("configs/rules.yaml")
-    write_rule_capability_reports(capabilities, reports_dir)
+    activation_policy = activation_policy_from_config(config)
+    write_rule_capability_reports(capabilities, reports_dir, policy=activation_policy)
     active_rows = resolve_active_target_rules(config)
     rule_counts = {str(key): int(value) for key, value in dict(manifest.get("rule_id_counts", {}) or {}).items()}
     _attach_final_counts(active_rows, rule_counts)
@@ -793,7 +796,9 @@ def _upgrade_manifest_to_canonical(
     included_rows = [row for row in active_rows if row["include_in_dataset"]]
     excluded_rows = [row for row in active_rows if not row["include_in_dataset"]]
     active_rule_ids = sorted(row["rule_id"] for row in included_rows)
-    capability_fields = capability_manifest_fields(load_rule_capabilities("configs/rules.yaml"))
+    capabilities = load_rule_capabilities("configs/rules.yaml")
+    activation_policy = activation_policy_from_config(config)
+    capability_fields = capability_manifest_fields(capabilities, policy=activation_policy)
     stable_core_ids = sorted(row["rule_id"] for row in active_rows if "core" in str(row.get("source", "")).split("/") and row["include_in_dataset"])
     activation_ids = sorted(row["rule_id"] for row in included_rows if row["tier"] == "activation")
     bounded_ids = sorted(row["rule_id"] for row in included_rows if row["tier"] == "bounded_activation")

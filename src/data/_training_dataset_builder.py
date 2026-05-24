@@ -71,6 +71,9 @@ from src.evaluation.candidate_recall import (
 )
 from src.rules.capabilities import (
     active_rule_ids_for_training,
+    activation_policy_from_config,
+    activation_stage_counts_from_frame,
+    annotate_activation_columns,
     capability_manifest_fields,
     capability_training_audit_errors,
     load_rule_capabilities,
@@ -258,7 +261,8 @@ def build_training_dataset_core_from_config(config: dict[str, Any], force: bool 
     output_dir.mkdir(parents=True, exist_ok=True)
     reports_dir.mkdir(parents=True, exist_ok=True)
     capabilities = load_rule_capabilities("configs/rules.yaml")
-    write_rule_capability_reports(capabilities, reports_dir)
+    activation_policy = activation_policy_from_config(config)
+    write_rule_capability_reports(capabilities, reports_dir, policy=activation_policy)
     clean_config = _clean_source_config(config, core_config)
     real_config = _real_source_config(config, core_config)
     clean_pool_path = output_dir / "clean_sentence_pool.csv.gz"
@@ -270,6 +274,7 @@ def build_training_dataset_core_from_config(config: dict[str, Any], force: bool 
             requested_split_sizes=requested_split_sizes,
             source_precheck=source_precheck,
             capabilities=capabilities,
+            activation_policy=activation_policy,
         )
         manifest_path.parent.mkdir(parents=True, exist_ok=True)
         _write_blocked_generation_report(reports_dir / "dataset_generation_report.md", manifest)
@@ -336,7 +341,13 @@ def build_training_dataset_core_from_config(config: dict[str, Any], force: bool 
     strict_clean_rows = _strict_clean_rows(clean_rows)
     quota_config = _active_rule_quota_config(core_config)
     cap_config = _rule_cap_config(core_config, split_sizes)
-    active_rule_ids = _effective_active_rule_ids(config, core_config, quota_config=quota_config, capabilities=capabilities)
+    active_rule_ids = _effective_active_rule_ids(
+        config,
+        core_config,
+        quota_config=quota_config,
+        capabilities=capabilities,
+        policy=activation_policy,
+    )
     global _CURRENT_ACTIVE_RULE_IDS
     _CURRENT_ACTIVE_RULE_IDS = set(active_rule_ids)
     _progress("active_rules_ready", active_rule_count=len(active_rule_ids))
@@ -535,7 +546,11 @@ def build_training_dataset_core_from_config(config: dict[str, Any], force: bool 
     _assign_core_splits(rows, effective_split_sizes, core_config=split_core_config, seed=seed)
     _attach_template_fields(rows)
 
-    frame = ensure_contract_columns(pd.DataFrame(rows, columns=CORE_COLUMNS))
+    frame = annotate_activation_columns(
+        ensure_contract_columns(pd.DataFrame(rows, columns=CORE_COLUMNS)),
+        capabilities,
+        policy=activation_policy,
+    )
     _progress("write_dataset_start", rows=len(frame), output_path=str(output_path))
     frame.to_csv(output_path, index=False)
     for split in ("train", "val", "test"):
@@ -636,6 +651,7 @@ def build_training_dataset_core_from_config(config: dict[str, Any], force: bool 
         rule_semantic_alignment_rejected_rows=semantic_rejected_rows,
         capability_rule_rejected_rows=capability_rejected_rows,
         capabilities=capabilities,
+        activation_policy=activation_policy,
     )
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     _write_generation_report(frame, reports_dir / "dataset_generation_report.md", manifest)
@@ -881,6 +897,7 @@ def _blocked_missing_sources_manifest(
     requested_split_sizes: dict[str, int],
     source_precheck: dict[str, Any],
     capabilities: list[Any] | None = None,
+    activation_policy: Any | None = None,
 ) -> dict[str, Any]:
     manifest = {
         "total": 0,
@@ -899,7 +916,7 @@ def _blocked_missing_sources_manifest(
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
     if capabilities is not None:
-        manifest.update(capability_manifest_fields(capabilities))
+        manifest.update(capability_manifest_fields(capabilities, policy=activation_policy))
     return manifest
 
 
@@ -968,8 +985,9 @@ def _effective_active_rule_ids(
     *,
     quota_config: dict[str, Any],
     capabilities: list[Any],
+    policy: Any | None = None,
 ) -> list[str]:
-    capability_active = set(active_rule_ids_for_training(capabilities))
+    capability_active = set(active_rule_ids_for_training(capabilities, policy=policy))
     configured = quota_config.get("rule_ids")
     if isinstance(configured, list) and configured:
         return sorted(
@@ -2783,6 +2801,8 @@ def _row_from_synthetic_example(
         return None
     metadata = _clean_metadata(clean)
     edit_dicts = [asdict(edit) for edit in edits]
+    if len(edit_dicts) != 1:
+        return None
     metadata.update(
         _generation_metadata(
             source,
@@ -4193,11 +4213,12 @@ def _manifest(
     rule_semantic_alignment_rejected_rows: int = 0,
     capability_rule_rejected_rows: int = 0,
     capabilities: list[Any] | None = None,
+    activation_policy: Any | None = None,
 ) -> dict[str, Any]:
     quota_state = quota_state or {}
     quality_audit = quality_audit or {}
     capabilities = capabilities or load_rule_capabilities("configs/rules.yaml")
-    capability_fields = capability_manifest_fields(capabilities)
+    capability_fields = capability_manifest_fields(capabilities, policy=activation_policy)
     raw_active_rule_ids = quota_state.get("active_rule_ids")
     if raw_active_rule_ids is None:
         raw_active_rule_ids = _active_rule_ids()
@@ -4331,6 +4352,7 @@ def _manifest(
         "real_pair_shortage_reason": f"accepted_real_pairs_below_target:{real_target - real_shortage}<{real_target}" if real_shortage else "",
         "active_rule_count": int(len(active_rule_ids)),
         "active_rule_ids": active_rule_ids,
+        "activation_stage_counts": activation_stage_counts_from_frame(frame),
         "inactive_rule_ids": inactive_rule_ids,
         "excluded_rule_ids": excluded_rule_ids,
         "active_rule_quota_summary": quota_state.get("active_rule_quota_summary", {}),
@@ -4359,6 +4381,7 @@ def _manifest(
     manifest.update(capability_fields)
     manifest["active_rule_ids"] = active_rule_ids
     manifest["active_rule_count"] = int(len(active_rule_ids))
+    manifest["activation_stage_counts"] = activation_stage_counts_from_frame(frame)
     manifest["excluded_rule_ids"] = excluded_rule_ids
     manifest["excluded_active_rule_ids"] = sorted(set(excluded_active_rule_ids) | set(capability_fields.get("blocked_rule_ids", [])))
     return manifest
@@ -4633,6 +4656,10 @@ def _write_generation_report(frame: pd.DataFrame, path: Path, manifest: dict[str
         f"- total: {manifest['total']}",
         f"- split_sizes: {json.dumps(manifest['split_sizes'], ensure_ascii=False, sort_keys=True)}",
         f"- composition: {json.dumps(manifest['composition'], ensure_ascii=False, sort_keys=True)}",
+        f"- production_ready_rule_count: {manifest.get('production_ready_rule_count', 0)}",
+        f"- training_candidate_rule_count: {manifest.get('training_candidate_rule_count', 0)}",
+        f"- active_rule_count: {manifest.get('active_rule_count', 0)}",
+        f"- activation_stage_counts: {json.dumps(manifest.get('activation_stage_counts', {}), ensure_ascii=False, sort_keys=True)}",
         f"- clean_source_counts: {json.dumps(manifest['clean_source_counts'], ensure_ascii=False, sort_keys=True)}",
         f"- real_source_counts: {json.dumps(manifest['real_source_counts'], ensure_ascii=False, sort_keys=True)}",
         f"- real_pair_acceptance_rate: {manifest['real_pair_acceptance_rate']:.6f}",

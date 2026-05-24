@@ -5,7 +5,7 @@ from dataclasses import asdict, dataclass
 import importlib.util
 import json
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Iterable, Mapping
 
 import pandas as pd
 import yaml
@@ -35,7 +35,26 @@ INCLUDE_AFTER_THRESHOLD_CALIBRATION = "INCLUDE_AFTER_THRESHOLD_CALIBRATION"
 INCLUDE_AFTER_TRAINING = "INCLUDE_AFTER_TRAINING"
 INCLUDE_NOW = "INCLUDE_NOW"
 
-TRAINING_INCLUDE_DECISIONS = frozenset({INCLUDE_NOW})
+PRODUCTION_READY_DECISIONS = frozenset({INCLUDE_NOW})
+SAFE_TRAINING_CANDIDATE_DECISIONS = frozenset({INCLUDE_NOW, INCLUDE_AFTER_THRESHOLD_CALIBRATION, INCLUDE_AFTER_TRAINING})
+VALIDATOR_DEPENDENT_DECISIONS = frozenset({INCLUDE_AFTER_VALIDATOR})
+BLOCKED_DECISIONS = frozenset(
+    {
+        BLOCK_METADATA_ONLY,
+        BLOCK_PLANNED,
+        BLOCK_DISABLED,
+        BLOCK_NEEDS_DICTIONARY,
+        BLOCK_NEEDS_SYNTAX,
+        BLOCK_NEEDS_MORPHOLOGY,
+        BLOCK_NEEDS_NER,
+        BLOCK_NO_CANDIDATE_PATH,
+        BLOCK_NO_CANDIDATE,
+        BLOCK_NO_SYNTHETIC_OPERATOR,
+        MINING_ONLY,
+        EVAL_ONLY,
+    }
+)
+TRAINING_INCLUDE_DECISIONS = PRODUCTION_READY_DECISIONS
 REPORT_VISIBLE_INCLUDE_DECISIONS = frozenset(
     {
         INCLUDE_NOW,
@@ -84,6 +103,40 @@ DICTIONARY_CANDIDATE_RULE_IDS = frozenset(
     }
 )
 NEVER_TRAIN_RULE_IDS = frozenset({"quote_open", "quote_close", "neural_punctuation"})
+ACTIVATION_STAGE_BY_DECISION = {
+    INCLUDE_NOW: "production_ready",
+    INCLUDE_AFTER_THRESHOLD_CALIBRATION: "threshold_calibration",
+    INCLUDE_AFTER_TRAINING: "needs_training",
+    INCLUDE_AFTER_VALIDATOR: "validator_dependent",
+}
+_VALIDATOR_PROBE_CACHE: dict[tuple[str, int, int], dict[str, Any]] = {}
+VALIDATOR_PROBE_REPORT_COLUMNS = [
+    "rule_id",
+    "status",
+    "reason",
+    "example_count",
+    "passed_examples",
+]
+
+
+@dataclass
+class RuleActivationPolicy:
+    mode: str
+    include_decisions: set[str]
+    include_after_validator_when_runtime_supported: bool
+    require_candidate_path: bool
+    require_synthetic_support: bool
+    require_hard_negative_support: bool
+    require_validator_support_or_empirical_pass: bool
+    exclude_blocked: bool
+    exclude_ner_required_without_ner: bool
+    min_empirical_validator_passes: int
+    max_empirical_validator_examples: int
+    expected_min_production_ready_rule_count: int
+    expected_min_training_candidate_rule_count: int
+    target_training_candidate_rule_count: int
+    fail_below_min_training_candidate_rule_count: bool
+    warn_below_target_training_candidate_rule_count: bool
 
 
 @dataclass(frozen=True)
@@ -240,13 +293,102 @@ def resolve_training_decision(capability: RuleCapability) -> tuple[str, str]:
     return BLOCK_NO_CANDIDATE_PATH, "no runtime candidate path"
 
 
-def active_rule_ids_for_training(capabilities: list[RuleCapability]) -> list[str]:
+def activation_policy_from_config(config: Mapping[str, Any]) -> RuleActivationPolicy:
+    data_config = dict(config.get("data", {}) or {})
+    raw = dict(data_config.get("rule_activation", {}) or {})
+    mode = str(raw.get("mode") or "strict").strip() or "strict"
+    if "include_decisions" in raw:
+        include_decisions = {str(item) for item in raw.get("include_decisions") or [] if str(item)}
+    elif mode == "expanded_safe":
+        include_decisions = set(SAFE_TRAINING_CANDIDATE_DECISIONS)
+    else:
+        include_decisions = set(PRODUCTION_READY_DECISIONS)
+    return RuleActivationPolicy(
+        mode=mode,
+        include_decisions=include_decisions,
+        include_after_validator_when_runtime_supported=_bool_config(
+            raw,
+            "include_after_validator_when_runtime_supported",
+            mode == "expanded_safe",
+        ),
+        require_candidate_path=_bool_config(raw, "require_candidate_path", True),
+        require_synthetic_support=_bool_config(raw, "require_synthetic_support", True),
+        require_hard_negative_support=_bool_config(raw, "require_hard_negative_support", True),
+        require_validator_support_or_empirical_pass=_bool_config(
+            raw,
+            "require_validator_support_or_empirical_pass",
+            True,
+        ),
+        exclude_blocked=_bool_config(raw, "exclude_blocked", True),
+        exclude_ner_required_without_ner=_bool_config(raw, "exclude_ner_required_without_ner", True),
+        min_empirical_validator_passes=max(0, int(raw.get("min_empirical_validator_passes", 3) or 0)),
+        max_empirical_validator_examples=max(1, int(raw.get("max_empirical_validator_examples", 10) or 10)),
+        expected_min_production_ready_rule_count=max(0, int(raw.get("expected_min_production_ready_rule_count", 0) or 0)),
+        expected_min_training_candidate_rule_count=max(0, int(raw.get("expected_min_training_candidate_rule_count", 0) or 0)),
+        target_training_candidate_rule_count=max(0, int(raw.get("target_training_candidate_rule_count", 0) or 0)),
+        fail_below_min_training_candidate_rule_count=_bool_config(
+            raw,
+            "fail_below_min_training_candidate_rule_count",
+            False,
+        ),
+        warn_below_target_training_candidate_rule_count=_bool_config(
+            raw,
+            "warn_below_target_training_candidate_rule_count",
+            False,
+        ),
+    )
+
+
+def production_ready_rule_ids(capabilities: list[RuleCapability]) -> list[str]:
+    return sorted(
+        rule_id
+        for rule_id in {
+            rule_id
+            for capability in capabilities
+            if production_ready_flag_for_rule(capability)
+            for rule_id in capability.project_rule_ids
+        }
+        if rule_id and rule_id not in SERVICE_RULE_IDS
+    )
+
+
+def training_candidate_rule_ids(
+    capabilities: list[RuleCapability],
+    policy: RuleActivationPolicy | None = None,
+) -> list[str]:
+    current_policy = policy or _strict_activation_policy()
     active: set[str] = set()
     for capability in capabilities:
-        if capability.training_decision not in TRAINING_INCLUDE_DECISIONS:
-            continue
-        active.update(capability.project_rule_ids)
+        for rule_id in capability.project_rule_ids:
+            result = _activation_result_for_rule(capability, rule_id, current_policy)
+            if bool(result["include"]):
+                active.add(rule_id)
     return sorted(rule_id for rule_id in active if rule_id and rule_id not in SERVICE_RULE_IDS)
+
+
+def active_rule_ids_for_training(
+    capabilities: list[RuleCapability],
+    policy: RuleActivationPolicy | None = None,
+) -> list[str]:
+    return training_candidate_rule_ids(capabilities, policy=policy)
+
+
+def activation_stage_for_rule(capability: RuleCapability, policy: RuleActivationPolicy) -> str:
+    del policy
+    decision = str(capability.training_decision or "")
+    if decision in ACTIVATION_STAGE_BY_DECISION:
+        return ACTIVATION_STAGE_BY_DECISION[decision]
+    if decision.startswith(BLOCK_DECISION_PREFIX):
+        return "blocked"
+    if decision == EVAL_ONLY:
+        return "eval_only"
+    if decision == MINING_ONLY:
+        return "mining_only"
+    return "inactive"
+
+
+def production_ready_flag_for_rule(capability: RuleCapability) -> bool:
+    return str(capability.training_decision or "") in PRODUCTION_READY_DECISIONS
 
 
 def blocked_rule_capabilities(capabilities: list[RuleCapability]) -> list[RuleCapability]:
@@ -259,28 +401,68 @@ def capability_matrix_frame(capabilities: Iterable[RuleCapability]) -> pd.DataFr
     return pd.DataFrame(rows, columns=columns)
 
 
-def write_rule_capability_reports(capabilities: list[RuleCapability], reports_dir: str | Path) -> dict[str, str]:
+def write_rule_capability_reports(
+    capabilities: list[RuleCapability],
+    reports_dir: str | Path,
+    policy: RuleActivationPolicy | None = None,
+) -> dict[str, str]:
+    current_policy = policy or _strict_activation_policy()
     output = Path(reports_dir)
     output.mkdir(parents=True, exist_ok=True)
-    frame = _csv_ready_frame(capability_matrix_frame(capabilities))
+    activation_rows = activation_policy_rows(capabilities, current_policy)
+    activation_frame = pd.DataFrame(activation_rows)
+    frame = _csv_ready_frame(_capability_matrix_with_activation(capabilities, activation_rows))
     blocked = frame[frame["training_decision"].astype(str).str.startswith(BLOCK_DECISION_PREFIX)] if not frame.empty else frame
-    eligibility = frame[frame["training_decision"].isin(REPORT_VISIBLE_INCLUDE_DECISIONS)] if not frame.empty else frame
+    eligibility = activation_frame[
+        activation_frame["training_decision"].isin(REPORT_VISIBLE_INCLUDE_DECISIONS)
+    ] if not activation_frame.empty else activation_frame
     missing = _missing_module_frame(capabilities)
+    policy_fields = capability_manifest_fields(capabilities, policy=current_policy)
+    policy_report = pd.DataFrame([_policy_report_row(policy_fields)])
+    validator_probe_rows = pd.DataFrame(
+        policy_fields.get("validator_probe_summary", {}).get("rows", []),
+        columns=VALIDATOR_PROBE_REPORT_COLUMNS,
+    )
     paths = {
         "rule_capability_matrix": output / "rule_capability_matrix.csv",
         "rule_eligibility_report": output / "rule_eligibility_report.csv",
         "blocked_rules_report": output / "blocked_rules_report.csv",
         "missing_module_rules_report": output / "missing_module_rules_report.csv",
+        "rule_activation_policy_report": output / "rule_activation_policy_report.csv",
+        "training_candidate_rules": output / "training_candidate_rules.csv",
+        "production_ready_rules": output / "production_ready_rules.csv",
+        "validator_probe_report": output / "validator_probe_report.csv",
     }
     frame.to_csv(paths["rule_capability_matrix"], index=False)
     eligibility.to_csv(paths["rule_eligibility_report"], index=False)
     blocked.to_csv(paths["blocked_rules_report"], index=False)
     missing.to_csv(paths["missing_module_rules_report"], index=False)
+    policy_report.to_csv(paths["rule_activation_policy_report"], index=False)
+    activation_frame[activation_frame["training_candidate"].astype(bool)].to_csv(paths["training_candidate_rules"], index=False)
+    activation_frame[activation_frame["production_ready"].astype(bool)].to_csv(paths["production_ready_rules"], index=False)
+    validator_probe_rows.to_csv(paths["validator_probe_report"], index=False)
     return {key: str(path) for key, path in paths.items()}
 
 
-def capability_manifest_fields(capabilities: list[RuleCapability]) -> dict[str, Any]:
+def capability_manifest_fields(
+    capabilities: list[RuleCapability],
+    policy: RuleActivationPolicy | None = None,
+) -> dict[str, Any]:
+    current_policy = policy or _strict_activation_policy()
     decision_counts = Counter(capability.training_decision for capability in capabilities)
+    production_ids = production_ready_rule_ids(capabilities)
+    training_ids = training_candidate_rule_ids(capabilities, policy=current_policy)
+    active_ids = active_rule_ids_for_training(capabilities, policy=current_policy)
+    activation_rows = activation_policy_rows(capabilities, current_policy)
+    validator_summary = _validator_probe_summary_from_rows(activation_rows)
+    capability_by_rule = _best_capability_by_rule_id(capabilities)
+    activation_stage_counter: Counter[str] = Counter()
+    for rule_id in active_ids:
+        capability = capability_by_rule.get(rule_id)
+        if capability is None:
+            continue
+        activation_stage_counter[activation_stage_for_rule(capability, current_policy)] += 1
+    activation_stage_counts = dict(sorted((stage, count) for stage, count in activation_stage_counter.items() if stage))
     blocked_rule_ids = sorted(
         {
             rule_id
@@ -297,7 +479,15 @@ def capability_manifest_fields(capabilities: list[RuleCapability]) -> dict[str, 
     )
     return {
         "rule_capability_counts": dict(sorted(decision_counts.items())),
-        "active_rule_ids": active_rule_ids_for_training(capabilities),
+        "production_ready_rule_ids": production_ids,
+        "production_ready_rule_count": len(production_ids),
+        "training_candidate_rule_ids": training_ids,
+        "training_candidate_rule_count": len(training_ids),
+        "active_rule_ids": active_ids,
+        "active_rule_count": len(active_ids),
+        "activation_policy": _activation_policy_manifest(current_policy, len(production_ids), len(training_ids)),
+        "activation_stage_counts": activation_stage_counts,
+        "validator_probe_summary": validator_summary,
         "blocked_rule_ids": blocked_rule_ids,
         "eval_only_rule_ids": eval_only_rule_ids,
         "mining_only_rule_ids": mining_only_rule_ids,
@@ -326,6 +516,504 @@ def capability_training_audit_errors(rule_ids: Iterable[str], capabilities: list
         if raw_rule_id not in capability_rule_ids:
             errors.append(f"rule_missing_from_capability_matrix:{raw_rule_id}")
     return errors
+
+
+def activation_policy_rows(capabilities: list[RuleCapability], policy: RuleActivationPolicy | None = None) -> list[dict[str, Any]]:
+    current_policy = policy or _strict_activation_policy()
+    rows: list[dict[str, Any]] = []
+    for capability in capabilities:
+        for rule_id in capability.project_rule_ids:
+            rows.append(_activation_result_for_rule(capability, rule_id, current_policy))
+    return rows
+
+
+def annotate_activation_columns(
+    frame: pd.DataFrame,
+    capabilities: list[RuleCapability],
+    policy: RuleActivationPolicy | None = None,
+) -> pd.DataFrame:
+    if frame.empty:
+        result = frame.copy()
+        if "activation_stage" not in result:
+            result["activation_stage"] = []
+        if "production_ready" not in result:
+            result["production_ready"] = []
+        return result
+    current_policy = policy or _strict_activation_policy()
+    capability_by_rule = _best_capability_by_rule_id(capabilities)
+    result = frame.copy()
+    stages: list[str] = []
+    production_flags: list[bool] = []
+    metadata_values: list[str] = []
+    for row in result.to_dict("records"):
+        rule_ids = _row_activation_rule_ids(row)
+        active_rule_ids = [rule_id for rule_id in rule_ids if rule_id not in SERVICE_RULE_IDS]
+        row_stages = {
+            activation_stage_for_rule(capability_by_rule[rule_id], current_policy)
+            for rule_id in active_rule_ids
+            if rule_id in capability_by_rule
+        }
+        stage = "mixed" if len(row_stages) > 1 else (next(iter(row_stages)) if row_stages else "")
+        production_ready = bool(active_rule_ids) and all(
+            rule_id in capability_by_rule and production_ready_flag_for_rule(capability_by_rule[rule_id])
+            for rule_id in active_rule_ids
+        )
+        metadata = _json_dict(row.get("metadata"))
+        metadata["activation_stage"] = stage
+        metadata["production_ready"] = production_ready
+        stages.append(stage)
+        production_flags.append(production_ready)
+        metadata_values.append(json.dumps(metadata, ensure_ascii=False, sort_keys=True))
+    result["activation_stage"] = stages
+    result["production_ready"] = production_flags
+    if "metadata" in result:
+        result["metadata"] = metadata_values
+    return result
+
+
+def activation_stage_counts_from_frame(frame: pd.DataFrame) -> dict[str, int]:
+    if frame.empty or "activation_stage" not in frame:
+        return {}
+    counts = Counter(str(value) for value in frame["activation_stage"].fillna("").tolist() if str(value))
+    return dict(sorted(counts.items()))
+
+
+def _strict_activation_policy() -> RuleActivationPolicy:
+    return RuleActivationPolicy(
+        mode="strict",
+        include_decisions=set(PRODUCTION_READY_DECISIONS),
+        include_after_validator_when_runtime_supported=False,
+        require_candidate_path=True,
+        require_synthetic_support=True,
+        require_hard_negative_support=True,
+        require_validator_support_or_empirical_pass=True,
+        exclude_blocked=True,
+        exclude_ner_required_without_ner=True,
+        min_empirical_validator_passes=3,
+        max_empirical_validator_examples=10,
+        expected_min_production_ready_rule_count=0,
+        expected_min_training_candidate_rule_count=0,
+        target_training_candidate_rule_count=0,
+        fail_below_min_training_candidate_rule_count=False,
+        warn_below_target_training_candidate_rule_count=False,
+    )
+
+
+def _activation_result_for_rule(
+    capability: RuleCapability,
+    rule_id: str,
+    policy: RuleActivationPolicy,
+) -> dict[str, Any]:
+    normalized_rule_id = normalize_rule_id(rule_id)
+    stage = activation_stage_for_rule(capability, policy)
+    include = False
+    reason = ""
+    probe_row: dict[str, Any] | None = None
+    decision = str(capability.training_decision or "")
+    if normalized_rule_id in SERVICE_RULE_IDS:
+        reason = "service_rule"
+    elif policy.exclude_blocked and _decision_is_blocked(decision, policy):
+        reason = decision or "blocked_decision"
+    elif decision in VALIDATOR_DEPENDENT_DECISIONS:
+        if not policy.include_after_validator_when_runtime_supported:
+            reason = "validator_dependent_not_enabled"
+        elif not _structural_gates_pass(capability, policy):
+            reason = _structural_gate_reason(capability, policy)
+        elif capability.has_validator_support:
+            include = True
+            reason = "runtime_validator_supported"
+        else:
+            probe_row = _empirical_validator_probe_for_capability(_single_rule_capability(capability, normalized_rule_id), policy)
+            include = bool(probe_row.get("empirical_validator_support"))
+            reason = "" if include else str(probe_row.get("reason") or "validator_probe_failed")
+    elif decision in policy.include_decisions:
+        if not _structural_gates_pass(capability, policy):
+            reason = _structural_gate_reason(capability, policy)
+        elif policy.require_validator_support_or_empirical_pass and not capability.has_validator_support:
+            probe_row = _empirical_validator_probe_for_capability(_single_rule_capability(capability, normalized_rule_id), policy)
+            include = bool(probe_row.get("empirical_validator_support"))
+            reason = "" if include else str(probe_row.get("reason") or "validator_probe_failed")
+        else:
+            include = True
+            reason = "policy_decision_included"
+    else:
+        reason = decision or "decision_not_in_policy"
+    return {
+        "taxonomy_key": capability.taxonomy_key,
+        "domain": capability.domain,
+        "rule_id": normalized_rule_id,
+        "training_decision": decision,
+        "training_reason": capability.training_reason,
+        "activation_stage": stage,
+        "production_ready": production_ready_flag_for_rule(capability),
+        "training_candidate": bool(include),
+        "include": bool(include),
+        "include_in_training": bool(include),
+        "activation_exclusion_reason": reason,
+        "has_candidate_path": capability.has_candidate_path,
+        "has_synthetic_support": capability.has_synthetic_support,
+        "has_hard_negative_support": capability.has_hard_negative_support,
+        "has_validator_support": capability.has_validator_support,
+        "requires": json.dumps(capability.requires, ensure_ascii=False),
+        "validator_probe_status": str((probe_row or {}).get("status", "")),
+        "validator_probe_reason": str((probe_row or {}).get("reason", "")),
+        "validator_probe_passed_examples": int((probe_row or {}).get("passed_examples", 0) or 0),
+        "validator_probe_example_count": int((probe_row or {}).get("example_count", 0) or 0),
+    }
+
+
+def _structural_gates_pass(capability: RuleCapability, policy: RuleActivationPolicy) -> bool:
+    return _structural_gate_reason(capability, policy) == ""
+
+
+def _structural_gate_reason(capability: RuleCapability, policy: RuleActivationPolicy) -> str:
+    if policy.exclude_ner_required_without_ner and "ner" in {item.lower() for item in capability.requires} and not capability.has_ner_support:
+        return "needs_NER"
+    if policy.require_candidate_path and not capability.has_candidate_path:
+        return "no_candidate_path"
+    if policy.require_synthetic_support and not capability.has_synthetic_support:
+        return "no_synthetic_support"
+    if policy.require_hard_negative_support and not capability.has_hard_negative_support:
+        return "no_hard_negative_support"
+    return ""
+
+
+def _decision_is_blocked(decision: str, policy: RuleActivationPolicy) -> bool:
+    if str(decision).startswith(BLOCK_DECISION_PREFIX):
+        return True
+    if decision in {EVAL_ONLY, MINING_ONLY} and decision not in policy.include_decisions:
+        return True
+    return decision in BLOCKED_DECISIONS and decision not in policy.include_decisions
+
+
+def _empirical_validator_probe_for_capability(
+    capability: RuleCapability,
+    policy: RuleActivationPolicy,
+) -> dict[str, Any]:
+    rule_id = capability.project_rule_ids[0] if capability.project_rule_ids else ""
+    cache_key = (rule_id, int(policy.min_empirical_validator_passes), int(policy.max_empirical_validator_examples))
+    if cache_key in _VALIDATOR_PROBE_CACHE:
+        return dict(_VALIDATOR_PROBE_CACHE[cache_key])
+    examples, source_name = _validator_probe_examples(rule_id, policy.max_empirical_validator_examples)
+    if not examples:
+        row = _validator_probe_row(rule_id, "no_generation_probe_source", 0, 0, source_name, {})
+        _VALIDATOR_PROBE_CACHE[cache_key] = row
+        return dict(row)
+    try:
+        from src.candidates.candidate_generator import CandidateGenerator
+        from src.data.atomic_verifier import verify_atomic_positive
+
+        candidate_generator = CandidateGenerator.from_config(_load_config(DEFAULT_CONFIG_PATH))
+    except Exception:
+        candidate_generator = None
+        from src.data.atomic_verifier import verify_atomic_positive
+
+    passed = 0
+    reasons: Counter[str] = Counter()
+    for source, target in examples[: policy.max_empirical_validator_examples]:
+        verification = verify_atomic_positive(source, target, rule_id, candidate_generator=candidate_generator)
+        if verification.passed:
+            passed += 1
+        else:
+            reasons[str(verification.reason)] += 1
+    status = "pass" if passed >= policy.min_empirical_validator_passes else "fail"
+    reason = "" if status == "pass" else "validator_probe_failed"
+    row = _validator_probe_row(rule_id, reason, len(examples[: policy.max_empirical_validator_examples]), passed, source_name, reasons)
+    row["status"] = status
+    row["empirical_validator_support"] = status == "pass"
+    _VALIDATOR_PROBE_CACHE[cache_key] = row
+    return dict(row)
+
+
+def _validator_probe_examples(rule_id: str, max_examples: int) -> tuple[list[tuple[str, str]], str]:
+    examples = _operator_probe_examples(rule_id, max_examples)
+    if examples:
+        return examples, "operator"
+    examples = _syntax_probe_examples(rule_id, max_examples)
+    if examples:
+        return examples, "syntax"
+    examples = _backfill_probe_examples(rule_id, max_examples)
+    if examples:
+        return examples, "backfill"
+    return [], ""
+
+
+def _operator_probe_examples(rule_id: str, max_examples: int) -> list[tuple[str, str]]:
+    try:
+        from src.data.corruption_operators import build_default_operator_registry
+        from src.data.matrix_eval_dataset import DEFAULT_CLEAN_SENTENCES
+
+        operator = build_default_operator_registry().get(rule_id)
+        if operator is None:
+            return []
+        examples: list[tuple[str, str]] = []
+        for clean in DEFAULT_CLEAN_SENTENCES[: max(20, max_examples * 3)]:
+            for opportunity in operator.find_opportunities(clean)[:3]:
+                try:
+                    result = operator.corrupt(clean, opportunity)
+                except Exception:
+                    continue
+                if result.source != result.target:
+                    examples.append((result.source, result.target))
+                if len(examples) >= max_examples:
+                    return examples
+        return examples
+    except Exception:
+        return []
+
+
+def _syntax_probe_examples(rule_id: str, max_examples: int) -> list[tuple[str, str]]:
+    try:
+        from src.rules.syntax_synthetic import build_syntax_eval_examples
+
+        frame = build_syntax_eval_examples(selected_rule_ids=[rule_id], min_examples_per_rule=max_examples)
+        if frame.empty:
+            return []
+        return [
+            (str(row["source"]), str(row["target"]))
+            for row in frame.head(max_examples).to_dict("records")
+            if str(row.get("source", "")) != str(row.get("target", ""))
+        ]
+    except Exception:
+        return []
+
+
+def _backfill_probe_examples(rule_id: str, max_examples: int) -> list[tuple[str, str]]:
+    try:
+        from src.candidates.candidate_generator import CandidateGenerator
+        from src.data.synthetic_generator import TargetedBackfillGenerator
+
+        candidate_generator = CandidateGenerator.from_config(_load_config(DEFAULT_CONFIG_PATH))
+        result = TargetedBackfillGenerator(candidate_generator, seed=13).generate_for_rule(rule_id, max_examples)
+        return [(example.source, example.target) for example in result.examples[:max_examples]]
+    except Exception:
+        return []
+
+
+def _validator_probe_row(
+    rule_id: str,
+    reason: str,
+    example_count: int,
+    passed_examples: int,
+    source_name: str,
+    reasons: Mapping[str, int],
+) -> dict[str, Any]:
+    status = "pass" if reason == "" else ("no_generation_probe_source" if reason == "no_generation_probe_source" else "fail")
+    return {
+        "rule_id": rule_id,
+        "status": status,
+        "reason": reason,
+        "probe_source": source_name,
+        "example_count": int(example_count),
+        "passed_examples": int(passed_examples),
+        "failed_examples": max(0, int(example_count) - int(passed_examples)),
+        "empirical_validator_support": reason == "",
+        "failure_reasons": json.dumps(dict(sorted(reasons.items())), ensure_ascii=False, sort_keys=True),
+    }
+
+
+def _validator_probe_summary_from_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    probe_rows = [
+        {
+            "rule_id": row["rule_id"],
+            "status": row.get("validator_probe_status", ""),
+            "reason": row.get("validator_probe_reason", ""),
+            "example_count": row.get("validator_probe_example_count", 0),
+            "passed_examples": row.get("validator_probe_passed_examples", 0),
+        }
+        for row in rows
+        if row.get("validator_probe_status")
+    ]
+    passed = sorted(str(row["rule_id"]) for row in probe_rows if row.get("status") == "pass")
+    failed_reasons = {
+        str(row["rule_id"]): str(row.get("reason") or "validator_probe_failed")
+        for row in probe_rows
+        if row.get("status") != "pass"
+    }
+    return {
+        "enabled": bool(probe_rows),
+        "probed_rule_count": len(probe_rows),
+        "passed_rule_ids": passed,
+        "failed_rule_reasons": dict(sorted(failed_reasons.items())),
+        "rows": probe_rows,
+    }
+
+
+def _activation_policy_manifest(
+    policy: RuleActivationPolicy,
+    production_ready_count: int,
+    training_candidate_count: int,
+) -> dict[str, Any]:
+    errors: list[str] = []
+    warnings: list[str] = []
+    if production_ready_count < policy.expected_min_production_ready_rule_count:
+        errors.append(
+            f"production_ready_rule_count_below_min:{production_ready_count}<{policy.expected_min_production_ready_rule_count}"
+        )
+    if (
+        policy.fail_below_min_training_candidate_rule_count
+        and training_candidate_count < policy.expected_min_training_candidate_rule_count
+    ):
+        errors.append(
+            "training_candidate_rule_count_below_min:"
+            f"{training_candidate_count}<{policy.expected_min_training_candidate_rule_count}"
+        )
+    if (
+        policy.warn_below_target_training_candidate_rule_count
+        and policy.target_training_candidate_rule_count > 0
+        and training_candidate_count < policy.target_training_candidate_rule_count
+    ):
+        warnings.append(
+            "training_candidate_rule_count_below_target:"
+            f"{training_candidate_count}<{policy.target_training_candidate_rule_count}"
+        )
+    return {
+        "mode": policy.mode,
+        "include_decisions": sorted(policy.include_decisions),
+        "include_after_validator_when_runtime_supported": policy.include_after_validator_when_runtime_supported,
+        "require_candidate_path": policy.require_candidate_path,
+        "require_synthetic_support": policy.require_synthetic_support,
+        "require_hard_negative_support": policy.require_hard_negative_support,
+        "require_validator_support_or_empirical_pass": policy.require_validator_support_or_empirical_pass,
+        "exclude_blocked": policy.exclude_blocked,
+        "exclude_ner_required_without_ner": policy.exclude_ner_required_without_ner,
+        "min_empirical_validator_passes": policy.min_empirical_validator_passes,
+        "max_empirical_validator_examples": policy.max_empirical_validator_examples,
+        "expected_min_production_ready_rule_count": policy.expected_min_production_ready_rule_count,
+        "expected_min_training_candidate_rule_count": policy.expected_min_training_candidate_rule_count,
+        "target_training_candidate_rule_count": policy.target_training_candidate_rule_count,
+        "fail_below_min_training_candidate_rule_count": policy.fail_below_min_training_candidate_rule_count,
+        "warn_below_target_training_candidate_rule_count": policy.warn_below_target_training_candidate_rule_count,
+        "errors": errors,
+        "warnings": warnings,
+    }
+
+
+def _policy_report_row(fields: dict[str, Any]) -> dict[str, Any]:
+    policy = dict(fields.get("activation_policy", {}) or {})
+    return {
+        **policy,
+        "include_decisions": json.dumps(policy.get("include_decisions", []), ensure_ascii=False),
+        "errors": json.dumps(policy.get("errors", []), ensure_ascii=False),
+        "warnings": json.dumps(policy.get("warnings", []), ensure_ascii=False),
+        "production_ready_rule_count": int(fields.get("production_ready_rule_count", 0) or 0),
+        "training_candidate_rule_count": int(fields.get("training_candidate_rule_count", 0) or 0),
+        "active_rule_count": int(fields.get("active_rule_count", 0) or 0),
+    }
+
+
+def _capability_matrix_with_activation(capabilities: list[RuleCapability], activation_rows: list[dict[str, Any]]) -> pd.DataFrame:
+    frame = capability_matrix_frame(capabilities)
+    by_taxonomy: dict[str, list[dict[str, Any]]] = {}
+    for row in activation_rows:
+        by_taxonomy.setdefault(str(row["taxonomy_key"]), []).append(row)
+    additions: list[dict[str, Any]] = []
+    for capability in capabilities:
+        rows = by_taxonomy.get(capability.taxonomy_key, [])
+        additions.append(
+            {
+                "production_ready_rule_ids": json.dumps(
+                    [row["rule_id"] for row in rows if row["production_ready"]],
+                    ensure_ascii=False,
+                ),
+                "training_candidate_rule_ids": json.dumps(
+                    [row["rule_id"] for row in rows if row["training_candidate"]],
+                    ensure_ascii=False,
+                ),
+                "activation_stages": json.dumps(
+                    sorted({row["activation_stage"] for row in rows if row["activation_stage"]}),
+                    ensure_ascii=False,
+                ),
+                "activation_exclusion_reasons": json.dumps(
+                    sorted({row["activation_exclusion_reason"] for row in rows if row["activation_exclusion_reason"]}),
+                    ensure_ascii=False,
+                ),
+            }
+        )
+    for column in ("production_ready_rule_ids", "training_candidate_rule_ids", "activation_stages", "activation_exclusion_reasons"):
+        frame[column] = [row[column] for row in additions]
+    return frame
+
+
+def _best_capability_by_rule_id(capabilities: list[RuleCapability]) -> dict[str, RuleCapability]:
+    result: dict[str, RuleCapability] = {}
+    for capability in capabilities:
+        for rule_id in capability.project_rule_ids:
+            current = result.get(rule_id)
+            if current is None or _decision_priority(capability.training_decision) < _decision_priority(current.training_decision):
+                result[rule_id] = capability
+    return result
+
+
+def _decision_priority(decision: str) -> int:
+    order = {
+        INCLUDE_NOW: 0,
+        INCLUDE_AFTER_VALIDATOR: 1,
+        INCLUDE_AFTER_THRESHOLD_CALIBRATION: 2,
+        INCLUDE_AFTER_TRAINING: 3,
+        EVAL_ONLY: 4,
+        MINING_ONLY: 5,
+    }
+    text = str(decision or "")
+    if text.startswith(BLOCK_DECISION_PREFIX):
+        return 6
+    return order.get(text, 7)
+
+
+def _single_rule_capability(capability: RuleCapability, rule_id: str) -> RuleCapability:
+    return RuleCapability(**{**asdict(capability), "project_rule_ids": [rule_id]})
+
+
+def _row_activation_rule_ids(row: Mapping[str, Any]) -> list[str]:
+    values = _json_list(row.get("rule_ids", []))
+    result = [normalize_rule_id(value) for value in values if normalize_rule_id(value) != UNKNOWN_RULE_ID]
+    if result:
+        return result
+    for key in ("target_rule_id", "rule_id"):
+        rule_id = normalize_rule_id(row.get(key, ""))
+        if rule_id != UNKNOWN_RULE_ID:
+            return [rule_id]
+    return []
+
+
+def _json_dict(value: Any) -> dict[str, Any]:
+    if isinstance(value, Mapping):
+        return dict(value)
+    if isinstance(value, str) and value.strip():
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            return {}
+        return dict(parsed) if isinstance(parsed, Mapping) else {}
+    return {}
+
+
+def _json_list(value: Any) -> list[Any]:
+    if isinstance(value, list):
+        return list(value)
+    if isinstance(value, tuple):
+        return list(value)
+    if isinstance(value, str) and value.strip():
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            return [part.strip() for part in value.split(",") if part.strip()]
+        return parsed if isinstance(parsed, list) else []
+    return []
+
+
+def _bool_config(raw: Mapping[str, Any], key: str, default: bool) -> bool:
+    if key not in raw:
+        return default
+    value = raw.get(key)
+    if isinstance(value, bool):
+        return value
+    text = str(value).strip().lower()
+    if text in {"1", "true", "yes", "on"}:
+        return True
+    if text in {"0", "false", "no", "off", "none", "null", ""}:
+        return False
+    return bool(value)
 
 
 def _default_available_modules(config_path: str | Path = DEFAULT_CONFIG_PATH) -> dict[str, Any]:

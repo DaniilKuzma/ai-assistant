@@ -47,6 +47,8 @@ CONTRACT_OPTIONAL_COLUMNS = [
     "candidate_end",
     "verification_status",
     "rejection_reason",
+    "activation_stage",
+    "production_ready",
 ]
 
 SOURCE_TYPE_ALIASES = {
@@ -246,6 +248,10 @@ def _default_contract_value(row: Mapping[str, Any], column: str) -> Any:
         return end if end is not None else -1
     if column in {"verification_status", "rejection_reason"}:
         return ""
+    if column == "activation_stage":
+        return _clean_text(json_dict(_row_get(row, "metadata", {})).get("activation_stage", ""))
+    if column == "production_ready":
+        return _bool(json_dict(_row_get(row, "metadata", {})).get("production_ready", False))
     return ""
 
 

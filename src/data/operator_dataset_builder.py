@@ -67,6 +67,9 @@ from src.data.training_quality_audit import (
 from src.evaluation.candidate_recall import build_candidate_recall_reports
 from src.rules.capabilities import (
     active_rule_ids_for_training,
+    activation_policy_from_config,
+    activation_stage_counts_from_frame,
+    annotate_activation_columns,
     capability_manifest_fields,
     capability_training_audit_errors,
     load_rule_capabilities,
@@ -244,8 +247,9 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
     output_path.parent.mkdir(parents=True, exist_ok=True)
     registry = build_default_operator_registry()
     capabilities = load_rule_capabilities("configs/rules.yaml")
-    write_rule_capability_reports(capabilities, reports_dir)
-    eligible_rule_ids, pre_excluded = _eligible_rule_ids(config, capabilities=capabilities)
+    activation_policy = activation_policy_from_config(config)
+    write_rule_capability_reports(capabilities, reports_dir, policy=activation_policy)
+    eligible_rule_ids, pre_excluded = _eligible_rule_ids(config, capabilities=capabilities, policy=activation_policy)
     target_rows = resolve_operator_training_targets(
         candidate_rule_ids=eligible_rule_ids,
         registry=registry,
@@ -260,6 +264,7 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
             "missing_clean_sentence_pool",
             config=config,
             capabilities=capabilities,
+            activation_policy=activation_policy,
         )
         _write_manifest_and_blocked_reports(manifest, manifest_path, reports_dir)
         return {
@@ -373,7 +378,7 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
     )
     rows = [row for layer in LAYER_ORDER for row in layer_rows.get(layer, [])]
     _assign_layered_splits(layer_rows, split_sizes, seed=seed)
-    frame = _frame_from_rows(rows)
+    frame = annotate_activation_columns(_frame_from_rows(rows), capabilities, policy=activation_policy)
     production_gates = _production_audit_enabled(output_path=output_path, manifest_path=manifest_path, requested_total=requested_total)
     if production_gates:
         frame, active_rule_ids, excluded_after_generation, quality_audit = _prune_failed_diversity_rules(
@@ -388,6 +393,7 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
         )
     else:
         quality_audit = audit_training_dataset(frame, active_rule_ids)
+    frame = annotate_activation_columns(frame, capabilities, policy=activation_policy)
 
     frame.to_csv(output_path, index=False)
     _write_split_and_layer_files(frame, output_path)
@@ -406,6 +412,7 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
         quality_audit=quality_audit,
         backfill_attempt_rows=_not_applicable_backfill_rows(candidate_rule_ids),
         capabilities=capabilities,
+        activation_policy=activation_policy,
         production_gates=production_gates,
         low_resource_rule_ids=sorted(candidate_rule_ids - active_set),
         hard_negative_counts_by_rule=_hard_negative_counts_by_target_rule(frame),
@@ -451,9 +458,9 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
     }
 
 
-def _eligible_rule_ids(config: dict[str, Any], *, capabilities: list[Any]) -> tuple[list[str], dict[str, str]]:
+def _eligible_rule_ids(config: dict[str, Any], *, capabilities: list[Any], policy: Any | None = None) -> tuple[list[str], dict[str, str]]:
     excluded: dict[str, str] = {}
-    result: set[str] = set(active_rule_ids_for_training(capabilities))
+    result: set[str] = set(active_rule_ids_for_training(capabilities, policy=policy))
     disabled = {str(rule_id) for rule_id in (config.get("synthetic_generation", {}) or {}).get("disabled", {}).keys()}
     for capability in capabilities:
         for rule_id in capability.project_rule_ids:
@@ -1565,6 +1572,7 @@ def _manifest(
     quality_audit: dict[str, Any],
     backfill_attempt_rows: list[dict[str, Any]],
     capabilities: list[Any],
+    activation_policy: Any | None = None,
     production_gates: bool = True,
     low_resource_rule_ids: list[str] | None = None,
     hard_negative_counts_by_rule: dict[str, int] | None = None,
@@ -1610,7 +1618,7 @@ def _manifest(
     bearing_counts = dict(quality_audit.get("error_bearing_sentence_source_counts", {}) or {})
     corpus_share = float(quality_audit.get("corpus_opportunity_share", corpus_share) or 0.0)
     fallback_share = float(quality_audit.get("fallback_template_share", fallback_share) or 0.0)
-    capability_fields = capability_manifest_fields(capabilities)
+    capability_fields = capability_manifest_fields(capabilities, policy=activation_policy)
     audit_errors = _audit_errors(
         total=len(frame),
         requested_total=requested_total,
@@ -1673,6 +1681,7 @@ def _manifest(
         "underfilled_rule_ids": [],
         "low_count_active_rule_ids": [],
         "operator_acceptance_counts": {rule_id: int(rule_counts.get(rule_id, 0)) for rule_id in active_rule_ids},
+        "activation_stage_counts": activation_stage_counts_from_frame(frame),
         "operator_rejection_counts": dict(Counter(str(row.get("reason", "")) for row in rejection_rows if row.get("reason"))),
         "semantic_alignment_failed_rows": int(semantic_summary.get("failed_rows", 0) or 0),
         "numeric_punctuation_mismatch_count": numeric_mismatch,
@@ -1719,6 +1728,7 @@ def _manifest(
     manifest.update(capability_fields)
     manifest["active_rule_ids"] = active_rule_ids
     manifest["active_rule_count"] = int(len(active_rule_ids))
+    manifest["activation_stage_counts"] = activation_stage_counts_from_frame(frame)
     manifest["excluded_active_rule_ids"] = sorted(set(excluded_rule_ids) | set(capability_fields.get("blocked_rule_ids", [])))
     return manifest
 
@@ -1986,7 +1996,10 @@ def _write_dataset_generation_report(manifest: dict[str, Any], path: Path) -> No
         f"- config_hash: {manifest.get('config_hash', '')}",
         f"- total: {manifest.get('total', 0)}",
         f"- split_sizes: {json.dumps(manifest.get('split_sizes', {}), ensure_ascii=False, sort_keys=True)}",
+        f"- production_ready_rule_count: {manifest.get('production_ready_rule_count', 0)}",
+        f"- training_candidate_rule_count: {manifest.get('training_candidate_rule_count', 0)}",
         f"- active_rule_count: {manifest.get('active_rule_count', 0)}",
+        f"- activation_stage_counts: {json.dumps(manifest.get('activation_stage_counts', {}), ensure_ascii=False, sort_keys=True)}",
         f"- operator_based_generation: {manifest.get('operator_based_generation', True)}",
         f"- semantic_alignment_failed_rows: {manifest.get('semantic_alignment_failed_rows', 0)}",
         f"- numeric_punctuation_mismatch_count: {manifest.get('numeric_punctuation_mismatch_count', 0)}",
@@ -2605,6 +2618,7 @@ def _blocked_manifest(
     *,
     config: dict[str, Any] | None = None,
     capabilities: list[Any] | None = None,
+    activation_policy: Any | None = None,
 ) -> dict[str, Any]:
     manifest = {
         "verdict": "DATASET_BLOCKED",
@@ -2620,7 +2634,7 @@ def _blocked_manifest(
         "audit_errors": [reason],
     }
     if capabilities is not None:
-        manifest.update(capability_manifest_fields(capabilities))
+        manifest.update(capability_manifest_fields(capabilities, policy=activation_policy))
     return manifest
 
 

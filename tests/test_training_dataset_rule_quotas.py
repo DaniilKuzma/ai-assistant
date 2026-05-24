@@ -15,7 +15,7 @@ from src.data._training_dataset_builder import (
     _remaining_fallback_template_budget,
 )
 from src.rules.syntax_synthetic import SUPPORTED_SYNTAX_RULE_IDS
-from src.rules.capabilities import active_rule_ids_for_training, load_rule_capabilities
+from src.rules.capabilities import active_rule_ids_for_training, activation_policy_from_config, load_rule_capabilities
 
 import pandas as pd
 
@@ -27,7 +27,8 @@ def _config() -> dict:
 def test_broad_active_training_rules_include_syntax_and_legacy_candidate_backed_rules():
     rows = resolve_broad_active_training_rules(_config())
     active = {row["rule_id"]: row for row in rows if row["include"]}
-    capability_active = set(active_rule_ids_for_training(load_rule_capabilities("configs/rules.yaml")))
+    config = _config()
+    capability_active = set(active_rule_ids_for_training(load_rule_capabilities("configs/rules.yaml"), policy=activation_policy_from_config(config)))
 
     assert set(active) == capability_active
     assert set(SUPPORTED_SYNTAX_RULE_IDS) & capability_active <= set(active)
@@ -41,9 +42,7 @@ def test_broad_active_training_rules_include_syntax_and_legacy_candidate_backed_
     } <= set(active)
 
     excluded = {row["rule_id"]: row["reason"] for row in rows if not row["include"]}
-    assert excluded["dictionary_fuzzy"] == "INCLUDE_AFTER_VALIDATOR"
-    assert excluded["final_punctuation_default"] == "INCLUDE_AFTER_VALIDATOR"
-    assert excluded["ne_verb"] == "INCLUDE_AFTER_THRESHOLD_CALIBRATION"
+    assert {"dictionary_fuzzy", "final_punctuation_default", "ne_verb"} <= set(active)
     assert "capitalization_ner" in excluded
     assert "needs_NER" in excluded["capitalization_ner"]
     assert "quote_open" in excluded
@@ -69,7 +68,8 @@ def test_broad_active_training_rule_quotas_follow_dataset_plan():
 def test_dynamic_targets_scale_from_active_rule_quotas_and_real_pair_count():
     rows = resolve_broad_active_training_rules(_config())
     targets = compute_broad_dataset_targets(rows, real_pair_count=1236)
-    capability_active_count = len(active_rule_ids_for_training(load_rule_capabilities("configs/rules.yaml")))
+    config = _config()
+    capability_active_count = len(active_rule_ids_for_training(load_rule_capabilities("configs/rules.yaml"), policy=activation_policy_from_config(config)))
 
     assert targets["active_rule_count"] == capability_active_count
     assert targets["targeted_synthetic_base"] == sum(

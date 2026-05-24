@@ -20,6 +20,7 @@ def test_training_dataset_core_blocks_when_required_sources_missing_and_download
     config["data"]["train_examples"] = 20
     config["data"]["val_examples"] = 5
     config["data"]["test_examples"] = 5
+    config["data"]["training_dataset_core"]["legacy_builder"] = True
     config["data"]["training_dataset_core"]["open_corpora_sources"] = {
         "clean_sources": {
             "missing_clean": {
@@ -213,32 +214,34 @@ def _tiny_quota_config(tmp_path: Path) -> dict:
     config["data"]["val_examples"] = 10
     config["data"]["test_examples"] = 10
     core = config["data"]["training_dataset_core"]
+    core["legacy_builder"] = True
     core["source_type_targets"] = {
-        "synthetic_augmented_from_open_clean": 40,
+        "synthetic_augmented_from_open_clean": 22,
         "real_error_pair": 0,
-        "clean_identity_from_open_clean": 20,
-        "hard_negative_from_open_clean": 20,
+        "clean_identity_from_open_clean": 29,
+        "hard_negative_from_open_clean": 29,
     }
     core["split_source_type_targets"] = {
         "train": {
-            "synthetic_augmented_from_open_clean": 30,
+            "synthetic_augmented_from_open_clean": 16,
             "real_error_pair": 0,
-            "clean_identity_from_open_clean": 15,
-            "hard_negative_from_open_clean": 15,
+            "clean_identity_from_open_clean": 22,
+            "hard_negative_from_open_clean": 22,
         },
         "val": {
-            "synthetic_augmented_from_open_clean": 5,
+            "synthetic_augmented_from_open_clean": 3,
             "real_error_pair": 0,
             "clean_identity_from_open_clean": 3,
-            "hard_negative_from_open_clean": 2,
+            "hard_negative_from_open_clean": 4,
         },
         "test": {
-            "synthetic_augmented_from_open_clean": 5,
+            "synthetic_augmented_from_open_clean": 3,
             "real_error_pair": 0,
-            "clean_identity_from_open_clean": 2,
+            "clean_identity_from_open_clean": 4,
             "hard_negative_from_open_clean": 3,
         },
     }
+    core["max_general_synthetic_fill"] = 0
     core["min_clean_pool_for_ready"] = 40
     core["min_clean_pool_hard_min"] = 40
     core["multi_error_stress_target"] = 0

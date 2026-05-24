@@ -110,6 +110,26 @@ evaluation:
   write_rule_worse_examples_during_training: false
 data:
   dataset_contract: candidate_opportunity
+  rule_activation:
+    mode: expanded_safe
+    include_decisions:
+    - INCLUDE_NOW
+    - INCLUDE_AFTER_THRESHOLD_CALIBRATION
+    - INCLUDE_AFTER_TRAINING
+    include_after_validator_when_runtime_supported: true
+    require_candidate_path: true
+    require_synthetic_support: true
+    require_hard_negative_support: true
+    require_validator_support_or_empirical_pass: true
+    exclude_blocked: true
+    exclude_ner_required_without_ner: true
+    min_empirical_validator_passes: 3
+    max_empirical_validator_examples: 10
+    expected_min_production_ready_rule_count: 12
+    expected_min_training_candidate_rule_count: 43
+    target_training_candidate_rule_count: 69
+    fail_below_min_training_candidate_rule_count: true
+    warn_below_target_training_candidate_rule_count: true
   synthetic_seed: 13
   processed_train_path: data/processed/correction_dataset.csv.gz
   manifest_path: data/processed/dataset_manifest.json

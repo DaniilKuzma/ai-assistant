@@ -7,7 +7,7 @@ import yaml
 
 from src.data._training_dataset_builder import _targeted_fill_rule_for_attempt
 import src.data.training_dataset as training
-from src.rules.capabilities import active_rule_ids_for_training, load_rule_capabilities
+from src.rules.capabilities import active_rule_ids_for_training, activation_policy_from_config, load_rule_capabilities
 
 
 ACTIVATION_INCLUDED_RULES = {
@@ -135,16 +135,16 @@ def test_canonical_no_60k_ready_fallback(monkeypatch, tmp_path: Path):
 
 
 def test_canonical_resolves_broad_active_rules():
-    rows = training.resolve_active_target_rules(_load_canonical_config())
+    config = _load_canonical_config()
+    rows = training.resolve_active_target_rules(config)
     active = {row["rule_id"]: row for row in rows if row["include_in_dataset"]}
-    capability_active = set(active_rule_ids_for_training(load_rule_capabilities("configs/rules.yaml")))
+    capability_active = set(active_rule_ids_for_training(load_rule_capabilities("configs/rules.yaml"), policy=activation_policy_from_config(config)))
 
     assert set(active) == capability_active
     assert active["comma_subordinate"]["quota_min"] == 1500
     assert active["hyphen_whitelist"]["quota_preferred"] == 3000
     excluded = {row["rule_id"]: row["reason"] for row in rows if not row["include_in_dataset"]}
-    assert excluded["dictionary_fuzzy"] == "INCLUDE_AFTER_VALIDATOR"
-    assert excluded["final_punctuation_default"] == "INCLUDE_AFTER_VALIDATOR"
+    assert {"dictionary_fuzzy", "final_punctuation_default"} <= set(active)
 
 
 def test_canonical_includes_activation_rules():
