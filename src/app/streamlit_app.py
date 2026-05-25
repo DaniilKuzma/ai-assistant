@@ -14,10 +14,9 @@ import streamlit as st
 from src.config.load_config import load_config
 from src.docx.docx_corrector import correct_docx, correct_docx_incremental
 from src.docx.docx_reader import read_paragraphs
-from src.inference.corrector import Corrector
 from src.inference.incremental_corrector import IncrementalCorrector
-from src.inference.model_corrector import TrainedModelCorrector
-from src.memory import CorrectionFeedbackService
+from src.runtime.corrector import Corrector
+from src.schema.edits import CorrectionResult, RuntimeEdit
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -39,12 +38,9 @@ def build_streamlit_corrector(
 ) -> StreamlitCorrectorLoadResult:
     config_path = Path(config_path)
     config = _config_with_streamlit_overrides(load_config(config_path), memory_enabled=memory_enabled, doc_id=doc_id)
-    if _trained_artifacts_exist(config):
-        try:
-            return StreamlitCorrectorLoadResult(TrainedModelCorrector.from_config(config), "trained_model")
-        except Exception as exc:
-            return StreamlitCorrectorLoadResult(Corrector.from_config(config), "rule_fallback", str(exc))
-    return StreamlitCorrectorLoadResult(Corrector.from_config(config), "rule_fallback")
+    corrector = Corrector.from_config(config)
+    kind = "direct_neural" if getattr(corrector, "neural_backend", None) is not None else "deterministic_fallback"
+    return StreamlitCorrectorLoadResult(corrector, kind)
 
 
 @st.cache_resource(show_spinner="Загрузка модели корректора...")
@@ -63,7 +59,12 @@ def main() -> None:
     tab_text, tab_docx = st.tabs(["Text", "DOCX"])
 
     with tab_text:
-        use_memory = st.checkbox("Использовать контекстную память решений", value=False)
+        use_memory = st.checkbox(
+            "Использовать контекстную память решений",
+            value=False,
+            disabled=True,
+            help="Память решений будет адаптирована под RuntimeEdit позже.",
+        )
         doc_id = _normalize_doc_id(st.text_input("ID документа", value="default"))
         use_incremental = st.checkbox("Проверять только изменённые фрагменты", value=False)
         load_result = _cached_streamlit_corrector(
@@ -96,7 +97,7 @@ def main() -> None:
             if incremental_summary is not None:
                 latest_text_correction["incremental_summary"] = incremental_summary
             st.session_state["latest_text_correction"] = latest_text_correction
-        _render_latest_text_correction(corrector, memory_enabled=use_memory)
+        _render_latest_text_correction()
 
     with tab_docx:
         uploaded = st.file_uploader("Word-документ", type=["docx"])
@@ -150,30 +151,24 @@ def main() -> None:
                     file_name="corrected.docx",
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                 )
-                st.dataframe(
-                    [
-                        {
-                            "source": edit.source,
-                            "replacement": edit.replacement,
-                            "type": edit.edit_type,
-                            "status": getattr(edit, "status", "accepted"),
-                        }
-                        for edit in edits
-                    ],
-                    use_container_width=True,
-                )
+                st.dataframe(build_edit_rows(edits), use_container_width=True)
 
 
-def build_feedback_rows(result: Any) -> list[dict[str, str]]:
+def build_feedback_rows(result: CorrectionResult) -> list[dict[str, object]]:
+    return build_edit_rows(getattr(result, "edits", []))
+
+
+def build_edit_rows(edits: list[RuntimeEdit]) -> list[dict[str, object]]:
     return [
         {
             "source": str(edit.source),
             "replacement": str(edit.replacement),
-            "type": str(edit.edit_type),
-            "status": str(getattr(edit, "status", "accepted")),
-            "reason": str(getattr(edit, "reason", getattr(edit, "explanation", ""))),
+            "edit_type": str(edit.edit_type),
+            "rule_id": str(edit.rule_id),
+            "confidence": float(edit.confidence),
+            "explanation": str(edit.explanation),
         }
-        for edit in getattr(result, "edits", [])
+        for edit in edits
     ]
 
 
@@ -223,14 +218,13 @@ def _config_with_streamlit_overrides(
     return config_copy
 
 
-def _render_latest_text_correction(corrector: Any, *, memory_enabled: bool) -> None:
+def _render_latest_text_correction() -> None:
     latest = st.session_state.get("latest_text_correction")
     if not latest:
         return
 
     source = str(latest["source"])
     result = latest["result"]
-    doc_id = _normalize_doc_id(latest.get("doc_id"))
     st.text_area("Исправленный текст", value=result.corrected_text, height=180)
     summary = latest.get("incremental_summary")
     if summary:
@@ -246,108 +240,11 @@ def _render_latest_text_correction(corrector: Any, *, memory_enabled: bool) -> N
     st.markdown("Подсветка исправлений")
     st.markdown(render_highlighted_diff(source, result.corrected_text), unsafe_allow_html=True)
     st.dataframe(build_feedback_rows(result), use_container_width=True)
-    _render_memory_feedback_controls(
-        source=source,
-        result=result,
-        corrector=corrector,
-        doc_id=doc_id,
-        memory_enabled=memory_enabled,
-    )
-    _render_candidate_decisions(result)
-
-
-def _render_memory_feedback_controls(
-    *,
-    source: str,
-    result: Any,
-    corrector: Any,
-    doc_id: str,
-    memory_enabled: bool,
-) -> None:
-    if not memory_enabled:
-        return
-    memory = getattr(corrector, "correction_memory", None)
-    if memory is None:
-        return
-
-    editable_edits = [
-        (index, edit)
-        for index, edit in enumerate(getattr(result, "edits", []))
-        if getattr(edit, "status", "") in {"accepted", "proposed"}
-    ]
-    if not editable_edits:
-        return
-
-    service = CorrectionFeedbackService(memory, doc_id=doc_id)
-    for index, edit in editable_edits:
-        st.caption(f"{edit.source or 'пусто'} -> {edit.replacement or 'пусто'}")
-        columns = st.columns(3)
-        key_prefix = _feedback_button_key(index, edit, doc_id)
-        with columns[0]:
-            if st.button("Запомнить: принимать", key=f"{key_prefix}_accept"):
-                service.accept_edit(source, edit, metadata={"origin": "streamlit"})
-                memory.save()
-                st.success("Решение запомнено для этого контекста")
-        with columns[1]:
-            if st.button("Запомнить: отклонять", key=f"{key_prefix}_reject"):
-                service.reject_edit(source, edit, metadata={"origin": "streamlit"})
-                memory.save()
-                st.success("Решение запомнено для этого контекста")
-        with columns[2]:
-            if st.button("Игнорировать в этом контексте", key=f"{key_prefix}_ignore"):
-                service.ignore_edit(source, edit, metadata={"origin": "streamlit"})
-                memory.save()
-                st.success("Решение запомнено для этого контекста")
-
-
-def _render_candidate_decisions(result: Any) -> None:
-    decisions = getattr(result, "candidate_decisions", []) or []
-    if not decisions:
-        return
-    with st.expander("Кандидаты модели"):
-        st.dataframe(_candidate_decision_rows(decisions), use_container_width=True)
-
-
-def _candidate_decision_rows(decisions: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    rows: list[dict[str, Any]] = []
-    for decision in decisions:
-        candidate = decision.get("candidate")
-        rows.append(
-            {
-                "source": str(decision.get("source", "")),
-                "replacement": str(decision.get("replacement", "")),
-                "type": str(decision.get("edit_type") or getattr(candidate, "edit_type", "")),
-                "selected": bool(decision.get("selected", False)),
-                "memory": str(decision.get("memory_decision", "")),
-                "status": str(decision.get("validator_status", "")),
-                "reason": str(decision.get("validator_reason", "")),
-            }
-        )
-    return rows
-
-
-def _feedback_button_key(index: int, edit: Any, doc_id: str) -> str:
-    doc_key = re.sub(r"\W+", "_", doc_id, flags=re.UNICODE).strip("_") or "default"
-    return f"memory_{doc_key}_{index}_{getattr(edit, 'start', -1)}_{getattr(edit, 'end', -1)}"
 
 
 def _normalize_doc_id(doc_id: Any) -> str:
     normalized = str(doc_id or "").strip()
     return normalized or "default"
-
-
-def _trained_artifacts_exist(config: dict[str, Any]) -> bool:
-    paths = config.get("paths", {})
-    adapter_dir = _resolve_project_path(paths.get("adapter_output_dir", "models/current/adapters"))
-    heads_path = _resolve_project_path(paths.get("heads_output_dir", "models/current/heads")) / "heads.pt"
-    return adapter_dir.exists() and heads_path.exists()
-
-
-def _resolve_project_path(path: str | Path) -> Path:
-    path = Path(path)
-    if path.is_absolute():
-        return path
-    return PROJECT_ROOT / path
 
 
 def render_highlighted_diff(source: str, corrected: str) -> str:

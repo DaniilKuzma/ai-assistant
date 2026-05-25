@@ -3,13 +3,12 @@ from pathlib import Path
 from docx import Document
 
 from src.docx.docx_corrector import correct_docx, correct_docx_incremental
-from src.inference.corrector import CorrectionResult
-from src.validation.diff_analyzer import Edit
+from src.schema.edits import CorrectionResult, RuntimeEdit
 
 
 FAKE_EDITS = [
-    Edit("незнаю", "не знаю", "split_word", 2, 8, status="accepted", rule_id="fake_split"),
-    Edit("", ",", "punctuation_insert", 15, 15, status="accepted", rule_id="fake_comma"),
+    RuntimeEdit(2, 8, "незнаю", "не знаю", "split_join", "fake_split", 0.99, "Раздельное написание с не."),
+    RuntimeEdit(15, 15, "", ",", "punctuation", "fake_comma", 0.98, "Запятая перед придаточной частью."),
 ]
 
 
@@ -47,6 +46,35 @@ def test_docx_correction_preserves_paragraph_count(tmp_path: Path):
     assert paragraphs == ["Я не знаю, что делать.", "Чистый текст."]
     assert fake_corrector.calls == ["Я незнаю что делать", "Чистый текст."]
     assert edits == FAKE_EDITS
+
+
+def test_docx_correction_writes_runtime_corrected_paragraph_for_tiny_docx(tmp_path: Path):
+    input_path = tmp_path / "tiny.docx"
+    output_path = tmp_path / "tiny_output.docx"
+
+    document = Document()
+    document.add_paragraph("Он незнал что делать")
+    document.save(input_path)
+
+    edit = RuntimeEdit(
+        start=3,
+        end=9,
+        source="незнал",
+        replacement="не знал",
+        edit_type="split_join",
+        rule_id="ne_verb",
+        confidence=1.0,
+        explanation="Частица не с глаголом пишется раздельно.",
+    )
+    fake_corrector = FakeCorrector({"Он незнал что делать": "Он не знал что делать"})
+    fake_corrector.correct = lambda text: CorrectionResult(text, "Он не знал что делать", [edit])
+
+    edits = correct_docx(input_path, output_path, corrector=fake_corrector)
+
+    corrected = Document(output_path)
+    assert output_path.exists()
+    assert corrected.paragraphs[0].text == "Он не знал что делать"
+    assert edits == [edit]
 
 
 def test_docx_correction_preserves_first_run_bold_formatting(tmp_path: Path):

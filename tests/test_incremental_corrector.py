@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from src.inference.corrector import CorrectionResult
 from src.inference.incremental_corrector import IncrementalCorrector
-from src.validation.diff_analyzer import Edit
+from src.schema.edits import CorrectionResult, RuntimeEdit
 
 
 class FakeCorrector:
@@ -16,15 +15,15 @@ class FakeCorrector:
         start = text.find(source)
         if start < 0:
             return CorrectionResult(text, text, [])
-        edit = Edit(
-            source=text[start : start + len(source)],
-            replacement=replacement,
-            edit_type="split_word",
+        edit = RuntimeEdit(
             start=start,
             end=start + len(source),
-            status="accepted",
-            reason="fake",
+            source=text[start : start + len(source)],
+            replacement=replacement,
+            edit_type="split_join",
             rule_id="fake_split_word",
+            confidence=0.99,
+            explanation="Раздельное написание с не.",
         )
         return CorrectionResult(text, text.replace(source, replacement, 1), [edit])
 

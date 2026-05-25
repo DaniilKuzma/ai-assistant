@@ -6,9 +6,9 @@ from typing import Protocol
 
 from src.docx.docx_reader import read_paragraphs
 from src.docx.docx_writer import write_paragraphs_like
-from src.inference.corrector import CorrectionResult, Corrector
 from src.memory.document_index import SegmentCorrectionCache, build_segment_cache
-from src.validation.diff_analyzer import Edit
+from src.runtime.corrector import Corrector
+from src.schema.edits import CorrectionResult, RuntimeEdit
 
 
 class DocxCorrector(Protocol):
@@ -18,18 +18,18 @@ class DocxCorrector(Protocol):
 
 @dataclass(frozen=True)
 class DocxIncrementalResult:
-    edits: list[Edit]
+    edits: list[RuntimeEdit]
     checked_paragraphs: int
     reused_paragraphs: int
     paragraph_cache: dict[str, SegmentCorrectionCache]
 
 
-def correct_docx(input_path: str | Path, output_path: str | Path, corrector: DocxCorrector | None = None) -> list[Edit]:
+def correct_docx(input_path: str | Path, output_path: str | Path, corrector: DocxCorrector | None = None) -> list[RuntimeEdit]:
     if corrector is None:
         corrector = Corrector()
     paragraphs = read_paragraphs(input_path)
     corrected: list[str] = []
-    edits: list[Edit] = []
+    edits: list[RuntimeEdit] = []
 
     for paragraph in paragraphs:
         result = corrector.correct(paragraph) if paragraph.strip() else None
@@ -53,7 +53,7 @@ def correct_docx_incremental(
         corrector = Corrector()
     paragraphs = read_paragraphs(input_path)
     corrected: list[str] = []
-    edits: list[Edit] = []
+    edits: list[RuntimeEdit] = []
     paragraph_cache: dict[str, SegmentCorrectionCache] = {}
     checked_paragraphs = 0
     reused_paragraphs = 0
@@ -102,7 +102,7 @@ def correct_docx_incremental(
 def _paragraph_cache(
     source_text: str,
     corrected_text: str,
-    edits: list[Edit],
+    edits: list[RuntimeEdit],
     paragraph_index: int,
 ) -> SegmentCorrectionCache:
     return build_segment_cache(
@@ -116,6 +116,6 @@ def _paragraph_cache(
     )
 
 
-def _cached_edits(cache: SegmentCorrectionCache) -> list[Edit]:
+def _cached_edits(cache: SegmentCorrectionCache) -> list[RuntimeEdit]:
     edits = cache.metadata.get("edits", [])
-    return [edit for edit in edits if isinstance(edit, Edit)]
+    return [edit for edit in edits if isinstance(edit, RuntimeEdit)]

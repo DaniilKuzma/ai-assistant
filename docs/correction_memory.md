@@ -9,3 +9,7 @@ Russian spelling and punctuation.
 
 The future runtime boundary is a simple ScopeGuard. Memory-selected behavior
 will still pass through runtime scope checks before edits are applied.
+
+TODO: adapt correction memory and GUI feedback keys to `RuntimeEdit`. The
+current Streamlit feedback controls are disabled and do not affect runtime
+inference.

@@ -11,14 +11,14 @@ from src.memory.document_index import (
     merge_corrected_segments,
     segment_text,
 )
-from src.validation.diff_analyzer import Edit
+from src.schema.edits import RuntimeEdit
 
 
 @dataclass(frozen=True)
 class IncrementalCorrectionResult:
     source_text: str
     corrected_text: str
-    edits: list[Edit]
+    edits: list[RuntimeEdit]
     checked_segments: int
     reused_segments: int
     changed_segments: int
@@ -49,7 +49,7 @@ class IncrementalCorrector:
         reusable_cache = _reusable_cache(previous_cache, text)
         corrected_by_hash: dict[str, str] = {}
         new_cache: dict[str, SegmentCorrectionCache] = {}
-        edits: list[Edit] = []
+        edits: list[RuntimeEdit] = []
         checked_segments = 0
         reused_segments = 0
 
@@ -93,7 +93,7 @@ def _reusable_cache(
 def _segment_cache(
     segment: DocumentSegment,
     corrected_text: str,
-    local_edits: list[Edit],
+    local_edits: list[RuntimeEdit],
 ) -> SegmentCorrectionCache:
     return build_segment_cache(
         segment.text,
@@ -109,16 +109,16 @@ def _segment_cache(
     )
 
 
-def _cached_edits(cache: SegmentCorrectionCache) -> list[Edit]:
+def _cached_edits(cache: SegmentCorrectionCache) -> list[RuntimeEdit]:
     edits = cache.metadata.get("edits", [])
-    return [edit for edit in edits if isinstance(edit, Edit)]
+    return [edit for edit in edits if isinstance(edit, RuntimeEdit)]
 
 
-def _global_edits(local_edits: list[Edit], segment: DocumentSegment) -> list[Edit]:
+def _global_edits(local_edits: list[RuntimeEdit], segment: DocumentSegment) -> list[RuntimeEdit]:
     return [_global_edit(edit, segment) for edit in local_edits]
 
 
-def _global_edit(edit: Edit, segment: DocumentSegment) -> Edit:
+def _global_edit(edit: RuntimeEdit, segment: DocumentSegment) -> RuntimeEdit:
     if edit.start < 0 or edit.end < 0:
         return edit
     return replace(edit, start=segment.start + edit.start, end=segment.start + edit.end)
