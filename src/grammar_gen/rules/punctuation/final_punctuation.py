@@ -13,16 +13,16 @@ from src.grammar_gen.safety import validate_target_ast_or_raise
 from src.schema import GeneratedExample
 
 
-ACTIVE_GAPS = frozenset({"DOT", "QUESTION", "EXCLAMATION", "ELLIPSIS"})
-FINAL_MARKS = (".", "?", "!")
+ACTIVE_GAPS = frozenset({"DOT"})
+FINAL_MARKS = (".",)
 
 
 class FinalPunctuationRule(RuleProgram):
     info = RuleInfo(
         rule_id="final_punctuation",
         family="punctuation",
-        description="Sentence-final punctuation.",
-        explanation="В конце предложения ставится точка, вопросительный или восклицательный знак.",
+        description="Sentence-final dot punctuation.",
+        explanation="В конце повествовательного предложения ставится точка.",
         deterministic=True,
         weight=1.0,
     )

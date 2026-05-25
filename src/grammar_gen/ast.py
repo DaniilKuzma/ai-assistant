@@ -69,4 +69,5 @@ class HomogeneousSentence:
 class DashSubjectPredicateSentence:
     subject: NounPhrase
     predicate_nominal: NounPhrase
+    pair_id: str = ""
     final_punctuation: str = "."

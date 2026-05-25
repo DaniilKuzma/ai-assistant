@@ -32,6 +32,9 @@ BANNED_TERMS = (
 
 DELETED_PATHS = (
     Path("src") / "candidates",
+    Path("src") / "training" / "feature_cache.py",
+    Path("src") / "training" / "feature_profile.py",
+    Path("src") / "training" / "diagnostics.py",
     Path("src") / "validation" / _join("strict", "_validator.py"),
     Path("src") / "validation" / "edit_classifier.py",
     Path("src") / "alignment" / "edit_label_builder.py",
@@ -80,6 +83,28 @@ def test_runtime_training_model_inference_do_not_import_deleted_package() -> Non
         for path in package_root.rglob("*.py"):
             if import_term in path.read_text(encoding="utf-8", errors="ignore"):
                 offenders.append(str(path.relative_to(ROOT)))
+
+    assert offenders == []
+
+
+def test_src_training_has_no_old_candidate_feature_fields() -> None:
+    banned_fields = (
+        _join("candidate", "_labels"),
+        _join("candidate", "_mask"),
+        _join("candidate", "_scores"),
+        _join("candidate", "_rule", "_ids"),
+        _join("candidate", "_edit", "_types"),
+        _join("candidate", "_sources"),
+        _join("candidate", "_replacements"),
+        _join("candidate", "_spans"),
+    )
+    offenders: list[str] = []
+    training_root = ROOT / "src" / "training"
+    for path in training_root.rglob("*.py"):
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        for field in banned_fields:
+            if field in text:
+                offenders.append(f"{path.relative_to(ROOT)}: {field}")
 
     assert offenders == []
 

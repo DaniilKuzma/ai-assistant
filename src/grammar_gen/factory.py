@@ -18,7 +18,7 @@ def morphology_from_config(
     grammar = _grammar_config(config)
     use_pymorphy = bool(grammar.get("use_pymorphy", True))
     morphology = MorphologyEngine(use_pymorphy=use_pymorphy, lexicon=lexicon, critical=critical)
-    if critical and use_pymorphy and not morphology.uses_pymorphy:
+    if critical and not morphology.uses_pymorphy:
         _validate_curated_critical_coverage(lexicon)
     return morphology
 

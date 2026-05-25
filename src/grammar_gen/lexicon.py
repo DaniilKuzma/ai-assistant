@@ -43,6 +43,7 @@ class VerbEntry(Lexeme):
 @dataclass(frozen=True)
 class AdjectiveEntry(Lexeme):
     semantic_class: str
+    allowed_semantic_classes: tuple[str, ...] = ()
     forms: dict[str, str] = field(default_factory=dict)
 
 
@@ -133,6 +134,7 @@ class Lexicon:
                     AdjectiveEntry(
                         lemma=row["lemma"],
                         semantic_class=row["semantic_class"],
+                        allowed_semantic_classes=_parse_classes(row.get("allowed_semantic_classes", "")),
                         forms=_forms_from_row(row, ADJECTIVE_FORM_COLUMNS),
                     )
                     for row in _read_csv(base_path / "adjectives.csv")
@@ -206,7 +208,13 @@ class Lexicon:
     def random_object_for_frame(self, frame: VerbFrame, rng: RandomSource) -> NounEntry:
         if not frame.object_classes:
             raise ValueError(f"Frame {frame.frame_id!r} does not allow a direct object.")
-        candidates = [noun for noun in self.nouns if self.frames.validate_object(frame, noun)]
+        allowed_lemmas = _FRAME_OBJECT_LEMMA_ALLOWLISTS.get(frame.frame_id)
+        candidates = [
+            noun
+            for noun in self.nouns
+            if self.frames.validate_object(frame, noun)
+            and (allowed_lemmas is None or noun.lemma in allowed_lemmas)
+        ]
         if not candidates:
             raise ValueError(f"No noun entries can fill object slot for frame {frame.frame_id!r}.")
         return rng.choice(tuple(candidates))
@@ -229,6 +237,16 @@ class Lexicon:
 
     def random_adjective(self, rng: RandomSource) -> AdjectiveEntry:
         return rng.choice(self.adjectives)
+
+    def random_adjective_for_noun(self, noun_entry: NounEntry, rng: RandomSource) -> AdjectiveEntry:
+        candidates = [
+            adjective
+            for adjective in self.adjectives
+            if noun_entry.semantic_class in adjective.allowed_semantic_classes
+        ]
+        if not candidates:
+            raise ValueError(f"No compatible adjectives for noun class {noun_entry.semantic_class!r}.")
+        return rng.choice(tuple(candidates))
 
     def random_adverb(self, rng: RandomSource) -> AdverbEntry:
         return rng.choice(self.adverbs)
@@ -315,6 +333,12 @@ def _parse_bool(value: str) -> bool:
     raise ValueError(f"Expected true or false, got {value!r}.")
 
 
+def _parse_classes(value: str) -> tuple[str, ...]:
+    if not value.strip():
+        return ()
+    return tuple(part.strip() for part in value.split("|") if part.strip())
+
+
 def _canonical_case(case: str) -> str:
     return {
         "nom": "nomn",
@@ -338,6 +362,17 @@ def _semantic_matches(allowed: str, actual: str) -> bool:
     if allowed == "entity" and actual in {"person", "organization"}:
         return True
     return False
+
+
+_FRAME_OBJECT_LEMMA_ALLOWLISTS = {
+    "open_file": frozenset({"файл", "архив", "документ"}),
+    "sign_document": frozenset({"документ", "заявление", "протокол", "договор", "приказ", "отчёт", "доклад", "сводка"}),
+    "correct_error": frozenset({"ошибка", "опечатка", "сбой", "проблема", "трудность", "текст", "статья", "заметка", "документ", "файл"}),
+    "fix_problem": frozenset({"ошибка", "опечатка", "сбой", "проблема", "трудность", "инцидент", "ситуация"}),
+    "read_text": frozenset({"книга", "учебник", "роман", "документ", "текст", "статья", "заметка", "сообщение", "письмо", "ответ", "отчёт", "доклад", "сводка", "обзор"}),
+    "check_document": frozenset({"документ", "заявление", "протокол", "договор", "приказ", "справка", "инструкция", "отчёт", "доклад", "сводка", "обзор", "текст", "статья", "заметка", "расчёт", "вычисление", "формула", "задача", "задание"}),
+    "review_report": frozenset({"документ", "заявление", "протокол", "договор", "приказ", "справка", "инструкция", "отчёт", "доклад", "сводка", "обзор", "файл"}),
+}
 
 
 def _fallback_lexicon() -> Lexicon:

@@ -37,7 +37,7 @@ class DashSubjectPredicateRule(RuleProgram):
         if mode is GenerationMode.POSITIVE:
             target, ast = _dash_target(builder, realizer)
             source = remove_punctuation_before(target, _second_word(target))
-            example = _example(source, target, realizer, self.info.rule_id, mode)
+            example = _example(source, target, realizer, self.info.rule_id, mode, {"dash_pair_id": ast.pair_id})
             validate_target_ast_or_raise(ast, target, example)
             return example
         if mode is GenerationMode.HARD_NEGATIVE:
@@ -50,7 +50,7 @@ class DashSubjectPredicateRule(RuleProgram):
             return _example(text, text, realizer, self.info.rule_id, mode, {"trap_type": "verbal_predicate"})
         if mode is GenerationMode.CLEAN_IDENTITY:
             text, ast = _dash_target(builder, realizer)
-            example = _example(text, text, realizer, self.info.rule_id, mode)
+            example = _example(text, text, realizer, self.info.rule_id, mode, {"dash_pair_id": ast.pair_id})
             validate_target_ast_or_raise(ast, text, example)
             return example
         raise ValueError(f"Unsupported generation mode: {mode!r}")

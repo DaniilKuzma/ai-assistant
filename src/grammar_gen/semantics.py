@@ -8,6 +8,9 @@ from typing import Any
 from src.grammar_gen.randomness import RandomSource
 
 
+GENERAL_GENERATION_EXCLUDED_FRAME_IDS = frozenset({"say_fact", "task_requires"})
+
+
 @dataclass(frozen=True)
 class SemanticClass:
     name: str
@@ -61,6 +64,8 @@ class SemanticFrameLexicon:
             frame
             for frame in self.frames
             if (frame_family is None or frame.frame_family == frame_family)
+            and (frame_family is not None or frame.frame_family != "subordinate_complement")
+            and (frame_family is not None or frame.frame_id not in GENERAL_GENERATION_EXCLUDED_FRAME_IDS)
             and (allow_object is None or bool(frame.object_classes) is allow_object)
             and (allow_ne is None or frame.allow_ne is allow_ne)
         ]

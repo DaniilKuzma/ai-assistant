@@ -19,6 +19,20 @@ FORBIDDEN_PHRASES = (
     ("\u0432\u043e \u043e\u0433\u043e\u0440\u043e\u0434", "forbidden_vo_ogorod"),
     ("\u043a \u043e\u0433\u043e\u0440\u043e\u0434", "forbidden_k_ogorod"),
     ("\u043f\u043e \u0440\u0443\u0441\u043a\u0438\u0439", "forbidden_po_ruskiy"),
+    ("письменная соседка", "forbidden_written_neighbor"),
+    ("письменный студент", "forbidden_written_student"),
+    ("внимательный банк", "forbidden_attentive_bank"),
+    ("краткое министерство", "forbidden_brief_ministry"),
+    ("личная редакция", "forbidden_personal_editorial_office"),
+    ("городская цитата — сообщение", "forbidden_city_quote_message_dash"),
+    ("заявка — заключение", "forbidden_request_conclusion_dash"),
+    ("план — главная сводка", "forbidden_plan_summary_dash"),
+    ("заключение — личный принцип", "forbidden_conclusion_principle_dash"),
+    ("подписал абзац", "forbidden_signed_paragraph"),
+    ("подписала абзац", "forbidden_signed_paragraph"),
+    ("исправил инцидент", "forbidden_corrected_incident"),
+    ("исправила инцидент", "forbidden_corrected_incident"),
+    ("открыл справку", "forbidden_opened_certificate"),
 )
 TAKZHE_KAK_RE = re.compile(
     r"\b\u0442\u0430\u043a\u0436\u0435\s*,?\s+\u043a\u0430\u043a\b",
@@ -142,7 +156,7 @@ def _forbidden_phrase_reasons(example: GeneratedExample) -> list[str]:
     reasons: list[str] = []
     texts = (example.source_text.lower(), example.target_text.lower())
     for phrase, reason in FORBIDDEN_PHRASES:
-        if any(phrase in text for text in texts):
+        if any(_contains_forbidden_phrase(text, phrase) for text in texts):
             reasons.append(reason)
 
     if example.mode == GenerationMode.HARD_NEGATIVE.value and any(TAKZHE_KAK_RE.search(text) for text in texts):
@@ -155,6 +169,20 @@ def _stable_id_or_empty(example: GeneratedExample) -> str:
         return example.stable_id()
     except Exception:
         return ""
+
+
+def _contains_forbidden_phrase(text: str, phrase: str) -> bool:
+    if not phrase:
+        return False
+    if not (_is_cyrillic_word_char(phrase[0]) or _is_cyrillic_word_char(phrase[-1])):
+        return phrase in text
+    left = r"(?<![А-Яа-яЁё-])" if _is_cyrillic_word_char(phrase[0]) else ""
+    right = r"(?![А-Яа-яЁё-])" if _is_cyrillic_word_char(phrase[-1]) else ""
+    return re.search(f"{left}{re.escape(phrase)}{right}", text, re.IGNORECASE) is not None
+
+
+def _is_cyrillic_word_char(value: str) -> bool:
+    return bool(re.fullmatch(r"[А-Яа-яЁё-]", value))
 
 
 def _dedupe(values: list[str]) -> list[str]:

@@ -4,7 +4,14 @@ from src.grammar_gen.builders import GrammarBuilder
 from src.grammar_gen.randomness import RandomSource
 from src.grammar_gen.realizer import Realizer
 from src.grammar_gen.rules.base import GenerationMode, RuleInfo, RuleProgram
-from src.grammar_gen.rules.common import capitalize_first, make_punctuation_example, remove_punctuation_before, varied_np
+from src.grammar_gen.rules.common import (
+    capitalize_first,
+    make_punctuation_example,
+    noun_phrase_from_entry,
+    remove_punctuation_before,
+    varied_adjectives,
+    varied_np,
+)
 from src.schema import GeneratedExample
 
 
@@ -55,11 +62,31 @@ def _homogeneous_sentence(builder: GrammarBuilder, realizer: Realizer, rng: Rand
     subject = varied_np(builder, rng, ("person",), adjective_probability=0.25)
     verb_lemma = rng.choice(("проверить", "прочитать", "подписать", "открыть"))
     verb = realizer.morphology.inflect_verb_past(verb_lemma, subject.gender, subject.number)
-    classes = ("document", "report", "text", "message", "file", "book", "plan")
-    objects = [varied_np(builder, rng, classes, case="accs", adjective_probability=0.15) for _ in range(3)]
+    objects = [_object_for_verb(builder, rng, verb_lemma) for _ in range(3)]
     rendered = [realizer.render_np(obj) for obj in objects]
     text = f"{realizer.render_np(subject)} {verb} {rendered[0]}, {rendered[1]} и {rendered[2]}."
     return capitalize_first(text), rendered[1]
+
+
+def _object_for_verb(builder: GrammarBuilder, rng: RandomSource, verb_lemma: str):
+    allowed_lemmas = {
+        "подписать": ("документ", "заявление", "протокол", "договор", "приказ", "отчёт", "доклад", "сводка"),
+        "открыть": ("файл", "архив", "документ"),
+    }.get(verb_lemma)
+    if allowed_lemmas is not None:
+        candidates = tuple(noun for noun in builder.lexicon.nouns if noun.lemma in allowed_lemmas)
+        entry = rng.choice(candidates)
+        return noun_phrase_from_entry(
+            entry,
+            case="accs",
+            adjective_lemmas=varied_adjectives(builder, rng, noun_entry=entry, probability=0.15),
+        )
+
+    classes = {
+        "проверить": ("document", "report", "text", "calculation", "task", "data"),
+        "прочитать": ("book", "document", "text", "message", "report"),
+    }[verb_lemma]
+    return varied_np(builder, rng, classes, case="accs", adjective_probability=0.15)
 
 
 def _example(

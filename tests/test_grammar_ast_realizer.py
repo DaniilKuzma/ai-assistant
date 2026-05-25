@@ -164,6 +164,57 @@ def test_required_frame_backed_sentences_can_be_rendered() -> None:
         assert not validate_ast_sentence(ast, rendered)
 
 
+def test_required_frame_backed_sentences_render_without_pymorphy() -> None:
+    lexicon = Lexicon.default()
+    realizer = Realizer(lexicon, MorphologyEngine(use_pymorphy=False))
+
+    cases = [
+        (
+            _np(lexicon, "отчёт"),
+            VerbPhrase(
+                verb_lemma="содержать",
+                tense="present",
+                object_np=replace(_np(lexicon, "ошибка"), case="accs"),
+                frame_id="contain_info",
+            ),
+            "Отчёт содержит ошибку.",
+        ),
+        (
+            _np(lexicon, "просьба"),
+            VerbPhrase(
+                verb_lemma="содержать",
+                object_np=replace(_np(lexicon, "информация"), case="accs"),
+                frame_id="request_contains",
+            ),
+            "Просьба содержала информацию.",
+        ),
+        (
+            _np(lexicon, "комиссия"),
+            VerbPhrase(
+                verb_lemma="решить",
+                object_np=replace(_np(lexicon, "вопрос"), case="accs"),
+                frame_id="solve_task",
+            ),
+            "Комиссия решила вопрос.",
+        ),
+        (
+            _np(lexicon, "инженер"),
+            VerbPhrase(
+                verb_lemma="отправить",
+                object_np=replace(_np(lexicon, "таблица"), case="accs", adjective_lemmas=("тихий",)),
+                frame_id="send_message",
+            ),
+            "Инженер отправил тихую таблицу.",
+        ),
+    ]
+
+    for subject, predicate, expected in cases:
+        ast = SimpleSentence(Clause(subject=subject, predicate=predicate))
+        rendered = realizer.render_sentence(ast)
+        assert rendered == expected
+        assert not validate_ast_sentence(ast, rendered)
+
+
 def test_surface_semantic_guard_allows_frame_approved_content_and_location_forms() -> None:
     allowed = [
         "Отчёт показывал данные.",

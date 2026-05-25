@@ -19,6 +19,28 @@ from src.grammar_gen.semantics import PrepSlot, VerbFrame
 
 
 CYRILLIC_PREPOSITION_RE = re.compile(r"^[А-Яа-яЁё-]+$")
+SAFE_SUBORDINATE_FRAME_IDS = (
+    "contain_info",
+    "law_contains",
+    "document_describes",
+    "report_shows",
+    "plan_includes",
+    "message_contains",
+    "book_contains",
+    "request_contains",
+    "data_indicates",
+    "include_requirement",
+)
+DASH_NOMINAL_PAIRS = (
+    ("report_document", "отчёт", "документ"),
+    ("law_document", "закон", "документ"),
+    ("error_problem", "ошибка", "проблема"),
+    ("request_document", "заявка", "документ"),
+    ("protocol_document", "протокол", "документ"),
+    ("instruction_text", "инструкция", "текст"),
+    ("meeting_event", "собрание", "событие"),
+    ("plan_document", "план", "документ"),
+)
 
 
 class GrammarBuilder:
@@ -48,17 +70,21 @@ class GrammarBuilder:
             negated=allow_negation and frame.allow_ne and self.rng.chance(0.12),
             frame_id=frame.frame_id,
         )
+        left_adverbials = self._optional_left_adverbials()
+        right_adverbials = () if left_adverbials else self._optional_right_adverbials()
         return Clause(
             subject=subject,
             predicate=predicate,
-            left_adverbials=self._optional_left_adverbials(),
-            right_adverbials=self._optional_right_adverbials(),
+            left_adverbials=left_adverbials,
+            right_adverbials=right_adverbials,
         )
 
     def simple_sentence(self) -> SimpleSentence:
         return SimpleSentence(clause=self.random_clause())
 
     def complex_subordinate_sentence(self, conjunction: str = "что") -> ComplexSentence:
+        if conjunction == "что":
+            return self._that_complement_sentence()
         return ComplexSentence(
             main=self.random_clause(transitive=True),
             conjunction=conjunction,
@@ -88,11 +114,58 @@ class GrammarBuilder:
         return HomogeneousSentence(subject=subject, predicates=predicates, conjunction=conjunction)
 
     def dash_subject_predicate_sentence(self) -> DashSubjectPredicateSentence:
-        subject_classes = ("document", "report", "text", "message", "law", "plan", "request")
-        predicate_classes = ("document", "report", "text", "message", "rule", "fact", "information")
-        subject = self._noun_phrase(self.lexicon.random_noun_for_classes(subject_classes, self.rng))
-        predicate = self._noun_phrase(self.lexicon.random_noun_for_classes(predicate_classes, self.rng))
-        return DashSubjectPredicateSentence(subject=subject, predicate_nominal=predicate)
+        pair_id, subject_lemma, predicate_lemma = self.rng.choice(DASH_NOMINAL_PAIRS)
+        subject = self._noun_phrase(self._noun_by_lemma(subject_lemma), allow_adjectives=False)
+        predicate = self._noun_phrase(self._noun_by_lemma(predicate_lemma), allow_adjectives=False)
+        return DashSubjectPredicateSentence(subject=subject, predicate_nominal=predicate, pair_id=pair_id)
+
+    def _that_complement_sentence(self) -> ComplexSentence:
+        main_frame = self.lexicon.frames.random_frame(
+            self.rng,
+            frame_family="subordinate_complement",
+            allow_object=False,
+        )
+        return ComplexSentence(
+            main=self._clause_for_frame(main_frame, allow_adverbs=False, allow_adverbials=False),
+            conjunction="что",
+            subordinate=self._safe_subordinate_clause(),
+        )
+
+    def _safe_subordinate_clause(self) -> Clause:
+        frame = self._frame_by_id(self.rng.choice(SAFE_SUBORDINATE_FRAME_IDS))
+        tense = "present" if frame.frame_family == "content" and self.rng.chance(0.65) else "past"
+        return self._clause_for_frame(frame, tense=tense, allow_adverbs=False, allow_adverbials=False)
+
+    def _clause_for_frame(
+        self,
+        frame: VerbFrame,
+        *,
+        tense: str = "past",
+        allow_adverbs: bool = True,
+        allow_adverbials: bool = True,
+    ) -> Clause:
+        if frame.frame_id in {"check_showed", "check_established"}:
+            subject_entry = self._noun_by_lemma("проверка")
+        else:
+            subject_entry = self.lexicon.random_subject_for_frame(frame, self.rng)
+        subject = self._noun_phrase(subject_entry)
+        predicate = VerbPhrase(
+            verb_lemma=frame.verb_lemma,
+            tense=tense,
+            transitive=bool(frame.object_classes),
+            object_np=self._object_for_frame(frame),
+            adverbs=self._optional_adverbs() if allow_adverbs else (),
+            negated=False,
+            frame_id=frame.frame_id,
+        )
+        left_adverbials = self._optional_left_adverbials() if allow_adverbials else ()
+        right_adverbials = self._optional_right_adverbials() if allow_adverbials and not left_adverbials else ()
+        return Clause(
+            subject=subject,
+            predicate=predicate,
+            left_adverbials=left_adverbials,
+            right_adverbials=right_adverbials,
+        )
 
     def _predicate_for_frame(self, frame: VerbFrame, allow_negation: bool) -> VerbPhrase:
         return VerbPhrase(
@@ -133,7 +206,8 @@ class GrammarBuilder:
     def _optional_adverbs(self) -> tuple[str, ...]:
         if not self.rng.chance(0.25):
             return ()
-        return (self.lexicon.random_adverb(self.rng).lemma,)
+        candidates = tuple(adverb for adverb in self.lexicon.adverbs if adverb.semantic_class == "manner")
+        return (self.rng.choice(candidates or self.lexicon.adverbs).lemma,)
 
     def _optional_left_adverbials(self) -> tuple[str, ...]:
         if not self.rng.chance(0.12):
@@ -155,6 +229,7 @@ class GrammarBuilder:
         *,
         case: str = "nomn",
         preposition: str | None = None,
+        allow_adjectives: bool = True,
     ) -> NounPhrase:
         number = "plur" if noun.gender == "plur" else "sing"
         return NounPhrase(
@@ -163,19 +238,18 @@ class GrammarBuilder:
             animacy=noun.animacy,
             number=number,
             case=case,
-            adjective_lemmas=self._optional_adjectives(),
+            adjective_lemmas=self._optional_adjectives(noun) if allow_adjectives else (),
             semantic_class=noun.semantic_class,
             preposition=preposition,
         )
 
-    def _optional_adjectives(self) -> tuple[str, ...]:
+    def _optional_adjectives(self, noun: NounEntry) -> tuple[str, ...]:
         if not self.rng.chance(0.30):
             return ()
-        first = self.lexicon.random_adjective(self.rng).lemma
-        if self.rng.chance(0.08):
-            second = self.lexicon.random_adjective(self.rng).lemma
-            if second != first:
-                return (first, second)
+        try:
+            first = self.lexicon.random_adjective_for_noun(noun, self.rng).lemma
+        except ValueError:
+            return ()
         return (first,)
 
     def _subject_with_compatible_frames(self, min_count: int) -> NounEntry:
@@ -192,3 +266,15 @@ class GrammarBuilder:
             for frame in self.lexicon.frames.frames
             if self.lexicon.frames.validate_subject(frame, subject)
         )
+
+    def _frame_by_id(self, frame_id: str) -> VerbFrame:
+        for frame in self.lexicon.frames.frames:
+            if frame.frame_id == frame_id:
+                return frame
+        raise ValueError(f"Unknown semantic frame: {frame_id!r}.")
+
+    def _noun_by_lemma(self, lemma: str) -> NounEntry:
+        for noun in self.lexicon.nouns:
+            if noun.lemma == lemma:
+                return noun
+        raise ValueError(f"Unknown noun lemma: {lemma!r}.")

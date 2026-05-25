@@ -32,18 +32,6 @@ class MorphologyEngine:
     ) -> None:
         self._morph = None
         self._critical = bool(critical)
-        self._noun_forms = {
-            noun.lemma: dict(noun.forms)
-            for noun in (lexicon.nouns if lexicon is not None else ())
-        }
-        self._adjective_forms = {
-            adjective.lemma: dict(adjective.forms)
-            for adjective in (lexicon.adjectives if lexicon is not None else ())
-        }
-        self._verb_forms = {
-            verb.lemma: dict(verb.forms)
-            for verb in (lexicon.verbs if lexicon is not None else ())
-        }
         if use_pymorphy:
             try:
                 from pymorphy3 import MorphAnalyzer
@@ -51,6 +39,21 @@ class MorphologyEngine:
             except Exception:
                 self._morph = None
         self.uses_pymorphy = self._morph is not None
+        resolved_lexicon = lexicon
+        if resolved_lexicon is None and (not use_pymorphy or self._morph is None):
+            resolved_lexicon = Lexicon.default()
+        self._noun_forms = {
+            noun.lemma: dict(noun.forms)
+            for noun in (resolved_lexicon.nouns if resolved_lexicon is not None else ())
+        }
+        self._adjective_forms = {
+            adjective.lemma: dict(adjective.forms)
+            for adjective in (resolved_lexicon.adjectives if resolved_lexicon is not None else ())
+        }
+        self._verb_forms = {
+            verb.lemma: dict(verb.forms)
+            for verb in (resolved_lexicon.verbs if resolved_lexicon is not None else ())
+        }
 
     def inflect_noun(self, lemma: str, case: str, number: str = "sing") -> str:
         curated = self._curated_noun(lemma, case, number)

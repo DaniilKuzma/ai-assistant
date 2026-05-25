@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import time
 from pathlib import Path
 
@@ -63,7 +64,11 @@ def test_online_generator_factory_uses_production_morphology() -> None:
 
     generator = online_generator_from_config(config, seed=config["generation"]["seed"])
 
-    assert generator.morphology.uses_pymorphy is True
+    if importlib.util.find_spec("pymorphy3") is not None:
+        assert generator.morphology.uses_pymorphy is True
+    else:
+        assert generator.morphology.uses_pymorphy is False
+        assert generator.sample_by_index(0).target_text
 
 
 def test_generation_speed_sanity() -> None:

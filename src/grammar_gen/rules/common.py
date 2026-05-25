@@ -107,18 +107,27 @@ def varied_np(
     adjective_probability: float = 0.35,
 ) -> NounPhrase:
     entry = builder.lexicon.random_noun_for_classes(classes, rng)
-    adjectives = varied_adjectives(builder, rng, probability=adjective_probability)
+    adjectives = varied_adjectives(builder, rng, noun_entry=entry, probability=adjective_probability)
     return noun_phrase_from_entry(entry, case=case, adjective_lemmas=adjectives)
 
 
-def varied_adjectives(builder: Any, rng: Any, *, probability: float = 0.35) -> tuple[str, ...]:
+def varied_adjectives(
+    builder: Any,
+    rng: Any,
+    *,
+    noun_entry: Any | None = None,
+    probability: float = 0.35,
+) -> tuple[str, ...]:
     if not rng.chance(probability):
         return ()
-    first = builder.lexicon.random_adjective(rng).lemma
-    if rng.chance(0.12):
-        second = builder.lexicon.random_adjective(rng).lemma
-        if second != first:
-            return (first, second)
+    try:
+        first = (
+            builder.lexicon.random_adjective_for_noun(noun_entry, rng).lemma
+            if noun_entry is not None
+            else builder.lexicon.random_adjective(rng).lemma
+        )
+    except ValueError:
+        return ()
     return (first,)
 
 

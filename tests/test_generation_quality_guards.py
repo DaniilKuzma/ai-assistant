@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -49,6 +50,9 @@ def test_known_bad_agreement_and_vo_phrases_fail(text: str) -> None:
         "Банк провести чистое собрание, что продавец открыть инструкция.",
         "Инженер отправил тихюю таблица.",
         "Городской цитата — сообщение.",
+        "Городская цитата — сообщение.",
+        "Заявка — заключение.",
+        "План — главная сводка.",
     ),
 )
 def test_bad_target_morphology_is_rejected(text: str) -> None:
@@ -64,7 +68,6 @@ def test_bad_target_morphology_is_rejected(text: str) -> None:
         "Отчёт содержит ошибку.",
         "Банк провёл собрание.",
         "Инженер отправил тихую таблицу.",
-        "Городская цитата — сообщение.",
     ),
 )
 def test_good_target_morphology_is_accepted(text: str) -> None:
@@ -208,6 +211,76 @@ def test_online_generator_1000_examples_have_no_safety_failures() -> None:
     assert failures == []
 
 
+def test_comma_subordinate_uses_only_safe_complement_main_clauses() -> None:
+    generator = _generator()
+    unsafe_patterns = (
+        re.compile(r"\bпров[её]л\b.*,\s+что\b", re.IGNORECASE),
+        re.compile(r"\bсравнил\b.*,\s+что\b", re.IGNORECASE),
+        re.compile(r"\bотправил\b.*,\s+что\b", re.IGNORECASE),
+        re.compile(r"\bсохранил\b.*,\s+что\b", re.IGNORECASE),
+    )
+
+    examples = [
+        generator.sample(rule_id="comma_subordinate", mode=GenerationMode.POSITIVE)
+        for _ in range(1000)
+    ]
+    bad = [
+        example.target_text
+        for example in examples
+        if any(pattern.search(example.target_text) for pattern in unsafe_patterns)
+    ]
+    audit = audit_batch(examples)
+    validation_failures = [
+        (example.source_text, example.target_text, validate_generated_pair(example))
+        for example in examples
+        if validate_generated_pair(example)
+    ]
+
+    assert bad == []
+    assert audit["failed_examples_count"] == 0
+    assert validation_failures == []
+    assert all(
+        example.metadata["safety_clauses"][0]["frame_family"] == "subordinate_complement"
+        for example in examples
+    )
+
+
+def test_dash_subject_predicate_uses_only_curated_pair_ids() -> None:
+    generator = _generator()
+    allowed_pair_ids = {
+        "report_document",
+        "law_document",
+        "error_problem",
+        "request_document",
+        "protocol_document",
+        "instruction_text",
+        "meeting_event",
+        "plan_document",
+    }
+
+    examples = [
+        generator.sample(rule_id="dash_subject_predicate", mode=GenerationMode.POSITIVE)
+        for _ in range(500)
+    ]
+    pair_ids = {str(example.metadata.get("dash_pair_id") or "") for example in examples}
+    forbidden_targets = {
+        "Заявка — заключение.",
+        "Городская цитата — сообщение.",
+        "План — главная сводка.",
+        "Заключение — личный принцип.",
+    }
+
+    assert pair_ids <= allowed_pair_ids
+    assert "" not in pair_ids
+    assert {example.target_text for example in examples}.isdisjoint(forbidden_targets)
+    assert all("—" in example.target_text for example in examples)
+    assert all(
+        len(example.target_text.split("—", 1)[0].split()) == 1
+        and len(example.target_text.split("—", 1)[1].strip(" .").split()) <= 2
+        for example in examples
+    )
+
+
 @pytest.mark.slow
 def test_online_generator_5000_examples_have_no_semantic_audit_failures() -> None:
     generator = _generator()
@@ -241,11 +314,42 @@ def test_production_generator_5000_examples_quality_gate() -> None:
         "громкее",
         "тихюю",
         "городской цитата",
+        "городская цитата — сообщение",
+        "заявка — заключение",
+        "план — главная сводка",
+        "заключение — личный принцип",
+        "письменная соседка",
+        "письменный студент",
+        "внимательный банк",
+        "краткое министерство",
+        "личная редакция",
+        "подписал абзац",
+        "подписала абзац",
+        "исправил инцидент",
+        "исправила инцидент",
+        "открыл справку",
+        "провёл собрание, что",
+        "сравнил документ, что",
+        "отправил уведомление, что",
+        "сохранил данные, что",
+        "задание требовало",
     )
     bad_targets = [
-        (index, example.target_text)
+        (index, example.source_text, example.target_text)
         for index, example in enumerate(examples)
-        if any(pattern in f" {example.target_text.lower()} " for pattern in bad_target_patterns)
+        if any(
+            pattern in f" {example.source_text.lower()} "
+            or pattern in f" {example.target_text.lower()} "
+            for pattern in bad_target_patterns
+        )
+        or (
+            example.primary_rule_id == "final_punctuation"
+            and example.mode == GenerationMode.POSITIVE.value
+            and example.target_text.endswith(("?", "!"))
+        )
+        or re.search(r"\bпотом\b.*\bпотом\b", example.target_text.lower()) is not None
+        or re.search(r"\bсказал[аи]?\s+ответ\b", example.target_text.lower()) is not None
+        or "проверка показывала" in example.target_text.lower()
     ]
     unique_pairs = {
         (example.source_text, example.target_text, example.primary_rule_id, example.mode)
@@ -256,7 +360,7 @@ def test_production_generator_5000_examples_quality_gate() -> None:
     assert audit["failed_examples_count"] == 0
     assert validation_failures == []
     assert bad_targets == []
-    assert duplicate_ratio < 0.35
+    assert duplicate_ratio < 0.25
 
 
 def test_ne_verb_positive_expected_edit_count_is_logical_one() -> None:

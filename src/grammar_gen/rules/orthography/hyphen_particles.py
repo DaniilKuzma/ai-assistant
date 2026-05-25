@@ -10,7 +10,9 @@ from src.grammar_gen.rules.common import (
     gap_labels_from_text,
     label_span,
     make_clean_identity_example,
+    noun_phrase_from_entry,
     varied_np,
+    varied_adjectives,
     replace_once_checked,
     token_labels_all_keep,
 )
@@ -171,14 +173,32 @@ def _koe_sentence(builder: GrammarBuilder, realizer: Realizer, rng: RandomSource
 
 def _pronoun_predicate(builder: GrammarBuilder, realizer: Realizer, rng: RandomSource) -> str:
     verb = rng.choice(("проверил", "прочитал", "открыл", "подписал", "получил", "отправил"))
-    obj = varied_np(
-        builder,
-        rng,
-        ("document", "report", "text", "message", "file", "book", "plan"),
-        case="accs",
-    )
+    obj = _pronoun_object_for_verb(builder, rng, verb)
     adverb = f" {builder.lexicon.random_adverb(rng).lemma}" if rng.chance(0.25) else ""
     return f"{verb} {realizer.render_np(obj)}{adverb}."
+
+
+def _pronoun_object_for_verb(builder: GrammarBuilder, rng: RandomSource, verb: str):
+    allowed_lemmas = {
+        "открыл": ("файл", "архив", "документ"),
+        "подписал": ("документ", "заявление", "протокол", "договор", "приказ", "отчёт", "доклад", "сводка"),
+    }.get(verb)
+    if allowed_lemmas is not None:
+        candidates = tuple(noun for noun in builder.lexicon.nouns if noun.lemma in allowed_lemmas)
+        entry = rng.choice(candidates)
+        return noun_phrase_from_entry(
+            entry,
+            case="accs",
+            adjective_lemmas=varied_adjectives(builder, rng, noun_entry=entry),
+        )
+
+    classes = {
+        "проверил": ("document", "report", "text", "calculation", "task", "data"),
+        "прочитал": ("book", "document", "text", "message", "report"),
+        "получил": ("message", "file", "document"),
+        "отправил": ("message", "file", "document"),
+    }[verb]
+    return varied_np(builder, rng, classes, case="accs")
 
 
 def _po_adverb_sentence(builder: GrammarBuilder, realizer: Realizer, rng: RandomSource) -> str:

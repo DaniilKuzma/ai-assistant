@@ -3,7 +3,17 @@ check_document,проверить,person|organization|software_agent,document|re
 prepare_document,подготовить,person|organization,document|report|message|file|plan,,true,document_work
 buy_goods,купить,person|organization,food|goods|object|property|service,,true,buying
 read_text,прочитать,person,book|document|text|message|report,,true,reading
-say_fact,сказать,person|organization,fact|message|decision,,true,communication
+say_fact,сказать,person|organization,fact,,true,communication
+subordinate_say,сказать,person|organization,,,true,subordinate_complement
+subordinate_report,сообщить,person|organization,,,true,subordinate_complement
+subordinate_confirm,подтвердить,person|organization,,,true,subordinate_complement
+subordinate_notice,заметить,person|organization,,,true,subordinate_complement
+subordinate_decide,решить,person|organization,,,true,subordinate_complement
+subordinate_understand,понять,person|organization,,,true,subordinate_complement
+subordinate_write,написать,person|organization,,,true,subordinate_complement
+subordinate_indicate,указать,person|organization,,,true,subordinate_complement
+check_showed,показать,event,,,true,subordinate_complement
+check_established,установить,event,,,true,subordinate_complement
 explain_issue,объяснить,person|organization,question|problem|decision|rule,,true,communication
 notice_error,заметить,person|organization,error|fact|problem,,true,perception
 solve_task,решить,person|organization,task|problem|question|issue,,true,problem_solving
@@ -58,7 +68,7 @@ software_checks,проверить,software_agent,document|file|data,,true,docum
 system_sends,отправить,software_agent,message|file,to:dat:person,true,communication
 animal_eats,съесть,animal,food,,true,biological_action
 person_eats,съесть,person,food,,true,biological_action
-task_requires,требовать,task,requirement|information,,true,content
+task_requires,требовать,task,requirement,,true,content
 problem_causes,вызывать,problem,error|issue,,true,causation
 meeting_happens,состояться,meeting,,,true,event
 file_lies,лежать,file|document,,на:loct:surface|в:loct:place,true,location

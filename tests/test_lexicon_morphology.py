@@ -110,3 +110,28 @@ def test_fallback_morphology_covers_required_forms() -> None:
     assert engine.inflect_verb_past("решить", "fem") == "решила"
     assert engine.inflect_adjective("умный", "neut", "nomn") == "умное"
 
+
+def test_random_adjective_for_noun_uses_semantic_class_compatibility() -> None:
+    lexicon = Lexicon.default()
+    rng = RandomSource(seed=31)
+    nouns = {
+        lemma: next(noun for noun in lexicon.nouns if noun.lemma == lemma)
+        for lemma in ("соседка", "банк", "министерство", "редакция", "уведомление")
+    }
+    forbidden = {
+        "соседка": {"письменный"},
+        "банк": {"внимательный"},
+        "министерство": {"краткий"},
+        "редакция": {"личный"},
+    }
+
+    for lemma, noun in nouns.items():
+        sampled = {lexicon.random_adjective_for_noun(noun, rng).lemma for _ in range(200)}
+        assert sampled
+        assert sampled.isdisjoint(forbidden.get(lemma, set()))
+
+    message_adjectives = {
+        lexicon.random_adjective_for_noun(nouns["уведомление"], rng).lemma
+        for _ in range(200)
+    }
+    assert "письменный" in message_adjectives

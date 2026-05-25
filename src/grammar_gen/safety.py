@@ -60,6 +60,18 @@ BAD_TARGET_MORPHOLOGY_REASONS = (
     ("bad_adjective_form:громкее", re.compile(r"\bгромкее\b", re.IGNORECASE)),
     ("bad_adjective_form:тихюю", re.compile(r"\bтихюю\b", re.IGNORECASE)),
     ("bad_np_agreement:городской_цитата", re.compile(r"\bгородской\s+цитата\b", re.IGNORECASE)),
+    ("bad_adjective_noun_pair:письменная_соседка", re.compile(r"\bписьменная\s+соседка\b", re.IGNORECASE)),
+    ("bad_adjective_noun_pair:письменный_студент", re.compile(r"\bписьменный\s+студент\b", re.IGNORECASE)),
+    ("bad_adjective_noun_pair:внимательный_банк", re.compile(r"\bвнимательный\s+банк\b", re.IGNORECASE)),
+    ("bad_adjective_noun_pair:краткое_министерство", re.compile(r"\bкраткое\s+министерство\b", re.IGNORECASE)),
+    ("bad_adjective_noun_pair:личная_редакция", re.compile(r"\bличная\s+редакция\b", re.IGNORECASE)),
+    ("bad_dash_pair:городская_цитата_сообщение", re.compile(r"\bгородская\s+цитата\s+[—-]\s+сообщение\b", re.IGNORECASE)),
+    ("bad_dash_pair:заявка_заключение", re.compile(r"\bзаявка\s+[—-]\s+заключение\b", re.IGNORECASE)),
+    ("bad_dash_pair:план_главная_сводка", re.compile(r"\bплан\s+[—-]\s+главная\s+сводка\b", re.IGNORECASE)),
+    ("bad_dash_pair:заключение_личный_принцип", re.compile(r"\bзаключение\s+[—-]\s+личный\s+принцип\b", re.IGNORECASE)),
+    ("bad_object_pair:подписал_абзац", re.compile(r"\bподписал[аи]?\s+(?:[а-яё-]+\s+){0,2}абзац\b", re.IGNORECASE)),
+    ("bad_object_pair:исправил_инцидент", re.compile(r"\bисправил[аи]?\s+(?:[а-яё-]+\s+){0,2}инцидент\b", re.IGNORECASE)),
+    ("bad_object_pair:открыл_справку", re.compile(r"\bоткрыл[аи]?\s+(?:[а-яё-]+\s+){0,2}справку\b", re.IGNORECASE)),
     (
         "uninflected_object_noun",
         re.compile(

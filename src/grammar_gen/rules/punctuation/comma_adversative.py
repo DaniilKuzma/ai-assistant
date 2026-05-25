@@ -60,7 +60,7 @@ def _adversative_sentence(builder: GrammarBuilder, realizer: Realizer, rng: Rand
         ("document", "report", "text", "message", "file", "book", "plan"),
         case="accs",
     )
-    second_object = varied_np(builder, rng, ("error", "problem", "issue"), case="accs")
+    second_object = varied_np(builder, rng, ("error", "problem", "text", "document", "file"), case="accs")
     first_verb = realizer.morphology.inflect_verb_past("проверить", subject.gender, subject.number)
     second_verb = realizer.morphology.inflect_verb_past("исправить", subject.gender, subject.number)
     conjunction = rng.choice(("но", "а"))
