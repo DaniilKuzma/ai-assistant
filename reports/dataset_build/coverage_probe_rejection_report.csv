@@ -1,0 +1,82 @@
+rule_id,miner_name,reason,stage,count,example_source,example_target
+apposition_comma,real_pattern_replay,candidate_missing,positive_verification,116,Неприятель приблизившись с севера к Осовцу начал артиллерийскую борьбу с крепостью.,"Неприятель, приблизившись с севера к Осовцу начал артиллерийскую борьбу с крепостью."
+apposition_comma,real_pattern_replay,duplicate_pair,dedupe,3,"Рука как пружина стальная,На руль налегла.","Рука, как пружина стальная,На руль налегла."
+asyndetic_dash,syntax_mined,non_atomic_edit_count,positive_verification,3,"Когда показывался аэроплан-птица, красиво и вольно паривший в воздухе, австрийцы указывалиDas ist Nesteroff!","Когда показывался аэроплан-птица, красиво и вольно паривший в воздухе, австрийцы указывали — Das ist Nesteroff!"
+bracket_pair_balance,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+bracket_pair_balance,rule_lab,diversity_gate_failed:dominant_template_share:0.500>0.250,diversity_gate,1,,
+bracket_pair_balance,rule_lab,target_quality_failed,positive_verification,19,Проверь список (приложение утром.,Проверь список (приложение утром).
+capitalization_sentence_start,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+clarification_comma,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+comma_conjunction,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+comma_subordinate,real_pattern_replay,candidate_missing,positive_verification,120,Неприятель приблизившись с севера к Осовцу начал артиллерийскую борьбу с крепостью.,"Неприятель, приблизившись с севера к Осовцу начал артиллерийскую борьбу с крепостью."
+comma_subordinate,syntax_mined,candidate_missing,positive_verification,30,Неприятель приблизившись с севера к Осовцу начал артиллерийскую борьбу с крепостью.,"Неприятель, приблизившись с севера к Осовцу начал артиллерийскую борьбу с крепостью."
+comparative_turnover_comma,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+context_chto_by,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+context_chto_by,rule_lab,"diversity_gate_failed:dominant_template_share:0.720>0.250,dominant_slot_value_share:0.360>0.350",diversity_gate,1,,
+context_nesmotrya,rule_lab,diversity_gate_failed:dominant_template_share:0.420>0.250,diversity_gate,1,,
+context_tak_zhe,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+context_tak_zhe,rule_lab,"diversity_gate_failed:dominant_template_share:0.420>0.250,dominant_slot_value_share:0.360>0.350",diversity_gate,1,,
+context_tak_zhe,rule_lab,target_quality_failed,positive_verification,13,координатор так же отправил отчет утром.,координатор также отправил отчет утром.
+context_to_zhe,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+context_to_zhe,rule_lab,"diversity_gate_failed:dominant_template_share:0.400>0.250,dominant_slot_value_share:0.380>0.350",diversity_gate,1,,
+context_to_zhe,rule_lab,target_quality_failed,positive_verification,11,редактор то же отправил документ утром.,редактор тоже отправил документ утром.
+context_vsledstvie,rule_lab,diversity_gate_failed:dominant_template_share:0.520>0.250,diversity_gate,1,,
+context_vsledstvie,rule_lab,target_quality_failed,positive_verification,6,список вернули в следствие проверки утром.,список вернули вследствие проверки утром.
+context_za_to,rule_lab,diversity_gate_failed:dominant_template_share:0.480>0.250,diversity_gate,1,,
+detached_adverbial_comma,syntax_mined,candidate_missing,positive_verification,30,Неприятель приблизившись с севера к Осовцу начал артиллерийскую борьбу с крепостью.,"Неприятель, приблизившись с севера к Осовцу начал артиллерийскую борьбу с крепостью."
+detached_participial_comma,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+detached_participial_comma,syntax_mined,candidate_missing,positive_verification,30,Неприятель приблизившись с севера к Осовцу начал артиллерийскую борьбу с крепостью.,"Неприятель, приблизившись с севера к Осовцу начал артиллерийскую борьбу с крепостью."
+dictionary_fuzzy,real_pattern_replay,strict_validator_rejected,positive_verification,4,"Когдя показывался аэроплан-птица, красиво и вольно паривший в воздухе, австрийцы указывали — Das ist Nesteroff!","Когда показывался аэроплан-птица, красиво и вольно паривший в воздухе, австрийцы указывали — Das ist Nesteroff!"
+direct_speech_colon,rule_lab,candidate_missing,positive_verification,8,инспектор добавил отчет принят после проверки.,инспектор добавил: отчет принят после проверки.
+direct_speech_colon,rule_lab,diversity_gate_failed:dominant_template_share:0.500>0.250,diversity_gate,1,,
+direct_speech_colon,rule_lab,target_quality_failed,positive_verification,24,автор сказал документ подписан утром.,автор сказал: документ подписан утром.
+direct_speech_colon,syntax_mined,opportunities_seen_0,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+direct_speech_dash,syntax_mined,non_atomic_edit_count,positive_verification,3,"Когда показывался аэроплан-птица, красиво и вольно паривший в воздухе, австрийцы указывалиDas ist Nesteroff!","Когда показывался аэроплан-птица, красиво и вольно паривший в воздухе, австрийцы указывали — Das ist Nesteroff!"
+double_consonant_candidate,real_pattern_replay,duplicate_pair,dedupe,1,"Лейтенант бельгийской артиллерии, руководивший обороной одного из фортов Льежа, ни за что не хотел растаться с своей собакой — бульдогом.","Лейтенант бельгийской артиллерии, руководивший обороной одного из фортов Льежа, ни за что не хотел расстаться с своей собакой — бульдогом."
+enumeration_colon,syntax_mined,opportunities_seen_0,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+explanation_colon,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+explanation_colon,syntax_mined,opportunities_seen_0,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+extra_letter_candidate,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+final_punctuation_default,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+frequent_error_exact,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+homogeneous_comma,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+homogeneous_comma,syntax_mined,candidate_missing,positive_verification,29,Неприятель приблизившись с севера к Осовцу начал артиллерийскую борьбу с крепостью.,"Неприятель, приблизившись с севера к Осовцу начал артиллерийскую борьбу с крепостью."
+hyphen_particles,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+hyphen_po_adverbs,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+hyphen_whitelist,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+introductory_comma,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+introductory_comma,syntax_mined,candidate_missing,positive_verification,30,Неприятель приблизившись с севера к Осовцу начал артиллерийскую борьбу с крепостью.,"Неприятель, приблизившись с севера к Осовцу начал артиллерийскую борьбу с крепостью."
+keyboard_typo_candidate,real_pattern_replay,duplicate_pair,dedupe,2,"Во время воздушных разведок русских авиаторов австрийцы вснгда безошибочно определяли, каким аппаратом управлял Нестеров.","Во время воздушных разведок русских авиаторов австрийцы всегда безошибочно определяли, каким аппаратом управлял Нестеров."
+missing_letter_candidate,real_pattern_replay,duplicate_pair,dedupe,1,"1914. Бульдог-гонец под Льежем Фотограф-корреспондент Daily Mirror рассказывает случай, кторый порадует всех друзей животных.","1914. Бульдог-гонец под Льежем Фотограф-корреспондент Daily Mirror рассказывает случай, который порадует всех друзей животных."
+n_nn_adjective,morphology_mined,candidate_missing,positive_verification,5,С ранего утра 14 сентября огонь достиг значительного напряжения.,С раннего утра 14 сентября огонь достиг значительного напряжения.
+n_nn_adjective,morphology_mined,unsupported_edit_type,positive_verification,1,"Большая колона, отступавшая по шоссе от Перемышля к Саноку, обстреливалась с высот нашей батареей и бежала, бросив парки, обоз и автомобили.","Большая колонна, отступавшая по шоссе от Перемышля к Саноку, обстреливалась с высот нашей батареей и бежала, бросив парки, обоз и автомобили."
+n_nn_adjective,rule_lab,candidate_missing,positive_verification,496,аналитик сохранил ценый список для архива.,аналитик сохранил ценный список для архива.
+n_nn_adjective,rule_lab,non_atomic_edit_count,positive_verification,4,Каменый путь занял день после заседания.,Каменный путь занял день после заседания.
+n_nn_deverbal_adjective,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+n_nn_participle,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+ne_adjective,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+ne_adverb,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+ne_participle,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+ne_predicative,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+ne_verb,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+pattern_жо_же,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+pattern_жы_жи,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+pattern_чя_ча,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+pattern_шо_ше,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+pattern_щя_ща,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+pol_polu_compounds,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+prefix_pre_pri,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+prefix_s_to_z,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+punctuation_delete_replace,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+quote_pair_balance,rule_lab,diversity_gate_failed:dominant_template_share:0.360>0.250,diversity_gate,1,,
+quote_pair_balance,rule_lab,target_quality_failed,positive_verification,23,инспектор сказал: «документ подписан вечером.,инспектор сказал: «документ подписан вечером».
+sdelat_prefix,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+soft_to_hard_sign,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+subject_predicate_dash,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+subject_predicate_dash,syntax_mined,non_atomic_edit_count,positive_verification,3,"Когда показывался аэроплан-птица, красиво и вольно паривший в воздухе, австрийцы указывалиDas ist Nesteroff!","Когда показывался аэроплан-птица, красиво и вольно паривший в воздухе, австрийцы указывали — Das ist Nesteroff!"
+swapped_letters_candidate,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+tsya_soft_delete,morphology_mined,candidate_missing,positive_verification,2,"При продолжающемся отступлении австрийцев обнаруживаеться полное перемешивание их частей, захватываются новые партии пленных, орудия и прочая материальная часть.","При продолжающемся отступлении австрийцев обнаруживается полное перемешивание их частей, захватываются новые партии пленных, орудия и прочая материальная часть."
+tsya_soft_delete,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
+tsya_soft_insert,morphology_mined,candidate_missing,positive_verification,1,Попытка германской пехоты пробится ближе к крепости отражена.,Попытка германской пехоты пробиться ближе к крепости отражена.
+tsya_soft_insert,morphology_mined,strict_validator_rejected,positive_verification,1,"Лейтенант бельгийской артиллерии, руководивший обороной одного из фортов Льежа, ни за что не хотел расстатся с своей собакой — бульдогом.","Лейтенант бельгийской артиллерии, руководивший обороной одного из фортов Льежа, ни за что не хотел расстаться с своей собакой — бульдогом."
+tsya_soft_insert,real_pattern_replay,pattern_replay_unsafe,positive_mining,1,,1914. Русские войска вступили в пределы Венгрии Бои у Сопоцкина и Друскеник закончились отступлением германцев.
