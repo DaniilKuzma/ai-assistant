@@ -1,15 +1,9 @@
 from __future__ import annotations
 
-from src.candidates.candidate_generator import Candidate
+from src.runtime.edit_realizer import apply_gap_labels, apply_runtime_edits, apply_token_edit_labels
 
 
 CLOSING_FINAL_WRAPPERS = frozenset("\"'»”)]}")
-
-
-def apply_candidate(text: str, candidate: Candidate) -> str:
-    if candidate.edit_type == "keep":
-        return text
-    return text[: candidate.start] + candidate.replacement + text[candidate.end :]
 
 
 def ensure_final_punctuation(text: str, mark: str = ".") -> str:
@@ -24,3 +18,6 @@ def _has_sentence_final_punctuation(text: str) -> bool:
     while stripped and stripped[-1] in CLOSING_FINAL_WRAPPERS:
         stripped = stripped[:-1].rstrip()
     return bool(stripped and stripped[-1] in ".!?…")
+
+
+__all__ = ["apply_gap_labels", "apply_runtime_edits", "apply_token_edit_labels", "ensure_final_punctuation"]

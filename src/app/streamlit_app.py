@@ -156,7 +156,7 @@ def main() -> None:
                             "source": edit.source,
                             "replacement": edit.replacement,
                             "type": edit.edit_type,
-                            "status": edit.status,
+                            "status": getattr(edit, "status", "accepted"),
                         }
                         for edit in edits
                     ],
@@ -170,8 +170,8 @@ def build_feedback_rows(result: Any) -> list[dict[str, str]]:
             "source": str(edit.source),
             "replacement": str(edit.replacement),
             "type": str(edit.edit_type),
-            "status": str(edit.status),
-            "reason": str(edit.reason),
+            "status": str(getattr(edit, "status", "accepted")),
+            "reason": str(getattr(edit, "reason", getattr(edit, "explanation", ""))),
         }
         for edit in getattr(result, "edits", [])
     ]
