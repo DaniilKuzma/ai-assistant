@@ -9,8 +9,8 @@ from src.schema.edits import RuntimeEdit
 def _candidate(
     text: str,
     *,
-    source: str = "С‚Р°Рє Р¶Рµ",
-    replacement: str = "С‚Р°РєР¶Рµ",
+    source: str = "так же",
+    replacement: str = "также",
     rule_id: str = "context_tak_zhe",
     edit_type: str = "split_join",
 ) -> RuntimeEdit:
@@ -28,8 +28,8 @@ def _candidate(
 def _edit(
     text: str,
     *,
-    source: str = "СЃРґРµСЃСЊ",
-    replacement: str = "Р·РґРµСЃСЊ",
+    source: str = "сдесь",
+    replacement: str = "здесь",
     rule_id: str = "frequent_error_exact",
     edit_type: str = "spelling_replace",
 ) -> RuntimeEdit:
@@ -45,7 +45,7 @@ def _edit(
 
 
 def test_in_memory_remember_lookup_for_runtime_edit() -> None:
-    text = "РћРЅ СЃРґРµР»Р°Р» С‚Р°Рє Р¶Рµ РєР°Рє Р±СЂР°С‚."
+    text = "Он сделал так же как брат."
     memory = CorrectionMemory()
 
     entry = memory.remember_edit(
@@ -66,7 +66,7 @@ def test_in_memory_remember_lookup_for_runtime_edit() -> None:
 
 
 def test_in_memory_remember_lookup_for_edit() -> None:
-    text = "РћРЅР° РїСЂРёС€Р»Р° СЃРґРµСЃСЊ СѓС‚СЂРѕРј."
+    text = "Она пришла сдесь утром."
     memory = CorrectionMemory()
 
     entry = memory.remember_edit(text, _edit(text), "manual", doc_id="doc-1")
@@ -74,13 +74,13 @@ def test_in_memory_remember_lookup_for_edit() -> None:
     match = memory.lookup_edit(text, _edit(text), doc_id="doc-1")
     assert match is not None
     assert match.entry == entry
-    assert match.entry.source == "СЃРґРµСЃСЊ"
-    assert match.entry.replacement == "Р·РґРµСЃСЊ"
+    assert match.entry.source == "сдесь"
+    assert match.entry.replacement == "здесь"
     assert match.entry.decision == "manual"
 
 
 def test_rejected_decision_is_found_in_same_context() -> None:
-    text = "РћРЅ СЃРґРµР»Р°Р» С‚Р°Рє Р¶Рµ РєР°Рє Р±СЂР°С‚."
+    text = "Он сделал так же как брат."
     memory = CorrectionMemory()
 
     memory.remember_edit(text, _candidate(text), "rejected", doc_id="doc-1")
@@ -91,17 +91,17 @@ def test_rejected_decision_is_found_in_same_context() -> None:
 
 
 def test_different_replacement_does_not_match() -> None:
-    text = "РћРЅ СЃРґРµР»Р°Р» С‚Р°Рє Р¶Рµ РєР°Рє Р±СЂР°С‚."
+    text = "Он сделал так же как брат."
     memory = CorrectionMemory()
 
     memory.remember_edit(text, _candidate(text), "rejected", doc_id="doc-1")
 
-    changed = _candidate(text, replacement="С‚Р°Рє-Р¶Рµ")
+    changed = _candidate(text, replacement="так-же")
     assert memory.lookup_edit(text, changed, doc_id="doc-1") is None
 
 
 def test_different_rule_id_does_not_match() -> None:
-    text = "РћРЅ СЃРґРµР»Р°Р» С‚Р°Рє Р¶Рµ РєР°Рє Р±СЂР°С‚."
+    text = "Он сделал так же как брат."
     memory = CorrectionMemory()
 
     memory.remember_edit(text, _candidate(text), "rejected", doc_id="doc-1")
@@ -111,7 +111,7 @@ def test_different_rule_id_does_not_match() -> None:
 
 
 def test_different_doc_id_does_not_match() -> None:
-    text = "РћРЅ СЃРґРµР»Р°Р» С‚Р°Рє Р¶Рµ РєР°Рє Р±СЂР°С‚."
+    text = "Он сделал так же как брат."
     memory = CorrectionMemory()
 
     memory.remember_edit(text, _candidate(text), "rejected", doc_id="doc-1")
@@ -120,7 +120,7 @@ def test_different_doc_id_does_not_match() -> None:
 
 
 def test_jsonl_save_load_round_trip(tmp_path: Path) -> None:
-    text = "РћРЅ СЃРґРµР»Р°Р» С‚Р°Рє Р¶Рµ РєР°Рє Р±СЂР°С‚."
+    text = "Он сделал так же как брат."
     storage_path = tmp_path / "nested" / "memory.jsonl"
     memory = CorrectionMemory(storage_path)
     entry = memory.remember_edit(text, _candidate(text), "ignored", doc_id="doc-1")
@@ -153,7 +153,7 @@ def test_build_memory_from_config_returns_none_when_disabled(tmp_path: Path) -> 
 
 
 def test_build_memory_from_config_loads_existing_jsonl_when_enabled(tmp_path: Path) -> None:
-    text = "РћРЅР° РїСЂРёС€Р»Р° СЃРґРµСЃСЊ СѓС‚СЂРѕРј."
+    text = "Она пришла сдесь утром."
     storage_path = tmp_path / "memory.jsonl"
     saved = CorrectionMemory(storage_path)
     saved.remember_edit(text, _edit(text), "accepted", doc_id="doc-1")
@@ -176,12 +176,12 @@ def test_build_memory_from_config_loads_existing_jsonl_when_enabled(tmp_path: Pa
 
 
 def test_edit_type_aliases_allow_ui_edit_decision_to_match_generated_edit() -> None:
-    text = "РћРЅР° РїСЂРёС€Р»Р° СЃРґРµСЃСЊ СѓС‚СЂРѕРј."
+    text = "Она пришла сдесь утром."
     memory = CorrectionMemory()
     edit = _edit(text, edit_type="spelling_replace")
     candidate = RuntimeEdit(
-        source="СЃРґРµСЃСЊ",
-        replacement="Р·РґРµСЃСЊ",
+        source="сдесь",
+        replacement="здесь",
         edit_type="spelling",
         start=edit.start,
         end=edit.end,
@@ -196,7 +196,7 @@ def test_edit_type_aliases_allow_ui_edit_decision_to_match_generated_edit() -> N
 
 
 def test_corrupted_jsonl_line_does_not_break_load(tmp_path: Path) -> None:
-    text = "РћРЅ СЃРґРµР»Р°Р» С‚Р°Рє Р¶Рµ РєР°Рє Р±СЂР°С‚."
+    text = "Он сделал так же как брат."
     storage_path = tmp_path / "memory.jsonl"
     memory = CorrectionMemory(storage_path)
     memory.remember_edit(text, _candidate(text), "rejected", doc_id="doc-1")
@@ -216,16 +216,16 @@ def test_corrupted_jsonl_line_does_not_break_load(tmp_path: Path) -> None:
 
 
 def test_normalization_matches_yo_e_and_whitespace_variants() -> None:
-    remembered_text = "РћРЅ РєСѓРїРёР» С‘Р»РєСѓ   РЅР° СЂС‹РЅРєРµ."
-    lookup_text = "РћРЅ РєСѓРїРёР» РµР»РєСѓ РЅР° СЂС‹РЅРєРµ."
+    remembered_text = "Он купил ёлку   на рынке."
+    lookup_text = "Он купил елку на рынке."
     memory = CorrectionMemory()
 
     memory.remember_edit(
         remembered_text,
         _candidate(
             remembered_text,
-            source="С‘Р»РєСѓ",
-            replacement="РµР»РєСѓ",
+            source="ёлку",
+            replacement="елку",
             rule_id="yo_e_candidate",
             edit_type="spelling",
         ),
@@ -237,8 +237,8 @@ def test_normalization_matches_yo_e_and_whitespace_variants() -> None:
         lookup_text,
         _candidate(
             lookup_text,
-            source="РµР»РєСѓ",
-            replacement="С‘Р»РєСѓ",
+            source="елку",
+            replacement="ёлку",
             rule_id="yo_e_candidate",
             edit_type="spelling",
         ),

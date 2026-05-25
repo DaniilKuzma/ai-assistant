@@ -38,8 +38,8 @@ def test_load_encoder_disables_unused_pooler(monkeypatch):
     assert calls[0][1]["add_pooling_layer"] is False
 
 
-def test_model_backend_sets_pytorch_env_before_importing_peft(monkeypatch, tmp_path):
-    from src.inference import model_corrector
+def test_direct_neural_backend_sets_pytorch_env_before_importing_peft(monkeypatch, tmp_path):
+    from src.runtime import neural_backend
 
     for key in ("USE_TF", "TRANSFORMERS_NO_TF", "USE_FLAX"):
         monkeypatch.delenv(key, raising=False)
@@ -49,7 +49,7 @@ def test_model_backend_sets_pytorch_env_before_importing_peft(monkeypatch, tmp_p
     class FakePeftModel:
         @staticmethod
         def from_pretrained(*args, **kwargs):
-            raise RuntimeError("stop after peft import")
+            return "loaded-adapter"
 
     class FakePeftModule(types.ModuleType):
         def __getattribute__(self, name):
@@ -60,37 +60,16 @@ def test_model_backend_sets_pytorch_env_before_importing_peft(monkeypatch, tmp_p
                 return FakePeftModel
             return super().__getattribute__(name)
 
-    adapter_dir = tmp_path / "adapters"
-    heads_dir = tmp_path / "heads"
-    adapter_dir.mkdir()
-    heads_dir.mkdir()
-    (heads_dir / "heads.pt").write_bytes(b"not loaded")
-
     monkeypatch.setitem(sys.modules, "peft", FakePeftModule("peft"))
-    monkeypatch.setattr(model_corrector, "load_tokenizer", lambda config: object())
-    monkeypatch.setattr(model_corrector, "load_encoder", lambda config: object())
 
-    with pytest.raises(RuntimeError, match="stop after peft import"):
-        model_corrector.TorchCandidateModelBackend.from_config(
-            {
-                "model": {
-                    "primary_encoder": PRIMARY_ENCODER,
-                    "fallback_encoder": PRIMARY_ENCODER,
-                    "local_files_only": True,
-                },
-                "paths": {
-                    "adapter_output_dir": str(adapter_dir),
-                    "heads_output_dir": str(heads_dir),
-                },
-                "labels": {"punctuation": {}, "punctuation_actions": {}, "error_types": {}},
-            }
-        )
+    loaded = neural_backend._load_peft_adapter(object(), tmp_path)
 
     assert observed == {
         "USE_TF": "0",
         "TRANSFORMERS_NO_TF": "1",
         "USE_FLAX": "0",
     }
+    assert loaded == "loaded-adapter"
 
 
 def test_ruroberta_large_tokenizer_and_encoder_forward_pass_from_local_cache():

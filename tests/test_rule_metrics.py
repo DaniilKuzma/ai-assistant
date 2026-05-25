@@ -220,13 +220,13 @@ def test_real_rules_config_maps_rule_ids_to_report_groups():
 
     summary = reports["rule_precision_recall"].set_index("rule_id")
 
-    assert summary.loc["ne_verb", "group"] == "ne_ni_particles"
-    assert summary.loc["comma_subordinate", "group"] == "complex_sentence_subordinate"
-    assert summary.loc["final_punctuation_default", "group"] == "sentence_final_default_dot"
-    assert summary.loc["comma_conjunction", "group"] == "homogeneous_commas"
-    assert summary.loc["semicolon", "group"] == "complex_sentence_compound"
-    assert summary.loc["quotes_brackets", "group"] == "quotes_brackets"
-    assert summary.loc["dictionary_fuzzy", "group"] == "typos_letter_operations"
+    assert summary.loc["ne_verb", "group"] == "orthography_3_7_2_1"
+    assert summary.loc["comma_subordinate", "group"] == "punctuation_7_2_1"
+    assert summary.loc["final_punctuation_default", "group"] == "punctuation_1_1"
+    assert summary.loc["comma_conjunction", "group"] == "punctuation_4_3"
+    assert summary.loc["semicolon", "group"] == "punctuation_7_1_2"
+    assert summary.loc["quotes_brackets", "group"] == "unknown"
+    assert summary.loc["dictionary_fuzzy", "group"] == "orthography_8_1"
 
 
 def test_legacy_alias_matches_canonical_rule_id_as_per_rule_true_positive(tmp_path: Path):

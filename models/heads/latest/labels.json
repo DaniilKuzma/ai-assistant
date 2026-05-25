@@ -39,7 +39,7 @@
     "dash_subject_predicate",
     "final_punctuation"
   ],
-  "rule_label_to_id": {
+  "rule_tag_to_id": {
     "clean_identity": 1,
     "comma_adversative": 13,
     "comma_homogeneous": 12,

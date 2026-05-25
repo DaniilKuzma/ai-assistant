@@ -5,46 +5,39 @@
 ```text
 RuleProgram
   -> Grammar AST
-  -> Morphological realizer
-  -> Error renderer
-  -> token edit labels + punctuation gap labels
+  -> Morphology and lexicon realization
+  -> Error rendering
+  -> GeneratedExample
   -> online training batches
+  -> RuRoBERTa direct edit tagger
 ```
 
-The project now targets AST-first online generation plus direct edit tagging.
-The old candidate-aware offline dataset build is not part of the architecture.
+The project is AST-first and direct-tagging-first. The old offline dataset
+builder and candidate-aware training path are not part of the architecture.
 
-## Training Flow
+## Generation And Training
 
-- `configs/config.yaml:generation` defines online AST generation, rule-group mix,
-  grammar limits, seed, and frozen eval sizes.
-- Train examples are sampled on the fly.
-- Frozen val/test/regression examples may be materialized as JSONL in
-  `data/generated_eval`.
-- Large materialized CSV/GZIP training artifacts and offline dataset manifests
-  are obsolete and removed.
+- `configs/config.yaml:generation` controls rule groups, mix, seed, grammar
+  limits, and frozen eval sizes.
+- `OnlineExampleGenerator` samples `GeneratedExample` instances on demand.
+- `OnlineGrammarDataset` tensorizes generated examples during training.
+- Frozen eval sets are explicit JSONL files under `data/generated_eval`.
+- Large `train.csv`, validation CSV, test CSV, and CSV.GZ datasets are obsolete.
 
-## Model Shape
+## Model
 
-- Encoder: `ai-forever/ruRoberta-large`.
-- Adaptation: LoRA.
-- Heads: direct token edit tagging and punctuation gap classification.
-- The model is encoder-only and must not become a free-form seq2seq rewriter.
+- Encoder: RuRoBERTa.
+- Adaptation: LoRA where configured.
+- Heads: token edit labels, punctuation gap labels, rule tags, and confidence
+  logits.
+- The model outputs direct edits; it must not become seq2seq or a free-form
+  rewrite model.
 
-## Runtime Shape
+## Runtime
 
-- Deterministic rule engine runs first for ironclad spelling and punctuation
-  fixes.
-- Neural token edits and neural punctuation run after deterministic rules when
-  confidence passes configured thresholds.
-- Runtime scope is enforced by `src.runtime.scope_guard.ScopeGuard`.
-- GUI behavior remains stable: user enters text, presses `Исправить`, and gets
-  corrected text plus edits.
-
-## Current Packages
-
-- `src/grammar_gen/` - online AST generation.
-- `src/runtime/` - deterministic-first runtime orchestration.
-- `src/schema/` - generated example, label, and edit schemas.
-- `lexicon/` - lexicon resources.
-- `data/generated_eval/` - frozen JSONL evaluation sets.
+- Deterministic rules run first for conservative spelling and punctuation fixes.
+- Neural direct token edits and punctuation are applied only above configured
+  confidence thresholds.
+- `ScopeGuard` keeps runtime edits within Russian spelling and punctuation
+  boundaries.
+- GUI behavior remains stable and user-facing workflow is unchanged.

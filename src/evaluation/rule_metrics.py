@@ -370,7 +370,7 @@ def _load_rule_groups(path: str | Path) -> dict[str, str]:
         for rule_id in rule_ids:
             normalized = _normalize_rule_id(rule_id)
             if normalized != UNKNOWN_RULE_ID:
-                rule_groups[normalized] = str(group)
+                rule_groups.setdefault(normalized, str(group))
     return rule_groups
 
 

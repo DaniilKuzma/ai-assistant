@@ -79,6 +79,7 @@ class DiffAnalyzer:
             if wrong in source_lower and correct in target_lower:
                 start = source_lower.find(wrong)
                 edit_type = "split_word" if " " in correct else "spelling_replace"
+                rule_id = _orthography_rule_id(wrong, correct, edit_type)
                 edits.append(
                     Edit(
                         source[start : start + len(wrong)],
@@ -87,9 +88,45 @@ class DiffAnalyzer:
                         start,
                         start + len(wrong),
                         confidence=0.95,
-                        rule_id="frequent_error_exact",
+                        rule_id=rule_id,
                     )
                 )
+
+        for match in re.finditer(r"\bне([а-яё]+)\b", source_lower):
+            wrong = match.group(0)
+            correct = f"не {match.group(1)}"
+            if correct not in target_lower:
+                continue
+            edits.append(
+                Edit(
+                    source[match.start() : match.end()],
+                    correct,
+                    "split_word",
+                    match.start(),
+                    match.end(),
+                    confidence=0.95,
+                    rule_id="ne_verb",
+                )
+            )
+
+        for match in re.finditer(r"\b[а-яё]+\b", source_lower):
+            replacement = _pattern_replacement(match.group(0))
+            if replacement is None:
+                continue
+            correct, rule_id = replacement
+            if correct not in target_lower:
+                continue
+            edits.append(
+                Edit(
+                    source[match.start() : match.end()],
+                    correct,
+                    "spelling_replace",
+                    match.start(),
+                    match.end(),
+                    confidence=0.95,
+                    rule_id=rule_id,
+                )
+            )
 
         for wrong, correct in SPLIT_JOIN_WHITELIST.items():
             if correct in source_lower and wrong in target_lower:
@@ -135,7 +172,7 @@ class DiffAnalyzer:
                         start,
                         start + len(wrong),
                         confidence=0.95,
-                        rule_id="hyphen_whitelist",
+                        rule_id=_hyphen_rule_id(wrong, correct),
                     )
                 )
 
@@ -238,6 +275,49 @@ def _is_sentence_start_case_position(text: str, position: int) -> bool:
 
 def _is_russian_letter(char: str) -> bool:
     return bool(re.fullmatch(r"[А-Яа-яЁё]", char))
+
+
+def _orthography_rule_id(wrong: str, correct: str, edit_type: str) -> str:
+    if edit_type == "split_word" and wrong.startswith("не") and correct == f"не {wrong[2:]}":
+        return "ne_verb"
+
+    pattern_rules = (
+        ("чя", "ча", "pattern_чя_ча"),
+        ("щя", "ща", "pattern_щя_ща"),
+        ("чю", "чу", "pattern_чю_чу"),
+        ("щю", "щу", "pattern_щю_щу"),
+        ("жы", "жи", "pattern_жы_жи"),
+        ("шы", "ши", "pattern_шы_ши"),
+        ("цы", "ци", "pattern_цы_ци"),
+    )
+    for wrong_fragment, correct_fragment, rule_id in pattern_rules:
+        if wrong_fragment in wrong and correct == wrong.replace(wrong_fragment, correct_fragment, 1):
+            return rule_id
+    return "frequent_error_exact"
+
+
+def _pattern_replacement(word: str) -> tuple[str, str] | None:
+    pattern_rules = (
+        ("чя", "ча", "pattern_чя_ча"),
+        ("щя", "ща", "pattern_щя_ща"),
+        ("чю", "чу", "pattern_чю_чу"),
+        ("щю", "щу", "pattern_щю_щу"),
+        ("жы", "жи", "pattern_жы_жи"),
+        ("шы", "ши", "pattern_шы_ши"),
+        ("цы", "ци", "pattern_цы_ци"),
+    )
+    for wrong_fragment, correct_fragment, rule_id in pattern_rules:
+        if wrong_fragment in word:
+            return word.replace(wrong_fragment, correct_fragment, 1), rule_id
+    return None
+
+
+def _hyphen_rule_id(wrong: str, correct: str) -> str:
+    if wrong.startswith("кое ") or correct.startswith("кое-"):
+        return "hyphen_koe"
+    if wrong.startswith("по ") or correct.startswith("по-"):
+        return "hyphen_po_adverb"
+    return "hyphen_particles"
 
 
 def _punctuation_inserts(position: int, inserted: str) -> list[Edit]:

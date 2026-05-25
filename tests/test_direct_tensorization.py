@@ -69,14 +69,14 @@ def test_direct_feature_has_no_candidate_fields() -> None:
 
 
 def _example() -> GeneratedExample:
-    source_text = "РћРЅ РЅРµР·РЅР°Р» РѕС‚РІРµС‚Р°"
+    source_text = "Он незнал ответа"
     return GeneratedExample(
         source_text=source_text,
-        target_text="РћРЅ РЅРµ Р·РЅР°Р» РѕС‚РІРµС‚Р°.",
+        target_text="Он не знал ответа.",
         source_tokens=[
-            WordToken(text="РћРЅ", start=0, end=2, lemma="РѕРЅ", pos="PRON"),
-            WordToken(text="РЅРµР·РЅР°Р»", start=3, end=9, lemma="Р·РЅР°С‚СЊ", pos="VERB"),
-            WordToken(text="РѕС‚РІРµС‚Р°", start=10, end=16, lemma="РѕС‚РІРµС‚", pos="NOUN"),
+            WordToken(text="Он", start=0, end=2, lemma="он", pos="PRON"),
+            WordToken(text="незнал", start=3, end=9, lemma="знать", pos="VERB"),
+            WordToken(text="ответа", start=10, end=16, lemma="ответ", pos="NOUN"),
         ],
         token_edit_labels=["KEEP", "SPLIT_NE_VERB", "KEEP"],
         gap_labels=["NONE", "NONE", "DOT"],

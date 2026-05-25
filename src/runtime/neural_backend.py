@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from src.model.edit_model import DirectEditModelConfig, DirectEditTaggerModel
-from src.model.encoder import EncoderLoadConfig, load_tokenizer
+from src.model.encoder import EncoderLoadConfig, ensure_pytorch_transformers_backend, load_tokenizer
 from src.schema.labels import GAP_ID_TO_LABEL, RULE_ID_TO_LABEL, TOKEN_ID_TO_LABEL
 from src.runtime.tokenization import tokenize_runtime_words
 
@@ -130,6 +130,7 @@ def _direct_model_config(model_config: Mapping[str, Any]) -> DirectEditModelConf
 
 
 def _load_peft_adapter(encoder: Any, adapter_dir: Path) -> Any:
+    ensure_pytorch_transformers_backend()
     try:
         from peft import PeftModel
 

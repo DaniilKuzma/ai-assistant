@@ -2,7 +2,7 @@
   "actual_train_steps": 2,
   "batch_size": 32,
   "best_epoch": 1,
-  "best_metric": null,
+  "best_metric": 0.0,
   "debug_model": true,
   "effective_batch_size": 32,
   "epochs": 1,
@@ -21,12 +21,12 @@
   "total_train_steps": 2,
   "validation_history": [
     {
-      "combined_score": null,
+      "combined_score": 0.0,
       "epoch": 1,
-      "exact_match": null,
-      "loss": null,
-      "reason": "missing_or_empty_eval_jsonl:data\\generated_eval\\val.jsonl",
-      "status": "skipped"
+      "exact_match": 0.0,
+      "examples": 100,
+      "loss": 7.29978609085083,
+      "status": "ok"
     }
   ]
 }

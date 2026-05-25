@@ -6,7 +6,7 @@ from src.nlp.syntax_analyzer import SyntaxAnalyzer, analyze_syntax, syntax_pipel
 from src.nlp.syntax_types import SyntaxAnalysis
 
 
-SAMPLE_TEXT = "РџСЂРѕРµРєС‚ РіРѕС‚РѕРІ, РїРѕС‚РѕРјСѓ С‡С‚Рѕ РєРѕРјР°РЅРґР° Р·Р°РєРѕРЅС‡РёР»Р° СЂР°Р±РѕС‚Сѓ."
+SAMPLE_TEXT = "Проект готов, потому что команда закончила работу."
 
 
 def test_analyze_syntax_returns_canonical_analysis_for_basic_sentence():
@@ -29,8 +29,8 @@ def test_analyze_syntax_returns_canonical_analysis_for_basic_sentence():
         assert any(token.pos for token in analysis.tokens)
         assert any(token.dep_rel for token in analysis.tokens)
         assert any(token.head_id is not None for token in analysis.tokens)
-        assert any(token.text == "РїРѕС‚РѕРјСѓ" for token in analysis.tokens)
-        assert any(token.text == "С‡С‚Рѕ" for token in analysis.tokens)
+        assert any(token.text == "потому" for token in analysis.tokens)
+        assert any(token.text == "что" for token in analysis.tokens)
 
 
 def test_analyze_syntax_reuses_lru_cache_for_repeated_text():
@@ -52,10 +52,10 @@ def test_analyze_syntax_skips_cache_for_enormous_text_by_default():
     analyzer = SyntaxAnalyzer({"cache_enabled": True, "cache_max_size": 8, "cache_max_text_length": 10})
     analyzer.clear_cache()
 
-    analyzer.analyze("РўРµРєСЃС‚.")
-    analyzer.analyze("РўРµРєСЃС‚.")
-    analyzer.analyze("РћС‡РµРЅСЊ РґР»РёРЅРЅС‹Р№ С‚РµРєСЃС‚ РґР»СЏ СЃРёРЅС‚Р°РєСЃРёС‡РµСЃРєРѕРіРѕ Р°РЅР°Р»РёР·Р°.")
-    analyzer.analyze("РћС‡РµРЅСЊ РґР»РёРЅРЅС‹Р№ С‚РµРєСЃС‚ РґР»СЏ СЃРёРЅС‚Р°РєСЃРёС‡РµСЃРєРѕРіРѕ Р°РЅР°Р»РёР·Р°.")
+    analyzer.analyze("Текст.")
+    analyzer.analyze("Текст.")
+    analyzer.analyze("Очень длинный текст для синтаксического анализа.")
+    analyzer.analyze("Очень длинный текст для синтаксического анализа.")
     stats = analyzer.cache_info()
 
     assert stats["hits"] == 1

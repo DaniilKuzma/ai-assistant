@@ -1,0 +1,32 @@
+{
+  "audit_failure_reasons": {},
+  "audit_failures_count": 0,
+  "base_seed": 13,
+  "count": 100,
+  "first_failed_examples": [],
+  "mode_distribution": {
+    "clean_identity": 8,
+    "hard_negative": 13,
+    "positive": 79
+  },
+  "output_path": "data\\generated_eval\\val.jsonl",
+  "rule_distribution": {
+    "comma_adversative": 7,
+    "comma_homogeneous": 6,
+    "comma_introductory": 11,
+    "comma_subordinate": 5,
+    "dash_subject_predicate": 6,
+    "final_punctuation": 11,
+    "hyphen_koe": 7,
+    "hyphen_particles": 14,
+    "hyphen_po_adverb": 5,
+    "ne_verb": 5,
+    "takzhe_tak_zhe": 7,
+    "tozhe_to_zhe": 3,
+    "tsya_ttsya": 6,
+    "zato_za_to": 7
+  },
+  "seed": 13,
+  "seed_offset": 0,
+  "split": "val"
+}

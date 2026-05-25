@@ -2,24 +2,23 @@
 
 ## Fragile Areas
 
-- `ScopeGuard`: central runtime protection for unsafe edits; changes require
-  negative tests.
-- Punctuation predictions: quotes, brackets, dash, final punctuation, and
-  delete/replace actions can create false positives.
-- Context pairs require high confidence and context-sensitive guardrails.
-- `-тся/-ться` remains high-risk and should stay threshold-gated.
-- Dictionary-backed lexical edits are useful for recall but increase
-  overcorrection risk.
-- Syntax support depends on `natasha`; fallback mode may return an intentionally
-  sparse syntax layer.
-- Heavy model loading should remain lazy so unit tests do not download
-  RuRoBERTa unnecessarily.
+- `ScopeGuard` controls runtime safety; add negative tests for changes.
+- Punctuation gap labels are high-risk for false positives.
+- Context-sensitive spelling pairs should remain threshold-gated.
+- `-тся/-ться` and similar morphology-dependent edits require conservative
+  runtime handling.
+- Heavy RuRoBERTa loading must stay lazy; debug smoke must run without it.
 
 ## Useful Next Steps
 
-- Review clean overcorrection examples after threshold or runtime changes.
-- Keep `configs/rules.yaml` as an honest coverage matrix: planned entries must
-  not look implemented.
-- Add negative tests for each new deterministic or fallback-safe rule.
-- Keep generated eval sets small and explicit unless a run is intentionally
-  building frozen JSONL evaluation data.
+- Expand `RuleProgram` coverage incrementally.
+- Keep `configs/rules.yaml` honest: planned or partial entries must not look
+  production-ready.
+- Add hard negatives for each new rule before enabling it in online training.
+- Review frozen eval worst examples after runtime threshold changes.
+
+## Non-Goals
+
+- Do not recreate `train.csv`.
+- Do not add seq2seq rewriting.
+- Do not restore the old offline data-builder architecture.

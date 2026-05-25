@@ -1,36 +1,41 @@
 # Functions Map
 
-This map reflects the active AST-first online generation and direct edit tagging
-architecture.
+## Generation
 
-## Active Stable Areas
+- `src.grammar_gen.rules.base.RuleProgram` - base class for rule programs.
+- `src.grammar_gen.generator.OnlineExampleGenerator` - samples examples online.
+- `src.grammar_gen.audit.audit_batch` - validates generated batches.
+- `src.grammar_gen.safety.validate_generated_pair` - conservative generation
+  safety checks.
+- `src.schema.examples.GeneratedExample` - source/target and direct-label
+  contract.
 
-- `src.config.load_config.load_config` - load YAML configuration.
-- `src.grammar_gen.generator.OnlineExampleGenerator` - sample AST-generated
-  train/eval examples online.
-- `src.grammar_gen.audit.audit_batch` - validate generated examples and report
-  generation failures.
-- `src.schema.examples.GeneratedExample` - shared generated-example contract.
-- `src.schema.edits.RuntimeEdit` - runtime edit contract used by correction,
-  memory, and feedback.
-- `src.schema.edit_types.coarse_error_type` - shared edit taxonomy grouping for
-  evaluation reports.
-- `src.model.edit_model.DirectEditTaggerModel` - encoder-only direct edit
-  tagger with token, gap, and rule heads.
-- `src.training.tensorization.build_direct_training_feature` - tensorize
-  generated examples for direct edit tagging.
-- `src.training.train.train` - online-generation training entry point.
-- `src.runtime.corrector.Corrector` - deterministic-first runtime orchestration.
+## Training
+
+- `src.training.online_dataset.OnlineGrammarDataset` - iterable online training
+  dataset.
+- `src.training.online_dataset.FrozenJsonlDataset` - direct eval dataset from
+  frozen JSONL.
+- `src.training.tensorization.build_direct_training_feature` - maps
+  `GeneratedExample` to direct model tensors.
+- `src.training.trainer.train_model` - full direct training loop.
+- `src.training.train.train` - public training entry point.
+
+## Model And Runtime
+
+- `src.model.edit_model.DirectEditTaggerModel` - RuRoBERTa direct edit tagger.
+- `src.runtime.corrector.Corrector` - deterministic-first correction
+  orchestrator.
+- `src.runtime.neural_backend.DirectNeuralBackend` - loads direct model
+  artifacts and predicts edit labels.
 - `src.runtime.scope_guard.ScopeGuard` - conservative runtime safety boundary.
-- `src.inference.model_corrector.TrainedModelCorrector` - adapter for trained
-  direct models.
-- `src.evaluation.evaluate.evaluate_corrector` - direct runtime/model
-  evaluation entry.
+- `src.runtime.edit_realizer` - turns direct labels into runtime edits.
 
-## Script Entrypoints
+## Evaluation
 
-- `scripts/audit_generator.py` - generator audit CLI.
-- `scripts/build_frozen_eval.py` - frozen JSONL eval set builder.
+- `src.evaluation.evaluate.evaluate_corrector` - evaluates a corrector on frozen
+  `GeneratedExample` JSONL.
+- `scripts/audit_generator.py` - generation quality audit.
 - `scripts/benchmark_generation.py` - generation throughput benchmark.
-- `scripts/evaluate_model.py` - direct model/runtime evaluation.
-- `scripts/tune_thresholds.py` - direct runtime threshold tuning.
+- `scripts/build_frozen_eval.py` - frozen eval JSONL builder.
+- `scripts/evaluate_model.py` - runtime/model evaluation CLI.
