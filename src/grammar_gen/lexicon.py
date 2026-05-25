@@ -7,6 +7,7 @@ from typing import Any
 
 from src.config.load_config import load_config
 from src.grammar_gen.randomness import RandomSource
+from src.grammar_gen.semantics import SemanticFrameLexicon, VerbFrame
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -23,6 +24,10 @@ class NounEntry(Lexeme):
     gender: str
     animacy: str
     semantic_class: str
+    agentive: bool
+    can_be_patient: bool
+    can_be_location: bool
+    can_be_content_source: bool
 
 
 @dataclass(frozen=True)
@@ -65,6 +70,7 @@ class Lexicon:
     introductory_words: tuple[IntroductoryEntry, ...]
     conjunctions: tuple[str, ...]
     exceptions: dict[str, frozenset[str]]
+    frames: SemanticFrameLexicon
 
     @classmethod
     def default(cls) -> "Lexicon":
@@ -101,6 +107,10 @@ class Lexicon:
                         gender=row["gender"],
                         animacy=row["animacy"],
                         semantic_class=row["semantic_class"],
+                        agentive=_parse_bool(row["agentive"]),
+                        can_be_patient=_parse_bool(row["can_be_patient"]),
+                        can_be_location=_parse_bool(row["can_be_location"]),
+                        can_be_content_source=_parse_bool(row["can_be_content_source"]),
                     )
                     for row in _read_csv(base_path / "nouns.csv")
                 ),
@@ -136,6 +146,7 @@ class Lexicon:
                 ),
                 conjunctions=tuple(row["conjunction"] for row in _read_csv(base_path / "conjunctions.csv")),
                 exceptions=_read_exceptions(base_path / "exceptions.csv"),
+                frames=SemanticFrameLexicon.from_dir(base_path),
             )
         except (AttributeError, KeyError, ValueError, OSError, csv.Error):
             return _fallback_lexicon()
@@ -168,6 +179,27 @@ class Lexicon:
         ]
         if not candidates:
             raise ValueError("No noun entries match the requested filters.")
+        return rng.choice(tuple(candidates))
+
+    def random_noun_for_classes(self, classes: tuple[str, ...] | list[str] | set[str], rng: RandomSource) -> NounEntry:
+        allowed = set(classes)
+        candidates = [noun for noun in self.nouns if noun.semantic_class in allowed]
+        if not candidates:
+            raise ValueError("No noun entries match the requested semantic classes.")
+        return rng.choice(tuple(candidates))
+
+    def random_subject_for_frame(self, frame: VerbFrame, rng: RandomSource) -> NounEntry:
+        candidates = [noun for noun in self.nouns if self.frames.validate_subject(frame, noun)]
+        if not candidates:
+            raise ValueError(f"No noun entries can fill subject slot for frame {frame.frame_id!r}.")
+        return rng.choice(tuple(candidates))
+
+    def random_object_for_frame(self, frame: VerbFrame, rng: RandomSource) -> NounEntry:
+        if not frame.object_classes:
+            raise ValueError(f"Frame {frame.frame_id!r} does not allow a direct object.")
+        candidates = [noun for noun in self.nouns if self.frames.validate_object(frame, noun)]
+        if not candidates:
+            raise ValueError(f"No noun entries can fill object slot for frame {frame.frame_id!r}.")
         return rng.choice(tuple(candidates))
 
     def random_verb(
@@ -265,12 +297,12 @@ def _semantic_matches(allowed: str, actual: str) -> bool:
 def _fallback_lexicon() -> Lexicon:
     return Lexicon(
         nouns=(
-            NounEntry("девочка", "fem", "anim", "person"),
-            NounEntry("студент", "masc", "anim", "person"),
-            NounEntry("комиссия", "fem", "inanim", "organization"),
-            NounEntry("здание", "neut", "inanim", "place"),
-            NounEntry("огород", "masc", "inanim", "place"),
-            NounEntry("двор", "masc", "inanim", "place"),
+            NounEntry("девочка", "fem", "anim", "person", True, True, False, False),
+            NounEntry("студент", "masc", "anim", "person", True, True, False, False),
+            NounEntry("комиссия", "fem", "inanim", "organization", True, True, False, False),
+            NounEntry("дом", "masc", "inanim", "building", False, True, True, False),
+            NounEntry("отчёт", "masc", "inanim", "report", False, True, False, True),
+            NounEntry("продукты", "plur", "inanim", "food", False, True, False, False),
         ),
         verbs=(
             VerbEntry("пойти", False, "motion", False, True),
@@ -301,4 +333,5 @@ def _fallback_lexicon() -> Lexicon:
         ),
         conjunctions=("что", "чтобы", "потому что", "если", "когда", "хотя", "но", "а"),
         exceptions={"ne_verb": frozenset({"ненавидеть", "негодовать", "недомогать", "недоумевать", "неймётся"})},
+        frames=SemanticFrameLexicon.from_dir(Path()),
     )
