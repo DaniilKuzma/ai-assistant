@@ -1,0 +1,23 @@
+lemma,semantic_class
+конечно,certainty
+возможно,uncertainty
+вероятно,uncertainty
+действительно,certainty
+кажется,uncertainty
+по-видимому,uncertainty
+разумеется,certainty
+кстати,transition
+во-первых,order
+во-вторых,order
+однако,contrast
+значит,conclusion
+следовательно,conclusion
+наоборот,contrast
+например,example
+честно говоря,source
+безусловно,certainty
+несомненно,certainty
+видимо,uncertainty
+к счастью,evaluation
+к сожалению,evaluation
+словом,conclusion
