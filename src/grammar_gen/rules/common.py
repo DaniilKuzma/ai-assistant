@@ -41,6 +41,33 @@ def make_clean_identity_example(
     )
 
 
+def make_punctuation_example(
+    *,
+    source: str,
+    target: str,
+    source_tokens: Sequence[WordToken],
+    target_tokens: Sequence[WordToken],
+    rule_id: str,
+    mode: GenerationMode,
+    active_gap_labels: frozenset[str],
+    metadata: dict[str, str] | None = None,
+) -> GeneratedExample:
+    token_list = list(source_tokens)
+    gap_labels = gap_labels_from_target_text(target, target_tokens, token_list)
+    return GeneratedExample(
+        source_text=source,
+        target_text=target,
+        source_tokens=token_list,
+        token_edit_labels=token_labels_all_keep(token_list),
+        gap_labels=gap_labels,
+        rule_ids=rule_ids_for_active_gap_labels(gap_labels, rule_id, active_gap_labels),
+        primary_rule_id=rule_id,
+        mode=mode.value,
+        explanation_ids=[rule_id],
+        metadata=metadata or {},
+    )
+
+
 def token_labels_all_keep(tokens: Sequence[WordToken]) -> list[str]:
     return ["KEEP"] * len(tokens)
 
@@ -53,8 +80,33 @@ def gap_labels_from_text(text: str, tokens: Sequence[WordToken]) -> list[str]:
     return labels
 
 
+def gap_labels_from_target_text(
+    target_text: str,
+    target_tokens: Sequence[WordToken],
+    source_tokens: Sequence[WordToken],
+) -> list[str]:
+    labels = gap_labels_from_text(target_text, target_tokens)
+    if len(labels) != len(source_tokens):
+        raise ValueError(
+            "Target punctuation labels must match source token count: "
+            f"{len(labels)} != {len(source_tokens)}."
+        )
+    return labels
+
+
 def gap_labels_none(tokens: Sequence[WordToken]) -> list[str]:
     return ["NONE"] * len(tokens)
+
+
+def rule_ids_for_active_gap_labels(
+    gap_labels: Sequence[str],
+    rule_id: str,
+    active_gap_labels: frozenset[str],
+) -> list[str]:
+    rule_ids = [rule_id if label in active_gap_labels else "none" for label in gap_labels]
+    if rule_id not in rule_ids and rule_ids:
+        rule_ids[0] = rule_id
+    return rule_ids
 
 
 def find_token_sequence(tokens: Sequence[WordToken], sequence: Sequence[str]) -> int:
@@ -160,11 +212,14 @@ def _join_before_marker(before: str, after: str) -> str:
 __all__ = [
     "find_token_sequence",
     "gap_labels_from_text",
+    "gap_labels_from_target_text",
     "gap_labels_none",
     "insert_punctuation_before",
     "label_span",
     "make_clean_identity_example",
+    "make_punctuation_example",
     "remove_punctuation_before",
     "replace_once_checked",
+    "rule_ids_for_active_gap_labels",
     "token_labels_all_keep",
 ]

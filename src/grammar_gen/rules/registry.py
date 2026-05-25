@@ -81,8 +81,10 @@ def _is_enabled_rule(family: str, rule_id: str, enabled: frozenset[str]) -> bool
 
 def _register_default_rules() -> None:
     from src.grammar_gen.rules.orthography import register_orthography_rules
+    from src.grammar_gen.rules.punctuation import register_punctuation_rules
 
     register_orthography_rules(_DEFAULT_REGISTRY)
+    register_punctuation_rules(_DEFAULT_REGISTRY)
 
 
 __all__ = [

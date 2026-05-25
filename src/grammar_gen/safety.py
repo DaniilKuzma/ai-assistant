@@ -17,11 +17,19 @@ from src.grammar_gen.ast import (
 from src.grammar_gen.lexicon import Lexicon, NounEntry
 from src.grammar_gen.semantic_safety import reject_semantic_nonsense, validate_clause_semantics
 from src.grammar_gen.semantics import VerbFrame
+from src.schema import GeneratedExample
 
 
 LATIN_RE = re.compile(r"[A-Za-z]")
 REPEATED_PUNCTUATION_RE = re.compile(r"([,!?;:])\1+|\.{2}(?!\.)|\.{4,}")
-FINAL_PUNCTUATION_RE = re.compile(r"(\.\.\.|[.!?])$")
+FINAL_PUNCTUATION_RE = re.compile(r"(\.\.\.|[.!?\u2026])$")
+FINAL_PUNCTUATION_LABELS = {
+    ".": "DOT",
+    "?": "QUESTION",
+    "!": "EXCLAMATION",
+    "...": "ELLIPSIS",
+    "\u2026": "ELLIPSIS",
+}
 VO_RE = re.compile(r"(^|\s)во\s+", re.IGNORECASE)
 BAD_PAIR_REASONS = (
     ("bad_pair_devochka_poshel", re.compile(r"\bдевочка\s+пош[её]л\b", re.IGNORECASE)),
@@ -56,6 +64,27 @@ def validate_surface(text: str) -> list[str]:
             reasons.append(reason)
 
     return _dedupe(reasons)
+
+
+def validate_generated_pair(example: GeneratedExample) -> list[str]:
+    source_reasons = validate_surface(example.source_text)
+    target_reasons = validate_surface(example.target_text)
+    allowed_source = allowed_source_surface_failures(example)
+    real_source_reasons = [reason for reason in source_reasons if reason not in allowed_source]
+    return _dedupe(real_source_reasons + target_reasons)
+
+
+def allowed_source_surface_failures(example: GeneratedExample) -> set[str]:
+    if (
+        example.primary_rule_id == "final_punctuation"
+        and example.mode == "positive"
+        and example.metadata.get("expected_error") == "missing_final_punctuation"
+        and validate_surface(example.source_text) == ["missing_final_punctuation"]
+        and validate_surface(example.target_text) == []
+        and _is_valid_final_punctuation_positive_source(example)
+    ):
+        return {"missing_final_punctuation"}
+    return set()
 
 
 def validate_ast_sentence(ast: Any, rendered_text: str) -> list[str]:
@@ -154,6 +183,32 @@ def _has_bad_vo_phrase(text: str) -> bool:
         if not any(_starts_with_whitelist_phrase(suffix, phrase) for phrase in VO_WHITELIST):
             return True
     return False
+
+
+def _is_valid_final_punctuation_positive_source(example: GeneratedExample) -> bool:
+    target_mark = _final_mark(example.target_text)
+    if target_mark is None:
+        return False
+    if _final_mark(example.source_text) is not None:
+        return False
+    if example.source_text != example.target_text[: -len(target_mark)]:
+        return False
+    if not example.gap_labels:
+        return False
+    if example.gap_labels[-1] != FINAL_PUNCTUATION_LABELS[target_mark]:
+        return False
+    return all(label == "KEEP" for label in example.token_edit_labels)
+
+
+def _final_mark(text: str) -> str | None:
+    stripped = text.rstrip()
+    if stripped.endswith("..."):
+        return "..."
+    if stripped.endswith("\u2026"):
+        return "\u2026"
+    if stripped and stripped[-1] in ".!?":
+        return stripped[-1]
+    return None
 
 
 def _starts_with_whitelist_phrase(text: str, phrase: str) -> bool:

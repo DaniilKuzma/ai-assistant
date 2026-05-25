@@ -10,7 +10,7 @@ from src.grammar_gen.randomness import RandomSource
 from src.grammar_gen.realizer import Realizer
 from src.grammar_gen.rules.base import GenerationMode, RuleProgram
 from src.grammar_gen.rules.registry import RuleRegistry
-from src.grammar_gen.safety import validate_surface
+from src.grammar_gen.safety import validate_generated_pair
 from src.schema import GeneratedExample
 
 
@@ -139,12 +139,9 @@ class OnlineExampleGenerator:
         if validated.primary_rule_id not in validated.rule_ids:
             raise ValueError("GeneratedExample primary_rule_id must appear in rule_ids.")
 
-        source_reasons = validate_surface(validated.source_text)
-        if source_reasons:
-            raise ValueError(f"Invalid source surface: {', '.join(source_reasons)}.")
-        target_reasons = validate_surface(validated.target_text)
-        if target_reasons:
-            raise ValueError(f"Invalid target surface: {', '.join(target_reasons)}.")
+        pair_reasons = validate_generated_pair(validated)
+        if pair_reasons:
+            raise ValueError(f"Invalid generated pair: {', '.join(pair_reasons)}.")
 
         return validated
 
