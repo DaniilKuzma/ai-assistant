@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from src.grammar_gen.ast import Clause, NounPhrase, SimpleSentence, VerbPhrase
+from src.grammar_gen.ast import Clause, SimpleSentence, VerbPhrase
 from src.grammar_gen.builders import GrammarBuilder
-from src.grammar_gen.lexicon import NounEntry
 from src.grammar_gen.randomness import RandomSource
 from src.grammar_gen.realizer import Realizer
 from src.grammar_gen.rules.base import GenerationMode, RuleInfo, RuleProgram
@@ -15,7 +14,9 @@ from src.grammar_gen.rules.common import (
     metadata_without_safety_clauses,
     replace_once_checked,
     token_labels_all_keep,
+    varied_np,
 )
+from src.grammar_gen.safety import validate_target_ast_or_raise
 from src.schema import GeneratedExample
 
 
@@ -61,7 +62,7 @@ class TozheRule(RuleProgram):
         labels = token_labels_all_keep(source_tokens)
         start = find_token_sequence(source_tokens, ("то", "же"))
         label_span(labels, start, start + 2, "MERGE_TO_ZHE_TO_TOZHE")
-        return _example(
+        example = _example(
             source,
             target,
             source_tokens,
@@ -70,6 +71,8 @@ class TozheRule(RuleProgram):
             GenerationMode.POSITIVE,
             metadata_with_safety_clauses(sentence, builder.lexicon),
         )
+        validate_target_ast_or_raise(sentence, target, example)
+        return example
 
     def _hard_negative(
         self,
@@ -103,47 +106,27 @@ class TozheRule(RuleProgram):
             text = "Студент выбрал то же самое."
             metadata = metadata_without_safety_clauses()
         tokens = realizer.tokenize_words_with_offsets(text)
-        return make_clean_identity_example(text, tokens, rule_id=self.info.rule_id, metadata=metadata)
+        example = make_clean_identity_example(text, tokens, rule_id=self.info.rule_id, metadata=metadata)
+        if "safety_clauses" in metadata:
+            validate_target_ast_or_raise(sentence, text, example)
+        return example
 
 
 def _additive_sentence(builder: GrammarBuilder, realizer: Realizer, rng: RandomSource) -> tuple[str, SimpleSentence]:
     frame = next(frame for frame in builder.lexicon.frames.frames if frame.frame_id == "check_document")
-    subject_entry = rng.choice(
-        tuple(
-            noun
-            for noun in (_entry(builder, "студент"), _entry(builder, "комиссия"))
-            if builder.lexicon.frames.validate_subject(frame, noun)
-        )
-    )
-    object_entry = _entry(builder, "отчёт")
+    subject_entry = rng.choice(tuple(noun for noun in builder.lexicon.nouns if builder.lexicon.frames.validate_subject(frame, noun)))
     sentence = SimpleSentence(
         Clause(
-            subject=_np(subject_entry),
+            subject=varied_np(builder, rng, (subject_entry.semantic_class,), adjective_probability=0.20),
             predicate=VerbPhrase(
                 verb_lemma=frame.verb_lemma,
-                object_np=_np(object_entry, case="accs"),
+                object_np=varied_np(builder, rng, tuple(frame.object_classes), case="accs", adjective_probability=0.25),
                 adverbs=("тоже",),
                 frame_id=frame.frame_id,
             ),
         )
     )
     return realizer.render_sentence(sentence), sentence
-
-
-def _entry(builder: GrammarBuilder, lemma: str) -> NounEntry:
-    return next(noun for noun in builder.lexicon.nouns if noun.lemma == lemma)
-
-
-def _np(entry: NounEntry, *, case: str = "nomn") -> NounPhrase:
-    number = "plur" if entry.gender == "plur" else "sing"
-    return NounPhrase(
-        noun_lemma=entry.lemma,
-        gender=entry.gender,
-        animacy=entry.animacy,
-        number=number,
-        case=case,
-        semantic_class=entry.semantic_class,
-    )
 
 
 def _identity_example(

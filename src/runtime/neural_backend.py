@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+import json
 from pathlib import Path
 from typing import Any
 
@@ -39,6 +40,7 @@ class DirectNeuralBackend:
         heads_path = heads_dir / "heads.pt"
         if not heads_path.exists():
             raise FileNotFoundError(f"Direct edit heads artifact is missing: {heads_path}")
+        _validate_architecture_marker(heads_dir, config)
 
         model_config = config.get("model", {}) if isinstance(config, Mapping) else {}
         lora = model_config.get("lora", {}) if isinstance(model_config, Mapping) else {}
@@ -142,6 +144,25 @@ def _load_peft_adapter(encoder: Any, adapter_dir: Path) -> Any:
 def _resolve_path(value: Any) -> Path:
     path = Path(str(value))
     return path if path.is_absolute() else PROJECT_ROOT / path
+
+
+def _validate_architecture_marker(heads_dir: Path, config: Mapping[str, Any]) -> None:
+    marker_path = heads_dir / "architecture.json"
+    if not marker_path.exists():
+        raise RuntimeError(f"Direct edit architecture marker is missing: {marker_path}")
+    try:
+        marker = json.loads(marker_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"Direct edit architecture marker is invalid: {marker_path}") from exc
+
+    architecture = str(marker.get("architecture") or "")
+    if architecture != "direct_edit_tagger_v1":
+        raise RuntimeError(f"Unsupported direct edit architecture: {architecture!r}")
+
+    runtime = config.get("runtime", {}) if isinstance(config, Mapping) else {}
+    allow_debug_model = bool(runtime.get("allow_debug_model", False)) if isinstance(runtime, Mapping) else False
+    if bool(marker.get("debug_model", False)) and not allow_debug_model:
+        raise RuntimeError("Refusing to load debug_model direct edit heads without allow_debug_model=true.")
 
 
 def _offsets(value: Any) -> list[tuple[int, int]]:

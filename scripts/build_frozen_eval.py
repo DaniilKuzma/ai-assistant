@@ -12,10 +12,8 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.config.load_config import load_config
-from src.grammar_gen import Lexicon, MorphologyEngine
 from src.grammar_gen.audit import audit_batch
-from src.grammar_gen.generator import OnlineExampleGenerator
-from src.grammar_gen.rules.registry import default_rule_registry
+from src.grammar_gen.factory import online_generator_from_config
 from src.schema.serialization import write_jsonl_examples
 
 
@@ -69,13 +67,7 @@ def build_frozen_eval(
     seed_offset = SPLIT_SEED_OFFSETS[split]
     effective_seed = base_seed + seed_offset
 
-    generator = OnlineExampleGenerator(
-        default_rule_registry(),
-        Lexicon.default(),
-        MorphologyEngine(use_pymorphy=False),
-        config,
-        seed=effective_seed,
-    )
+    generator = online_generator_from_config(config, seed=effective_seed)
     examples = [generator.sample_by_index(index) for index in range(count)]
     audit = audit_batch(examples)
 

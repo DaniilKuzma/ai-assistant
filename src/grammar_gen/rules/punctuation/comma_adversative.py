@@ -4,7 +4,7 @@ from src.grammar_gen.builders import GrammarBuilder
 from src.grammar_gen.randomness import RandomSource
 from src.grammar_gen.realizer import Realizer
 from src.grammar_gen.rules.base import GenerationMode, RuleInfo, RuleProgram
-from src.grammar_gen.rules.common import make_punctuation_example, remove_punctuation_before
+from src.grammar_gen.rules.common import capitalize_first, make_punctuation_example, remove_punctuation_before, varied_np
 from src.schema import GeneratedExample
 
 
@@ -33,15 +33,9 @@ class CommaAdversativeRule(RuleProgram):
         rng: RandomSource,
         mode: GenerationMode,
     ) -> GeneratedExample:
-        del builder
         if mode is GenerationMode.POSITIVE:
-            target = rng.choice(
-                (
-                    "Студент проверил отчёт, но не исправил ошибку.",
-                    "Студент проверил отчёт, а не исправил ошибку.",
-                )
-            )
-            marker = "но" if ", но " in target else "а не"
+            target = _adversative_sentence(builder, realizer, rng)
+            marker = "но не" if ", но " in target else "а не"
             source = remove_punctuation_before(target, marker)
             return _example(source, target, realizer, self.info.rule_id, mode)
         if mode is GenerationMode.HARD_NEGATIVE:
@@ -53,14 +47,27 @@ class CommaAdversativeRule(RuleProgram):
             )
             return _example(text, text, realizer, self.info.rule_id, mode, {"trap_type": "a_takzhe"})
         if mode is GenerationMode.CLEAN_IDENTITY:
-            text = rng.choice(
-                (
-                    "Студент проверил отчёт, но не исправил ошибку.",
-                    "Студент проверил отчёт, а не исправил ошибку.",
-                )
-            )
+            text = _adversative_sentence(builder, realizer, rng)
             return _example(text, text, realizer, self.info.rule_id, mode)
         raise ValueError(f"Unsupported generation mode: {mode!r}")
+
+
+def _adversative_sentence(builder: GrammarBuilder, realizer: Realizer, rng: RandomSource) -> str:
+    subject = varied_np(builder, rng, ("person", "organization"), adjective_probability=0.25)
+    first_object = varied_np(
+        builder,
+        rng,
+        ("document", "report", "text", "message", "file", "book", "plan"),
+        case="accs",
+    )
+    second_object = varied_np(builder, rng, ("error", "problem", "issue"), case="accs")
+    first_verb = realizer.morphology.inflect_verb_past("проверить", subject.gender, subject.number)
+    second_verb = realizer.morphology.inflect_verb_past("исправить", subject.gender, subject.number)
+    conjunction = rng.choice(("но", "а"))
+    return capitalize_first(
+        f"{realizer.render_np(subject)} {first_verb} {realizer.render_np(first_object)}, "
+        f"{conjunction} не {second_verb} {realizer.render_np(second_object)}."
+    )
 
 
 def _example(

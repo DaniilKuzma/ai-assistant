@@ -9,6 +9,7 @@ from src.grammar_gen.rules.common import (
     make_punctuation_example,
     metadata_with_safety_clauses,
 )
+from src.grammar_gen.safety import validate_target_ast_or_raise
 from src.schema import GeneratedExample
 
 
@@ -41,7 +42,7 @@ class FinalPunctuationRule(RuleProgram):
         if mode is GenerationMode.POSITIVE:
             target, ast = _target_with_mark(builder, realizer, rng)
             source = target[:-1]
-            return _example(
+            example = _example(
                 source,
                 target,
                 realizer,
@@ -53,9 +54,11 @@ class FinalPunctuationRule(RuleProgram):
                     {"expected_error": "missing_final_punctuation"},
                 ),
             )
+            validate_target_ast_or_raise(ast, target, example)
+            return example
         if mode is GenerationMode.HARD_NEGATIVE:
             text, ast = _target_with_mark(builder, realizer, rng)
-            return _example(
+            example = _example(
                 text,
                 text,
                 realizer,
@@ -63,9 +66,11 @@ class FinalPunctuationRule(RuleProgram):
                 mode,
                 metadata_with_safety_clauses(ast, builder.lexicon, {"trap_type": "already_final"}),
             )
+            validate_target_ast_or_raise(ast, text, example)
+            return example
         if mode is GenerationMode.CLEAN_IDENTITY:
             text, ast = _target_with_mark(builder, realizer, rng)
-            return _example(
+            example = _example(
                 text,
                 text,
                 realizer,
@@ -73,6 +78,8 @@ class FinalPunctuationRule(RuleProgram):
                 mode,
                 metadata_with_safety_clauses(ast, builder.lexicon),
             )
+            validate_target_ast_or_raise(ast, text, example)
+            return example
         raise ValueError(f"Unsupported generation mode: {mode!r}")
 
 

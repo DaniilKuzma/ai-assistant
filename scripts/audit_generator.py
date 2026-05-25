@@ -12,10 +12,8 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.config.load_config import load_config
-from src.grammar_gen import Lexicon, MorphologyEngine
+from src.grammar_gen.factory import online_generator_from_config
 from src.grammar_gen.audit import audit_batch
-from src.grammar_gen.generator import OnlineExampleGenerator
-from src.grammar_gen.rules.registry import default_rule_registry
 
 
 def main() -> int:
@@ -29,13 +27,7 @@ def main() -> int:
         parser.error("--count must be non-negative")
 
     config = load_config(args.config)
-    generator = OnlineExampleGenerator(
-        default_rule_registry(),
-        Lexicon.default(),
-        MorphologyEngine(use_pymorphy=False),
-        config,
-        seed=int(config.get("generation", {}).get("seed", 0)),
-    )
+    generator = online_generator_from_config(config, seed=int(config.get("generation", {}).get("seed", 0)))
 
     started = time.perf_counter()
     examples = [generator.sample_by_index(index) for index in range(args.count)]

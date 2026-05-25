@@ -49,6 +49,29 @@ BAD_PAIR_REASONS = (
     ("bad_pair_stol_reshil_vopros", re.compile(r"\bстол\s+решил\s+вопрос\b", re.IGNORECASE)),
     ("bad_pair_produkty_prochitali_dokument", re.compile(r"\bпродукты\s+прочитали\s+документ\b", re.IGNORECASE)),
 )
+BAD_TARGET_MORPHOLOGY_REASONS = (
+    ("target_infinitive_as_finite:провести", re.compile(r"\bпровести\b", re.IGNORECASE)),
+    ("target_infinitive_as_finite:открыть", re.compile(r"\bоткрыть\b", re.IGNORECASE)),
+    ("target_infinitive_as_finite:найти", re.compile(r"\bнайти\b", re.IGNORECASE)),
+    ("target_infinitive_as_finite:закрыть", re.compile(r"\bзакрыть\b", re.IGNORECASE)),
+    ("target_infinitive_as_finite:съесть", re.compile(r"\bсъесть\b", re.IGNORECASE)),
+    ("target_infinitive_as_finite:произойти", re.compile(r"\bпроизойти\b", re.IGNORECASE)),
+    ("target_infinitive_as_finite:содержать", re.compile(r"\bсодержать\b", re.IGNORECASE)),
+    ("bad_adjective_form:громкее", re.compile(r"\bгромкее\b", re.IGNORECASE)),
+    ("bad_adjective_form:тихюю", re.compile(r"\bтихюю\b", re.IGNORECASE)),
+    ("bad_np_agreement:городской_цитата", re.compile(r"\bгородской\s+цитата\b", re.IGNORECASE)),
+    (
+        "uninflected_object_noun",
+        re.compile(
+            r"\b(?:содержит|содержал|содержала|содержали|отправил|отправила|отправили|"
+            r"открыл|открыла|открыли|проверил|проверила|проверили|утвердил|утвердила|"
+            r"утвердили|подписал|подписала|подписали|рассчитал|рассчитала|рассчитали|"
+            r"исправил|исправила|исправили)\s+(?:[а-яё-]+\s+){0,2}"
+            r"(?:ошибка|таблица|справка|инструкция|формула|сводка|проблема)\b",
+            re.IGNORECASE,
+        ),
+    ),
+)
 VO_WHITELIST = ("во дворе",)
 MERGE_OR_HYPHEN_LABELS = frozenset(
     {
@@ -115,6 +138,7 @@ def validate_generated_pair(example: GeneratedExample) -> list[str]:
     reasons: list[str] = []
     source_reasons = validate_surface(example.source_text)
     target_reasons = validate_surface(example.target_text)
+    target_reasons.extend(_validate_target_morphology(example))
     allowed_source = allowed_source_surface_failures(example)
     real_source_reasons = [reason for reason in source_reasons if reason not in allowed_source]
     reasons.extend(real_source_reasons)
@@ -174,8 +198,19 @@ def allowed_source_surface_failures(example: GeneratedExample) -> set[str]:
     return set()
 
 
+def _validate_target_morphology(example: GeneratedExample) -> list[str]:
+    reasons: list[str] = []
+    lowered = example.target_text.lower()
+    for reason, pattern in BAD_TARGET_MORPHOLOGY_REASONS:
+        if pattern.search(lowered):
+            reasons.append(reason)
+    reasons.extend(_validate_safety_clause_rendered_target(example))
+    return _dedupe(reasons)
+
+
 def validate_ast_sentence(ast: Any, rendered_text: str) -> list[str]:
     reasons = validate_surface(rendered_text)
+    reasons.extend(check_predicate_rendering(ast, rendered_text))
     reasons.extend(check_subject_verb_agreement(ast, rendered_text))
     reasons.extend(check_np_agreement(ast, rendered_text))
     reasons.extend(check_preposition_case_compatibility(ast, rendered_text))
@@ -190,25 +225,40 @@ def assert_valid_or_raise(ast: Any, rendered_text: str) -> None:
         raise ValueError(f"Invalid generated sentence: {', '.join(reasons)}")
 
 
+def validate_target_ast_or_raise(ast: Any, target_text: str, example: GeneratedExample | None = None) -> None:
+    reasons = validate_ast_sentence(ast, target_text)
+    if example is not None:
+        reasons.extend(validate_generated_pair(example))
+    reasons = _dedupe(reasons)
+    if reasons:
+        raise ValueError(f"Invalid generated target: {', '.join(reasons)}")
+
+
 def safety_clauses_for_ast(ast: Any, lexicon: Lexicon | None = None) -> list[dict[str, Any]]:
     lexicon = lexicon or _default_lexicon()
+    morphology = _default_morphology()
     clauses: list[dict[str, Any]] = []
     for clause in _clauses_for_ast(ast):
         frame = _resolve_frame(lexicon, clause.predicate)
         if frame is None:
             raise ValueError("Clause predicate must have a known frame_id.")
-        clauses.append(build_safety_clause_from_clause(clause, frame))
+        clauses.append(build_safety_clause_from_clause(clause, frame, morphology))
     return clauses
 
 
-def build_safety_clause_from_clause(clause: Clause, frame: VerbFrame) -> dict[str, Any]:
+def build_safety_clause_from_clause(
+    clause: Clause,
+    frame: VerbFrame,
+    morphology: MorphologyEngine | None = None,
+) -> dict[str, Any]:
+    morphology = morphology or _default_morphology()
     object_payload: dict[str, Any] | None = None
     prep_slots: list[dict[str, str]] = []
 
     if clause.predicate.object_np is not None:
         object_np = clause.predicate.object_np
         if object_np.preposition is None:
-            object_payload = _np_payload(object_np)
+            object_payload = _np_payload(object_np, morphology)
         else:
             slot = _matching_prep_slot(frame, object_np.preposition, object_np.case, object_np.semantic_class)
             prep_slots.append(
@@ -218,19 +268,47 @@ def build_safety_clause_from_clause(clause: Clause, frame: VerbFrame) -> dict[st
                     "noun_lemma": object_np.noun_lemma,
                     "semantic_class": object_np.semantic_class,
                     "allowed_semantic_class": slot.semantic_class if slot is not None else object_np.semantic_class,
+                    "surface": _render_np_surface(object_np, morphology),
                 }
             )
 
     return {
         "frame_id": frame.frame_id,
         "verb_lemma": clause.predicate.verb_lemma,
+        "predicate": {
+            "tense": clause.predicate.tense,
+            "verb_lemma": clause.predicate.verb_lemma,
+            "rendered_verb": _render_predicate_verb(clause.predicate, clause.subject, morphology),
+        },
         "frame_family": frame.frame_family,
-        "subject": _np_payload(clause.subject),
+        "subject": _np_payload(clause.subject, morphology),
         "object": object_payload,
         "allowed_subject_classes": list(frame.subject_classes),
         "allowed_object_classes": list(frame.object_classes),
         "prep_slots": prep_slots,
     }
+
+
+def check_predicate_rendering(ast: Any, rendered_text: str) -> list[str]:
+    reasons: list[str] = []
+    morphology = _default_morphology()
+    lowered = rendered_text.lower()
+
+    for clause in _clauses_for_ast(ast):
+        predicate = clause.predicate
+        if predicate.tense == "present":
+            expected = morphology.inflect_verb_present_3sg(predicate.verb_lemma)
+        elif predicate.tense == "past":
+            expected = morphology.inflect_verb_past(predicate.verb_lemma, clause.subject.gender, clause.subject.number)
+        else:
+            continue
+
+        if expected and not _contains_word(lowered, expected):
+            reasons.append("predicate_verb_form_missing")
+        if predicate.verb_lemma != expected and _contains_word(lowered, predicate.verb_lemma):
+            reasons.append("predicate_infinitive_as_finite")
+
+    return _dedupe(reasons)
 
 
 def check_subject_verb_agreement(ast: Any, rendered_text: str) -> list[str]:
@@ -270,6 +348,9 @@ def check_np_agreement(ast: Any, rendered_text: str) -> list[str]:
     lowered = rendered_text.lower()
 
     for np in _noun_phrases_for_ast(ast):
+        expected_noun = morphology.inflect_noun(np.noun_lemma, np.case, np.number)
+        if expected_noun and not _contains_word(lowered, expected_noun):
+            reasons.append("np_noun_form")
         for adjective in np.adjective_lemmas:
             expected = morphology.inflect_adjective(adjective, np.gender, _adjective_case(np), np.number)
             if expected and not _contains_word(lowered, expected):
@@ -473,6 +554,46 @@ def _validate_safety_clause_metadata(example: GeneratedExample) -> list[str]:
     return _dedupe(reasons)
 
 
+def _validate_safety_clause_rendered_target(example: GeneratedExample) -> list[str]:
+    raw_clauses = example.metadata.get("safety_clauses")
+    if not isinstance(raw_clauses, list):
+        return []
+
+    reasons: list[str] = []
+    target = example.target_text
+    for clause in raw_clauses:
+        if not isinstance(clause, Mapping):
+            continue
+        predicate = clause.get("predicate")
+        if isinstance(predicate, Mapping):
+            tense = str(predicate.get("tense") or "")
+            verb_lemma = str(predicate.get("verb_lemma") or "")
+            rendered_verb = str(predicate.get("rendered_verb") or "")
+            if tense in {"past", "present"} and rendered_verb and not _contains_word(target, rendered_verb):
+                reasons.append("target_predicate_form_missing")
+            if (
+                tense in {"past", "present"}
+                and verb_lemma
+                and rendered_verb
+                and verb_lemma != rendered_verb
+                and _contains_word(target, verb_lemma)
+            ):
+                reasons.append("target_predicate_lemma_rendered")
+
+        for role in ("subject", "object"):
+            payload = clause.get(role)
+            if not isinstance(payload, Mapping):
+                continue
+            surface = str(payload.get("surface") or "")
+            if surface and not _contains_phrase(target, surface):
+                reasons.append(f"target_{role}_surface_missing")
+            adjective_surfaces = _string_list(payload.get("adjective_surfaces"))
+            for adjective_surface in adjective_surfaces:
+                if adjective_surface and not _contains_word(target, adjective_surface):
+                    reasons.append(f"target_{role}_adjective_missing")
+    return _dedupe(reasons)
+
+
 def _validate_safety_clause(clause: Any) -> list[str]:
     if not isinstance(clause, Mapping):
         return ["invalid_safety_clause"]
@@ -560,13 +681,40 @@ def _string_list(value: Any) -> list[str]:
     return [str(item) for item in value]
 
 
-def _np_payload(np: NounPhrase) -> dict[str, str]:
+def _render_predicate_verb(predicate: VerbPhrase, subject: NounPhrase, morphology: MorphologyEngine) -> str:
+    if predicate.tense == "present":
+        return morphology.inflect_verb_present_3sg(predicate.verb_lemma)
+    if predicate.tense == "past":
+        return morphology.inflect_verb_past(predicate.verb_lemma, subject.gender, subject.number)
+    return morphology.infinitive(predicate.verb_lemma)
+
+
+def _render_np_surface(np: NounPhrase, morphology: MorphologyEngine) -> str:
+    parts: list[str] = []
+    if np.preposition:
+        parts.append(np.preposition)
+    parts.extend(
+        morphology.inflect_adjective(adjective, np.gender, _adjective_case(np), np.number)
+        for adjective in np.adjective_lemmas
+    )
+    parts.append(morphology.inflect_noun(np.noun_lemma, np.case, np.number))
+    return " ".join(part for part in parts if part).strip()
+
+
+def _np_payload(np: NounPhrase, morphology: MorphologyEngine) -> dict[str, Any]:
     return {
         "lemma": np.noun_lemma,
         "semantic_class": np.semantic_class,
         "gender": np.gender,
         "number": np.number,
         "animacy": np.animacy,
+        "case": _canonical_case(np.case),
+        "surface": _render_np_surface(np, morphology),
+        "adjective_lemmas": list(np.adjective_lemmas),
+        "adjective_surfaces": [
+            morphology.inflect_adjective(adjective, np.gender, _adjective_case(np), np.number)
+            for adjective in np.adjective_lemmas
+        ],
     }
 
 
@@ -627,10 +775,19 @@ def _canonical_case(case: str) -> str:
 def _contains_word(text: str, word: str) -> bool:
     if not word:
         return False
-    pattern = rf"(?<![А-Яа-яЁё-]){re.escape(word.lower())}(?![А-Яа-яЁё-])"
-    if re.search(pattern, text, re.IGNORECASE):
+    normalized_word = _default_morphology().normalize_yo(word.lower())
+    pattern = rf"(?<![А-Яа-яЁё-]){re.escape(normalized_word)}(?![А-Яа-яЁё-])"
+    if re.search(pattern, _default_morphology().normalize_yo(text.lower()), re.IGNORECASE):
         return True
-    return re.search(pattern, _default_morphology().normalize_yo(text), re.IGNORECASE) is not None
+    return False
+
+
+def _contains_phrase(text: str, phrase: str) -> bool:
+    if not phrase:
+        return False
+    normalized_text = _default_morphology().normalize_yo(text.lower())
+    normalized_phrase = _default_morphology().normalize_yo(phrase.lower())
+    return normalized_phrase in normalized_text
 
 
 def _has_bad_vo_phrase(text: str) -> bool:
@@ -694,4 +851,4 @@ def _default_lexicon() -> Lexicon:
 
 @lru_cache(maxsize=1)
 def _default_morphology() -> MorphologyEngine:
-    return MorphologyEngine()
+    return MorphologyEngine(lexicon=_default_lexicon(), critical=True)

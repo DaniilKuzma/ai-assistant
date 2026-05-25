@@ -35,6 +35,7 @@ generation:
     min_sentence_words: 3
     reject_ungrammatical: true
     max_generation_retries: 20
+    use_pymorphy: true
 
 training:
   mode: online

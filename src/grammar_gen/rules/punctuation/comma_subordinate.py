@@ -10,6 +10,7 @@ from src.grammar_gen.rules.common import (
     metadata_without_safety_clauses,
     remove_punctuation_before,
 )
+from src.grammar_gen.safety import validate_target_ast_or_raise
 from src.schema import GeneratedExample
 
 
@@ -42,7 +43,7 @@ class CommaSubordinateRule(RuleProgram):
             ast = builder.complex_subordinate_sentence("что")
             target = realizer.render_sentence(ast)
             source = remove_punctuation_before(target, "что")
-            return _example(
+            example = _example(
                 source,
                 target,
                 realizer,
@@ -50,6 +51,8 @@ class CommaSubordinateRule(RuleProgram):
                 mode,
                 metadata_with_safety_clauses(ast, builder.lexicon),
             )
+            validate_target_ast_or_raise(ast, target, example)
+            return example
         if mode is GenerationMode.HARD_NEGATIVE:
             text = rng.choice(
                 (
@@ -69,7 +72,7 @@ class CommaSubordinateRule(RuleProgram):
         if mode is GenerationMode.CLEAN_IDENTITY:
             ast = builder.complex_subordinate_sentence("что")
             text = realizer.render_sentence(ast)
-            return _example(
+            example = _example(
                 text,
                 text,
                 realizer,
@@ -77,6 +80,8 @@ class CommaSubordinateRule(RuleProgram):
                 mode,
                 metadata_with_safety_clauses(ast, builder.lexicon),
             )
+            validate_target_ast_or_raise(ast, text, example)
+            return example
         raise ValueError(f"Unsupported generation mode: {mode!r}")
 
 

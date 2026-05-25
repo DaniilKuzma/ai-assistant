@@ -11,6 +11,7 @@ from src.grammar_gen.rules.common import (
     metadata_without_safety_clauses,
     replace_once_checked,
 )
+from src.grammar_gen.safety import validate_target_ast_or_raise
 from src.schema import GeneratedExample
 
 
@@ -42,7 +43,7 @@ class CommaIntroductoryRule(RuleProgram):
         if mode is GenerationMode.POSITIVE:
             target, ast = _introductory_target(builder, realizer, rng)
             source = _remove_introductory_commas(target)
-            return _example(
+            example = _example(
                 source,
                 target,
                 realizer,
@@ -54,6 +55,8 @@ class CommaIntroductoryRule(RuleProgram):
                     {"introductory_position": ast.position},
                 ),
             )
+            validate_target_ast_or_raise(ast, target, example)
+            return example
         if mode is GenerationMode.HARD_NEGATIVE:
             text = rng.choice(
                 (
@@ -71,7 +74,7 @@ class CommaIntroductoryRule(RuleProgram):
             )
         if mode is GenerationMode.CLEAN_IDENTITY:
             text, ast = _introductory_target(builder, realizer, rng)
-            return _example(
+            example = _example(
                 text,
                 text,
                 realizer,
@@ -83,6 +86,8 @@ class CommaIntroductoryRule(RuleProgram):
                     {"introductory_position": ast.position},
                 ),
             )
+            validate_target_ast_or_raise(ast, text, example)
+            return example
         raise ValueError(f"Unsupported generation mode: {mode!r}")
 
 

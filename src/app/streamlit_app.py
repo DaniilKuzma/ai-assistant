@@ -9,8 +9,6 @@ import re
 import tempfile
 from typing import Any
 
-import streamlit as st
-
 from src.config.load_config import load_config
 from src.docx.docx_corrector import correct_docx, correct_docx_incremental
 from src.docx.docx_reader import read_paragraphs
@@ -21,6 +19,7 @@ from src.schema.edits import CorrectionResult, RuntimeEdit
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG_PATH = PROJECT_ROOT / "configs" / "config.yaml"
+st: Any | None = None
 
 
 @dataclass(frozen=True)
@@ -43,7 +42,6 @@ def build_streamlit_corrector(
     return StreamlitCorrectorLoadResult(corrector, kind)
 
 
-@st.cache_resource(show_spinner="Загрузка модели корректора...")
 def _cached_streamlit_corrector(
     config_path: str = str(DEFAULT_CONFIG_PATH),
     memory_enabled: bool | None = False,
@@ -53,6 +51,11 @@ def _cached_streamlit_corrector(
 
 
 def main() -> None:
+    global st
+    st = _import_streamlit()
+    cached_streamlit_corrector = st.cache_resource(show_spinner="Загрузка модели корректора...")(
+        _cached_streamlit_corrector
+    )
     st.set_page_config(page_title="Система исправления ошибок русского языка", layout="wide")
     st.title("Система исправления ошибок русского языка")
 
@@ -67,7 +70,7 @@ def main() -> None:
         )
         doc_id = _normalize_doc_id(st.text_input("ID документа", value="default"))
         use_incremental = st.checkbox("Проверять только изменённые фрагменты", value=False)
-        load_result = _cached_streamlit_corrector(
+        load_result = cached_streamlit_corrector(
             str(DEFAULT_CONFIG_PATH),
             memory_enabled=use_memory,
             doc_id=doc_id,
@@ -106,7 +109,7 @@ def main() -> None:
                 st.text_input("ID документа", value=uploaded.name, key=f"docx_doc_id_{uploaded.name}")
             )
             use_docx_incremental = st.checkbox("Проверять только изменённые абзацы", value=False)
-            docx_load_result = _cached_streamlit_corrector(
+            docx_load_result = cached_streamlit_corrector(
                 str(DEFAULT_CONFIG_PATH),
                 memory_enabled=None,
                 doc_id=docx_doc_id,
@@ -216,6 +219,12 @@ def _config_with_streamlit_overrides(
     if doc_id is not None:
         memory_config["doc_id"] = _normalize_doc_id(doc_id)
     return config_copy
+
+
+def _import_streamlit() -> Any:
+    import streamlit
+
+    return streamlit
 
 
 def _render_latest_text_correction() -> None:

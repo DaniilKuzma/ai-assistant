@@ -1,0 +1,29 @@
+{
+  "audit_failure_count": 0,
+  "avg_ms_per_example": 1.2859955000007175,
+  "count": 5000,
+  "examples_per_second": 777.6076976936871,
+  "mode_distribution": {
+    "clean_identity": 690,
+    "hard_negative": 499,
+    "positive": 3811
+  },
+  "rule_distribution": {
+    "comma_adversative": 431,
+    "comma_homogeneous": 403,
+    "comma_introductory": 437,
+    "comma_subordinate": 430,
+    "dash_subject_predicate": 413,
+    "final_punctuation": 424,
+    "hyphen_koe": 320,
+    "hyphen_particles": 318,
+    "hyphen_po_adverb": 291,
+    "ne_verb": 296,
+    "takzhe_tak_zhe": 320,
+    "tozhe_to_zhe": 295,
+    "tsya_ttsya": 316,
+    "zato_za_to": 306
+  },
+  "seed": 13,
+  "total_seconds": 6.429977500003588
+}

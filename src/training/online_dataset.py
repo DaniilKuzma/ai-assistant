@@ -6,9 +6,7 @@ from typing import Any
 
 from torch.utils.data import Dataset, IterableDataset, get_worker_info
 
-from src.grammar_gen import Lexicon, MorphologyEngine
-from src.grammar_gen.generator import OnlineExampleGenerator
-from src.grammar_gen.rules.registry import default_rule_registry
+from src.grammar_gen.factory import online_generator_from_config
 from src.schema.serialization import read_jsonl_examples
 from src.training.tensorization import DirectTrainingFeature, build_direct_training_feature
 
@@ -36,13 +34,7 @@ class OnlineGrammarDataset(IterableDataset[DirectTrainingFeature]):
         worker = get_worker_info()
         worker_id = int(worker.id) if worker is not None else 0
         worker_count = int(worker.num_workers) if worker is not None else 1
-        generator = OnlineExampleGenerator(
-            default_rule_registry(),
-            Lexicon.default(),
-            MorphologyEngine(use_pymorphy=False),
-            self.config,
-            seed=self.seed,
-        )
+        generator = online_generator_from_config(self.config, seed=self.seed)
 
         if self.samples_per_epoch is None:
             index = worker_id

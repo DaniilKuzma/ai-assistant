@@ -19,10 +19,8 @@ from scripts.build_frozen_eval import build_frozen_eval
 from src.app.streamlit_app import build_streamlit_corrector
 from src.config.load_config import load_config
 from src.evaluation.evaluate import evaluate_corrector
-from src.grammar_gen import Lexicon, MorphologyEngine
 from src.grammar_gen.audit import audit_batch
-from src.grammar_gen.generator import OnlineExampleGenerator
-from src.grammar_gen.rules.registry import default_rule_registry
+from src.grammar_gen.factory import online_generator_from_config
 from src.runtime.corrector import Corrector
 from src.runtime.tokenization import tokenize_runtime_words
 from src.schema.edits import CorrectionResult
@@ -167,13 +165,7 @@ class _SmokeState:
 
     def run_generator_audit(self) -> dict[str, Any]:
         config = load_config(self.config_path)
-        generator = OnlineExampleGenerator(
-            default_rule_registry(),
-            Lexicon.default(),
-            MorphologyEngine(use_pymorphy=False),
-            config,
-            seed=int(config.get("generation", {}).get("seed", 0)),
-        )
+        generator = online_generator_from_config(config, seed=int(config.get("generation", {}).get("seed", 0)))
         examples = [generator.sample_by_index(index) for index in range(self.count)]
         audit = audit_batch(examples)
         if audit["failed_examples_count"] > 0:

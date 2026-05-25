@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import csv
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +28,7 @@ class NounEntry(Lexeme):
     can_be_patient: bool
     can_be_location: bool
     can_be_content_source: bool
+    forms: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -36,11 +37,13 @@ class VerbEntry(Lexeme):
     semantic_class: str
     allow_object: bool
     allow_ne: bool
+    forms: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
 class AdjectiveEntry(Lexeme):
     semantic_class: str
+    forms: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -111,6 +114,7 @@ class Lexicon:
                         can_be_patient=_parse_bool(row["can_be_patient"]),
                         can_be_location=_parse_bool(row["can_be_location"]),
                         can_be_content_source=_parse_bool(row["can_be_content_source"]),
+                        forms=_forms_from_row(row, NOUN_FORM_COLUMNS),
                     )
                     for row in _read_csv(base_path / "nouns.csv")
                 ),
@@ -121,11 +125,16 @@ class Lexicon:
                         transitive=_parse_bool(row["transitive"]),
                         allow_object=_parse_bool(row["allow_object"]),
                         allow_ne=_parse_bool(row["allow_ne"]),
+                        forms=_forms_from_row(row, VERB_FORM_COLUMNS),
                     )
                     for row in _read_csv(base_path / "verbs.csv")
                 ),
                 adjectives=tuple(
-                    AdjectiveEntry(lemma=row["lemma"], semantic_class=row["semantic_class"])
+                    AdjectiveEntry(
+                        lemma=row["lemma"],
+                        semantic_class=row["semantic_class"],
+                        forms=_forms_from_row(row, ADJECTIVE_FORM_COLUMNS),
+                    )
                     for row in _read_csv(base_path / "adjectives.csv")
                 ),
                 adverbs=tuple(
@@ -251,6 +260,43 @@ def _read_csv(path: Path) -> list[dict[str, str]]:
             for row in csv.DictReader(handle)
             if any((value or "").strip() for value in row.values())
         ]
+
+
+NOUN_FORM_COLUMNS = (
+    "nom_sg",
+    "gen_sg",
+    "dat_sg",
+    "acc_sg",
+    "ins_sg",
+    "loc_sg",
+    "nom_pl",
+    "acc_pl",
+)
+VERB_FORM_COLUMNS = (
+    "past_masc",
+    "past_fem",
+    "past_neut",
+    "past_plur",
+    "present_3sg",
+    "infinitive",
+)
+ADJECTIVE_FORM_COLUMNS = (
+    "masc_nom",
+    "fem_nom",
+    "neut_nom",
+    "plur_nom",
+    "fem_acc",
+    "masc_acc_inanim",
+    "neut_acc",
+)
+
+
+def _forms_from_row(row: dict[str, str], columns: tuple[str, ...]) -> dict[str, str]:
+    return {
+        column: row[column]
+        for column in columns
+        if row.get(column)
+    }
 
 
 def _read_exceptions(path: Path) -> dict[str, frozenset[str]]:

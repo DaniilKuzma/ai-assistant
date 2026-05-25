@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from src.grammar_gen.ast import Clause, NounPhrase, SimpleSentence, VerbPhrase
+from src.grammar_gen.ast import Clause, SimpleSentence, VerbPhrase
 from src.grammar_gen.builders import GrammarBuilder
 from src.grammar_gen.lexicon import NounEntry
 from src.grammar_gen.randomness import RandomSource
@@ -11,9 +11,12 @@ from src.grammar_gen.rules.common import (
     make_clean_identity_example,
     metadata_with_safety_clauses,
     metadata_without_safety_clauses,
+    noun_phrase_from_entry,
     replace_once_checked,
     token_labels_all_keep,
+    varied_np,
 )
+from src.grammar_gen.safety import validate_target_ast_or_raise
 from src.grammar_gen.semantics import VerbFrame
 from src.schema import GeneratedExample
 
@@ -70,7 +73,7 @@ class NeVerbRule(RuleProgram):
             raise ValueError("Merged не+verb token was not found in source sentence.")
         labels[merged_index] = "SPLIT_NE_VERB"
 
-        return _example(
+        example = _example(
             source=source,
             target=target,
             source_tokens=source_tokens,
@@ -83,6 +86,8 @@ class NeVerbRule(RuleProgram):
                 {"phenomenon": "ne_verb"},
             ),
         )
+        validate_target_ast_or_raise(sentence, target, example)
+        return example
 
     def _hard_negative(
         self,
@@ -112,21 +117,24 @@ class NeVerbRule(RuleProgram):
         sentence = _sentence_with_negated_allowed_verb(builder, rng)
         text = realizer.render_sentence(sentence)
         tokens = realizer.tokenize_words_with_offsets(text)
-        return make_clean_identity_example(
+        example = make_clean_identity_example(
             text,
             tokens,
             rule_id=self.info.rule_id,
             metadata=metadata_with_safety_clauses(sentence, builder.lexicon),
         )
+        validate_target_ast_or_raise(sentence, text, example)
+        return example
 
 
 def _sentence_with_negated_allowed_verb(builder: GrammarBuilder, rng: RandomSource) -> SimpleSentence:
     frame = _controlled_allowed_negative_frame(builder)
-    subject = _np(_controlled_subject(builder, frame, rng))
-    object_np = _np(_entry(builder, "отчёт"), case="accs")
+    subject = noun_phrase_from_entry(_controlled_subject(builder, frame, rng))
+    object_np = varied_np(builder, rng, tuple(frame.object_classes), case="accs", adjective_probability=0.25)
     predicate = VerbPhrase(
         verb_lemma=frame.verb_lemma,
         object_np=object_np,
+        adverbs=(builder.lexicon.random_adverb(rng).lemma,) if rng.chance(0.25) else (),
         negated=True,
         frame_id=frame.frame_id,
     )
@@ -142,25 +150,12 @@ def _controlled_allowed_negative_frame(builder: GrammarBuilder) -> VerbFrame:
 
 
 def _controlled_subject(builder: GrammarBuilder, frame: VerbFrame, rng: RandomSource) -> NounEntry:
-    candidates = tuple(_entry(builder, lemma) for lemma in ("студент", "комиссия"))
-    valid = tuple(noun for noun in candidates if builder.lexicon.frames.validate_subject(frame, noun))
+    valid = tuple(noun for noun in builder.lexicon.nouns if builder.lexicon.frames.validate_subject(frame, noun))
     return rng.choice(valid)
 
 
 def _entry(builder: GrammarBuilder, lemma: str) -> NounEntry:
     return next(noun for noun in builder.lexicon.nouns if noun.lemma == lemma)
-
-
-def _np(entry: NounEntry, *, case: str = "nomn") -> NounPhrase:
-    number = "plur" if entry.gender == "plur" else "sing"
-    return NounPhrase(
-        noun_lemma=entry.lemma,
-        gender=entry.gender,
-        animacy=entry.animacy,
-        number=number,
-        case=case,
-        semantic_class=entry.semantic_class,
-    )
 
 
 def _find_token(tokens, text: str) -> int:

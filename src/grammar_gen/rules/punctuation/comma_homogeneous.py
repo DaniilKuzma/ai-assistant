@@ -4,7 +4,7 @@ from src.grammar_gen.builders import GrammarBuilder
 from src.grammar_gen.randomness import RandomSource
 from src.grammar_gen.realizer import Realizer
 from src.grammar_gen.rules.base import GenerationMode, RuleInfo, RuleProgram
-from src.grammar_gen.rules.common import make_punctuation_example, remove_punctuation_before
+from src.grammar_gen.rules.common import capitalize_first, make_punctuation_example, remove_punctuation_before, varied_np
 from src.schema import GeneratedExample
 
 
@@ -33,15 +33,9 @@ class CommaHomogeneousRule(RuleProgram):
         rng: RandomSource,
         mode: GenerationMode,
     ) -> GeneratedExample:
-        del builder
         if mode is GenerationMode.POSITIVE:
-            target = rng.choice(
-                (
-                    "Студент прочитал книгу, отчёт и письмо.",
-                    "Редактор проверил отчёт, письмо и документ.",
-                )
-            )
-            source = remove_punctuation_before(target, "отчёт" if "книгу" in target else "письмо")
+            target, marker = _homogeneous_sentence(builder, realizer, rng)
+            source = remove_punctuation_before(target, marker)
             return _example(source, target, realizer, self.info.rule_id, mode)
         if mode is GenerationMode.HARD_NEGATIVE:
             text = rng.choice(
@@ -52,14 +46,20 @@ class CommaHomogeneousRule(RuleProgram):
             )
             return _example(text, text, realizer, self.info.rule_id, mode, {"trap_type": "single_conjunction"})
         if mode is GenerationMode.CLEAN_IDENTITY:
-            text = rng.choice(
-                (
-                    "Студент прочитал книгу, отчёт и письмо.",
-                    "Редактор проверил отчёт, письмо и документ.",
-                )
-            )
+            text, _marker = _homogeneous_sentence(builder, realizer, rng)
             return _example(text, text, realizer, self.info.rule_id, mode)
         raise ValueError(f"Unsupported generation mode: {mode!r}")
+
+
+def _homogeneous_sentence(builder: GrammarBuilder, realizer: Realizer, rng: RandomSource) -> tuple[str, str]:
+    subject = varied_np(builder, rng, ("person",), adjective_probability=0.25)
+    verb_lemma = rng.choice(("проверить", "прочитать", "подписать", "открыть"))
+    verb = realizer.morphology.inflect_verb_past(verb_lemma, subject.gender, subject.number)
+    classes = ("document", "report", "text", "message", "file", "book", "plan")
+    objects = [varied_np(builder, rng, classes, case="accs", adjective_probability=0.15) for _ in range(3)]
+    rendered = [realizer.render_np(obj) for obj in objects]
+    text = f"{realizer.render_np(subject)} {verb} {rendered[0]}, {rendered[1]} и {rendered[2]}."
+    return capitalize_first(text), rendered[1]
 
 
 def _example(

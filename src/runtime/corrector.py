@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from pathlib import Path
 from typing import Any
 
+from src.config.load_config import load_config
 from src.runtime.deterministic_rules import DeterministicRuleEngine
 from src.runtime.edit_realizer import (
     apply_gap_labels,
@@ -35,7 +37,9 @@ class Corrector:
         self.scope_guard = ScopeGuard()
 
     @classmethod
-    def from_config(cls, config: Mapping[str, Any]) -> "Corrector":
+    def from_config(cls, config: Mapping[str, Any] | str | Path) -> "Corrector":
+        if isinstance(config, (str, Path)):
+            config = load_config(config)
         runtime = config.get("runtime", {}) if isinstance(config, Mapping) else {}
         backend = None
         if bool(runtime.get("neural_token_edits", True) or runtime.get("neural_punctuation", True)):

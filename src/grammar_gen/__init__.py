@@ -35,7 +35,7 @@ from src.grammar_gen.semantic_safety import (
 )
 from src.grammar_gen.semantics import PrepSlot, SemanticClass, SemanticFrameLexicon, VerbFrame
 from src.grammar_gen.realizer import Realizer
-from src.grammar_gen.safety import assert_valid_or_raise, validate_ast_sentence, validate_surface
+from src.grammar_gen.safety import assert_valid_or_raise, validate_ast_sentence, validate_surface, validate_target_ast_or_raise
 
 __all__ = [
     "AdjectiveEntry",
@@ -68,6 +68,7 @@ __all__ = [
     "reject_bad_surface",
     "reject_semantic_nonsense",
     "validate_ast_sentence",
+    "validate_target_ast_or_raise",
     "validate_clause_semantics",
     "validate_frame_fillers",
     "validate_surface",

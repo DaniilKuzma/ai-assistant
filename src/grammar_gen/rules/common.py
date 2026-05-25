@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import MutableSequence, Sequence
 from typing import Any
 
+from src.grammar_gen.ast import NounPhrase
 from src.grammar_gen.rules.base import GenerationMode
 from src.grammar_gen.safety import safety_clauses_for_ast
 from src.schema import GeneratedExample, WordToken
@@ -82,6 +83,49 @@ def metadata_without_safety_clauses(metadata: dict[str, Any] | None = None) -> d
     result = dict(metadata or {})
     result["uses_safety_clauses"] = False
     return result
+
+
+def noun_phrase_from_entry(entry: Any, *, case: str = "nomn", adjective_lemmas: tuple[str, ...] = ()) -> NounPhrase:
+    number = "plur" if entry.gender == "plur" else "sing"
+    return NounPhrase(
+        noun_lemma=entry.lemma,
+        gender=entry.gender,
+        animacy=entry.animacy,
+        number=number,
+        case=case,
+        adjective_lemmas=adjective_lemmas,
+        semantic_class=entry.semantic_class,
+    )
+
+
+def varied_np(
+    builder: Any,
+    rng: Any,
+    classes: tuple[str, ...],
+    *,
+    case: str = "nomn",
+    adjective_probability: float = 0.35,
+) -> NounPhrase:
+    entry = builder.lexicon.random_noun_for_classes(classes, rng)
+    adjectives = varied_adjectives(builder, rng, probability=adjective_probability)
+    return noun_phrase_from_entry(entry, case=case, adjective_lemmas=adjectives)
+
+
+def varied_adjectives(builder: Any, rng: Any, *, probability: float = 0.35) -> tuple[str, ...]:
+    if not rng.chance(probability):
+        return ()
+    first = builder.lexicon.random_adjective(rng).lemma
+    if rng.chance(0.12):
+        second = builder.lexicon.random_adjective(rng).lemma
+        if second != first:
+            return (first, second)
+    return (first,)
+
+
+def capitalize_first(text: str) -> str:
+    if not text:
+        return text
+    return f"{text[0].upper()}{text[1:]}"
 
 
 def token_labels_all_keep(tokens: Sequence[WordToken]) -> list[str]:
@@ -227,6 +271,7 @@ def _join_before_marker(before: str, after: str) -> str:
 
 __all__ = [
     "find_token_sequence",
+    "capitalize_first",
     "gap_labels_from_text",
     "gap_labels_from_target_text",
     "gap_labels_none",
@@ -236,8 +281,11 @@ __all__ = [
     "make_punctuation_example",
     "metadata_with_safety_clauses",
     "metadata_without_safety_clauses",
+    "noun_phrase_from_entry",
     "remove_punctuation_before",
     "replace_once_checked",
     "rule_ids_for_active_gap_labels",
     "token_labels_all_keep",
+    "varied_adjectives",
+    "varied_np",
 ]

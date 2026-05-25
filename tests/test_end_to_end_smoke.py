@@ -47,4 +47,11 @@ def test_end_to_end_smoke_cli_runs_all_stages_without_train_csv(tmp_path: Path) 
     assert {key: summary[key]["status"] for key in STAGE_KEYS} == {
         key: "ok" for key in STAGE_KEYS
     }
+    architecture_path = output_dir / "models" / "heads" / "architecture.json"
+    assert architecture_path.exists()
+    architecture = json.loads(architecture_path.read_text(encoding="utf-8"))
+    assert architecture == {
+        "architecture": "direct_edit_tagger_v1",
+        "debug_model": True,
+    }
     assert not (ROOT / "data" / "processed" / "train.csv").exists()

@@ -9,6 +9,8 @@ import pytest
 from src.config.load_config import load_config
 from src.grammar_gen import GrammarBuilder, Lexicon, MorphologyEngine, RandomSource, Realizer
 from src.grammar_gen.ast import Clause, NounPhrase, VerbPhrase
+from src.grammar_gen.audit import audit_batch, audit_example
+from src.grammar_gen.factory import online_generator_from_config
 from src.grammar_gen.generator import GenerationError, OnlineExampleGenerator
 from src.grammar_gen.rules.base import GenerationMode, RuleInfo, RuleProgram
 from src.grammar_gen.rules.common import gap_labels_from_text, token_labels_all_keep
@@ -37,6 +39,49 @@ def test_known_bad_agreement_and_vo_phrases_fail(text: str) -> None:
     example = _manual_example(text, metadata={"uses_safety_clauses": False})
 
     assert validate_generated_pair(example) != []
+
+
+@pytest.mark.parametrize(
+    "text",
+    (
+        "Школьница далеко провести событие.",
+        "Отчёт содержать ошибка.",
+        "Банк провести чистое собрание, что продавец открыть инструкция.",
+        "Инженер отправил тихюю таблица.",
+        "Городской цитата — сообщение.",
+    ),
+)
+def test_bad_target_morphology_is_rejected(text: str) -> None:
+    example = _manual_example(text, metadata={"uses_safety_clauses": False})
+
+    assert validate_generated_pair(example) != []
+
+
+@pytest.mark.parametrize(
+    "text",
+    (
+        "Сосед открыл файл.",
+        "Отчёт содержит ошибку.",
+        "Банк провёл собрание.",
+        "Инженер отправил тихую таблицу.",
+        "Городская цитата — сообщение.",
+    ),
+)
+def test_good_target_morphology_is_accepted(text: str) -> None:
+    example = _manual_example(text, metadata={"uses_safety_clauses": False})
+
+    assert validate_generated_pair(example) == []
+
+
+def test_audit_includes_generated_pair_validation_reasons() -> None:
+    example = _manual_example(
+        "Городской цитата — сообщение.",
+        metadata={"uses_safety_clauses": False},
+    )
+
+    reasons = audit_example(example)
+
+    assert any(reason.startswith("pair_validation:") for reason in reasons)
 
 
 @pytest.mark.parametrize(
@@ -177,6 +222,43 @@ def test_online_generator_5000_examples_have_no_semantic_audit_failures() -> Non
     assert failures == []
 
 
+def test_production_generator_5000_examples_quality_gate() -> None:
+    generator = _generator()
+    examples = [generator.sample_by_index(index) for index in range(5000)]
+    audit = audit_batch(examples)
+    validation_failures = [
+        (index, example.primary_rule_id, validate_generated_pair(example), example.source_text, example.target_text)
+        for index, example in enumerate(examples)
+        if validate_generated_pair(example)
+    ]
+    bad_target_patterns = (
+        " провести ",
+        " открыть ",
+        " найти ",
+        " закрыть ",
+        " съесть ",
+        " произойти ",
+        "громкее",
+        "тихюю",
+        "городской цитата",
+    )
+    bad_targets = [
+        (index, example.target_text)
+        for index, example in enumerate(examples)
+        if any(pattern in f" {example.target_text.lower()} " for pattern in bad_target_patterns)
+    ]
+    unique_pairs = {
+        (example.source_text, example.target_text, example.primary_rule_id, example.mode)
+        for example in examples
+    }
+    duplicate_ratio = 1.0 - (len(unique_pairs) / len(examples))
+
+    assert audit["failed_examples_count"] == 0
+    assert validation_failures == []
+    assert bad_targets == []
+    assert duplicate_ratio < 0.35
+
+
 def test_ne_verb_positive_expected_edit_count_is_logical_one() -> None:
     example = _generator().sample(rule_id="ne_verb", mode=GenerationMode.POSITIVE)
 
@@ -204,7 +286,59 @@ def test_generated_example_with_safety_clauses_has_serialized_clause_data() -> N
 
     assert example.metadata["uses_safety_clauses"] is True
     assert example.metadata["safety_clauses"]
+    first_clause = example.metadata["safety_clauses"][0]
+    assert first_clause["predicate"]["tense"] in {"past", "present"}
+    assert first_clause["predicate"]["verb_lemma"]
+    assert first_clause["predicate"]["rendered_verb"]
+    assert first_clause["subject"]["surface"]
+    assert first_clause["subject"]["case"] == "nomn"
+    if first_clause.get("object") is not None:
+        assert first_clause["object"]["surface"]
+        assert first_clause["object"]["case"] in {"accs", "gent", "datv", "ablt", "loct", "nomn"}
     assert_json_safe_metadata(example.metadata)
+
+
+def test_curated_morphology_covers_generation_lexicon() -> None:
+    lexicon = Lexicon.default()
+    required_noun_forms = {"nom_sg", "gen_sg", "dat_sg", "acc_sg", "ins_sg", "loc_sg", "nom_pl", "acc_pl"}
+    required_adjective_forms = {
+        "masc_nom",
+        "fem_nom",
+        "neut_nom",
+        "plur_nom",
+        "fem_acc",
+        "masc_acc_inanim",
+        "neut_acc",
+    }
+    required_verb_forms = {
+        "past_masc",
+        "past_fem",
+        "past_neut",
+        "past_plur",
+        "present_3sg",
+        "infinitive",
+    }
+
+    noun_failures = [
+        noun.lemma
+        for noun in lexicon.nouns
+        if not required_noun_forms <= set(noun.forms)
+    ]
+    adjective_failures = [
+        adjective.lemma
+        for adjective in lexicon.adjectives
+        if not required_adjective_forms <= set(adjective.forms)
+    ]
+    frame_verbs = {frame.verb_lemma for frame in lexicon.frames.frames}
+    verb_failures = [
+        verb.lemma
+        for verb in lexicon.verbs
+        if verb.lemma in frame_verbs and not required_verb_forms <= set(verb.forms)
+    ]
+
+    assert noun_failures == []
+    assert adjective_failures == []
+    assert verb_failures == []
 
 
 def test_generation_error_reports_last_invalid_pair_details() -> None:
@@ -269,13 +403,7 @@ class _AlwaysBadRule(RuleProgram):
 
 def _generator() -> OnlineExampleGenerator:
     config = load_config(ROOT / "configs" / "config.yaml")
-    return OnlineExampleGenerator(
-        default_rule_registry(),
-        Lexicon.default(),
-        MorphologyEngine(use_pymorphy=False),
-        config,
-        seed=config["generation"]["seed"],
-    )
+    return online_generator_from_config(config, seed=config["generation"]["seed"])
 
 
 def _manual_example(text: str, *, metadata: dict) -> GeneratedExample:

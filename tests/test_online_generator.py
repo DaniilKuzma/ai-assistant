@@ -4,9 +4,8 @@ import time
 from pathlib import Path
 
 from src.config.load_config import load_config
-from src.grammar_gen import Lexicon, MorphologyEngine
+from src.grammar_gen.factory import online_generator_from_config
 from src.grammar_gen.generator import OnlineExampleGenerator
-from src.grammar_gen.rules.registry import default_rule_registry
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -58,6 +57,15 @@ def test_generation_does_not_create_train_csv() -> None:
     assert not train_path.exists()
 
 
+def test_online_generator_factory_uses_production_morphology() -> None:
+    config = load_config(ROOT / "configs" / "config.yaml")
+    config["generation"]["grammar"]["use_pymorphy"] = True
+
+    generator = online_generator_from_config(config, seed=config["generation"]["seed"])
+
+    assert generator.morphology.uses_pymorphy is True
+
+
 def test_generation_speed_sanity() -> None:
     generator = _generator()
     started = time.perf_counter()
@@ -71,10 +79,4 @@ def test_generation_speed_sanity() -> None:
 
 def _generator() -> OnlineExampleGenerator:
     config = load_config(ROOT / "configs" / "config.yaml")
-    return OnlineExampleGenerator(
-        default_rule_registry(),
-        Lexicon.default(),
-        MorphologyEngine(use_pymorphy=False),
-        config,
-        seed=config["generation"]["seed"],
-    )
+    return online_generator_from_config(config, seed=config["generation"]["seed"])

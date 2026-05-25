@@ -490,6 +490,7 @@ def _save_final_artifacts(
     heads_path = heads_dir / "heads.pt"
     labels_path = heads_dir / "labels.json"
     summary_path = heads_dir / "training_summary.json"
+    architecture_path = heads_dir / "architecture.json"
     torch.save(heads_state, heads_path)
     labels_path.write_text(
         json.dumps(_label_maps(), ensure_ascii=False, indent=2, sort_keys=True) + "\n",
@@ -497,6 +498,19 @@ def _save_final_artifacts(
     )
     summary_path.write_text(
         json.dumps(dict(summary), ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    architecture_path.write_text(
+        json.dumps(
+            {
+                "architecture": "direct_edit_tagger_v1",
+                "debug_model": bool(summary.get("debug_model", False)),
+            },
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
         encoding="utf-8",
     )
 
@@ -509,6 +523,7 @@ def _save_final_artifacts(
         "heads_path": str(heads_path),
         "labels_path": str(labels_path),
         "summary_path": str(summary_path),
+        "architecture_path": str(architecture_path),
     }
 
 

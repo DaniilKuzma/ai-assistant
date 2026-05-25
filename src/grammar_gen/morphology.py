@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-from src.grammar_gen.lexicon import NounEntry
+from src.grammar_gen.lexicon import Lexicon, NounEntry
 
 
 LATIN_RE = re.compile(r"[A-Za-z]")
@@ -24,42 +24,79 @@ class TokenAnalysis:
 
 
 class MorphologyEngine:
-    def __init__(self, use_pymorphy: bool = True) -> None:
+    def __init__(
+        self,
+        use_pymorphy: bool = True,
+        lexicon: Lexicon | None = None,
+        critical: bool = False,
+    ) -> None:
         self._morph = None
+        self._critical = bool(critical)
+        self._noun_forms = {
+            noun.lemma: dict(noun.forms)
+            for noun in (lexicon.nouns if lexicon is not None else ())
+        }
+        self._adjective_forms = {
+            adjective.lemma: dict(adjective.forms)
+            for adjective in (lexicon.adjectives if lexicon is not None else ())
+        }
+        self._verb_forms = {
+            verb.lemma: dict(verb.forms)
+            for verb in (lexicon.verbs if lexicon is not None else ())
+        }
         if use_pymorphy:
             try:
                 from pymorphy3 import MorphAnalyzer
                 self._morph = MorphAnalyzer()
             except Exception:
                 self._morph = None
+        self.uses_pymorphy = self._morph is not None
 
     def inflect_noun(self, lemma: str, case: str, number: str = "sing") -> str:
+        curated = self._curated_noun(lemma, case, number)
+        if curated:
+            return curated
         fallback = _fallback_noun(lemma, case, number)
         result = self._inflect_with_pymorphy(lemma, "NOUN", {_case_tag(case), _number_tag(number)})
-        return result or fallback or lemma
+        return result or fallback or self._missing_form("noun", lemma, case, number)
 
     def inflect_adjective(self, lemma: str, gender: str, case: str, number: str = "sing") -> str:
+        curated = self._curated_adjective(lemma, gender, case, number)
+        if curated:
+            return curated
         tags = {_case_tag(case), _number_tag(number)}
         if number != "plur":
             tags.add(_gender_tag(gender))
         result = self._inflect_with_pymorphy(lemma, "ADJF", tags)
-        return result or _fallback_adjective(lemma, gender, case, number) or lemma
+        fallback = _fallback_adjective(lemma, gender, case, number)
+        return result or fallback or self._missing_form("adjective", lemma, gender, case, number)
 
     def inflect_verb_past(self, lemma: str, gender: str, number: str = "sing") -> str:
+        curated = self._curated_verb_past(lemma, gender, number)
+        if curated:
+            return curated
         tags = {"past", _number_tag(number)}
         if number != "plur":
             tags.add(_gender_tag(gender))
         result = self._inflect_with_pymorphy(lemma, "INFN", tags)
-        return result or _fallback_verb_past(lemma, gender, number) or lemma
+        fallback = _fallback_verb_past(lemma, gender, number)
+        return result or fallback or self._missing_form("verb_past", lemma, gender, number)
 
     def inflect_verb_present_3sg(self, lemma: str) -> str:
+        curated = self._verb_forms.get(lemma, {}).get("present_3sg")
+        if curated:
+            return curated
         result = self._inflect_with_pymorphy(lemma, "INFN", {"pres", "3per", "sing"})
         if result:
             return result
         result = self._inflect_with_pymorphy(lemma, "INFN", {"futr", "3per", "sing"})
-        return result or _FALLBACK_PRESENT_3SG.get(lemma) or lemma
+        fallback = _FALLBACK_PRESENT_3SG.get(lemma)
+        return result or fallback or self._missing_form("verb_present_3sg", lemma)
 
     def infinitive(self, lemma: str) -> str:
+        curated = self._verb_forms.get(lemma, {}).get("infinitive")
+        if curated:
+            return curated
         if self._morph is not None and RUSSIAN_WORD_RE.fullmatch(lemma):
             parse = self._best_parse(lemma, {"INFN", "VERB"})
             normal = str(getattr(parse, "normal_form", "")) if parse is not None else ""
@@ -67,7 +104,7 @@ class MorphologyEngine:
                 return normal
         if lemma.endswith("тся"):
             return f"{lemma[:-3]}ться"
-        return lemma
+        return self._missing_form("infinitive", lemma)
 
     def normalize_yo(self, text: str) -> str:
         return text.replace("ё", "е").replace("Ё", "Е")
@@ -109,6 +146,36 @@ class MorphologyEngine:
             if getattr(parse, "is_known", False):
                 return parse
         return parses[0]
+
+    def _curated_noun(self, lemma: str, case: str, number: str) -> str | None:
+        key = _noun_form_key(case, number)
+        if key is None:
+            return None
+        return self._noun_forms.get(lemma, {}).get(key)
+
+    def _curated_adjective(self, lemma: str, gender: str, case: str, number: str) -> str | None:
+        key = _adjective_form_key(gender, case, number)
+        if key is None:
+            return None
+        return self._adjective_forms.get(lemma, {}).get(key)
+
+    def _curated_verb_past(self, lemma: str, gender: str, number: str) -> str | None:
+        forms = self._verb_forms.get(lemma, {})
+        if _number_tag(number) == "plur":
+            return forms.get("past_plur")
+        key = {
+            "masc": "past_masc",
+            "femn": "past_fem",
+            "neut": "past_neut",
+        }.get(_gender_tag(gender))
+        return forms.get(key or "")
+
+    def _missing_form(self, kind: str, lemma: str, *features: str) -> str:
+        if self._critical:
+            details = ", ".join(str(feature) for feature in features if feature)
+            suffix = f" ({details})" if details else ""
+            raise ValueError(f"Missing morphology form for {kind} {lemma!r}{suffix}.")
+        return lemma
 
 
 def is_valid_prepositional_phrase(preposition: str, noun_entry: NounEntry, case: str) -> bool:
@@ -196,6 +263,45 @@ def _gender_tag(gender: str) -> str:
         "femn": "femn",
         "neut": "neut",
     }.get(gender, gender)
+
+
+def _noun_form_key(case: str, number: str) -> str | None:
+    case_tag = _case_tag(case)
+    number_tag = _number_tag(number)
+    if number_tag == "plur":
+        return {
+            "nomn": "nom_pl",
+            "accs": "acc_pl",
+        }.get(case_tag)
+    return {
+        "nomn": "nom_sg",
+        "gent": "gen_sg",
+        "datv": "dat_sg",
+        "accs": "acc_sg",
+        "ablt": "ins_sg",
+        "loct": "loc_sg",
+    }.get(case_tag)
+
+
+def _adjective_form_key(gender: str, case: str, number: str) -> str | None:
+    case_tag = _case_tag(case)
+    number_tag = _number_tag(number)
+    gender_tag = _gender_tag(gender)
+    if number_tag == "plur" and case_tag == "nomn":
+        return "plur_nom"
+    if case_tag == "nomn":
+        return {
+            "masc": "masc_nom",
+            "femn": "fem_nom",
+            "neut": "neut_nom",
+        }.get(gender_tag)
+    if case_tag == "accs":
+        return {
+            "masc": "masc_acc_inanim",
+            "femn": "fem_acc",
+            "neut": "neut_acc",
+        }.get(gender_tag)
+    return None
 
 
 def _fallback_noun(lemma: str, case: str, number: str) -> str | None:

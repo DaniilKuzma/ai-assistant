@@ -5,9 +5,11 @@ from src.grammar_gen.randomness import RandomSource
 from src.grammar_gen.realizer import Realizer
 from src.grammar_gen.rules.base import GenerationMode, RuleInfo, RuleProgram
 from src.grammar_gen.rules.common import (
+    capitalize_first,
     gap_labels_from_text,
     make_clean_identity_example,
     token_labels_all_keep,
+    varied_np,
 )
 from src.schema import GeneratedExample
 
@@ -43,13 +45,15 @@ class TsyaTtsyaRule(RuleProgram):
         rng: RandomSource,
         mode: GenerationMode,
     ) -> GeneratedExample:
-        del builder
         infinitive, finite = rng.choice(CONTROLLED_VERBS)
+        subject_np = varied_np(builder, rng, ("person",), adjective_probability=0.20)
+        subject = capitalize_first(realizer.render_np(subject_np))
+        want = realizer.morphology.inflect_verb_past("хотеть", subject_np.gender, subject_np.number)
         if mode is GenerationMode.POSITIVE:
             if rng.chance(0.5):
                 return _labeled_example(
-                    source=f"Студент хотел {finite}.",
-                    target=f"Студент хотел {infinitive}.",
+                    source=f"{subject} {want} {finite}.",
+                    target=f"{subject} {want} {infinitive}.",
                     labeled_token=finite,
                     label="FIX_TSYA_TO_TTSYA",
                     realizer=realizer,
@@ -57,8 +61,8 @@ class TsyaTtsyaRule(RuleProgram):
                     mode=GenerationMode.POSITIVE,
                 )
             return _labeled_example(
-                source=f"Студент {infinitive} утром.",
-                target=f"Студент {finite} утром.",
+                source=f"{subject} {infinitive} утром.",
+                target=f"{subject} {finite} утром.",
                 labeled_token=infinitive,
                 label="FIX_TTSYA_TO_TSYA",
                 realizer=realizer,
@@ -67,16 +71,16 @@ class TsyaTtsyaRule(RuleProgram):
             )
         if mode is GenerationMode.HARD_NEGATIVE:
             text = (
-                f"Студент хотел {infinitive}."
+                f"{subject} {want} {infinitive}."
                 if rng.chance(0.5)
-                else f"Студент {finite} утром."
+                else f"{subject} {finite} утром."
             )
             return _identity_example(text, realizer, self.info.rule_id, GenerationMode.HARD_NEGATIVE, {})
         if mode is GenerationMode.CLEAN_IDENTITY:
             text = (
-                f"Студент хотел {infinitive}."
+                f"{subject} {want} {infinitive}."
                 if rng.chance(0.5)
-                else f"Студент {finite} утром."
+                else f"{subject} {finite} утром."
             )
             tokens = realizer.tokenize_words_with_offsets(text)
             return make_clean_identity_example(text, tokens, rule_id=self.info.rule_id)

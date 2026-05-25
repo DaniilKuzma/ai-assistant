@@ -6,9 +6,11 @@ from src.grammar_gen.realizer import Realizer
 from src.grammar_gen.rules.base import GenerationMode, RuleInfo, RuleProgram
 from src.grammar_gen.rules.common import (
     find_token_sequence,
+    capitalize_first,
     gap_labels_from_text,
     label_span,
     make_clean_identity_example,
+    varied_np,
     replace_once_checked,
     token_labels_all_keep,
 )
@@ -44,15 +46,14 @@ class HyphenParticlesRule(RuleProgram):
         rng: RandomSource,
         mode: GenerationMode,
     ) -> GeneratedExample:
-        del builder
         if mode is GenerationMode.POSITIVE:
-            target, source, sequence, label = rng.choice(PARTICLE_CASES)
+            target, source, sequence, label = _particle_case(builder, realizer, rng)
             return _hyphen_positive(source, target, sequence, label, realizer, self.info.rule_id)
         if mode is GenerationMode.HARD_NEGATIVE:
             text = rng.choice(("То решение осталось важным.", "Либо эксперт, либо студент проверил отчёт."))
             return _identity_example(text, realizer, self.info.rule_id, GenerationMode.HARD_NEGATIVE, {})
         if mode is GenerationMode.CLEAN_IDENTITY:
-            target, _, _, _ = rng.choice(PARTICLE_CASES)
+            target, _, _, _ = _particle_case(builder, realizer, rng)
             tokens = realizer.tokenize_words_with_offsets(target)
             return make_clean_identity_example(target, tokens, rule_id=self.info.rule_id)
         raise ValueError(f"Unsupported generation mode: {mode!r}")
@@ -80,11 +81,11 @@ class HyphenKoeRule(RuleProgram):
         rng: RandomSource,
         mode: GenerationMode,
     ) -> GeneratedExample:
-        del builder
         if mode is GenerationMode.POSITIVE:
+            target, source = _koe_sentence(builder, realizer, rng)
             return _hyphen_positive(
-                "Кое кто проверил отчёт.",
-                "Кое-кто проверил отчёт.",
+                source,
+                target,
                 ("Кое", "кто"),
                 "HYPHENATE_KOE",
                 realizer,
@@ -99,7 +100,7 @@ class HyphenKoeRule(RuleProgram):
                 {},
             )
         if mode is GenerationMode.CLEAN_IDENTITY:
-            text = "Кое-кто проверил отчёт." if rng.chance(0.5) else "Студент кое у кого спросил."
+            text = _koe_sentence(builder, realizer, rng)[0] if rng.chance(0.5) else "Студент кое у кого спросил."
             tokens = realizer.tokenize_words_with_offsets(text)
             return make_clean_identity_example(text, tokens, rule_id=self.info.rule_id)
         raise ValueError(f"Unsupported generation mode: {mode!r}")
@@ -127,9 +128,8 @@ class HyphenPoAdverbRule(RuleProgram):
         rng: RandomSource,
         mode: GenerationMode,
     ) -> GeneratedExample:
-        del builder
         if mode is GenerationMode.POSITIVE:
-            target = "Студент говорил по-русски."
+            target = _po_adverb_sentence(builder, realizer, rng)
             source = replace_once_checked(target, "по-русски", "по русски")
             return _hyphen_positive(
                 source,
@@ -148,10 +148,48 @@ class HyphenPoAdverbRule(RuleProgram):
                 {},
             )
         if mode is GenerationMode.CLEAN_IDENTITY:
-            text = "Студент говорил по-русски." if rng.chance(0.5) else "Студент шёл по русской дороге."
+            text = _po_adverb_sentence(builder, realizer, rng) if rng.chance(0.5) else "Студент шёл по русской дороге."
             tokens = realizer.tokenize_words_with_offsets(text)
             return make_clean_identity_example(text, tokens, rule_id=self.info.rule_id)
         raise ValueError(f"Unsupported generation mode: {mode!r}")
+
+
+def _particle_case(builder: GrammarBuilder, realizer: Realizer, rng: RandomSource) -> tuple[str, str, tuple[str, str], str]:
+    target_subject, source_subject, sequence, label = rng.choice(PARTICLE_CASES)
+    target_subject = target_subject.split()[0]
+    source_subject = " ".join(source_subject.split()[:2])
+    predicate = _pronoun_predicate(builder, realizer, rng)
+    target = f"{target_subject} {predicate}"
+    source = f"{source_subject} {predicate}"
+    return target, source, sequence, label
+
+
+def _koe_sentence(builder: GrammarBuilder, realizer: Realizer, rng: RandomSource) -> tuple[str, str]:
+    predicate = _pronoun_predicate(builder, realizer, rng)
+    return f"Кое-кто {predicate}", f"Кое кто {predicate}"
+
+
+def _pronoun_predicate(builder: GrammarBuilder, realizer: Realizer, rng: RandomSource) -> str:
+    verb = rng.choice(("проверил", "прочитал", "открыл", "подписал", "получил", "отправил"))
+    obj = varied_np(
+        builder,
+        rng,
+        ("document", "report", "text", "message", "file", "book", "plan"),
+        case="accs",
+    )
+    adverb = f" {builder.lexicon.random_adverb(rng).lemma}" if rng.chance(0.25) else ""
+    return f"{verb} {realizer.render_np(obj)}{adverb}."
+
+
+def _po_adverb_sentence(builder: GrammarBuilder, realizer: Realizer, rng: RandomSource) -> str:
+    subject = varied_np(builder, rng, ("person",), adjective_probability=0.25)
+    verb = realizer.morphology.inflect_verb_past(
+        rng.choice(("говорить", "писать", "ответить", "спросить")),
+        subject.gender,
+        subject.number,
+    )
+    adverbial = f" {builder.lexicon.random_adverb(rng).lemma}" if rng.chance(0.25) else ""
+    return capitalize_first(f"{realizer.render_np(subject)} {verb} по-русски{adverbial}.")
 
 
 def _hyphen_positive(

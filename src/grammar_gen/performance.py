@@ -5,10 +5,9 @@ from collections.abc import Mapping
 import time
 from typing import Any
 
-from src.grammar_gen import Lexicon, MorphologyEngine
 from src.grammar_gen.audit import audit_example
-from src.grammar_gen.generator import OnlineExampleGenerator, validate_generation_config
-from src.grammar_gen.rules.registry import default_rule_registry
+from src.grammar_gen.factory import online_generator_from_config
+from src.grammar_gen.generator import validate_generation_config
 
 
 def benchmark_generation(config: Mapping[str, Any], count: int, seed: int) -> dict[str, Any]:
@@ -16,13 +15,7 @@ def benchmark_generation(config: Mapping[str, Any], count: int, seed: int) -> di
         raise ValueError("count must be non-negative.")
 
     validate_generation_config(config)
-    generator = OnlineExampleGenerator(
-        default_rule_registry(),
-        Lexicon.default(),
-        MorphologyEngine(use_pymorphy=False),
-        config,
-        seed=seed,
-    )
+    generator = online_generator_from_config(config, seed=seed)
 
     rule_distribution: Counter[str] = Counter()
     mode_distribution: Counter[str] = Counter()

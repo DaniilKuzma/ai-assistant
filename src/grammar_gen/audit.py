@@ -6,7 +6,7 @@ import re
 from typing import Any
 
 from src.grammar_gen.rules.base import GenerationMode
-from src.grammar_gen.safety import allowed_source_surface_failures, validate_surface
+from src.grammar_gen.safety import allowed_source_surface_failures, validate_generated_pair, validate_surface
 from src.schema import GeneratedExample
 from src.schema.labels import gap_label_to_id, rule_tag_to_id, token_label_to_id
 
@@ -41,6 +41,7 @@ def audit_example(example: GeneratedExample) -> list[str]:
         reasons.append("generated_example_roundtrip_mismatch")
 
     reasons.extend(_surface_reasons(example))
+    reasons.extend(f"pair_validation:{reason}" for reason in validate_generated_pair(example))
     reasons.extend(_label_reasons(example))
     reasons.extend(_mode_reasons(example))
     reasons.extend(_forbidden_phrase_reasons(example))
