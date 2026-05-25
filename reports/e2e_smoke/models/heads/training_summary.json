@@ -1,0 +1,32 @@
+{
+  "actual_train_steps": 1,
+  "batch_size": 2,
+  "best_epoch": 1,
+  "best_metric": 0.0,
+  "debug_model": true,
+  "effective_batch_size": 2,
+  "epochs": 1,
+  "loss_history": [
+    {
+      "epoch": 1,
+      "gap_punctuation_loss": 2.8213443756103516,
+      "loss": 8.12778091430664,
+      "rule_loss": 3.058678150177002,
+      "steps": 1,
+      "token_edit_loss": 3.824563980102539
+    }
+  ],
+  "samples_per_epoch": 2,
+  "smoke": true,
+  "total_train_steps": 1,
+  "validation_history": [
+    {
+      "combined_score": 0.0,
+      "epoch": 1,
+      "exact_match": 0.0,
+      "examples": 50,
+      "loss": 7.336314182281495,
+      "status": "ok"
+    }
+  ]
+}

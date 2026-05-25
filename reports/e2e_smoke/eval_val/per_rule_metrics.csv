@@ -1,0 +1,14 @@
+rule_id,example_count,exact_match,char_accuracy,changed_when_needed,unchanged_when_clean,overcorrection_rate,edit_precision,edit_recall,edit_f1,rejected_by_threshold,rejected_by_scope_guard
+comma_adversative,4,0.0,0.9888875169774045,0.0,0.0,0.0,0.0,0.0,0.0,0,0
+comma_homogeneous,4,0.0,0.987929717341482,0.0,0.0,0.0,0.0,0.0,0.0,0,0
+comma_introductory,6,0.16666666666666666,0.9834442697219689,0.0,1.0,0.0,0.0,0.0,0.0,0,0
+comma_subordinate,3,0.0,0.9935860155963784,0.0,0.0,0.0,0.0,0.0,0.0,0,0
+dash_subject_predicate,4,0.0,0.960453216374269,0.0,0.0,0.0,0.0,0.0,0.0,0,0
+final_punctuation,5,0.2,0.9871404332837257,0.0,1.0,0.0,0.0,0.0,0.0,0,0
+hyphen_koe,6,1.0,1.0,1.0,1.0,0.0,1.0,1.0,1.0,0,0
+hyphen_particles,3,1.0,1.0,1.0,0.0,0.0,1.0,1.0,1.0,0,0
+ne_verb,3,1.0,1.0,1.0,1.0,0.0,1.0,1.0,1.0,0,0
+takzhe_tak_zhe,4,0.5,0.9917944578961528,0.0,1.0,0.0,0.0,0.0,0.0,0,0
+tozhe_to_zhe,1,1.0,1.0,0.0,1.0,0.0,0.0,0.0,0.0,0,0
+tsya_ttsya,4,0.25,0.9791621435808366,0.0,1.0,0.0,0.0,0.0,0.0,0,0
+zato_za_to,3,0.0,0.9907091888743266,0.0,0.0,0.0,0.0,0.0,0.0,0,0

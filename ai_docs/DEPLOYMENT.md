@@ -30,10 +30,27 @@ pip install -e .
 .venv/bin/python -m pytest -q tests/test_rules_coverage.py tests/test_no_legacy_candidate_architecture.py
 ```
 
+## End-To-End Smoke
+
+```bash
+python scripts/run_end_to_end_smoke.py configs/config.yaml --output reports/e2e_smoke --count 50 --steps 1
+```
+
+Smoke writes only small generated artifacts under the selected output
+directory and uses debug/fallback runtime paths. It must not create legacy
+materialized training CSV files.
+
+## Generator And Frozen Eval
+
+```bash
+python scripts/audit_generator.py configs/config.yaml --count 1000
+python scripts/build_frozen_eval.py configs/config.yaml --split val --count 5000 --output data/generated_eval/val.jsonl
+```
+
 ## Training
 
 ```bash
-.venv/bin/python -m src.training.train configs/config.yaml --smoke --debug-model
+python -m src.training.train configs/config.yaml --smoke --debug-model --steps 2
 ```
 
 Главные настройки:
@@ -52,6 +69,10 @@ RUSSIAN_CORRECTOR_DISABLE_MODEL_TRAINING=1 .venv/bin/python -m src.training.trai
 ```
 
 ## Evaluation And Reports
+
+```bash
+python scripts/evaluate_model.py configs/config.yaml --dataset data/generated_eval/val.jsonl --output reports/eval_val
+```
 
 Reports пишутся в `reports/`.
 
