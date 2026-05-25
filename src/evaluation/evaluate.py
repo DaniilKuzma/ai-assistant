@@ -1,188 +1,358 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+import argparse
+import csv
+import json
 from pathlib import Path
 from typing import Any
 
-from src.candidates.candidate_generator import CandidateGenerator
-from src.evaluation.metrics import compute_metrics, mark_correct_edits
-from src.evaluation.reports import write_edit_logs, write_required_evaluation_reports
-from src.evaluation.rule_metrics import write_rule_reports
-from src.evaluation.score_distribution import write_candidate_score_distribution_by_rule
-from src.inference.corrector import Corrector
-from src.validation.diff_analyzer import DiffAnalyzer
+from src.config.load_config import load_config
+from src.evaluation.direct_metrics import (
+    char_accuracy,
+    edit_precision_recall_f1,
+    exact_match,
+    normalize_text_for_eval,
+    rule_breakdown,
+)
+from src.runtime.corrector import Corrector
+from src.runtime.edit_realizer import apply_gap_labels, apply_token_edit_labels
+from src.schema import GeneratedExample, RuntimeEdit
+from src.schema.serialization import read_jsonl_examples
 
 
-@dataclass(frozen=True)
-class EvaluationResult:
-    metrics: dict[str, float]
-    edit_scores: list[dict[str, Any]]
-    accepted_edits: list[dict[str, Any]]
-    rejected_edits: list[dict[str, Any]]
+@dataclass
+class _RuntimeDiagnostics:
+    rejected_by_threshold: int = 0
+    rejected_by_scope_guard: int = 0
 
 
-@dataclass(frozen=True)
-class EvaluationReportOptions:
-    write_required_reports: bool = True
-    write_edit_logs: bool = True
-    write_rule_reports: bool = True
-    write_score_distribution: bool = True
-    write_candidate_recall: bool = True
-
-    @classmethod
-    def for_training_fast_eval(cls) -> "EvaluationReportOptions":
-        return cls(
-            write_required_reports=True,
-            write_edit_logs=False,
-            write_rule_reports=False,
-            write_score_distribution=False,
-            write_candidate_recall=False,
-        )
-
-
-def evaluate_rows(
-    rows: Iterable[dict],
-    corrector: Corrector | None = None,
-    output_dir: str | Path | None = None,
-    *,
-    metric_weights: dict[str, float] | None = None,
-    show_progress: bool = False,
-    report_metadata: dict[str, Any] | None = None,
-    candidate_generator: CandidateGenerator | None = None,
-    candidate_recall_max_candidates: int | None = None,
-    report_options: EvaluationReportOptions | None = None,
-) -> dict[str, float]:
-    return evaluate_rows_detailed(
-        rows,
-        corrector=corrector,
-        output_dir=output_dir,
-        metric_weights=metric_weights,
-        show_progress=show_progress,
-        report_metadata=report_metadata,
-        candidate_generator=candidate_generator,
-        candidate_recall_max_candidates=candidate_recall_max_candidates,
-        report_options=report_options,
-    ).metrics
-
-
-def evaluate_rows_detailed(
-    rows: Iterable[dict],
-    corrector: Corrector | None = None,
-    output_dir: str | Path | None = None,
-    *,
-    metric_weights: dict[str, float] | None = None,
-    show_progress: bool = False,
-    report_metadata: dict[str, Any] | None = None,
-    candidate_generator: CandidateGenerator | None = None,
-    candidate_recall_max_candidates: int | None = None,
-    report_options: EvaluationReportOptions | None = None,
-) -> EvaluationResult:
-    corrector = corrector or Corrector()
-    row_list = list(rows)
-    evaluated = []
-    accepted: list[dict] = []
-    rejected: list[dict] = []
-    edit_scores: list[dict[str, Any]] = []
-    candidate_decisions: list[dict[str, Any]] = []
-    analyzer = DiffAnalyzer()
-    total_gold_edits = 0
-    for row_id, row in enumerate(_with_progress(row_list, enabled=show_progress, description="Evaluating")):
-        result = corrector.correct(row["source"])
-        for decision in getattr(corrector, "last_candidate_decisions", []) or []:
-            candidate_decisions.append({**decision, "row_id": row_id})
-        prediction = result.corrected_text
-        evaluated_row = {**row, "prediction": prediction}
-        evaluated.append(evaluated_row)
-        gold_edits = analyzer.analyze(row["source"], row["target"])
-        total_gold_edits += len(gold_edits)
-        accepted_for_scoring = [edit for edit in result.edits if edit.status == "accepted"]
-        correct_flags = mark_correct_edits(accepted_for_scoring, gold_edits)
-        correctness_by_identity = {
-            id(edit): is_correct
-            for edit, is_correct in zip(accepted_for_scoring, correct_flags, strict=False)
-        }
-        for edit in result.edits:
-            serialized = {
-                "row_id": row_id,
-                "source": edit.source,
-                "replacement": edit.replacement,
-                "edit_type": edit.edit_type,
-                "start": edit.start,
-                "end": edit.end,
-                "rule_id": edit.rule_id,
-                "status": edit.status,
-                "reason": edit.reason,
-                "confidence": edit.confidence,
-            }
-            if edit.status == "accepted":
-                accepted.append(serialized)
-            else:
-                rejected.append(serialized)
-            if edit.status == "accepted":
-                edit_scores.append(
-                    {
-                        "confidence": edit.confidence,
-                        "is_correct": correctness_by_identity.get(id(edit), False),
-                        "rule_id": edit.rule_id,
-                    }
-                )
-    for score in edit_scores:
-        score["total_gold_edits"] = total_gold_edits
-    metrics = compute_metrics(evaluated, weights=metric_weights)
-    if output_dir is not None:
-        write_evaluation_outputs(
-            evaluated,
-            metrics,
-            output_dir,
-            accepted=accepted,
-            rejected=rejected,
-            candidate_decisions=candidate_decisions,
-            metadata=report_metadata,
-            candidate_generator=candidate_generator,
-            candidate_recall_max_candidates=candidate_recall_max_candidates,
-            report_options=report_options,
-        )
-    return EvaluationResult(
-        metrics=metrics,
-        edit_scores=edit_scores
-        or [{"confidence": 0.0, "is_correct": False, "rule_id": "", "total_gold_edits": total_gold_edits}],
-        accepted_edits=accepted,
-        rejected_edits=rejected,
-    )
-
-
-def write_evaluation_outputs(
-    evaluated: list[dict[str, Any]],
-    metrics: dict[str, float],
+def evaluate_corrector(
+    config_path: str | Path,
+    dataset_path: str | Path,
     output_dir: str | Path,
-    *,
-    accepted: list[dict[str, Any]],
-    rejected: list[dict[str, Any]],
-    candidate_decisions: list[dict[str, Any]],
-    metadata: dict[str, Any] | None = None,
-    candidate_generator: CandidateGenerator | None = None,
-    candidate_recall_max_candidates: int | None = None,
-    report_options: EvaluationReportOptions | None = None,
+) -> dict[str, Any]:
+    config = load_config(config_path)
+    examples = read_jsonl_examples(dataset_path)
+    corrector = Corrector.from_config(config)
+    diagnostics = _instrument_corrector(corrector)
+
+    rows: list[dict[str, Any]] = []
+    for row_id, example in enumerate(examples):
+        threshold_before = diagnostics.rejected_by_threshold
+        scope_before = diagnostics.rejected_by_scope_guard
+        result = corrector.correct(example.source_text)
+        threshold_count = diagnostics.rejected_by_threshold - threshold_before
+        scope_count = diagnostics.rejected_by_scope_guard - scope_before
+        if threshold_count == 0:
+            threshold_count = _metadata_count(result.metadata, "rejected_by_threshold", "rejected_by_threshold_count")
+        if scope_count == 0:
+            scope_count = _metadata_count(
+                result.metadata,
+                "rejected_by_scope_guard",
+                "rejected_by_scope_guard_count",
+                "scope_guard_rejections",
+            )
+
+        predicted_text = result.corrected_text
+        gold_edits = _gold_runtime_edits(example)
+        predicted_edits = list(result.edits)
+        rows.append(
+            {
+                "row_id": row_id,
+                "example": example,
+                "source_text": example.source_text,
+                "target_text": example.target_text,
+                "predicted_text": predicted_text,
+                "primary_rule_id": example.primary_rule_id,
+                "mode": example.mode,
+                "exact_match": exact_match(example.target_text, predicted_text),
+                "char_accuracy": char_accuracy(example.source_text, example.target_text, predicted_text),
+                "gold_edits": [_serialize_edit(edit) for edit in gold_edits],
+                "predicted_edits": [_serialize_edit(edit) for edit in predicted_edits],
+                "rejected_by_threshold": threshold_count,
+                "rejected_by_scope_guard": scope_count,
+                "metadata": dict(example.metadata),
+                "runtime_metadata": dict(result.metadata),
+            }
+        )
+
+    summary = _summary_metrics(examples, rows)
+    per_rule = rule_breakdown(examples, rows)
+    _write_outputs(Path(output_dir), summary, per_rule, rows)
+    return summary
+
+
+def _summary_metrics(examples: Sequence[GeneratedExample], rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    if not rows:
+        edit_metrics = edit_precision_recall_f1([], [])
+        return {
+            "example_count": 0,
+            "exact_match": 0.0,
+            "char_accuracy": 0.0,
+            "changed_when_needed": 0.0,
+            "unchanged_when_clean": 0.0,
+            "overcorrection_rate": 0.0,
+            "edit_precision": edit_metrics["precision"],
+            "edit_recall": edit_metrics["recall"],
+            "edit_f1": edit_metrics["f1"],
+            "rejected_by_threshold": 0,
+            "rejected_by_scope_guard": 0,
+        }
+
+    exact_total = 0
+    char_total = 0.0
+    changed_examples = 0
+    changed_when_needed = 0
+    clean_examples = 0
+    unchanged_when_clean = 0
+    guarded_examples = 0
+    overcorrected = 0
+    all_gold_edits: list[dict[str, Any]] = []
+    all_predicted_edits: list[dict[str, Any]] = []
+
+    for row in rows:
+        row_id = int(row["row_id"])
+        source_text = str(row["source_text"])
+        target_text = str(row["target_text"])
+        predicted_text = str(row["predicted_text"])
+        normalized_source = normalize_text_for_eval(source_text)
+        normalized_target = normalize_text_for_eval(target_text)
+        normalized_prediction = normalize_text_for_eval(predicted_text)
+
+        exact_total += int(row["exact_match"])
+        char_total += float(row["char_accuracy"])
+        if normalized_source != normalized_target:
+            changed_examples += 1
+            changed_when_needed += int(normalized_prediction != normalized_source)
+        else:
+            clean_examples += 1
+            unchanged_when_clean += int(normalized_prediction == normalized_source)
+
+        if str(row["mode"]) in {"clean_identity", "hard_negative"}:
+            guarded_examples += 1
+            overcorrected += int(not bool(row["exact_match"]))
+
+        all_gold_edits.extend(_row_tagged_edits(row.get("gold_edits", []), row_id))
+        all_predicted_edits.extend(_row_tagged_edits(row.get("predicted_edits", []), row_id))
+
+    edit_metrics = edit_precision_recall_f1(all_gold_edits, all_predicted_edits)
+    return {
+        "example_count": len(rows),
+        "exact_match": exact_total / len(rows),
+        "char_accuracy": char_total / len(rows),
+        "changed_when_needed": _safe_rate(changed_when_needed, changed_examples),
+        "unchanged_when_clean": _safe_rate(unchanged_when_clean, clean_examples),
+        "overcorrection_rate": _safe_rate(overcorrected, guarded_examples),
+        "edit_precision": edit_metrics["precision"],
+        "edit_recall": edit_metrics["recall"],
+        "edit_f1": edit_metrics["f1"],
+        "rejected_by_threshold": sum(int(row.get("rejected_by_threshold", 0) or 0) for row in rows),
+        "rejected_by_scope_guard": sum(int(row.get("rejected_by_scope_guard", 0) or 0) for row in rows),
+    }
+
+
+def _gold_runtime_edits(example: GeneratedExample) -> list[RuntimeEdit]:
+    confidences = [1.0] * len(example.source_tokens)
+    _token_text, token_edits = apply_token_edit_labels(
+        example.source_text,
+        example.source_tokens,
+        example.token_edit_labels,
+        confidences,
+        threshold=0.0,
+        rule_ids=example.rule_ids,
+    )
+    _gap_text, gap_edits = apply_gap_labels(
+        example.source_text,
+        example.source_tokens,
+        example.gap_labels,
+        confidences,
+        threshold=0.0,
+        rule_ids=example.rule_ids,
+    )
+    return [*token_edits, *gap_edits]
+
+
+def _write_outputs(
+    output_dir: Path,
+    summary: Mapping[str, Any],
+    per_rule: Sequence[Mapping[str, Any]],
+    rows: Sequence[Mapping[str, Any]],
 ) -> None:
-    options = report_options or EvaluationReportOptions()
-    if options.write_required_reports:
-        write_required_evaluation_reports(evaluated, metrics, output_dir, metadata=metadata)
-    if options.write_edit_logs:
-        write_edit_logs(accepted, rejected, output_dir)
-    if options.write_rule_reports:
-        write_rule_reports(evaluated, accepted, rejected, output_dir)
-    if options.write_score_distribution:
-        write_candidate_score_distribution_by_rule(evaluated, candidate_decisions, accepted, rejected, output_dir)
-    if options.write_candidate_recall:
-        del candidate_generator, candidate_recall_max_candidates
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "evaluation_summary.json").write_text(
+        json.dumps(dict(summary), ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    _write_per_rule_metrics(output_dir / "per_rule_metrics.csv", per_rule)
+    _write_worst_examples(output_dir / "worst_examples.jsonl", rows)
 
 
-def _with_progress(rows: list[dict], *, enabled: bool, description: str):
-    if not enabled:
-        return rows
-    try:
-        from tqdm.auto import tqdm
-    except Exception:
-        return rows
-    return tqdm(rows, total=len(rows), desc=description, dynamic_ncols=True)
+def _write_per_rule_metrics(path: Path, rows: Sequence[Mapping[str, Any]]) -> None:
+    fieldnames = [
+        "rule_id",
+        "example_count",
+        "exact_match",
+        "char_accuracy",
+        "changed_when_needed",
+        "unchanged_when_clean",
+        "overcorrection_rate",
+        "edit_precision",
+        "edit_recall",
+        "edit_f1",
+        "rejected_by_threshold",
+        "rejected_by_scope_guard",
+    ]
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({name: row.get(name, "") for name in fieldnames})
+
+
+def _write_worst_examples(path: Path, rows: Sequence[Mapping[str, Any]]) -> None:
+    worst_rows = sorted(
+        (row for row in rows if not bool(row.get("exact_match", False))),
+        key=lambda row: (float(row.get("char_accuracy", 0.0)), int(row.get("row_id", 0))),
+    )
+    with path.open("w", encoding="utf-8") as handle:
+        for row in worst_rows:
+            handle.write(
+                json.dumps(
+                    {
+                        "source_text": row["source_text"],
+                        "target_text": row["target_text"],
+                        "predicted_text": row["predicted_text"],
+                        "primary_rule_id": row["primary_rule_id"],
+                        "mode": row["mode"],
+                        "edits": row["predicted_edits"],
+                        "metadata": row["metadata"],
+                        "runtime_metadata": row["runtime_metadata"],
+                    },
+                    ensure_ascii=False,
+                    sort_keys=True,
+                )
+            )
+            handle.write("\n")
+
+
+def _instrument_corrector(corrector: Any) -> _RuntimeDiagnostics:
+    diagnostics = _RuntimeDiagnostics()
+    thresholds = getattr(corrector, "thresholds", None)
+    if thresholds is not None and hasattr(thresholds, "should_apply"):
+        corrector.thresholds = _CountingThresholds(thresholds, diagnostics)
+    scope_guard = getattr(corrector, "scope_guard", None)
+    if scope_guard is not None:
+        corrector.scope_guard = _CountingScopeGuard(scope_guard, diagnostics)
+    return diagnostics
+
+
+class _CountingThresholds:
+    def __init__(self, wrapped: Any, diagnostics: _RuntimeDiagnostics) -> None:
+        self._wrapped = wrapped
+        self._diagnostics = diagnostics
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._wrapped, name)
+
+    def should_apply(self, confidence: float, margin: float, rule_id: str, edit_type: str) -> bool:
+        accepted = bool(self._wrapped.should_apply(confidence, margin, rule_id, edit_type))
+        if not accepted:
+            self._diagnostics.rejected_by_threshold += 1
+        return accepted
+
+
+class _CountingScopeGuard:
+    def __init__(self, wrapped: Any, diagnostics: _RuntimeDiagnostics) -> None:
+        self._wrapped = wrapped
+        self._diagnostics = diagnostics
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._wrapped, name)
+
+    def validate_edit(self, source_text: str, edit: RuntimeEdit) -> bool:
+        accepted = bool(self._wrapped.validate_edit(source_text, edit))
+        if not accepted:
+            self._diagnostics.rejected_by_scope_guard += 1
+        return accepted
+
+    def validate_result(
+        self,
+        source_text: str,
+        corrected_text: str,
+        edits: Sequence[RuntimeEdit],
+    ) -> tuple[bool, list[str]]:
+        accepted, reasons = self._wrapped.validate_result(source_text, corrected_text, edits)
+        if not accepted:
+            self._diagnostics.rejected_by_scope_guard += max(1, len(reasons))
+        return accepted, reasons
+
+
+def _serialize_edit(edit: Any) -> dict[str, Any]:
+    return {
+        "start": int(getattr(edit, "start", 0)),
+        "end": int(getattr(edit, "end", 0)),
+        "source": str(getattr(edit, "source", "")),
+        "replacement": str(getattr(edit, "replacement", "")),
+        "edit_type": str(getattr(edit, "edit_type", "")),
+        "rule_id": str(getattr(edit, "rule_id", "")),
+        "confidence": float(getattr(edit, "confidence", 0.0)),
+        "explanation": str(getattr(edit, "explanation", "")),
+    }
+
+
+def _row_tagged_edits(edits: Sequence[Mapping[str, Any]], row_id: int) -> list[dict[str, Any]]:
+    tagged = []
+    for edit in edits:
+        row = dict(edit)
+        row["row_id"] = row_id
+        tagged.append(row)
+    return tagged
+
+
+def _metadata_count(metadata: Mapping[str, Any], *keys: str) -> int:
+    for key in keys:
+        if key in metadata:
+            return _count_value(metadata[key])
+    return 0
+
+
+def _count_value(value: Any) -> int:
+    if value is None:
+        return 0
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    if isinstance(value, str):
+        return 1 if value else 0
+    if isinstance(value, Mapping):
+        return sum(_count_value(item) for item in value.values())
+    if isinstance(value, Sequence):
+        return len(value)
+    return 0
+
+
+def _safe_rate(numerator: int, denominator: int) -> float:
+    return 0.0 if denominator == 0 else numerator / denominator
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Evaluate runtime Corrector on frozen GeneratedExample JSONL.")
+    parser.add_argument("config")
+    parser.add_argument("--dataset", required=True)
+    parser.add_argument("--output", required=True)
+    args = parser.parse_args(argv)
+    summary = evaluate_corrector(args.config, args.dataset, args.output)
+    print(json.dumps(summary, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+
+
+__all__ = ["evaluate_corrector"]
