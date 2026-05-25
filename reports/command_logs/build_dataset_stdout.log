@@ -1,1 +1,0 @@
-[candidate-preflight] {"clean_pool_contamination": 0, "clean_pool_scanned_rows": 50000, "dependencies_ok": true, "error_count": 0, "final_active_rule_count": 76, "ok": true, "production_ready_rule_count": 12, "stale_artifacts": false, "training_candidate_rule_count": 76, "warning_count": 0}

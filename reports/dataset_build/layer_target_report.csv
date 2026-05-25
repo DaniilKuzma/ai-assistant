@@ -1,6 +1,0 @@
-layer,requested_target,effective_target,available_count,selected_count,deficit,adjustment_reason
-atomic_positive,190000,190000,92411,0,190000,
-atomic_hard_negative,76000,76000,86759,118378,0,
-clean_identity,32000,32000,547607,200914,0,
-real_atomic,6000,6000,353,353,5647,
-stress_multi_error,16000,16000,16000,355,15645,

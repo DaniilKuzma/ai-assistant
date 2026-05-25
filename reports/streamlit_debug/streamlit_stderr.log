@@ -1,8 +1,0 @@
-2026-05-22 13:50:28.187 Uvicorn server started on 0.0.0.0:8501
-C:\Users\οκ\AppData\Roaming\Python\Python312\site-packages\pymorphy2\analyzer.py:114: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
-  import pkg_resources
-2026-05-22 13:53:52.979 Please replace `use_container_width` with `width`.
-
-`use_container_width` will be removed after 2025-12-31.
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
