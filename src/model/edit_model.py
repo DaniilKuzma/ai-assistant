@@ -4,16 +4,17 @@ from dataclasses import dataclass
 from typing import Any
 
 from src.model.encoder import EncoderLoadConfig, ensure_pytorch_transformers_backend, load_encoder
-from src.model.heads import build_linear_heads
+from src.model.heads import build_direct_edit_heads
+from src.schema.labels import GAP_PUNCTUATION_LABELS, RULE_LABELS, TOKEN_EDIT_LABELS
 
 
 @dataclass(frozen=True)
-class EditModelConfig:
+class DirectEditModelConfig:
     model_name: str = "ai-forever/ruRoberta-large"
     fallback_model_name: str = "ai-forever/ruRoberta-large"
-    punctuation_label_count: int = 13
-    punctuation_action_count: int = 5
-    error_type_count: int = 7
+    token_label_count: int = len(TOKEN_EDIT_LABELS)
+    gap_label_count: int = len(GAP_PUNCTUATION_LABELS)
+    rule_label_count: int = len(RULE_LABELS)
     local_files_only: bool = False
     lora_enabled: bool = True
     lora_r: int = 8
@@ -21,10 +22,8 @@ class EditModelConfig:
     lora_dropout: float = 0.05
 
 
-class CandidateAwareEditModel:
-    """Encoder-only multitask model retained until the direct tagger refactor."""
-
-    def __init__(self, config: EditModelConfig) -> None:
+class DirectEditTaggerModel:
+    def __init__(self, config: DirectEditModelConfig) -> None:
         self.config = config
         encoder_config = EncoderLoadConfig(
             model_name=config.model_name,
@@ -37,14 +36,14 @@ class CandidateAwareEditModel:
         self.module = self._build_module(encoder, config)
 
     @classmethod
-    def from_encoder(cls, encoder: Any, config: EditModelConfig) -> "CandidateAwareEditModel":
+    def from_encoder(cls, encoder: Any, config: DirectEditModelConfig) -> "DirectEditTaggerModel":
         instance = cls.__new__(cls)
         instance.config = config
         instance.module = cls._build_module(encoder, config)
         return instance
 
     @staticmethod
-    def _build_module(encoder: Any, config: EditModelConfig) -> Any:
+    def _build_module(encoder: Any, config: DirectEditModelConfig) -> Any:
         import torch
         import torch.nn as nn
 
@@ -58,84 +57,60 @@ class CandidateAwareEditModel:
                 self,
                 input_ids,
                 attention_mask=None,
-                candidate_spans=None,
-                candidate_mask=None,
-                candidate_replacement_ids=None,
-                candidate_replacement_mask=None,
-                punctuation_gap_indices=None,
-                punctuation_right_gap_indices=None,
-                punctuation_gap_mask=None,
+                word_token_indices=None,
+                word_token_mask=None,
+                gap_left_indices=None,
+                gap_right_indices=None,
+                gap_mask=None,
                 **kwargs,
             ):
                 output = self.encoder(input_ids=input_ids, attention_mask=attention_mask, **kwargs)
                 hidden = output.last_hidden_state
-                if candidate_spans is None:
-                    batch_size = hidden.shape[0]
-                    candidate_spans = torch.zeros((batch_size, 1, 2), dtype=torch.long, device=hidden.device)
-                    candidate_spans[:, :, 1] = 1
-                candidate_representations = _pool_candidate_spans(hidden, candidate_spans)
-                replacement_representations = _pool_candidate_replacements(
-                    self.encoder,
-                    candidate_replacement_ids,
-                    candidate_replacement_mask,
-                    candidate_representations,
-                )
-                pair_representations = torch.cat(
-                    [
-                        candidate_representations,
-                        replacement_representations,
-                        replacement_representations - candidate_representations,
-                    ],
-                    dim=-1,
-                )
-                projected = self.heads["candidate_projection"](pair_representations)
-                candidate_scores = self.heads["candidate_score"](projected).squeeze(-1)
-                confidence_logits = self.heads["confidence"](projected).squeeze(-1)
-                error_type_logits = self.heads["error_type"](projected)
-                if candidate_mask is not None:
-                    candidate_scores = candidate_scores.masked_fill(~candidate_mask, -1e4)
-                    confidence_logits = confidence_logits.masked_fill(~candidate_mask, -1e4)
-                punctuation_representations = hidden
-                if punctuation_gap_indices is not None:
-                    left_representations = _gather_gap_representations(hidden, punctuation_gap_indices)
-                    if punctuation_right_gap_indices is None:
-                        punctuation_right_gap_indices = punctuation_gap_indices
-                    right_representations = _gather_gap_representations(hidden, punctuation_right_gap_indices)
-                    cls_representations = hidden[:, :1, :].expand_as(left_representations)
-                    punctuation_representations = torch.cat(
-                        [
-                            left_representations,
-                            right_representations,
-                            right_representations - left_representations,
-                            cls_representations,
-                        ],
-                        dim=-1,
-                    )
-                    punctuation_representations = self.heads["punctuation_projection"](punctuation_representations)
-                punctuation_confidence_logits = self.heads["punctuation_confidence"](punctuation_representations).squeeze(-1)
+                batch_size = hidden.shape[0]
+
+                if word_token_indices is None:
+                    word_token_indices = torch.zeros((batch_size, 0), dtype=torch.long, device=hidden.device)
+                word_representations = _gather_hidden(hidden, word_token_indices)
+                token_edit_logits = self.heads["token_edit"](word_representations)
+                token_confidence_logits = self.heads["token_confidence"](word_representations).squeeze(-1)
+                rule_logits = self.heads["rule"](word_representations)
+
+                word_token_mask = _mask_or_ones(word_token_mask, word_token_indices, hidden.device)
+                token_edit_logits = _zero_masked(token_edit_logits, word_token_mask)
+                token_confidence_logits = token_confidence_logits.masked_fill(~word_token_mask, 0.0)
+                rule_logits = _zero_masked(rule_logits, word_token_mask)
+
+                if gap_left_indices is None:
+                    gap_left_indices = torch.zeros((batch_size, 0), dtype=torch.long, device=hidden.device)
+                gap_representations = _gap_representations(hidden, gap_left_indices, gap_right_indices)
+                gap_punctuation_logits = self.heads["gap_punctuation"](gap_representations)
+                gap_confidence_logits = self.heads["gap_confidence"](gap_representations).squeeze(-1)
+
+                gap_mask = _mask_or_ones(gap_mask, gap_left_indices, hidden.device)
+                gap_punctuation_logits = _zero_masked(gap_punctuation_logits, gap_mask)
+                gap_confidence_logits = gap_confidence_logits.masked_fill(~gap_mask, 0.0)
+
                 return {
                     "hidden_states": hidden,
-                    "candidate_scores": candidate_scores,
-                    "punctuation_logits": self.heads["punctuation_gap"](punctuation_representations),
-                    "punctuation_action_logits": self.heads["punctuation_action"](punctuation_representations),
-                    "punctuation_confidence_logits": punctuation_confidence_logits,
-                    "punctuation_error_type_logits": self.heads["punctuation_error_type"](punctuation_representations),
-                    "confidence_logits": confidence_logits,
-                    "error_type_logits": error_type_logits,
+                    "token_edit_logits": token_edit_logits,
+                    "token_confidence_logits": token_confidence_logits,
+                    "gap_punctuation_logits": gap_punctuation_logits,
+                    "gap_confidence_logits": gap_confidence_logits,
+                    "rule_logits": rule_logits,
                 }
 
         hidden_size = _encoder_hidden_size(encoder)
         return _Module(
             encoder,
-            build_linear_heads(
+            build_direct_edit_heads(
                 hidden_size,
-                config.punctuation_label_count,
-                config.error_type_count,
-                config.punctuation_action_count,
+                config.token_label_count,
+                config.gap_label_count,
+                config.rule_label_count,
             ),
         )
 
-    def _attach_lora(self, encoder: Any, config: EditModelConfig) -> Any:
+    def _attach_lora(self, encoder: Any, config: DirectEditModelConfig) -> Any:
         ensure_pytorch_transformers_backend()
         from peft import LoraConfig, TaskType, get_peft_model
 
@@ -149,59 +124,41 @@ class CandidateAwareEditModel:
         return get_peft_model(encoder, lora_config)
 
 
-def _pool_candidate_spans(hidden, candidate_spans):  # type: ignore[no-untyped-def]
+def _gather_hidden(hidden, indices):  # type: ignore[no-untyped-def]
     import torch
 
+    indices = indices.to(device=hidden.device, dtype=torch.long)
     sequence_length = hidden.shape[1]
-    starts = candidate_spans[:, :, 0].clamp(min=0, max=max(0, sequence_length - 1))
-    ends = candidate_spans[:, :, 1].clamp(min=0, max=sequence_length)
-    ends = torch.maximum(ends, starts + 1).clamp(max=sequence_length)
-    positions = torch.arange(sequence_length, device=hidden.device).view(1, 1, sequence_length)
-    mask = (positions >= starts.unsqueeze(-1)) & (positions < ends.unsqueeze(-1))
-    weights = mask.to(dtype=hidden.dtype)
-    pooled = torch.einsum("bcs,bsh->bch", weights, hidden)
-    lengths = weights.sum(dim=-1, keepdim=True).clamp_min(1.0)
-    return pooled / lengths
-
-
-def _pool_candidate_replacements(encoder, replacement_ids, replacement_mask, fallback_representations):  # type: ignore[no-untyped-def]
-    import torch
-
-    if replacement_ids is None:
-        return torch.zeros_like(fallback_representations)
-
-    replacement_ids = replacement_ids.to(fallback_representations.device)
-    if replacement_mask is None:
-        replacement_mask = replacement_ids.ne(0)
-    replacement_mask = replacement_mask.to(fallback_representations.device).float()
-
-    embeddings = _input_embeddings(encoder)(replacement_ids)
-    masked = embeddings * replacement_mask.unsqueeze(-1)
-    lengths = replacement_mask.sum(dim=-1, keepdim=True).clamp_min(1.0)
-    return masked.sum(dim=-2) / lengths
-
-
-def _input_embeddings(encoder):  # type: ignore[no-untyped-def]
-    if hasattr(encoder, "get_input_embeddings"):
-        embeddings = encoder.get_input_embeddings()
-        if embeddings is not None:
-            return embeddings
-    if hasattr(encoder, "embeddings"):
-        return encoder.embeddings
-    base_model = getattr(encoder, "base_model", None)
-    if base_model is not None and hasattr(base_model, "get_input_embeddings"):
-        embeddings = base_model.get_input_embeddings()
-        if embeddings is not None:
-            return embeddings
-    raise AttributeError("Cannot resolve encoder input embeddings for candidate replacement pooling")
-
-
-def _gather_gap_representations(hidden, gap_indices):  # type: ignore[no-untyped-def]
-    gap_indices = gap_indices.to(hidden.device)
-    sequence_length = hidden.shape[1]
-    clamped = gap_indices.clamp(min=0, max=max(0, sequence_length - 1))
+    clamped = indices.clamp(min=0, max=max(0, sequence_length - 1))
     expanded = clamped.unsqueeze(-1).expand(-1, -1, hidden.shape[-1])
     return hidden.gather(dim=1, index=expanded)
+
+
+def _gap_representations(hidden, left_indices, right_indices):  # type: ignore[no-untyped-def]
+    import torch
+
+    left_hidden = _gather_hidden(hidden, left_indices)
+    cls_hidden = hidden[:, :1, :].expand_as(left_hidden)
+    if right_indices is None:
+        right_hidden = cls_hidden
+    else:
+        right_indices = right_indices.to(device=hidden.device, dtype=torch.long)
+        right_missing = right_indices < 0
+        right_hidden = _gather_hidden(hidden, right_indices)
+        right_hidden = torch.where(right_missing.unsqueeze(-1), cls_hidden, right_hidden)
+    return torch.cat([left_hidden, right_hidden, right_hidden - left_hidden], dim=-1)
+
+
+def _mask_or_ones(mask, reference_indices, device):  # type: ignore[no-untyped-def]
+    import torch
+
+    if mask is None:
+        return torch.ones(reference_indices.shape, dtype=torch.bool, device=device)
+    return mask.to(device=device, dtype=torch.bool)
+
+
+def _zero_masked(logits, mask):  # type: ignore[no-untyped-def]
+    return logits.masked_fill(~mask.unsqueeze(-1), 0.0)
 
 
 def _encoder_hidden_size(encoder: Any) -> int:
@@ -220,3 +177,6 @@ def _encoder_hidden_size(encoder: Any) -> int:
             return int(hidden_size)
 
     raise AttributeError("Cannot resolve encoder hidden_size from encoder config")
+
+
+__all__ = ["DirectEditModelConfig", "DirectEditTaggerModel"]

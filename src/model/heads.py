@@ -1,17 +1,22 @@
 from __future__ import annotations
 
 
-def build_linear_heads(hidden_size: int, punctuation_labels: int, error_types: int, punctuation_actions: int = 5):
+def build_direct_edit_heads(
+    hidden_size: int,
+    token_label_count: int,
+    gap_label_count: int,
+    rule_label_count: int,
+):
     import torch.nn as nn
 
+    gap_hidden_size = hidden_size * 3
     return {
-        "candidate_projection": nn.Linear(hidden_size * 3, hidden_size),
-        "candidate_score": nn.Linear(hidden_size, 1),
-        "punctuation_projection": nn.Linear(hidden_size * 4, hidden_size),
-        "punctuation_gap": nn.Linear(hidden_size, punctuation_labels),
-        "punctuation_action": nn.Linear(hidden_size, punctuation_actions),
-        "punctuation_confidence": nn.Linear(hidden_size, 1),
-        "punctuation_error_type": nn.Linear(hidden_size, error_types),
-        "confidence": nn.Linear(hidden_size, 1),
-        "error_type": nn.Linear(hidden_size, error_types),
+        "token_edit": nn.Linear(hidden_size, token_label_count),
+        "gap_punctuation": nn.Linear(gap_hidden_size, gap_label_count),
+        "rule": nn.Linear(hidden_size, rule_label_count),
+        "token_confidence": nn.Linear(hidden_size, 1),
+        "gap_confidence": nn.Linear(gap_hidden_size, 1),
     }
+
+
+__all__ = ["build_direct_edit_heads"]
