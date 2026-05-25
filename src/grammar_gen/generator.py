@@ -17,6 +17,15 @@ from src.schema import GeneratedExample
 
 
 DEFAULT_CONFIG_PATH = Path(__file__).resolve().parents[2] / "configs" / "config.yaml"
+REMOVED_CONFIG_KEYS = frozenset({"clean_pool", "rule_lab", "correction_dataset_path"})
+REMOVED_PATH_MARKERS = (
+    "data/processed/train.csv",
+    "data/processed/val.csv",
+    "data/processed/test.csv",
+    "data/processed/correction_dataset.csv.gz",
+    "clean_sentence_pool",
+    "clean_pool",
+)
 
 
 class GenerationError(RuntimeError):
@@ -36,6 +45,7 @@ class OnlineExampleGenerator:
         self.lexicon = lexicon
         self.morphology = morphology
         self.config = config or load_config(DEFAULT_CONFIG_PATH)
+        validate_generation_config(self.config)
         self.base_seed = _resolve_seed(self.config, seed)
         self.rng = RandomSource(seed=self.base_seed)
         self.builder = GrammarBuilder(lexicon, morphology, self.rng)
@@ -221,6 +231,47 @@ def _coerce_mode(mode: GenerationMode | str) -> GenerationMode:
     return GenerationMode(str(mode))
 
 
+def validate_generation_config(config: Mapping[str, Any]) -> None:
+    if not isinstance(config, Mapping):
+        return
+
+    generation = config.get("generation", {})
+    if isinstance(generation, Mapping) and "mode" in generation:
+        mode = str(generation.get("mode") or "").strip()
+        if mode != "online_ast":
+            raise ValueError("generation.mode must be 'online_ast' for AST-first generation.")
+
+    data = config.get("data", {})
+    if isinstance(data, Mapping) and "candidate_opportunity" in data:
+        raise ValueError("Removed config key data.candidate_opportunity is not supported by AST-first generation.")
+
+    for key_path, key, value in _walk_config_items(config):
+        normalized_key = str(key).strip()
+        if normalized_key in REMOVED_CONFIG_KEYS:
+            raise ValueError(f"Removed config key {key_path} is not supported by AST-first generation.")
+        if isinstance(value, str) and _references_removed_generation_path(value):
+            raise RuntimeError(f"Removed generation path referenced at {key_path}: {value}")
+
+
+def _walk_config_items(value: Any, prefix: str = "") -> list[tuple[str, str, Any]]:
+    items: list[tuple[str, str, Any]] = []
+    if isinstance(value, Mapping):
+        for key, child in value.items():
+            key_text = str(key)
+            key_path = f"{prefix}.{key_text}" if prefix else key_text
+            items.append((key_path, key_text, child))
+            items.extend(_walk_config_items(child, key_path))
+    elif isinstance(value, list | tuple):
+        for index, child in enumerate(value):
+            items.extend(_walk_config_items(child, f"{prefix}[{index}]"))
+    return items
+
+
+def _references_removed_generation_path(value: str) -> bool:
+    normalized = value.replace("\\", "/").strip().lower()
+    return any(marker in normalized for marker in REMOVED_PATH_MARKERS)
+
+
 def _resolve_seed(config: Mapping[str, Any], seed: int | None) -> int:
     if seed is not None:
         return int(seed)
@@ -303,4 +354,4 @@ def _with_generation_metadata(
     return GeneratedExample.from_dict(example.to_dict())
 
 
-__all__ = ["GenerationError", "OnlineExampleGenerator"]
+__all__ = ["GenerationError", "OnlineExampleGenerator", "validate_generation_config"]

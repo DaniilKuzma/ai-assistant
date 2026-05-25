@@ -50,6 +50,20 @@ Deterministic rules still run first for ironclad corrections. A later runtime
 ScopeGuard will replace the old StrictValidator boundary with a simpler guard
 focused on the final runtime scope.
 
+## Performance Contract
+
+Generation must not perform a full clean pool scan, per-rule corpus mining, or
+any materialized train CSV build. Train examples are generated online from the
+AST-first rule programs.
+
+Frozen evaluation may be materialized only as compact JSONL under
+`data/generated_eval`; it is not part of the train generation path.
+
+The generation benchmark is expected to run in seconds or minutes for normal
+counts, not hours. Configs that reference removed clean-pool, rule_lab,
+candidate-opportunity, correction-dataset, or `data/processed/train.csv` paths
+are invalid for generation.
+
 ## User Experience
 
 The GUI behavior stays the same. A user enters Russian text, presses
