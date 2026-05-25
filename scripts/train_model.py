@@ -2,15 +2,16 @@ from __future__ import annotations
 
 import argparse
 
-from src.training.train import train
+from src.training.train import main as training_main
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Train the canonical correction model.")
-    parser.add_argument("--config", default="configs/config.yaml")
-    args = parser.parse_args()
-    train(args.config)
-    return 0
+    parser = argparse.ArgumentParser(description="Train the direct online correction model.")
+    parser.add_argument("config", nargs="?")
+    parser.add_argument("--config", dest="config_option")
+    args, remaining = parser.parse_known_args()
+    config = args.config or args.config_option or "configs/config.yaml"
+    return training_main([config, *remaining])
 
 
 if __name__ == "__main__":

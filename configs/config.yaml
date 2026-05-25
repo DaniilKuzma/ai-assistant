@@ -39,10 +39,17 @@ generation:
 training:
   mode: online
   batch_size: 32
+  eval_batch_size: 64
   epochs: 3
   learning_rate: 5.0e-5
+  weight_decay: 0.01
+  warmup_ratio: 0.06
   gradient_accumulation_steps: 1
+  max_grad_norm: 1.0
   mixed_precision: true
+  num_workers: 0
+  save_each_epoch: true
+  validate_each_epoch: true
   token_edit_loss_weight: 1.0
   gap_punctuation_loss_weight: 1.2
   rule_loss_weight: 0.3

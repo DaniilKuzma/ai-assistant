@@ -1,0 +1,32 @@
+{
+  "actual_train_steps": 2,
+  "batch_size": 32,
+  "best_epoch": 1,
+  "best_metric": null,
+  "debug_model": true,
+  "effective_batch_size": 32,
+  "epochs": 1,
+  "loss_history": [
+    {
+      "epoch": 1,
+      "gap_punctuation_loss": 2.5618765354156494,
+      "loss": 7.288996934890747,
+      "rule_loss": 2.911792516708374,
+      "steps": 2,
+      "token_edit_loss": 3.3412071466445923
+    }
+  ],
+  "samples_per_epoch": 64,
+  "smoke": true,
+  "total_train_steps": 2,
+  "validation_history": [
+    {
+      "combined_score": null,
+      "epoch": 1,
+      "exact_match": null,
+      "loss": null,
+      "reason": "missing_or_empty_eval_jsonl:data\\generated_eval\\val.jsonl",
+      "status": "skipped"
+    }
+  ]
+}
