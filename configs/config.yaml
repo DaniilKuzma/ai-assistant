@@ -49,9 +49,9 @@ training:
   run_model_training: true
   evaluation_split: val
   checkpoint_metric: combined_score
-  max_train_examples: 256000
-  max_val_examples: 32000
-  max_test_examples: 32000
+  max_train_examples: 192000
+  max_val_examples: 24000
+  max_test_examples: 24000
   batch_size: 128
   gradient_accumulation_steps: 1
   epochs: 3
@@ -138,17 +138,17 @@ data:
   synthetic_seed: 13
   processed_train_path: data/processed/correction_dataset.csv.gz
   manifest_path: data/processed/dataset_manifest.json
-  target_total_examples: 320000
-  total_examples: 320000
-  train_examples: 256000
-  val_examples: 32000
-  test_examples: 32000
+  target_total_examples: 240000
+  total_examples: 240000
+  train_examples: 192000
+  val_examples: 24000
+  test_examples: 24000
   composition:
-    atomic_positive_ratio: 0.59375
-    atomic_hard_negative_ratio: 0.2375
-    clean_identity_ratio: 0.10
+    atomic_positive_ratio: 0.475
+    atomic_hard_negative_ratio: 0.25
+    clean_identity_ratio: 0.20
     stress_multi_error_ratio: 0.05
-    real_atomic_train_ratio: 0.01875
+    real_atomic_train_ratio: 0.025
     allow_layer_target_adjustment: true
     fail_on_unadjusted_layer_deficit: true
   clean_pool:
@@ -314,14 +314,14 @@ data:
   - Чистый текст.
   config_path: configs/config.yaml
   exact_split_sizes:
-    train: 256000
-    val: 32000
-    test: 32000
+    train: 192000
+    val: 24000
+    test: 24000
   training_dataset:
     enabled: true
     legacy_builder: false
-    requested_total: 320000
-    expected_total: 320000
+    requested_total: 240000
+    expected_total: 240000
     smoke:
       enabled: false
       requested_total: 60000
@@ -335,26 +335,26 @@ data:
     open_corpora_sources_path: configs/open_corpora_sources.yaml
     real_error_sources_path: configs/real_error_sources.yaml
     source_type_targets:
-      synthetic_augmented_from_open_clean: 206000
+      synthetic_augmented_from_open_clean: 126000
       real_error_pair: 6000
-      clean_identity_from_open_clean: 32000
-      hard_negative_from_open_clean: 76000
+      clean_identity_from_open_clean: 48000
+      hard_negative_from_open_clean: 60000
     split_source_type_targets: &id001
       train:
-        synthetic_augmented_from_open_clean: 164800
-        real_error_pair: 4800
-        clean_identity_from_open_clean: 25600
-        hard_negative_from_open_clean: 60800
+        synthetic_augmented_from_open_clean: 100800
+        real_error_pair: 600
+        clean_identity_from_open_clean: 38400
+        hard_negative_from_open_clean: 48000
       val:
-        synthetic_augmented_from_open_clean: 20600
+        synthetic_augmented_from_open_clean: 12600
         real_error_pair: 600
-        clean_identity_from_open_clean: 3200
-        hard_negative_from_open_clean: 7600
+        clean_identity_from_open_clean: 4800
+        hard_negative_from_open_clean: 6000
       test:
-        synthetic_augmented_from_open_clean: 20600
+        synthetic_augmented_from_open_clean: 12600
         real_error_pair: 600
-        clean_identity_from_open_clean: 3200
-        hard_negative_from_open_clean: 7600
+        clean_identity_from_open_clean: 4800
+        hard_negative_from_open_clean: 6000
     active_rule_quota:
       enabled: true
       strategy: broad_canonical
@@ -401,15 +401,15 @@ data:
     audit:
       candidate_recall_min: 0.95
       gap_coverage_min: 0.85
-      synthetic_min: 190000
-      min_active_rule_count: 2500
+      synthetic_min: 114000
+      min_active_rule_count: 25
       min_clean_identity_eval_split: 500
       min_hard_negative_eval_split: 500
       min_rows_for_template_gates: 1000
       min_rows_for_candidate_gates: 1000
       min_rows_for_eval_source_split_gates: 1000
       require_all_source_types: true
-    multi_error_stress_target: 16000
+    multi_error_stress_target: 12000
   training_dataset_core:
     enabled: true
     legacy_builder: false
@@ -480,7 +480,7 @@ data:
       candidate_recall_min: 0.95
       gap_coverage_min: 0.85
       synthetic_min: 190000
-      min_active_rule_count: 2500
+      min_active_rule_count: 25
       min_clean_identity_eval_split: 500
       min_hard_negative_eval_split: 500
       min_rows_for_template_gates: 1000

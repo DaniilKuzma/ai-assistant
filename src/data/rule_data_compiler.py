@@ -25,9 +25,40 @@ from src.validation.strict_validator import TRAINING_CONTEXT_SPLIT_JOIN_BY_RULE
 
 
 MINER_NAME = "corpus_backed_split_join"
+SOURCE_CORPUS_MINED = "corpus_mined"
+SOURCE_SYNTAX_MINED = "syntax_mined"
+SOURCE_MORPHOLOGY_MINED = "morphology_mined"
+SOURCE_REAL_PATTERN_REPLAY = "real_pattern_replay"
+SOURCE_RULE_LAB = "rule_lab"
+DEFAULT_SOURCE_PRIORITY = (
+    SOURCE_CORPUS_MINED,
+    SOURCE_SYNTAX_MINED,
+    SOURCE_MORPHOLOGY_MINED,
+    SOURCE_REAL_PATTERN_REPLAY,
+    SOURCE_RULE_LAB,
+)
 SERVICE_HARD_NEGATIVE_RULE_ID = "clean_identity_hard_negative"
 HARD_NEGATIVE_ERROR_TYPE = "hard_negative"
 SUPPORTED_CONTEXT_RULES = tuple(TRAINING_CONTEXT_SPLIT_JOIN_BY_RULE)
+SUPPORTED_MORPHOLOGY_RULES = ("tsya_soft_insert", "tsya_soft_delete", "n_nn_adjective")
+SUPPORTED_SYNTAX_PUNCTUATION_RULES = (
+    "comma_subordinate",
+    "homogeneous_comma",
+    "introductory_comma",
+    "detached_adverbial_comma",
+    "detached_participial_comma",
+    "direct_speech_dash",
+    "direct_speech_colon",
+    "enumeration_colon",
+    "explanation_colon",
+    "asyndetic_dash",
+    "subject_predicate_dash",
+)
+DEFAULT_REAL_PATTERN_PATHS = (
+    "data/processed/real_error_pairs_mining.csv.gz",
+    "data/processed/real_error_pairs_rejected.csv.gz",
+    "data/processed/real_error_pairs_atomic.csv.gz",
+)
 
 
 @dataclass(frozen=True)
@@ -38,9 +69,9 @@ class RuleDataSourceStats:
     morphology_mined_positive_count: int = 0
     real_pattern_replay_positive_count: int = 0
     rule_lab_positive_count: int = 0
+    total_atomic_positive_count: int = 0
     corpus_mined_hard_negative_count: int = 0
     rule_lab_hard_negative_count: int = 0
-    total_atomic_positive_count: int = 0
     total_hard_negative_count: int = 0
 
 
@@ -82,6 +113,9 @@ class CandidateTargetContext:
     source_row_id: str
     miner_name: str
     metadata: dict[str, Any] = field(default_factory=dict)
+    activation_source: str = SOURCE_CORPUS_MINED
+    generation_strategy: str = "rule_data_compiler"
+    error_type: str = ""
 
 
 @dataclass(frozen=True)
@@ -92,11 +126,13 @@ class HardNegativeContext:
     source_row_id: str
     miner_name: str
     metadata: dict[str, Any] = field(default_factory=dict)
+    activation_source: str = SOURCE_CORPUS_MINED
 
 
 class RuleExampleMiner:
     rule_id: str
     source_name: str
+    activation_source: str
 
     def mine_positive_targets(self, clean_rows: list[dict[str, Any]], config: dict[str, Any]) -> list[CandidateTargetContext]:
         raise NotImplementedError
@@ -113,7 +149,8 @@ class CorpusBackedSplitJoinMiner(RuleExampleMiner):
     rule_id: str
     source_fragment: str
     target_fragment: str
-    source_name: str = "corpus_mined"
+    source_name: str = SOURCE_CORPUS_MINED
+    activation_source: str = SOURCE_CORPUS_MINED
 
     def mine_positive_targets(self, clean_rows: list[dict[str, Any]], config: dict[str, Any]) -> list[CandidateTargetContext]:
         limit = _per_rule_scan_limit(config)
@@ -133,6 +170,9 @@ class CorpusBackedSplitJoinMiner(RuleExampleMiner):
                         source_row_id=_row_id(row),
                         miner_name=MINER_NAME,
                         metadata=_source_metadata(row, match.start(), match.end()),
+                        activation_source=self.activation_source,
+                        generation_strategy="corpus_backed_rule_data_compiler",
+                        error_type="split_join",
                     )
                 )
         return contexts
@@ -161,9 +201,232 @@ class CorpusBackedSplitJoinMiner(RuleExampleMiner):
                     source_row_id=_row_id(row),
                     miner_name=MINER_NAME,
                     metadata=_source_metadata(row, -1, -1),
+                    activation_source=self.activation_source,
                 )
             )
         return contexts
+
+
+@dataclass(frozen=True)
+class MorphologyBackedMiner(RuleExampleMiner):
+    rule_id: str
+    source_name: str = SOURCE_MORPHOLOGY_MINED
+    activation_source: str = SOURCE_MORPHOLOGY_MINED
+
+    def mine_positive_targets(self, clean_rows: list[dict[str, Any]], config: dict[str, Any]) -> list[CandidateTargetContext]:
+        if not _morphology_available():
+            return [
+                CandidateTargetContext(
+                    rule_id=self.rule_id,
+                    target=_clean_text_from_row(clean_rows[0]) if clean_rows else "",
+                    source_fragment="",
+                    target_fragment="",
+                    source_name=self.source_name,
+                    source_row_id="",
+                    miner_name=self.activation_source,
+                    metadata={"forced_rejection_reason": "morphology_unavailable"},
+                    activation_source=self.activation_source,
+                    generation_strategy="morphology_backed_rule_data_compiler",
+                    error_type="spelling",
+                )
+            ]
+
+        limit = _per_rule_scan_limit(config)
+        contexts: list[CandidateTargetContext] = []
+        for row in clean_rows[:limit]:
+            target = _clean_text_from_row(row)
+            if not target:
+                continue
+            for start, end, target_fragment, source_fragment in _morphology_mutations(self.rule_id, target):
+                contexts.append(
+                    CandidateTargetContext(
+                        rule_id=self.rule_id,
+                        target=target,
+                        source_fragment=source_fragment,
+                        target_fragment=target_fragment,
+                        source_name=str(row.get("source_name") or row.get("source_corpus") or "open_clean"),
+                        source_row_id=_row_id(row),
+                        miner_name=self.activation_source,
+                        metadata=_source_metadata(row, start, end),
+                        activation_source=self.activation_source,
+                        generation_strategy="morphology_backed_rule_data_compiler",
+                        error_type="spelling",
+                    )
+                )
+        return contexts
+
+    def corrupt_target(self, context: CandidateTargetContext) -> tuple[str, str]:
+        start = int(context.metadata.get("target_start", -1))
+        end = int(context.metadata.get("target_end", -1))
+        target = context.target
+        return target[:start] + context.source_fragment + target[end:], target
+
+    def mine_hard_negatives(self, clean_rows: list[dict[str, Any]], config: dict[str, Any]) -> list[HardNegativeContext]:
+        del clean_rows, config
+        return []
+
+
+@dataclass(frozen=True)
+class SyntaxBackedMiner(RuleExampleMiner):
+    rule_id: str
+    source_name: str = SOURCE_SYNTAX_MINED
+    activation_source: str = SOURCE_SYNTAX_MINED
+
+    def mine_positive_targets(self, clean_rows: list[dict[str, Any]], config: dict[str, Any]) -> list[CandidateTargetContext]:
+        operator = _syntax_operator_for_rule(self.rule_id)
+        if operator is None:
+            return [self._empty_opportunity_context(clean_rows, "opportunities_seen_0")]
+
+        limit = _per_rule_scan_limit(config)
+        contexts: list[CandidateTargetContext] = []
+        opportunities_seen = 0
+        for row in clean_rows[:limit]:
+            target = _clean_text_from_row(row)
+            if not target:
+                continue
+            try:
+                opportunities = list(operator.find_opportunities(target))
+            except Exception:
+                continue
+            opportunities_seen += len(opportunities)
+            for opportunity in opportunities:
+                try:
+                    corruption = operator.corrupt(target, opportunity)
+                except Exception:
+                    continue
+                source = str(getattr(corruption, "source", ""))
+                if not source or source == target:
+                    continue
+                target_fragment = str(getattr(corruption, "target_form", "") or getattr(opportunity, "text", "") or "")
+                source_fragment = str(getattr(corruption, "error_form", "") or "")
+                metadata = _source_metadata(row, int(getattr(opportunity, "start", -1)), int(getattr(opportunity, "end", -1)))
+                metadata.update(
+                    {
+                        "source_text": source,
+                        "syntax_family": str(getattr(opportunity, "syntax_family", "")),
+                        "opportunity": asdict(opportunity) if hasattr(opportunity, "__dataclass_fields__") else {},
+                    }
+                )
+                contexts.append(
+                    CandidateTargetContext(
+                        rule_id=self.rule_id,
+                        target=target,
+                        source_fragment=source_fragment,
+                        target_fragment=target_fragment,
+                        source_name=str(row.get("source_name") or row.get("source_corpus") or "open_clean"),
+                        source_row_id=_row_id(row),
+                        miner_name=self.activation_source,
+                        metadata=metadata,
+                        activation_source=self.activation_source,
+                        generation_strategy="syntax_backed_rule_data_compiler",
+                        error_type="punctuation",
+                    )
+                )
+        if not contexts and opportunities_seen == 0:
+            return [self._empty_opportunity_context(clean_rows, "opportunities_seen_0")]
+        return contexts
+
+    def _empty_opportunity_context(self, clean_rows: list[dict[str, Any]], reason: str) -> CandidateTargetContext:
+        target = _clean_text_from_row(clean_rows[0]) if clean_rows else ""
+        return CandidateTargetContext(
+            rule_id=self.rule_id,
+            target=target,
+            source_fragment="",
+            target_fragment="",
+            source_name=self.source_name,
+            source_row_id="",
+            miner_name=self.activation_source,
+            metadata={"forced_rejection_reason": reason},
+            activation_source=self.activation_source,
+            generation_strategy="syntax_backed_rule_data_compiler",
+            error_type="punctuation",
+        )
+
+    def corrupt_target(self, context: CandidateTargetContext) -> tuple[str, str]:
+        source = str(context.metadata.get("source_text") or "")
+        return source, context.target
+
+    def mine_hard_negatives(self, clean_rows: list[dict[str, Any]], config: dict[str, Any]) -> list[HardNegativeContext]:
+        del clean_rows, config
+        return []
+
+
+@dataclass(frozen=True)
+class ReplayPattern:
+    rule_id: str
+    source_fragment: str
+    target_fragment: str
+    edit_type: str
+    source_file: str = ""
+
+
+@dataclass(frozen=True)
+class RealPatternReplayMiner(RuleExampleMiner):
+    rule_id: str
+    patterns: tuple[ReplayPattern, ...]
+    unsafe_count: int = 0
+    source_name: str = SOURCE_REAL_PATTERN_REPLAY
+    activation_source: str = SOURCE_REAL_PATTERN_REPLAY
+
+    def mine_positive_targets(self, clean_rows: list[dict[str, Any]], config: dict[str, Any]) -> list[CandidateTargetContext]:
+        limit = _per_rule_scan_limit(config)
+        contexts: list[CandidateTargetContext] = []
+        if self.unsafe_count and not self.patterns:
+            contexts.append(self._forced_rejection_context(clean_rows, "pattern_replay_unsafe"))
+        for pattern in self.patterns:
+            for row in clean_rows[:limit]:
+                target = _clean_text_from_row(row)
+                if not target:
+                    continue
+                for start, end, source_text, source_fragment, target_fragment in _apply_replay_pattern(target, pattern):
+                    metadata = _source_metadata(row, start, end)
+                    metadata.update(
+                        {
+                            "source_text": source_text,
+                            "pattern_source_file": pattern.source_file,
+                            "pattern_edit_type": pattern.edit_type,
+                        }
+                    )
+                    contexts.append(
+                        CandidateTargetContext(
+                            rule_id=self.rule_id,
+                            target=target,
+                            source_fragment=source_fragment,
+                            target_fragment=target_fragment,
+                            source_name=str(row.get("source_name") or row.get("source_corpus") or "open_clean"),
+                            source_row_id=_row_id(row),
+                            miner_name=self.activation_source,
+                            metadata=metadata,
+                            activation_source=self.activation_source,
+                            generation_strategy="real_pattern_replay_rule_data_compiler",
+                            error_type=_error_type_from_pattern(pattern),
+                        )
+                    )
+        if self.patterns and not contexts:
+            contexts.append(self._forced_rejection_context(clean_rows, "pattern_replay_unsafe"))
+        return contexts
+
+    def _forced_rejection_context(self, clean_rows: list[dict[str, Any]], reason: str) -> CandidateTargetContext:
+        target = _clean_text_from_row(clean_rows[0]) if clean_rows else ""
+        return CandidateTargetContext(
+            rule_id=self.rule_id,
+            target=target,
+            source_fragment="",
+            target_fragment="",
+            source_name=self.source_name,
+            source_row_id="",
+            miner_name=self.activation_source,
+            metadata={"forced_rejection_reason": reason},
+            activation_source=self.activation_source,
+            generation_strategy="real_pattern_replay_rule_data_compiler",
+        )
+
+    def corrupt_target(self, context: CandidateTargetContext) -> tuple[str, str]:
+        return str(context.metadata.get("source_text") or ""), context.target
+
+    def mine_hard_negatives(self, clean_rows: list[dict[str, Any]], config: dict[str, Any]) -> list[HardNegativeContext]:
+        del clean_rows, config
+        return []
 
 
 def compile_rule_data(
@@ -176,8 +439,9 @@ def compile_rule_data(
 ) -> RuleDataCompilerResult:
     rows = _records(clean_rows)
     existing = _records(existing_rows if existing_rows is not None else [])
-    rule_ids = _supported_rule_ids(active_or_candidate_rule_ids)
-    miners = [_miner_for_rule(rule_id) for rule_id in rule_ids]
+    rule_ids = _supported_rule_ids(active_or_candidate_rule_ids, config)
+    source_priority = _source_priority(config)
+    real_patterns_by_rule, real_unsafe_by_rule = _real_patterns_by_rule(config, rule_ids)
     positive_target = _positive_target(config, target_counts)
     hard_target = _hard_negative_target(config, target_counts)
 
@@ -189,48 +453,62 @@ def compile_rule_data(
     positive_counts: Counter[str] = Counter()
     hard_counts: Counter[str] = Counter()
 
-    for miner in miners:
-        for context in miner.mine_positive_targets(rows, config):
-            if positive_counts[context.rule_id] >= positive_target:
-                break
-            source, target = miner.corrupt_target(context)
-            verification = verify_atomic_positive(source, target, context.rule_id, candidate_generator=candidate_generator)
-            reason = _positive_rejection_reason(verification, context)
-            if reason:
-                rejections.append(_rejection_row(context.rule_id, source, target, reason, "positive_verification", context))
-                continue
-            key = _positive_key(source, target, context.rule_id)
-            if key in seen_positive:
-                rejections.append(_rejection_row(context.rule_id, source, target, "duplicate_pair", "dedupe", context))
-                continue
-            seen_positive.add(key)
-            accepted_positive.append(_atomic_positive_row(source, target, context, verification))
-            positive_counts[context.rule_id] += 1
+    for source_key in source_priority:
+        miners = _miners_for_source(source_key, rule_ids, real_patterns_by_rule, real_unsafe_by_rule)
+        for miner in miners:
+            for context in miner.mine_positive_targets(rows, config):
+                if positive_counts[context.rule_id] >= positive_target:
+                    break
+                source, target = miner.corrupt_target(context)
+                forced_reason = str(context.metadata.get("forced_rejection_reason") or "")
+                if forced_reason:
+                    rejections.append(_rejection_row(context.rule_id, source, target, forced_reason, "positive_mining", context))
+                    continue
+                verification = verify_atomic_positive(source, target, context.rule_id, candidate_generator=candidate_generator)
+                reason = _positive_rejection_reason(verification, context)
+                if reason:
+                    rejections.append(_rejection_row(context.rule_id, source, target, reason, "positive_verification", context))
+                    continue
+                key = _positive_key(source, target, context.rule_id)
+                if key in seen_positive:
+                    rejections.append(_rejection_row(context.rule_id, source, target, "duplicate_pair", "dedupe", context))
+                    continue
+                seen_positive.add(key)
+                accepted_positive.append(_atomic_positive_row(source, target, context, verification))
+                positive_counts[context.rule_id] += 1
 
-        for context in miner.mine_hard_negatives(rows, config):
-            if hard_counts[context.rule_id] >= hard_target:
-                break
-            text = context.text
-            quality_reasons = _hard_negative_quality_failure_reasons(text)
-            if quality_reasons:
-                for reason in quality_reasons:
-                    rejections.append(_rejection_row(context.rule_id, text, text, f"hard_negative_quality_failed:{reason}", "hard_negative_quality", context))
-                continue
-            candidate = _matching_hard_negative_candidate(text, context.rule_id, candidate_generator)
-            if candidate is None:
-                rejections.append(_rejection_row(context.rule_id, text, text, "candidate_missing", "hard_negative_candidate", context))
-                continue
-            key = _hard_negative_key(text, context.rule_id)
-            if key in seen_hard:
-                rejections.append(_rejection_row(context.rule_id, text, text, "duplicate_hard_negative", "dedupe", context))
-                continue
-            seen_hard.add(key)
-            accepted_hard.append(_hard_negative_row(text, context, candidate))
-            hard_counts[context.rule_id] += 1
+            for context in miner.mine_hard_negatives(rows, config):
+                if hard_counts[context.rule_id] >= hard_target:
+                    break
+                text = context.text
+                quality_reasons = _hard_negative_quality_failure_reasons(text)
+                if quality_reasons:
+                    for reason in quality_reasons:
+                        rejections.append(_rejection_row(context.rule_id, text, text, f"hard_negative_quality_failed:{reason}", "hard_negative_quality", context))
+                    continue
+                candidate = _matching_hard_negative_candidate(text, context.rule_id, candidate_generator)
+                if candidate is None:
+                    rejections.append(_rejection_row(context.rule_id, text, text, "candidate_missing", "hard_negative_candidate", context))
+                    continue
+                key = _hard_negative_key(text, context.rule_id)
+                if key in seen_hard:
+                    rejections.append(_rejection_row(context.rule_id, text, text, "duplicate_hard_negative", "dedupe", context))
+                    continue
+                seen_hard.add(key)
+                accepted_hard.append(_hard_negative_row(text, context, candidate))
+                hard_counts[context.rule_id] += 1
 
     source_stats = _source_stats(rule_ids, accepted_positive, accepted_hard)
     diversity_stats = _diversity_stats(rule_ids, accepted_positive, config)
-    underfilled = _underfilled_rows(rule_ids, positive_counts, hard_counts, positive_target, hard_target)
+    underfilled = _underfilled_rows(
+        rule_ids,
+        positive_counts,
+        hard_counts,
+        min_positive_target=_min_positive_required(config, target_counts),
+        preferred_positive_target=positive_target,
+        hard_target=hard_target,
+        rejections=rejections,
+    )
     return RuleDataCompilerResult(
         atomic_positive_rows=accepted_positive,
         hard_negative_rows=accepted_hard,
@@ -259,16 +537,14 @@ def write_rule_data_compiler_reports(result: RuleDataCompilerResult, reports_dir
         index=False,
     )
     _frame_with_columns(
-        result.rejection_rows,
+        _aggregated_rejection_rows(result.rejection_rows),
         [
             "rule_id",
-            "source",
-            "target",
-            "reason",
-            "stage",
-            "source_name",
-            "source_row_id",
             "miner_name",
+            "reason",
+            "count",
+            "example_source",
+            "example_target",
         ],
     ).to_csv(
         output_dir / "rule_miner_rejection_report.csv",
@@ -279,11 +555,12 @@ def write_rule_data_compiler_reports(result: RuleDataCompilerResult, reports_dir
         [
             "rule_id",
             "atomic_positive_count",
-            "atomic_positive_target",
             "hard_negative_count",
-            "hard_negative_target",
-            "status",
-            "reason",
+            "min_atomic_required",
+            "preferred_atomic",
+            "min_hard_required",
+            "top_rejection_reason",
+            "recommended_next_action",
         ],
     ).to_csv(
         output_dir / "rule_underfilled_backlog.csv",
@@ -295,16 +572,63 @@ def _frame_with_columns(rows: Iterable[Mapping[str, Any]], columns: list[str]) -
     return pd.DataFrame(list(rows)).reindex(columns=columns)
 
 
+def _source_priority(config: dict[str, Any]) -> list[str]:
+    compiler_config = ((config.get("data", {}) or {}).get("rule_data_compiler", {}) or {})
+    configured = compiler_config.get("source_priority") or DEFAULT_SOURCE_PRIORITY
+    result: list[str] = []
+    for source in configured:
+        source_key = str(source)
+        if source_key in DEFAULT_SOURCE_PRIORITY and source_key not in result:
+            result.append(source_key)
+    for source_key in DEFAULT_SOURCE_PRIORITY:
+        if source_key not in result:
+            result.append(source_key)
+    return result
+
+
+def _miners_for_source(
+    source_key: str,
+    rule_ids: list[str],
+    real_patterns_by_rule: Mapping[str, tuple[ReplayPattern, ...]],
+    real_unsafe_by_rule: Mapping[str, int],
+) -> list[RuleExampleMiner]:
+    if source_key == SOURCE_CORPUS_MINED:
+        return [_miner_for_rule(rule_id) for rule_id in rule_ids if rule_id in TRAINING_CONTEXT_SPLIT_JOIN_BY_RULE]
+    if source_key == SOURCE_SYNTAX_MINED:
+        return [SyntaxBackedMiner(rule_id=rule_id) for rule_id in rule_ids if rule_id in SUPPORTED_SYNTAX_PUNCTUATION_RULES]
+    if source_key == SOURCE_MORPHOLOGY_MINED:
+        return [MorphologyBackedMiner(rule_id=rule_id) for rule_id in rule_ids if rule_id in SUPPORTED_MORPHOLOGY_RULES]
+    if source_key == SOURCE_REAL_PATTERN_REPLAY:
+        return [
+            RealPatternReplayMiner(
+                rule_id=rule_id,
+                patterns=tuple(real_patterns_by_rule.get(rule_id, ())),
+                unsafe_count=int(real_unsafe_by_rule.get(rule_id, 0)),
+            )
+            for rule_id in rule_ids
+            if real_patterns_by_rule.get(rule_id) or real_unsafe_by_rule.get(rule_id, 0)
+        ]
+    return []
+
+
 def _miner_for_rule(rule_id: str) -> CorpusBackedSplitJoinMiner:
     source_fragment, target_fragment = TRAINING_CONTEXT_SPLIT_JOIN_BY_RULE[rule_id]
     return CorpusBackedSplitJoinMiner(rule_id=rule_id, source_fragment=source_fragment, target_fragment=target_fragment)
 
 
-def _supported_rule_ids(rule_ids: Iterable[str]) -> list[str]:
+def _supported_rule_ids(rule_ids: Iterable[str], config: dict[str, Any]) -> list[str]:
     result: list[str] = []
+    real_patterns_enabled = bool(_real_pattern_paths(config))
     for rule_id in rule_ids:
         normalized = normalize_rule_id(rule_id)
-        if normalized in TRAINING_CONTEXT_SPLIT_JOIN_BY_RULE and normalized not in result:
+        if normalized == UNKNOWN_RULE_ID or normalized in result:
+            continue
+        if (
+            normalized in TRAINING_CONTEXT_SPLIT_JOIN_BY_RULE
+            or normalized in SUPPORTED_MORPHOLOGY_RULES
+            or normalized in SUPPORTED_SYNTAX_PUNCTUATION_RULES
+            or real_patterns_enabled
+        ):
             result.append(normalized)
     return result
 
@@ -341,6 +665,8 @@ def _atomic_positive_row(
     matched = dict(verification.matched_candidate or {})
     edits = [_edit_payload(edit, context.rule_id) for edit in verification.edits]
     pair_hash = normalized_pair_hash(source, target)
+    activation_source = context.activation_source or SOURCE_CORPUS_MINED
+    generation_strategy = context.generation_strategy or f"{activation_source}_rule_data_compiler"
     metadata = {
         "dataset_contract": DATASET_CONTRACT,
         "dataset_layer": LAYER_ATOMIC_POSITIVE,
@@ -360,9 +686,9 @@ def _atomic_positive_row(
         "matched_candidate": matched,
         "atomic_verification": asdict(verification),
         "target_family": context.rule_id,
-        "activation_source": "corpus_mined",
-        "generation_sources": ["corpus_mined"],
-        "generation_strategy": "corpus_backed_rule_data_compiler",
+        "activation_source": activation_source,
+        "generation_sources": [activation_source],
+        "generation_strategy": generation_strategy,
         "error_bearing_sentence_source": "corpus",
         "original_clean_sentence": target,
         "source_name": context.source_name,
@@ -376,7 +702,7 @@ def _atomic_positive_row(
         "target_fragment": context.target_fragment,
         "normalized_pair_hash": pair_hash,
     }
-    error_type = "split_join"
+    error_type = context.error_type or _error_type_from_verification(verification)
     return {
         "source": source,
         "target": target,
@@ -414,7 +740,7 @@ def _atomic_positive_row(
         "candidate_end": int(matched.get("end", -1) if matched.get("end", -1) != "" else -1),
         "verification_status": "passed",
         "rejection_reason": "",
-        "activation_source": "corpus_mined",
+        "activation_source": activation_source,
     }
 
 
@@ -445,10 +771,10 @@ def _hard_negative_row(text: str, context: HardNegativeContext, candidate: Candi
         "count_toward_rule_quota": False,
         "loss_weight": 1.0,
         "gold_edit_count": 0,
-        "activation_source": "corpus_mined",
-        "generation_sources": ["corpus_mined"],
-        "generation_strategy": "corpus_backed_rule_data_compiler",
-        "hard_negative_source": "corpus_mined",
+        "activation_source": context.activation_source,
+        "generation_sources": [context.activation_source],
+        "generation_strategy": f"{context.activation_source}_rule_data_compiler",
+        "hard_negative_source": context.activation_source,
         "expected_accepted_edits": 0,
         "clean_or_hard_quality_reasons": [],
         "original_clean_sentence": text,
@@ -493,7 +819,7 @@ def _hard_negative_row(text: str, context: HardNegativeContext, candidate: Candi
         "candidate_end": candidate_end,
         "verification_status": "passed",
         "rejection_reason": "",
-        "activation_source": "corpus_mined",
+        "activation_source": context.activation_source,
     }
 
 
@@ -532,16 +858,278 @@ def _hard_negative_quality_failure_reasons(text: str) -> list[str]:
     return list(dict.fromkeys(reasons))
 
 
+def _morphology_available() -> bool:
+    try:
+        from src.candidates.morphology import morph_analyzer
+
+        morph_analyzer()
+    except Exception:
+        return False
+    return True
+
+
+def _morphology_mutations(rule_id: str, target: str) -> list[tuple[int, int, str, str]]:
+    mutations: list[tuple[int, int, str, str]] = []
+    for match in re.finditer(r"[А-Яа-яЁё]+", target):
+        target_fragment = match.group(0)
+        lower = target_fragment.lower()
+        if rule_id == "tsya_soft_insert" and lower.endswith("ться") and _morphology_known(lower):
+            dirty = lower[: -len("ться")] + "тся"
+        elif rule_id == "tsya_soft_delete" and lower.endswith("тся") and _morphology_known(lower):
+            dirty = lower[: -len("тся")] + "ться"
+        elif rule_id == "n_nn_adjective" and "нн" in lower and _morphology_known(lower):
+            for index in _double_en_indexes(lower):
+                dirty = lower[:index] + "н" + lower[index + 2 :]
+                mutations.append((match.start(), match.end(), target_fragment, _match_case(target_fragment, dirty)))
+            continue
+        else:
+            continue
+        if dirty != lower:
+            mutations.append((match.start(), match.end(), target_fragment, _match_case(target_fragment, dirty)))
+    return mutations
+
+
+def _double_en_indexes(word: str) -> list[int]:
+    result: list[int] = []
+    index = word.find("нн")
+    while index >= 0:
+        result.append(index)
+        index = word.find("нн", index + 2)
+    return result
+
+
+def _morphology_known(word: str) -> bool:
+    try:
+        from src.candidates.morphology import parses
+    except Exception:
+        return False
+    try:
+        return any(getattr(parse, "is_known", False) for parse in parses(word))
+    except Exception:
+        return False
+
+
+def _syntax_operator_for_rule(rule_id: str) -> Any | None:
+    if rule_id not in SUPPORTED_SYNTAX_PUNCTUATION_RULES:
+        return None
+    try:
+        from src.data.corruption_operators import build_default_operator_registry
+    except Exception:
+        return None
+    try:
+        return build_default_operator_registry().get(rule_id)
+    except Exception:
+        return None
+
+
+def _real_pattern_paths(config: dict[str, Any]) -> list[Path]:
+    data_config = config.get("data", {}) or {}
+    compiler_config = (data_config.get("rule_data_compiler", {}) or {})
+    configured = compiler_config.get("real_pattern_paths")
+    if configured is None and "rule_data_compiler" not in data_config:
+        return []
+    raw_paths = configured if configured is not None else DEFAULT_REAL_PATTERN_PATHS
+    paths: list[Path] = []
+    for raw_path in raw_paths:
+        path = Path(str(raw_path))
+        if path.exists():
+            paths.append(path)
+    return paths
+
+
+def _real_patterns_by_rule(config: dict[str, Any], rule_ids: Iterable[str]) -> tuple[dict[str, tuple[ReplayPattern, ...]], dict[str, int]]:
+    rule_set = {normalize_rule_id(rule_id) for rule_id in rule_ids}
+    patterns: dict[str, list[ReplayPattern]] = defaultdict(list)
+    unsafe: Counter[str] = Counter()
+    for path in _real_pattern_paths(config):
+        try:
+            frame = pd.read_csv(path, low_memory=False).fillna("")
+        except Exception:
+            continue
+        for row in frame.to_dict("records"):
+            rule_id = _real_pattern_rule_id(row)
+            if rule_id not in rule_set:
+                continue
+            pattern = _safe_replay_pattern(row, source_file=str(path))
+            if pattern is None:
+                unsafe[rule_id] += 1
+                continue
+            patterns[rule_id].append(pattern)
+    return {rule_id: tuple(items) for rule_id, items in patterns.items()}, dict(unsafe)
+
+
+def _real_pattern_rule_id(row: Mapping[str, Any]) -> str:
+    direct = normalize_rule_id(str(row.get("rule_id") or ""))
+    if direct != UNKNOWN_RULE_ID:
+        return direct
+    for rule_id in _json_list(row.get("rule_ids")):
+        normalized = normalize_rule_id(str(rule_id))
+        if normalized != UNKNOWN_RULE_ID:
+            return normalized
+    for rule_id in _json_list(row.get("candidate_rule_ids")):
+        normalized = normalize_rule_id(str(rule_id))
+        if normalized != UNKNOWN_RULE_ID:
+            return normalized
+    return UNKNOWN_RULE_ID
+
+
+def _safe_replay_pattern(row: Mapping[str, Any], *, source_file: str) -> ReplayPattern | None:
+    rule_id = _real_pattern_rule_id(row)
+    source = str(row.get("source", "")).strip()
+    target = str(row.get("target", "")).strip()
+    if not source or not target or source == target:
+        return None
+    if _real_gold_edit_count(row) != 1:
+        return None
+
+    token_pattern = _single_token_replacement_pattern(source, target, rule_id, source_file)
+    if token_pattern is not None:
+        return token_pattern
+    split_join_pattern = _split_join_pattern(source, target, rule_id, source_file)
+    if split_join_pattern is not None:
+        return split_join_pattern
+    punctuation_pattern = _punctuation_pattern(source, target, rule_id, source_file)
+    if punctuation_pattern is not None:
+        return punctuation_pattern
+    return None
+
+
+def _single_token_replacement_pattern(source: str, target: str, rule_id: str, source_file: str) -> ReplayPattern | None:
+    source_tokens = _word_tokens_with_spans(source)
+    target_tokens = _word_tokens_with_spans(target)
+    if len(source_tokens) != len(target_tokens):
+        return None
+    diffs = [(left, right) for left, right in zip(source_tokens, target_tokens) if left[0].lower() != right[0].lower()]
+    if len(diffs) != 1:
+        return None
+    left, right = diffs[0]
+    source_without = source[: left[1]] + right[0] + source[left[2] :]
+    if normalize_pair(source_without) != normalize_pair(target):
+        return None
+    return ReplayPattern(rule_id=rule_id, source_fragment=left[0], target_fragment=right[0], edit_type="single_token_replacement", source_file=source_file)
+
+
+def _split_join_pattern(source: str, target: str, rule_id: str, source_file: str) -> ReplayPattern | None:
+    source_words = [token[0] for token in _word_tokens_with_spans(source)]
+    target_words = [token[0] for token in _word_tokens_with_spans(target)]
+    if len(source_words) == len(target_words) + 1:
+        for index in range(len(target_words)):
+            if source_words[index].lower() + source_words[index + 1].lower() != target_words[index].lower():
+                continue
+            source_fragment = source_words[index] + " " + source_words[index + 1]
+            target_fragment = target_words[index]
+            if normalize_pair(source.replace(source_fragment, target_fragment, 1)) == normalize_pair(target):
+                return ReplayPattern(rule_id=rule_id, source_fragment=source_fragment, target_fragment=target_fragment, edit_type="split_join", source_file=source_file)
+    if len(target_words) == len(source_words) + 1:
+        for index in range(len(source_words)):
+            if target_words[index].lower() + target_words[index + 1].lower() != source_words[index].lower():
+                continue
+            source_fragment = source_words[index]
+            target_fragment = target_words[index] + " " + target_words[index + 1]
+            if normalize_pair(source.replace(source_fragment, target_fragment, 1)) == normalize_pair(target):
+                return ReplayPattern(rule_id=rule_id, source_fragment=source_fragment, target_fragment=target_fragment, edit_type="split_join", source_file=source_file)
+    return None
+
+
+def _punctuation_pattern(source: str, target: str, rule_id: str, source_file: str) -> ReplayPattern | None:
+    try:
+        from src.validation.diff_analyzer import DiffAnalyzer
+    except Exception:
+        return None
+    edits = DiffAnalyzer().analyze(source, target, candidates=[])
+    if len(edits) != 1:
+        return None
+    edit = edits[0]
+    if not str(edit.edit_type).startswith("punctuation_"):
+        return None
+    return ReplayPattern(rule_id=rule_id, source_fragment=str(edit.source), target_fragment=str(edit.replacement), edit_type=str(edit.edit_type), source_file=source_file)
+
+
+def _word_tokens_with_spans(text: str) -> list[tuple[str, int, int]]:
+    return [(match.group(0), match.start(), match.end()) for match in re.finditer(r"[А-Яа-яЁё]+", text)]
+
+
+def _apply_replay_pattern(target: str, pattern: ReplayPattern) -> list[tuple[int, int, str, str, str]]:
+    results: list[tuple[int, int, str, str, str]] = []
+    if not pattern.target_fragment:
+        return results
+    for match in _fragment_matches(target, pattern.target_fragment):
+        target_fragment = target[match.start() : match.end()]
+        source_fragment = _match_case(target_fragment, pattern.source_fragment)
+        source = target[: match.start()] + source_fragment + target[match.end() :]
+        if source != target:
+            results.append((match.start(), match.end(), source, source_fragment, target_fragment))
+    return results
+
+
+def _fragment_matches(text: str, fragment: str) -> list[re.Match[str]]:
+    if re.fullmatch(r"[А-Яа-яЁё ]+", fragment):
+        pattern = re.compile(r"(?<![А-Яа-яЁё])" + re.escape(fragment) + r"(?![А-Яа-яЁё])", re.IGNORECASE)
+    else:
+        pattern = re.compile(re.escape(fragment))
+    return list(pattern.finditer(text))
+
+
+def _real_gold_edit_count(row: Mapping[str, Any]) -> int:
+    for key in ("gold_edit_count", "edit_count"):
+        value = row.get(key)
+        if value not in (None, ""):
+            try:
+                return max(0, int(float(value)))
+            except (TypeError, ValueError):
+                pass
+    edits = _json_list(row.get("edits") or row.get("edit_operations"))
+    return len(edits)
+
+
+def _json_list(value: Any) -> list[Any]:
+    if isinstance(value, list):
+        return value
+    if value in (None, ""):
+        return []
+    try:
+        parsed = json.loads(str(value))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return []
+    return parsed if isinstance(parsed, list) else []
+
+
+def _error_type_from_pattern(pattern: ReplayPattern) -> str:
+    if pattern.edit_type.startswith("punctuation_"):
+        return "punctuation"
+    if pattern.edit_type == "split_join":
+        return "split_join"
+    return "spelling"
+
+
+def _error_type_from_verification(verification: AtomicVerificationResult) -> str:
+    if not verification.edits:
+        return "spelling"
+    edit_type = str(verification.edits[0].get("edit_type", ""))
+    if edit_type.startswith("punctuation_"):
+        return "punctuation"
+    if edit_type in {"split_word", "join_words"}:
+        return "split_join"
+    return "spelling"
+
+
 def _source_stats(rule_ids: list[str], positives: list[dict[str, Any]], hard_rows: list[dict[str, Any]]) -> list[RuleDataSourceStats]:
-    positive_counts = Counter(str(row.get("rule_id", "")) for row in positives)
-    hard_counts = Counter(str(row.get("target_rule_id", "")) for row in hard_rows)
+    positive_counts = Counter((str(row.get("rule_id", "")), str(row.get("activation_source") or _metadata(row).get("activation_source") or "")) for row in positives)
+    total_positive_counts = Counter(str(row.get("rule_id", "")) for row in positives)
+    hard_counts = Counter((str(row.get("target_rule_id", "")), str(row.get("activation_source") or _metadata(row).get("activation_source") or "")) for row in hard_rows)
+    total_hard_counts = Counter(str(row.get("target_rule_id", "")) for row in hard_rows)
     return [
         RuleDataSourceStats(
             rule_id=rule_id,
-            corpus_mined_positive_count=int(positive_counts.get(rule_id, 0)),
-            corpus_mined_hard_negative_count=int(hard_counts.get(rule_id, 0)),
-            total_atomic_positive_count=int(positive_counts.get(rule_id, 0)),
-            total_hard_negative_count=int(hard_counts.get(rule_id, 0)),
+            corpus_mined_positive_count=int(positive_counts.get((rule_id, SOURCE_CORPUS_MINED), 0)),
+            syntax_mined_positive_count=int(positive_counts.get((rule_id, SOURCE_SYNTAX_MINED), 0)),
+            morphology_mined_positive_count=int(positive_counts.get((rule_id, SOURCE_MORPHOLOGY_MINED), 0)),
+            real_pattern_replay_positive_count=int(positive_counts.get((rule_id, SOURCE_REAL_PATTERN_REPLAY), 0)),
+            rule_lab_positive_count=int(positive_counts.get((rule_id, SOURCE_RULE_LAB), 0)),
+            total_atomic_positive_count=int(total_positive_counts.get(rule_id, 0)),
+            corpus_mined_hard_negative_count=int(hard_counts.get((rule_id, SOURCE_CORPUS_MINED), 0)),
+            rule_lab_hard_negative_count=int(hard_counts.get((rule_id, SOURCE_RULE_LAB), 0)),
+            total_hard_negative_count=int(total_hard_counts.get(rule_id, 0)),
         )
         for rule_id in rule_ids
     ]
@@ -606,28 +1194,35 @@ def _underfilled_rows(
     rule_ids: list[str],
     positive_counts: Counter[str],
     hard_counts: Counter[str],
-    positive_target: int,
+    min_positive_target: int,
+    preferred_positive_target: int,
     hard_target: int,
+    rejections: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
+    rejection_reasons_by_rule: dict[str, Counter[str]] = defaultdict(Counter)
+    for rejection in rejections:
+        rejection_reasons_by_rule[str(rejection.get("rule_id", ""))][str(rejection.get("reason", ""))] += 1
     for rule_id in rule_ids:
         positive_count = int(positive_counts.get(rule_id, 0))
         hard_count = int(hard_counts.get(rule_id, 0))
-        reasons: list[str] = []
-        if positive_count < positive_target:
-            reasons.append("atomic_positive_under_target")
+        top_reason = ""
+        if positive_count < min_positive_target:
+            top_reason = _top_rejection_reason(rejection_reasons_by_rule.get(rule_id, Counter())) or "opportunities_seen_0"
         if hard_count < hard_target:
-            reasons.append("hard_negative_under_target")
-        if reasons:
+            if not top_reason or positive_count >= min_positive_target:
+                top_reason = "hard_negative_count_under_min"
+        if positive_count < min_positive_target or hard_count < hard_target:
             rows.append(
                 {
                     "rule_id": rule_id,
                     "atomic_positive_count": positive_count,
-                    "atomic_positive_target": positive_target,
                     "hard_negative_count": hard_count,
-                    "hard_negative_target": hard_target,
-                    "status": "underfilled",
-                    "reason": ",".join(reasons),
+                    "min_atomic_required": min_positive_target,
+                    "preferred_atomic": preferred_positive_target,
+                    "min_hard_required": hard_target,
+                    "top_rejection_reason": top_reason,
+                    "recommended_next_action": _recommended_next_action(top_reason),
                 }
             )
     return rows
@@ -651,6 +1246,46 @@ def _rejection_row(
         "source_row_id": context.source_row_id,
         "miner_name": context.miner_name,
     }
+
+
+def _aggregated_rejection_rows(rejections: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    grouped: dict[tuple[str, str, str], dict[str, Any]] = {}
+    for rejection in rejections:
+        key = (
+            str(rejection.get("rule_id", "")),
+            str(rejection.get("miner_name", "")),
+            str(rejection.get("reason", "")),
+        )
+        if key not in grouped:
+            grouped[key] = {
+                "rule_id": key[0],
+                "miner_name": key[1],
+                "reason": key[2],
+                "count": 0,
+                "example_source": str(rejection.get("source", ""))[:500],
+                "example_target": str(rejection.get("target", ""))[:500],
+            }
+        grouped[key]["count"] += 1
+    return sorted(grouped.values(), key=lambda row: (row["rule_id"], row["miner_name"], row["reason"]))
+
+
+def _top_rejection_reason(reasons: Counter[str]) -> str:
+    if not reasons:
+        return ""
+    return reasons.most_common(1)[0][0]
+
+
+def _recommended_next_action(reason: str) -> str:
+    mapping = {
+        "candidate_missing": "fix_candidate_generator_or_rule_mapping",
+        "strict_validator_rejected": "fix_strict_validator_support",
+        "non_atomic_edit_count": "fix_operator_or_miner_to_generate_atomic_edits",
+        "target_quality_failed": "fix_template_or_context_quality",
+        "unsupported_edit_type": "extend_diff_or_candidate_matching",
+        "opportunities_seen_0": "add_rule_specific_miner_or_templates",
+        "hard_negative_count_under_min": "add_hard_negative_miner_or_templates",
+    }
+    return mapping.get(reason, "inspect_rule_data_compiler_rejections")
 
 
 def _positive_key(source: str, target: str, rule_id: str) -> tuple[str, str, str]:
@@ -740,6 +1375,13 @@ def _positive_target(config: dict[str, Any], target_counts: Mapping[str, Any] | 
         return max(0, int(target_counts.get("atomic_positive") or 0))
     quota = ((config.get("data", {}) or {}).get("rule_quota", {}) or {})
     return max(1, int(quota.get("preferred_atomic_positives_per_active_rule", 50) or 50))
+
+
+def _min_positive_required(config: dict[str, Any], target_counts: Mapping[str, Any] | None) -> int:
+    if target_counts and "atomic_positive" in target_counts:
+        return max(0, int(target_counts.get("atomic_positive") or 0))
+    quota = ((config.get("data", {}) or {}).get("rule_quota", {}) or {})
+    return max(1, int(quota.get("min_atomic_positives_per_active_rule", _positive_target(config, target_counts)) or 1))
 
 
 def _hard_negative_target(config: dict[str, Any], target_counts: Mapping[str, Any] | None) -> int:

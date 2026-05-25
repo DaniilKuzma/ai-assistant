@@ -12,6 +12,14 @@ from src.data.dataset_contract import DATASET_CONTRACT, LAYER_ATOMIC_HARD_NEGATI
 from src.rules.capabilities import RuleCapability
 
 
+class StaticCandidateGenerator:
+    def __init__(self, candidates_by_text: dict[str, list[Candidate]] | None = None) -> None:
+        self.candidates_by_text = candidates_by_text or {}
+
+    def generate(self, text: str, **_kwargs):
+        return list(self.candidates_by_text.get(text, []))
+
+
 class ContextCandidateGenerator:
     PAIRS = {
         "context_chto_by": ("что бы", "чтобы"),
@@ -43,6 +51,104 @@ class ContextCandidateGenerator:
                         group="context_split_join",
                     )
                 )
+        return candidates
+
+
+class MorphologyCandidateGenerator(ContextCandidateGenerator):
+    TSYA_PAIRS = {
+        "tsya_soft_insert": ("появится", "появиться"),
+        "tsya_soft_delete": ("готовиться", "готовится"),
+    }
+
+    def generate(self, text: str, **kwargs):
+        candidates: list[Candidate] = list(super().generate(text, **kwargs))
+        lower = text.lower()
+        for rule_id, (source, replacement) in self.TSYA_PAIRS.items():
+            start = lower.find(source)
+            if start >= 0:
+                candidates.append(
+                    Candidate(
+                        source=text[start : start + len(source)],
+                        replacement=replacement,
+                        edit_type="spelling",
+                        start=start,
+                        end=start + len(source),
+                        confidence=1.0,
+                        requires_model=True,
+                        rule_id=rule_id,
+                        mode="model_required",
+                        requires=("morphology", "syntax", "model"),
+                        group="tsya",
+                    )
+                )
+        start = lower.find("длиный")
+        if start >= 0:
+            candidates.append(
+                Candidate(
+                    source=text[start : start + len("длиный")],
+                    replacement="длинный",
+                    edit_type="spelling",
+                    start=start,
+                    end=start + len("длиный"),
+                    confidence=1.0,
+                    requires_model=True,
+                    rule_id="n_nn_adjective",
+                    mode="model_required",
+                    requires=("morphology", "syntax", "dictionary", "model"),
+                    group="n_nn",
+                )
+            )
+        return candidates
+
+
+class PunctuationCandidateGenerator:
+    def generate(self, text: str, **_kwargs):
+        candidates: list[Candidate] = []
+        marker = " что "
+        start = text.lower().find(marker)
+        if start >= 0:
+            candidates.append(
+                Candidate(
+                    source="",
+                    replacement=",",
+                    edit_type="punctuation_insert",
+                    start=start,
+                    end=start,
+                    confidence=1.0,
+                    requires_model=True,
+                    rule_id="comma_subordinate",
+                    mode="model_required",
+                    action="INSERT",
+                    label="COMMA",
+                    requires=("syntax", "model"),
+                    group="punctuation",
+                    syntax_family="subordinate_clause_comma",
+                )
+            )
+        return candidates
+
+
+class ReplayCandidateGenerator(ContextCandidateGenerator):
+    def generate(self, text: str, **kwargs):
+        candidates: list[Candidate] = list(super().generate(text, **kwargs))
+        lower = text.lower()
+        start = lower.find("компьюьерные")
+        if start >= 0:
+            candidates.append(
+                Candidate(
+                    source=text[start : start + len("компьюьерные")],
+                    replacement="Компьютерные" if text[start : start + 1].isupper() else "компьютерные",
+                    edit_type="spelling",
+                    start=start,
+                    end=start + len("компьюьерные"),
+                    confidence=1.0,
+                    requires_model=True,
+                    rule_id="keyboard_typo_candidate",
+                    mode="model_required",
+                    requires=("dictionary", "model"),
+                    group="typos",
+                )
+            )
         return candidates
 
 
@@ -171,6 +277,19 @@ def test_compiler_writes_reports(tmp_path: Path):
     assert (tmp_path / "rule_structural_diversity_report.csv").exists()
     assert (tmp_path / "rule_miner_rejection_report.csv").exists()
     assert (tmp_path / "rule_underfilled_backlog.csv").exists()
+    source_report = pd.read_csv(tmp_path / "rule_data_source_report.csv")
+    assert list(source_report.columns) == [
+        "rule_id",
+        "corpus_mined_positive_count",
+        "syntax_mined_positive_count",
+        "morphology_mined_positive_count",
+        "real_pattern_replay_positive_count",
+        "rule_lab_positive_count",
+        "total_atomic_positive_count",
+        "corpus_mined_hard_negative_count",
+        "rule_lab_hard_negative_count",
+        "total_hard_negative_count",
+    ]
     diversity = pd.read_csv(tmp_path / "rule_structural_diversity_report.csv")
     assert diversity.loc[0, "rule_lab_share"] == 0
 
@@ -284,3 +403,227 @@ def test_compiler_rows_count_toward_quota_in_tiny_builder_fixture(tmp_path: Path
     assert not frame[frame["activation_source"].astype(str).eq("corpus_mined")].empty
     assert int(quota.set_index("rule_id").loc["context_tak_zhe", "pre_gate_atomic_positive_count"]) >= 1
     assert (Path(config["paths"]["reports_dir"]) / "dataset_build" / "rule_data_source_report.csv").exists()
+
+
+def test_morphology_miner_disabled_cleanly_if_analyzer_unavailable(monkeypatch):
+    compiler = _load_compiler()
+    monkeypatch.setattr(compiler, "_morphology_available", lambda: False)
+
+    result = compiler.compile_rule_data(
+        [_clean_row("Команда может появиться завтра после заседания редакции.")],
+        ["tsya_soft_insert"],
+        MorphologyCandidateGenerator(),
+        {},
+        target_counts={"atomic_positive": 1, "atomic_hard_negative": 0},
+    )
+
+    assert result.atomic_positive_rows == []
+    assert any(row["reason"] == "morphology_unavailable" for row in result.rejection_rows)
+
+
+def test_tsya_morphology_miner_produces_verified_one_edit_examples():
+    compiler = _load_compiler()
+
+    result = compiler.compile_rule_data(
+        [
+            _clean_row("Команда может появиться завтра после заседания редакции.", "insert"),
+            _clean_row("Команда готовится к запуску проекта после заседания редакции.", "delete"),
+        ],
+        ["tsya_soft_insert", "tsya_soft_delete"],
+        MorphologyCandidateGenerator(),
+        {},
+        target_counts={"atomic_positive": 1, "atomic_hard_negative": 0},
+    )
+
+    rows_by_rule = {row["rule_id"]: row for row in result.atomic_positive_rows}
+    assert rows_by_rule["tsya_soft_insert"]["source"] == "Команда может появится завтра после заседания редакции."
+    assert rows_by_rule["tsya_soft_delete"]["source"] == "Команда готовиться к запуску проекта после заседания редакции."
+    assert all(row["activation_source"] == "morphology_mined" for row in rows_by_rule.values())
+    assert all(row["gold_edit_count"] == 1 for row in rows_by_rule.values())
+
+
+def test_n_nn_morphology_miner_requires_candidate_and_validator_support():
+    compiler = _load_compiler()
+
+    result = compiler.compile_rule_data(
+        [_clean_row("Редактор подготовил длинный отчет для районной комиссии утром.")],
+        ["n_nn_adjective"],
+        MorphologyCandidateGenerator(),
+        {},
+        target_counts={"atomic_positive": 1, "atomic_hard_negative": 0},
+    )
+
+    assert len(result.atomic_positive_rows) == 1
+    row = result.atomic_positive_rows[0]
+    assert row["source"] == "Редактор подготовил длиный отчет для районной комиссии утром."
+    assert row["rule_id"] == "n_nn_adjective"
+    assert row["activation_source"] == "morphology_mined"
+
+
+def test_syntax_miner_uses_real_clean_corpus_contexts_when_available():
+    compiler = _load_compiler()
+
+    result = compiler.compile_rule_data(
+        [_clean_row("Редактор заметил, что документ готов утром после заседания комиссии.")],
+        ["comma_subordinate"],
+        PunctuationCandidateGenerator(),
+        {},
+        target_counts={"atomic_positive": 1, "atomic_hard_negative": 0},
+    )
+
+    assert len(result.atomic_positive_rows) == 1
+    row = result.atomic_positive_rows[0]
+    assert row["source"] == "Редактор заметил что документ готов утром после заседания комиссии."
+    assert row["activation_source"] == "syntax_mined"
+
+
+def test_syntax_miner_reports_opportunities_seen_0_when_no_opportunities():
+    compiler = _load_compiler()
+
+    result = compiler.compile_rule_data(
+        [_clean_row("Редактор проверил документ утром после заседания комиссии.")],
+        ["comma_subordinate"],
+        PunctuationCandidateGenerator(),
+        {},
+        target_counts={"atomic_positive": 1, "atomic_hard_negative": 0},
+    )
+
+    assert result.atomic_positive_rows == []
+    assert any(row["reason"] == "opportunities_seen_0" for row in result.rejection_rows)
+
+
+def test_real_pattern_replay_does_not_put_raw_dirty_pairs_into_train(tmp_path: Path):
+    compiler = _load_compiler()
+    real_path = tmp_path / "real_error_pairs_atomic.csv.gz"
+    raw_source = "Компьюьерные мониторы для людей с плохим зрением."
+    raw_target = "Компьютерные мониторы для людей с плохим зрением."
+    pd.DataFrame(
+        [
+            {
+                "source": raw_source,
+                "target": raw_target,
+                "rule_id": "keyboard_typo_candidate",
+                "rule_ids": json.dumps(["keyboard_typo_candidate"], ensure_ascii=False),
+                "edit_count": 1,
+                "candidate_present": True,
+                "strict_validator_passed": True,
+            }
+        ]
+    ).to_csv(real_path, index=False)
+
+    result = compiler.compile_rule_data(
+        [_clean_row("Компьютерные мониторы показали новый отчет районной комиссии.")],
+        ["keyboard_typo_candidate"],
+        ReplayCandidateGenerator(),
+        {"data": {"rule_data_compiler": {"real_pattern_paths": [str(real_path)]}}},
+        target_counts={"atomic_positive": 1, "atomic_hard_negative": 0},
+    )
+
+    assert len(result.atomic_positive_rows) == 1
+    row = result.atomic_positive_rows[0]
+    assert row["source"] != raw_source
+    assert row["target"] != raw_target
+    assert row["source"] == "Компьюьерные мониторы показали новый отчет районной комиссии."
+    assert row["activation_source"] == "real_pattern_replay"
+
+
+def test_real_pattern_replay_rejects_unsafe_pattern(tmp_path: Path):
+    compiler = _load_compiler()
+    real_path = tmp_path / "real_error_pairs_mining.csv.gz"
+    pd.DataFrame(
+        [
+            {
+                "source": "Он проверил документ и здал отчет.",
+                "target": "Он проверил документ и сдал итоговый отчет.",
+                "rule_id": "dictionary_fuzzy",
+                "rule_ids": json.dumps(["dictionary_fuzzy"], ensure_ascii=False),
+                "edit_count": 2,
+                "candidate_present": False,
+                "strict_validator_passed": False,
+            }
+        ]
+    ).to_csv(real_path, index=False)
+
+    result = compiler.compile_rule_data(
+        [_clean_row("Редактор проверил итоговый отчет районной комиссии.")],
+        ["dictionary_fuzzy"],
+        StaticCandidateGenerator(),
+        {"data": {"rule_data_compiler": {"real_pattern_paths": [str(real_path)]}}},
+        target_counts={"atomic_positive": 1, "atomic_hard_negative": 0},
+    )
+
+    assert result.atomic_positive_rows == []
+    assert any(row["reason"] == "pattern_replay_unsafe" for row in result.rejection_rows)
+
+
+def test_source_priority_fills_from_corpus_before_fallback_sources(tmp_path: Path):
+    compiler = _load_compiler()
+    real_path = tmp_path / "real_error_pairs_atomic.csv.gz"
+    pd.DataFrame(
+        [
+            {
+                "source": "Команда так же подготовила отчет для комиссии.",
+                "target": "Команда также подготовила отчет для комиссии.",
+                "rule_id": "context_tak_zhe",
+                "rule_ids": json.dumps(["context_tak_zhe"], ensure_ascii=False),
+                "edit_count": 1,
+                "candidate_present": True,
+                "strict_validator_passed": True,
+            }
+        ]
+    ).to_csv(real_path, index=False)
+
+    result = compiler.compile_rule_data(
+        [_clean_row("Редакция также подготовила отчет для комиссии и отправила его в архив.")],
+        ["context_tak_zhe"],
+        ContextCandidateGenerator(),
+        {
+            "data": {
+                "rule_data_compiler": {
+                    "source_priority": ["corpus_mined", "real_pattern_replay"],
+                    "real_pattern_paths": [str(real_path)],
+                }
+            }
+        },
+        target_counts={"atomic_positive": 1, "atomic_hard_negative": 0},
+    )
+
+    assert len(result.atomic_positive_rows) == 1
+    assert result.atomic_positive_rows[0]["activation_source"] == "corpus_mined"
+
+
+def test_rejection_report_aggregates_miner_name_and_reason(tmp_path: Path):
+    compiler = _load_compiler()
+    result = compiler.compile_rule_data(
+        [_clean_row("Редактор проверил документ утром после заседания комиссии.")],
+        ["comma_subordinate"],
+        PunctuationCandidateGenerator(),
+        {},
+        target_counts={"atomic_positive": 1, "atomic_hard_negative": 0},
+    )
+
+    compiler.write_rule_data_compiler_reports(result, tmp_path)
+
+    report = pd.read_csv(tmp_path / "rule_miner_rejection_report.csv")
+    assert list(report.columns) == ["rule_id", "miner_name", "reason", "count", "example_source", "example_target"]
+    assert report.loc[0, "miner_name"] == "syntax_mined"
+    assert report.loc[0, "reason"] == "opportunities_seen_0"
+    assert int(report.loc[0, "count"]) == 1
+
+
+def test_underfilled_backlog_recommended_next_action_for_hard_negative_gap(tmp_path: Path):
+    compiler = _load_compiler()
+    result = compiler.compile_rule_data(
+        [_clean_row("Редакция также подготовила отчет для комиссии и отправила его в архив.")],
+        ["context_tak_zhe"],
+        ContextCandidateGenerator(),
+        {},
+        target_counts={"atomic_positive": 1, "atomic_hard_negative": 1},
+    )
+
+    compiler.write_rule_data_compiler_reports(result, tmp_path)
+
+    backlog = pd.read_csv(tmp_path / "rule_underfilled_backlog.csv")
+    row = backlog.set_index("rule_id").loc["context_tak_zhe"]
+    assert row["top_rejection_reason"] == "hard_negative_count_under_min"
+    assert row["recommended_next_action"] == "add_hard_negative_miner_or_templates"
