@@ -337,10 +337,19 @@ def generate_rule_lab_rows(
     )
 
 
-def rule_lab_recipe_rule_ids(config: Mapping[str, Any]) -> set[str]:
-    if not _truthy(_rule_lab_config(config).get("enabled", False)):
-        return set()
+def all_rule_lab_recipe_rule_ids(config: Mapping[str, Any]) -> set[str]:
     return set(load_rule_lab_recipes(_recipe_path(config)))
+
+
+def enabled_rule_lab_recipe_rule_ids(config: Mapping[str, Any]) -> set[str]:
+    return {rule_id for rule_id, recipe in load_rule_lab_recipes(_recipe_path(config)).items() if recipe.enabled}
+
+
+def disabled_rule_lab_recipe_rule_ids(config: Mapping[str, Any]) -> set[str]:
+    return {rule_id for rule_id, recipe in load_rule_lab_recipes(_recipe_path(config)).items() if not recipe.enabled}
+
+
+rule_lab_recipe_rule_ids = enabled_rule_lab_recipe_rule_ids
 
 
 def _recipe_from_mapping(rule_id: str, raw: Mapping[str, Any]) -> RuleLabRecipe:

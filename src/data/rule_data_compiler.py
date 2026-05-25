@@ -20,7 +20,12 @@ from src.data.dataset_contract import (
     SYNTHETIC_OPEN_CLEAN,
 )
 from src.data.dataset_quality import clean_or_hard_quality_reasons, normalized_pair_hash, normalize_pair
-from src.data.rule_lab_generation import RuleLabGenerationResult, generate_rule_lab_rows, rule_lab_recipe_rule_ids
+from src.data.rule_lab_generation import (
+    RuleLabGenerationResult,
+    enabled_rule_lab_recipe_rule_ids,
+    generate_rule_lab_rows,
+    load_rule_lab_recipes,
+)
 from src.data.training_quality_audit import contains_artificial_marker_text, plain_quote_bracket_balance_reasons
 from src.rules.rule_ids import UNKNOWN_RULE_ID, normalize_rule_id
 from src.validation.strict_validator import TRAINING_CONTEXT_SPLIT_JOIN_BY_RULE
@@ -61,6 +66,22 @@ DEFAULT_REAL_PATTERN_PATHS = (
     "data/processed/real_error_pairs_rejected.csv.gz",
     "data/processed/real_error_pairs_atomic.csv.gz",
 )
+RULE_LAB_INVENTORY_COLUMNS = [
+    "rule_id",
+    "in_training_candidates",
+    "has_any_recipe",
+    "recipe_enabled",
+    "disabled_reason",
+    "covered_by_corpus_miner",
+    "covered_by_syntax_miner",
+    "covered_by_morphology_miner",
+    "covered_by_real_pattern_replay",
+    "covered_by_enabled_rule_lab",
+    "generation_support_sources",
+    "status",
+    "main_blocker",
+    "recommended_next_action",
+]
 
 
 @dataclass(frozen=True)
@@ -109,6 +130,7 @@ class RuleDataCompilerResult:
     rule_lab_template_validation_rows: list[dict[str, Any]] = field(default_factory=list)
     rule_lab_slot_usage_rows: list[dict[str, Any]] = field(default_factory=list)
     rule_lab_recipe_status_rows: list[dict[str, Any]] = field(default_factory=list)
+    rule_lab_inventory_rows: list[dict[str, Any]] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     audit_errors: list[str] = field(default_factory=list)
 
@@ -449,9 +471,11 @@ def compile_rule_data(
 ) -> RuleDataCompilerResult:
     rows = _records(clean_rows)
     existing = _records(existing_rows if existing_rows is not None else [])
-    rule_ids = _supported_rule_ids(active_or_candidate_rule_ids, config)
+    candidate_rule_ids = _normalized_input_rule_ids(active_or_candidate_rule_ids)
+    rule_ids = _supported_rule_ids(candidate_rule_ids, config)
+    rule_lab_inventory = build_rule_lab_inventory_rows(candidate_rule_ids, config)
     source_priority = _source_priority(config)
-    real_patterns_by_rule, real_unsafe_by_rule = _real_patterns_by_rule(config, rule_ids)
+    real_patterns_by_rule, real_unsafe_by_rule = _real_patterns_by_rule(config, candidate_rule_ids)
     positive_target = _positive_target(config, target_counts)
     hard_target = _hard_negative_target(config, target_counts)
 
@@ -495,7 +519,8 @@ def compile_rule_data(
                     seen_hard.add(_hard_negative_key(str(row.get("source", "")), rule_id))
             continue
 
-        miners = _miners_for_source(source_key, rule_ids, real_patterns_by_rule, real_unsafe_by_rule)
+        miner_rule_ids = candidate_rule_ids if source_key == SOURCE_REAL_PATTERN_REPLAY else rule_ids
+        miners = _miners_for_source(source_key, miner_rule_ids, real_patterns_by_rule, real_unsafe_by_rule)
         for miner in miners:
             for context in miner.mine_positive_targets(rows, config):
                 if positive_counts[context.rule_id] >= positive_target:
@@ -592,6 +617,7 @@ def compile_rule_data(
         rule_lab_template_validation_rows=rule_lab_result.template_validation_rows,
         rule_lab_slot_usage_rows=rule_lab_result.slot_usage_rows,
         rule_lab_recipe_status_rows=rule_lab_result.recipe_status_rows,
+        rule_lab_inventory_rows=rule_lab_inventory,
         warnings=_dedupe_ordered(warnings),
         audit_errors=_dedupe_ordered(audit_errors),
     )
@@ -696,8 +722,12 @@ def write_rule_data_compiler_reports(result: RuleDataCompilerResult, reports_dir
         result.rule_lab_slot_usage_rows,
         ["rule_id", "template_id", "slot_name", "slot_value", "count"],
     ).to_csv(output_dir / "rule_lab_slot_usage_report.csv", index=False)
+    if result.rule_lab_inventory_rows:
+        write_rule_lab_inventory_reports(result.rule_lab_inventory_rows, output_dir)
     _frame_with_columns(
-        result.rule_lab_recipe_status_rows,
+        _rule_lab_recipe_status_rows_from_inventory(result.rule_lab_inventory_rows)
+        if result.rule_lab_inventory_rows
+        else result.rule_lab_recipe_status_rows,
         [
             "rule_id",
             "enabled",
@@ -706,6 +736,59 @@ def write_rule_data_compiler_reports(result: RuleDataCompilerResult, reports_dir
             "disabled_reason",
             "positive_template_count",
             "hard_negative_template_count",
+            "has_any_recipe",
+            "in_training_candidates",
+            "covered_by_non_rule_lab_sources",
+            "generation_support_sources",
+            "main_blocker",
+            "recommended_next_action",
+        ],
+    ).to_csv(output_dir / "rule_lab_recipe_status_report.csv", index=False)
+
+
+def write_rule_lab_inventory_reports(rows: Iterable[Mapping[str, Any]], reports_dir: str | Path) -> None:
+    output_dir = Path(reports_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    inventory_rows = [dict(row) for row in rows]
+    _frame_with_columns(inventory_rows, RULE_LAB_INVENTORY_COLUMNS).to_csv(output_dir / "rule_lab_inventory_report.csv", index=False)
+    _frame_with_columns(
+        [row for row in inventory_rows if not _bool_value(row.get("has_any_recipe"))],
+        RULE_LAB_INVENTORY_COLUMNS,
+    ).to_csv(output_dir / "rule_lab_missing_recipe_report.csv", index=False)
+    _frame_with_columns(
+        [row for row in inventory_rows if _bool_value(row.get("has_any_recipe")) and not _bool_value(row.get("recipe_enabled"))],
+        RULE_LAB_INVENTORY_COLUMNS,
+    ).to_csv(output_dir / "rule_lab_disabled_recipe_report.csv", index=False)
+    _frame_with_columns(
+        inventory_rows,
+        [
+            "rule_id",
+            "covered_by_corpus_miner",
+            "covered_by_syntax_miner",
+            "covered_by_morphology_miner",
+            "covered_by_real_pattern_replay",
+            "covered_by_enabled_rule_lab",
+            "generation_support_sources",
+            "status",
+            "recommended_next_action",
+        ],
+    ).to_csv(output_dir / "rule_lab_generation_support_matrix.csv", index=False)
+    _frame_with_columns(
+        _rule_lab_recipe_status_rows_from_inventory(inventory_rows),
+        [
+            "rule_id",
+            "enabled",
+            "status",
+            "reason",
+            "disabled_reason",
+            "positive_template_count",
+            "hard_negative_template_count",
+            "has_any_recipe",
+            "in_training_candidates",
+            "covered_by_non_rule_lab_sources",
+            "generation_support_sources",
+            "main_blocker",
+            "recommended_next_action",
         ],
     ).to_csv(output_dir / "rule_lab_recipe_status_report.csv", index=False)
 
@@ -722,6 +805,194 @@ def _dataclass_or_mapping_rows(rows: Iterable[Any]) -> list[dict[str, Any]]:
         elif hasattr(row, "__dataclass_fields__"):
             result.append(asdict(row))
     return result
+
+
+def build_rule_lab_inventory_rows(
+    training_candidate_rule_ids: Iterable[str],
+    config: Mapping[str, Any],
+    capabilities: Any | None = None,
+) -> list[dict[str, Any]]:
+    del capabilities
+    candidate_rule_ids = _normalized_input_rule_ids(training_candidate_rule_ids)
+    recipes = load_rule_lab_recipes(_rule_lab_recipe_path(config))
+    enabled_recipe_ids = {rule_id for rule_id, recipe in recipes.items() if recipe.enabled}
+    real_patterns_by_rule, _real_unsafe_by_rule = _real_patterns_by_rule(dict(config), candidate_rule_ids)
+
+    rows: list[dict[str, Any]] = []
+    for rule_id in candidate_rule_ids:
+        recipe = recipes.get(rule_id)
+        covered_by_corpus = rule_id in TRAINING_CONTEXT_SPLIT_JOIN_BY_RULE
+        covered_by_syntax = rule_id in SUPPORTED_SYNTAX_PUNCTUATION_RULES
+        covered_by_morphology = rule_id in SUPPORTED_MORPHOLOGY_RULES
+        covered_by_real = rule_id in real_patterns_by_rule
+        covered_by_enabled_recipe = rule_id in enabled_recipe_ids
+        support_sources = _generation_support_sources(
+            covered_by_corpus=covered_by_corpus,
+            covered_by_syntax=covered_by_syntax,
+            covered_by_morphology=covered_by_morphology,
+            covered_by_real=covered_by_real,
+            covered_by_enabled_recipe=covered_by_enabled_recipe,
+        )
+        disabled_reason = _inventory_disabled_reason(recipe)
+        status, main_blocker = _inventory_status_and_blocker(
+            has_recipe=recipe is not None,
+            recipe_enabled=bool(recipe.enabled) if recipe is not None else False,
+            disabled_reason=disabled_reason,
+            has_non_rule_lab_support=any(source != SOURCE_RULE_LAB for source in support_sources),
+        )
+        rows.append(
+            {
+                "rule_id": rule_id,
+                "in_training_candidates": True,
+                "has_any_recipe": recipe is not None,
+                "recipe_enabled": bool(recipe.enabled) if recipe is not None else False,
+                "disabled_reason": disabled_reason,
+                "covered_by_corpus_miner": covered_by_corpus,
+                "covered_by_syntax_miner": covered_by_syntax,
+                "covered_by_morphology_miner": covered_by_morphology,
+                "covered_by_real_pattern_replay": covered_by_real,
+                "covered_by_enabled_rule_lab": covered_by_enabled_recipe,
+                "generation_support_sources": ",".join(support_sources),
+                "status": status,
+                "main_blocker": main_blocker,
+                "recommended_next_action": _inventory_recommended_next_action(
+                    disabled_reason=disabled_reason,
+                    support_sources=support_sources,
+                    has_recipe=recipe is not None,
+                    status=status,
+                ),
+                "positive_template_count": len(recipe.positive_templates) if recipe is not None else 0,
+                "hard_negative_template_count": len(recipe.hard_negative_templates) if recipe is not None else 0,
+            }
+        )
+    return rows
+
+
+def _generation_support_sources(
+    *,
+    covered_by_corpus: bool,
+    covered_by_syntax: bool,
+    covered_by_morphology: bool,
+    covered_by_real: bool,
+    covered_by_enabled_recipe: bool,
+) -> list[str]:
+    sources: list[str] = []
+    if covered_by_corpus:
+        sources.append(SOURCE_CORPUS_MINED)
+    if covered_by_syntax:
+        sources.append(SOURCE_SYNTAX_MINED)
+    if covered_by_morphology:
+        sources.append(SOURCE_MORPHOLOGY_MINED)
+    if covered_by_real:
+        sources.append(SOURCE_REAL_PATTERN_REPLAY)
+    if covered_by_enabled_recipe:
+        sources.append(SOURCE_RULE_LAB)
+    return sources
+
+
+def _inventory_disabled_reason(recipe: Any | None) -> str:
+    if recipe is None:
+        return "recipe_missing"
+    if bool(recipe.enabled):
+        return ""
+    return str(recipe.disabled_reason or "disabled")
+
+
+def _inventory_status_and_blocker(
+    *,
+    has_recipe: bool,
+    recipe_enabled: bool,
+    disabled_reason: str,
+    has_non_rule_lab_support: bool,
+) -> tuple[str, str]:
+    if has_recipe and recipe_enabled:
+        return "enabled_rule_lab_recipe", ""
+    if has_recipe:
+        if disabled_reason == "candidate_missing":
+            return "blocked_needs_candidate_generator", disabled_reason
+        if disabled_reason == "validator_missing":
+            return "blocked_needs_validator", disabled_reason
+        if disabled_reason == "unsafe_template":
+            return "blocked_unsafe_template", disabled_reason
+        if disabled_reason == "covered_by_non_rule_lab_sources" or has_non_rule_lab_support:
+            return "covered_by_non_rule_lab_sources", disabled_reason
+        if disabled_reason == "no_safe_recipe_yet":
+            return "blocked_needs_dedicated_miner", disabled_reason
+        return "disabled_rule_lab_recipe", disabled_reason
+    if has_non_rule_lab_support:
+        return "missing_rule_lab_recipe_but_other_miner_support", "recipe_missing"
+    return "missing_rule_lab_recipe_and_no_known_miner", "recipe_missing"
+
+
+def _inventory_recommended_next_action(
+    *,
+    disabled_reason: str,
+    support_sources: list[str],
+    has_recipe: bool,
+    status: str,
+) -> str:
+    explicit = {
+        "candidate_missing": "fix_candidate_generator_or_rule_mapping",
+        "validator_missing": "fix_strict_validator_or_atomic_verifier_support",
+        "unsafe_template": "design_safe_target_first_templates",
+    }
+    if disabled_reason in explicit:
+        return explicit[disabled_reason]
+    if not support_sources:
+        return "add_dedicated_miner_or_rule_lab_recipe"
+    non_rule_lab_sources = [source for source in support_sources if source != SOURCE_RULE_LAB]
+    if SOURCE_CORPUS_MINED in non_rule_lab_sources:
+        return "run_corpus_mined_probe"
+    if non_rule_lab_sources == [SOURCE_SYNTAX_MINED]:
+        return "inspect_syntax_opportunity_detector"
+    if non_rule_lab_sources == [SOURCE_MORPHOLOGY_MINED]:
+        return "inspect_morphology_miner_or_validator"
+    if non_rule_lab_sources == [SOURCE_REAL_PATTERN_REPLAY]:
+        return "validate_pattern_replay"
+    if status in {"missing_rule_lab_recipe_but_other_miner_support", "covered_by_non_rule_lab_sources"}:
+        return "validate_non_rule_lab_generation_sources"
+    if has_recipe:
+        return "monitor_enabled_rule_lab_recipe"
+    return "inspect_rule_lab_inventory"
+
+
+def _rule_lab_recipe_status_rows_from_inventory(rows: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    status_rows: list[dict[str, Any]] = []
+    for row in rows:
+        has_recipe = _bool_value(row.get("has_any_recipe"))
+        enabled = _bool_value(row.get("recipe_enabled"))
+        inventory_status = str(row.get("status") or "")
+        if enabled:
+            status = "enabled"
+            reason = ""
+        elif has_recipe:
+            status = "disabled"
+            reason = str(row.get("disabled_reason") or "")
+        else:
+            status = "missing_placeholder"
+            reason = "recipe_missing"
+        status_rows.append(
+            {
+                "rule_id": str(row.get("rule_id") or ""),
+                "enabled": enabled,
+                "status": status if inventory_status != "covered_by_non_rule_lab_sources" else "covered_by_other_miner",
+                "reason": reason,
+                "disabled_reason": str(row.get("disabled_reason") or ""),
+                "positive_template_count": int(row.get("positive_template_count", 0) or 0),
+                "hard_negative_template_count": int(row.get("hard_negative_template_count", 0) or 0),
+                "has_any_recipe": has_recipe,
+                "in_training_candidates": _bool_value(row.get("in_training_candidates")),
+                "covered_by_non_rule_lab_sources": any(
+                    source
+                    for source in str(row.get("generation_support_sources") or "").split(",")
+                    if source and source != SOURCE_RULE_LAB
+                ),
+                "generation_support_sources": str(row.get("generation_support_sources") or ""),
+                "main_blocker": str(row.get("main_blocker") or ""),
+                "recommended_next_action": str(row.get("recommended_next_action") or ""),
+            }
+        )
+    return status_rows
 
 
 def _source_priority(config: dict[str, Any]) -> list[str]:
@@ -775,10 +1046,10 @@ def _miner_for_rule(rule_id: str) -> CorpusBackedSplitJoinMiner:
 
 def _supported_rule_ids(rule_ids: Iterable[str], config: dict[str, Any]) -> list[str]:
     result: list[str] = []
-    real_patterns_enabled = bool(_real_pattern_paths(config))
-    rule_lab_enabled_rule_ids = rule_lab_recipe_rule_ids(config)
-    for rule_id in rule_ids:
-        normalized = normalize_rule_id(rule_id)
+    normalized_rule_ids = _normalized_input_rule_ids(rule_ids)
+    real_patterns_by_rule, _real_unsafe_by_rule = _real_patterns_by_rule(config, normalized_rule_ids)
+    rule_lab_enabled_rule_ids = enabled_rule_lab_recipe_rule_ids(config)
+    for normalized in normalized_rule_ids:
         if normalized == UNKNOWN_RULE_ID or normalized in result:
             continue
         if (
@@ -786,7 +1057,7 @@ def _supported_rule_ids(rule_ids: Iterable[str], config: dict[str, Any]) -> list
             or normalized in SUPPORTED_MORPHOLOGY_RULES
             or normalized in SUPPORTED_SYNTAX_PUNCTUATION_RULES
             or normalized in rule_lab_enabled_rule_ids
-            or real_patterns_enabled
+            or normalized in real_patterns_by_rule
         ):
             result.append(normalized)
     return result
@@ -1608,6 +1879,21 @@ def _dedupe_ordered(values: Iterable[str]) -> list[str]:
         if text and text not in result:
             result.append(text)
     return result
+
+
+def _normalized_input_rule_ids(rule_ids: Iterable[str]) -> list[str]:
+    result: list[str] = []
+    for rule_id in rule_ids:
+        normalized = normalize_rule_id(rule_id)
+        if normalized == UNKNOWN_RULE_ID or normalized in result:
+            continue
+        result.append(normalized)
+    return result
+
+
+def _rule_lab_recipe_path(config: Mapping[str, Any]) -> Path:
+    path = candidate_dataset_value(config, "paths.rule_lab_recipes_config", "configs/rule_lab_recipes.yaml")
+    return Path(str(path or "configs/rule_lab_recipes.yaml"))
 
 
 def _records(rows_or_frame: Iterable[Mapping[str, Any]] | pd.DataFrame) -> list[dict[str, Any]]:

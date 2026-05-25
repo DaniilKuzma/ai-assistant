@@ -395,3 +395,427 @@ rules:
     family: punctuation
     positive_templates: []
     hard_negative_templates: []
+
+  abbreviation_case_protection:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  address_comma:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  apposition_comma:
+    enabled: false
+    disabled_reason: covered_by_non_rule_lab_sources
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  capitalization_sentence_start:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  clarification_comma:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  comma_conjunction:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  comma_subordinate:
+    enabled: false
+    disabled_reason: covered_by_non_rule_lab_sources
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  comparative_turnover_comma:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  cy_exception:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  detached_adverbial_comma:
+    enabled: false
+    disabled_reason: covered_by_non_rule_lab_sources
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  dictionary_fuzzy:
+    enabled: false
+    disabled_reason: covered_by_non_rule_lab_sources
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  double_consonant_candidate:
+    enabled: false
+    disabled_reason: covered_by_non_rule_lab_sources
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  extra_letter_candidate:
+    enabled: false
+    disabled_reason: covered_by_non_rule_lab_sources
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  final_punctuation_default:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  frequent_error_exact:
+    enabled: false
+    disabled_reason: covered_by_non_rule_lab_sources
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  homogeneous_comma:
+    enabled: false
+    disabled_reason: covered_by_non_rule_lab_sources
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  hyphen_koe_koy:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  hyphen_particles:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  hyphen_po_adverbs:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  hyphen_whitelist:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  introductory_comma:
+    enabled: false
+    disabled_reason: covered_by_non_rule_lab_sources
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  keyboard_typo_candidate:
+    enabled: false
+    disabled_reason: covered_by_non_rule_lab_sources
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  missing_hard_sign:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  missing_letter_candidate:
+    enabled: false
+    disabled_reason: covered_by_non_rule_lab_sources
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  n_nn_deverbal_adjective:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  n_nn_participle:
+    enabled: false
+    disabled_reason: covered_by_non_rule_lab_sources
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  n_nn_short_form:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  ne_adjective:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  ne_adverb:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  ne_participle:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  ne_predicative:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  ne_short_form:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  ne_verb:
+    enabled: false
+    disabled_reason: covered_by_non_rule_lab_sources
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  ni_particle_context:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  pattern_жо_же:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  pattern_жы_жи:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  pattern_цы_ци:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  pattern_чо_че:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  pattern_чю_чу:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  pattern_чя_ча:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  pattern_шо_ше:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  pattern_шы_ши:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  pattern_що_ще:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  pattern_щю_щу:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  pattern_щя_ща:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  pol_polu_compounds:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  prefix_pre_pri:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  prefix_s_to_z:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  prefix_z_to_s:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  punctuation_delete_replace:
+    enabled: false
+    disabled_reason: covered_by_non_rule_lab_sources
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  sdelat_prefix:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  soft_to_hard_sign:
+    enabled: false
+    disabled_reason: no_safe_recipe_yet
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
+
+  swapped_letters_candidate:
+    enabled: false
+    disabled_reason: covered_by_non_rule_lab_sources
+    family: unknown_or_from_capability
+    positive_templates: []
+    hard_negative_templates: []
+    notes: "Placeholder for inventory only. Enable only after candidate generator, verifier and safe templates pass."
