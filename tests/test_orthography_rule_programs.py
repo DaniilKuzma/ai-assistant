@@ -131,10 +131,11 @@ def test_tsya_ttsya_positive_generates_both_directions_across_samples() -> None:
 
 def test_orthography_rules_do_not_import_candidate_generator() -> None:
     root = Path(__file__).resolve().parents[1] / "src" / "grammar_gen" / "rules" / "orthography"
+    forbidden = "Candidate" + "Generator"
     offenders = [
         path
         for path in root.rglob("*.py")
-        if "CandidateGenerator" in path.read_text(encoding="utf-8")
+        if forbidden in path.read_text(encoding="utf-8")
     ]
 
     assert offenders == []

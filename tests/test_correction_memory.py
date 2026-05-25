@@ -2,21 +2,20 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from src.candidates.candidate_generator import Candidate
 from src.memory.correction_memory import CorrectionMemory, build_memory_from_config
-from src.validation.diff_analyzer import Edit
+from src.schema.edits import RuntimeEdit
 
 
 def _candidate(
     text: str,
     *,
-    source: str = "так же",
-    replacement: str = "также",
+    source: str = "С‚Р°Рє Р¶Рµ",
+    replacement: str = "С‚Р°РєР¶Рµ",
     rule_id: str = "context_tak_zhe",
     edit_type: str = "split_join",
-) -> Candidate:
+) -> RuntimeEdit:
     start = text.index(source)
-    return Candidate(
+    return RuntimeEdit(
         source=source,
         replacement=replacement,
         edit_type=edit_type,
@@ -29,13 +28,13 @@ def _candidate(
 def _edit(
     text: str,
     *,
-    source: str = "сдесь",
-    replacement: str = "здесь",
+    source: str = "СЃРґРµСЃСЊ",
+    replacement: str = "Р·РґРµСЃСЊ",
     rule_id: str = "frequent_error_exact",
     edit_type: str = "spelling_replace",
-) -> Edit:
+) -> RuntimeEdit:
     start = text.index(source)
-    return Edit(
+    return RuntimeEdit(
         source=source,
         replacement=replacement,
         edit_type=edit_type,
@@ -45,11 +44,11 @@ def _edit(
     )
 
 
-def test_in_memory_remember_lookup_for_candidate() -> None:
-    text = "Он сделал так же как брат."
+def test_in_memory_remember_lookup_for_runtime_edit() -> None:
+    text = "РћРЅ СЃРґРµР»Р°Р» С‚Р°Рє Р¶Рµ РєР°Рє Р±СЂР°С‚."
     memory = CorrectionMemory()
 
-    entry = memory.remember_candidate(
+    entry = memory.remember_edit(
         text,
         _candidate(text),
         "accepted",
@@ -57,7 +56,7 @@ def test_in_memory_remember_lookup_for_candidate() -> None:
         metadata={"origin": "ui"},
     )
 
-    match = memory.lookup_candidate(text, _candidate(text), doc_id="doc-1")
+    match = memory.lookup_edit(text, _candidate(text), doc_id="doc-1")
     assert match is not None
     assert match.exact is True
     assert match.reason == "exact_context_key"
@@ -67,7 +66,7 @@ def test_in_memory_remember_lookup_for_candidate() -> None:
 
 
 def test_in_memory_remember_lookup_for_edit() -> None:
-    text = "Она пришла сдесь утром."
+    text = "РћРЅР° РїСЂРёС€Р»Р° СЃРґРµСЃСЊ СѓС‚СЂРѕРј."
     memory = CorrectionMemory()
 
     entry = memory.remember_edit(text, _edit(text), "manual", doc_id="doc-1")
@@ -75,62 +74,62 @@ def test_in_memory_remember_lookup_for_edit() -> None:
     match = memory.lookup_edit(text, _edit(text), doc_id="doc-1")
     assert match is not None
     assert match.entry == entry
-    assert match.entry.source == "сдесь"
-    assert match.entry.replacement == "здесь"
+    assert match.entry.source == "СЃРґРµСЃСЊ"
+    assert match.entry.replacement == "Р·РґРµСЃСЊ"
     assert match.entry.decision == "manual"
 
 
 def test_rejected_decision_is_found_in_same_context() -> None:
-    text = "Он сделал так же как брат."
+    text = "РћРЅ СЃРґРµР»Р°Р» С‚Р°Рє Р¶Рµ РєР°Рє Р±СЂР°С‚."
     memory = CorrectionMemory()
 
-    memory.remember_candidate(text, _candidate(text), "rejected", doc_id="doc-1")
+    memory.remember_edit(text, _candidate(text), "rejected", doc_id="doc-1")
 
-    match = memory.lookup_candidate(text, _candidate(text), doc_id="doc-1")
+    match = memory.lookup_edit(text, _candidate(text), doc_id="doc-1")
     assert match is not None
     assert match.entry.decision == "rejected"
 
 
 def test_different_replacement_does_not_match() -> None:
-    text = "Он сделал так же как брат."
+    text = "РћРЅ СЃРґРµР»Р°Р» С‚Р°Рє Р¶Рµ РєР°Рє Р±СЂР°С‚."
     memory = CorrectionMemory()
 
-    memory.remember_candidate(text, _candidate(text), "rejected", doc_id="doc-1")
+    memory.remember_edit(text, _candidate(text), "rejected", doc_id="doc-1")
 
-    changed = _candidate(text, replacement="так-же")
-    assert memory.lookup_candidate(text, changed, doc_id="doc-1") is None
+    changed = _candidate(text, replacement="С‚Р°Рє-Р¶Рµ")
+    assert memory.lookup_edit(text, changed, doc_id="doc-1") is None
 
 
 def test_different_rule_id_does_not_match() -> None:
-    text = "Он сделал так же как брат."
+    text = "РћРЅ СЃРґРµР»Р°Р» С‚Р°Рє Р¶Рµ РєР°Рє Р±СЂР°С‚."
     memory = CorrectionMemory()
 
-    memory.remember_candidate(text, _candidate(text), "rejected", doc_id="doc-1")
+    memory.remember_edit(text, _candidate(text), "rejected", doc_id="doc-1")
 
     changed = _candidate(text, rule_id="another_context_rule")
-    assert memory.lookup_candidate(text, changed, doc_id="doc-1") is None
+    assert memory.lookup_edit(text, changed, doc_id="doc-1") is None
 
 
 def test_different_doc_id_does_not_match() -> None:
-    text = "Он сделал так же как брат."
+    text = "РћРЅ СЃРґРµР»Р°Р» С‚Р°Рє Р¶Рµ РєР°Рє Р±СЂР°С‚."
     memory = CorrectionMemory()
 
-    memory.remember_candidate(text, _candidate(text), "rejected", doc_id="doc-1")
+    memory.remember_edit(text, _candidate(text), "rejected", doc_id="doc-1")
 
-    assert memory.lookup_candidate(text, _candidate(text), doc_id="doc-2") is None
+    assert memory.lookup_edit(text, _candidate(text), doc_id="doc-2") is None
 
 
 def test_jsonl_save_load_round_trip(tmp_path: Path) -> None:
-    text = "Он сделал так же как брат."
+    text = "РћРЅ СЃРґРµР»Р°Р» С‚Р°Рє Р¶Рµ РєР°Рє Р±СЂР°С‚."
     storage_path = tmp_path / "nested" / "memory.jsonl"
     memory = CorrectionMemory(storage_path)
-    entry = memory.remember_candidate(text, _candidate(text), "ignored", doc_id="doc-1")
+    entry = memory.remember_edit(text, _candidate(text), "ignored", doc_id="doc-1")
 
     memory.save()
 
     loaded = CorrectionMemory(storage_path)
     loaded.load()
-    match = loaded.lookup_candidate(text, _candidate(text), doc_id="doc-1")
+    match = loaded.lookup_edit(text, _candidate(text), doc_id="doc-1")
     assert match is not None
     assert match.entry == entry
     assert storage_path.exists()
@@ -154,7 +153,7 @@ def test_build_memory_from_config_returns_none_when_disabled(tmp_path: Path) -> 
 
 
 def test_build_memory_from_config_loads_existing_jsonl_when_enabled(tmp_path: Path) -> None:
-    text = "Она пришла сдесь утром."
+    text = "РћРЅР° РїСЂРёС€Р»Р° СЃРґРµСЃСЊ СѓС‚СЂРѕРј."
     storage_path = tmp_path / "memory.jsonl"
     saved = CorrectionMemory(storage_path)
     saved.remember_edit(text, _edit(text), "accepted", doc_id="doc-1")
@@ -176,13 +175,13 @@ def test_build_memory_from_config_loads_existing_jsonl_when_enabled(tmp_path: Pa
     assert match.entry.decision == "accepted"
 
 
-def test_edit_type_aliases_allow_ui_edit_decision_to_match_generated_candidate() -> None:
-    text = "Она пришла сдесь утром."
+def test_edit_type_aliases_allow_ui_edit_decision_to_match_generated_edit() -> None:
+    text = "РћРЅР° РїСЂРёС€Р»Р° СЃРґРµСЃСЊ СѓС‚СЂРѕРј."
     memory = CorrectionMemory()
     edit = _edit(text, edit_type="spelling_replace")
-    candidate = Candidate(
-        source="сдесь",
-        replacement="здесь",
+    candidate = RuntimeEdit(
+        source="СЃРґРµСЃСЊ",
+        replacement="Р·РґРµСЃСЊ",
         edit_type="spelling",
         start=edit.start,
         end=edit.end,
@@ -191,16 +190,16 @@ def test_edit_type_aliases_allow_ui_edit_decision_to_match_generated_candidate()
 
     memory.remember_edit(text, edit, "rejected", doc_id="doc-1")
 
-    match = memory.lookup_candidate(text, candidate, doc_id="doc-1")
+    match = memory.lookup_edit(text, candidate, doc_id="doc-1")
     assert match is not None
     assert match.entry.decision == "rejected"
 
 
 def test_corrupted_jsonl_line_does_not_break_load(tmp_path: Path) -> None:
-    text = "Он сделал так же как брат."
+    text = "РћРЅ СЃРґРµР»Р°Р» С‚Р°Рє Р¶Рµ РєР°Рє Р±СЂР°С‚."
     storage_path = tmp_path / "memory.jsonl"
     memory = CorrectionMemory(storage_path)
-    memory.remember_candidate(text, _candidate(text), "rejected", doc_id="doc-1")
+    memory.remember_edit(text, _candidate(text), "rejected", doc_id="doc-1")
     memory.save()
     storage_path.write_text(
         storage_path.read_text(encoding="utf-8") + "{bad json\n",
@@ -210,23 +209,23 @@ def test_corrupted_jsonl_line_does_not_break_load(tmp_path: Path) -> None:
     loaded = CorrectionMemory(storage_path)
     loaded.load()
 
-    match = loaded.lookup_candidate(text, _candidate(text), doc_id="doc-1")
+    match = loaded.lookup_edit(text, _candidate(text), doc_id="doc-1")
     assert match is not None
     assert match.entry.decision == "rejected"
     assert len(loaded.entries()) == 1
 
 
 def test_normalization_matches_yo_e_and_whitespace_variants() -> None:
-    remembered_text = "Он купил ёлку   на рынке."
-    lookup_text = "Он купил елку на рынке."
+    remembered_text = "РћРЅ РєСѓРїРёР» С‘Р»РєСѓ   РЅР° СЂС‹РЅРєРµ."
+    lookup_text = "РћРЅ РєСѓРїРёР» РµР»РєСѓ РЅР° СЂС‹РЅРєРµ."
     memory = CorrectionMemory()
 
-    memory.remember_candidate(
+    memory.remember_edit(
         remembered_text,
         _candidate(
             remembered_text,
-            source="ёлку",
-            replacement="елку",
+            source="С‘Р»РєСѓ",
+            replacement="РµР»РєСѓ",
             rule_id="yo_e_candidate",
             edit_type="spelling",
         ),
@@ -234,12 +233,12 @@ def test_normalization_matches_yo_e_and_whitespace_variants() -> None:
         doc_id="doc-1",
     )
 
-    match = memory.lookup_candidate(
+    match = memory.lookup_edit(
         lookup_text,
         _candidate(
             lookup_text,
-            source="елку",
-            replacement="ёлку",
+            source="РµР»РєСѓ",
+            replacement="С‘Р»РєСѓ",
             rule_id="yo_e_candidate",
             edit_type="spelling",
         ),
@@ -247,3 +246,4 @@ def test_normalization_matches_yo_e_and_whitespace_variants() -> None:
     )
     assert match is not None
     assert match.entry.decision == "accepted"
+

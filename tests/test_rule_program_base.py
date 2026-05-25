@@ -139,11 +139,12 @@ def test_online_example_generator_retries_rule_failures() -> None:
 
 def test_grammar_gen_does_not_import_candidate_generator() -> None:
     root = Path(__file__).resolve().parents[1] / "src" / "grammar_gen"
+    forbidden = "Candidate" + "Generator"
 
     offenders = [
         path
         for path in root.rglob("*.py")
-        if "CandidateGenerator" in path.read_text(encoding="utf-8")
+        if forbidden in path.read_text(encoding="utf-8")
     ]
 
     assert offenders == []

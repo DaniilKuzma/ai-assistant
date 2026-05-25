@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from itertools import combinations
 import re
 
-from src.candidates.frequent_errors import HYPHEN_WHITELIST, REVERSE_SYNTHETIC_ERRORS, REVERSE_SYNTHETIC_ERROR_TYPES
+from src.schema.lexical_resources import HYPHEN_WHITELIST, REVERSE_SYNTHETIC_ERRORS, REVERSE_SYNTHETIC_ERROR_TYPES
 from src.preprocessing.protected_spans import find_protected_spans
 from src.preprocessing.tokenizer import tokenize_words
 from src.rules.orthography import orthography_rules

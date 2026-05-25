@@ -11,21 +11,21 @@ from src.schema import (
     gap_id_to_label,
     gap_label_to_id,
     rule_id_to_label,
-    rule_label_to_id,
+    rule_tag_to_id,
     token_id_to_label,
     token_label_to_id,
 )
 
 
 def _valid_example() -> GeneratedExample:
-    source_text = "Он незнал ответа"
+    source_text = "РћРЅ РЅРµР·РЅР°Р» РѕС‚РІРµС‚Р°"
     return GeneratedExample(
         source_text=source_text,
-        target_text="Он не знал ответа.",
+        target_text="РћРЅ РЅРµ Р·РЅР°Р» РѕС‚РІРµС‚Р°.",
         source_tokens=[
-            WordToken(text="Он", start=0, end=2, lemma="он", pos="PRON"),
-            WordToken(text="незнал", start=3, end=9, lemma="знать", pos="VERB"),
-            WordToken(text="ответа", start=10, end=16, lemma="ответ", pos="NOUN", feats={"Case": "Gen"}),
+            WordToken(text="РћРЅ", start=0, end=2, lemma="РѕРЅ", pos="PRON"),
+            WordToken(text="РЅРµР·РЅР°Р»", start=3, end=9, lemma="Р·РЅР°С‚СЊ", pos="VERB"),
+            WordToken(text="РѕС‚РІРµС‚Р°", start=10, end=16, lemma="РѕС‚РІРµС‚", pos="NOUN", feats={"Case": "Gen"}),
         ],
         token_edit_labels=["KEEP", "SPLIT_NE_VERB", "KEEP"],
         gap_labels=["NONE", "NONE", "DOT"],
@@ -48,9 +48,9 @@ def test_vocab_ids_are_stable() -> None:
     assert gap_label_to_id("ELLIPSIS") == 8
     assert gap_id_to_label(8) == "ELLIPSIS"
 
-    assert rule_label_to_id("none") == 0
+    assert rule_tag_to_id("none") == 0
     assert rule_id_to_label(0) == "none"
-    assert rule_label_to_id("final_punctuation") == 15
+    assert rule_tag_to_id("final_punctuation") == 15
     assert rule_id_to_label(15) == "final_punctuation"
 
 
@@ -70,7 +70,7 @@ def test_unknown_labels_raise_value_error() -> None:
         gap_id_to_label(-1)
 
     with pytest.raises(ValueError, match="Unknown rule label"):
-        rule_label_to_id("candidate_rule")
+        rule_tag_to_id("candidate_rule")
     with pytest.raises(ValueError, match="Unknown rule id"):
         rule_id_to_label(999)
     with pytest.raises(ValueError, match="Unknown rule id"):
@@ -80,7 +80,7 @@ def test_unknown_labels_raise_value_error() -> None:
 def test_generated_example_validates_contract() -> None:
     example = _valid_example()
 
-    assert example.source_tokens[1].text == "незнал"
+    assert example.source_tokens[1].text == "РЅРµР·РЅР°Р»"
     assert example.token_edit_labels[1] == "SPLIT_NE_VERB"
     assert example.gap_labels[-1] == "DOT"
     assert example.rule_ids[1] == "ne_verb"
@@ -89,11 +89,11 @@ def test_generated_example_validates_contract() -> None:
 def test_generated_example_rejects_label_length_mismatch() -> None:
     with pytest.raises(ValueError, match="token_edit_labels"):
         GeneratedExample(
-            source_text="Он незнал ответа",
-            target_text="Он не знал ответа.",
+            source_text="РћРЅ РЅРµР·РЅР°Р» РѕС‚РІРµС‚Р°",
+            target_text="РћРЅ РЅРµ Р·РЅР°Р» РѕС‚РІРµС‚Р°.",
             source_tokens=[
-                WordToken(text="Он", start=0, end=2),
-                WordToken(text="незнал", start=3, end=9),
+                WordToken(text="РћРЅ", start=0, end=2),
+                WordToken(text="РЅРµР·РЅР°Р»", start=3, end=9),
             ],
             token_edit_labels=["KEEP"],
             gap_labels=["NONE", "DOT"],
@@ -118,21 +118,22 @@ def test_runtime_edit_is_dataclass_serializable() -> None:
     edit = RuntimeEdit(
         start=3,
         end=9,
-        source="незнал",
-        replacement="не знал",
+        source="РЅРµР·РЅР°Р»",
+        replacement="РЅРµ Р·РЅР°Р»",
         edit_type="split",
         rule_id="ne_verb",
         confidence=0.92,
-        explanation="Раздельное написание не с глаголом.",
+        explanation="Р Р°Р·РґРµР»СЊРЅРѕРµ РЅР°РїРёСЃР°РЅРёРµ РЅРµ СЃ РіР»Р°РіРѕР»РѕРј.",
     )
 
     assert asdict(edit) == {
         "start": 3,
         "end": 9,
-        "source": "незнал",
-        "replacement": "не знал",
+        "source": "РЅРµР·РЅР°Р»",
+        "replacement": "РЅРµ Р·РЅР°Р»",
         "edit_type": "split",
         "rule_id": "ne_verb",
         "confidence": 0.92,
-        "explanation": "Раздельное написание не с глаголом.",
+        "explanation": "Р Р°Р·РґРµР»СЊРЅРѕРµ РЅР°РїРёСЃР°РЅРёРµ РЅРµ СЃ РіР»Р°РіРѕР»РѕРј.",
     }
+

@@ -53,7 +53,7 @@ def _v3_entry(
         "dataset": {
             "eligible_now": False,
             "reason": "planned",
-            "last_known_candidate_recall": None,
+            "last_known_eval_coverage": None,
             "last_known_eval_count": None,
             "production_ready_now": False,
             "training_eligible_now": False,
@@ -63,7 +63,7 @@ def _v3_entry(
             "current_synthetic_support": False,
             "current_hard_negative_support": False,
             "current_validator_support": False,
-            "current_candidate_recall": None,
+            "current_eval_coverage": None,
             "current_gap_coverage": None,
             "risk_level": "high",
             "needs_before_training": ["none"],

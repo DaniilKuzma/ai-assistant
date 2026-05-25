@@ -5,7 +5,7 @@ import hashlib
 import json
 from typing import Any, Mapping
 
-from src.schema.labels import gap_label_to_id, rule_label_to_id, token_label_to_id
+from src.schema.labels import gap_label_to_id, rule_tag_to_id, token_label_to_id
 
 
 @dataclass
@@ -49,8 +49,8 @@ class GeneratedExample:
         for label in self.gap_labels:
             gap_label_to_id(label)
         for rule_id in self.rule_ids:
-            rule_label_to_id(rule_id)
-        rule_label_to_id(self.primary_rule_id)
+            rule_tag_to_id(rule_id)
+        rule_tag_to_id(self.primary_rule_id)
 
         for index, token in enumerate(self.source_tokens):
             _validate_token_span(self.source_text, token, index)
@@ -140,3 +140,4 @@ def _word_token_from_mapping(data: Mapping[str, Any] | WordToken) -> WordToken:
 
 
 __all__ = ["GeneratedExample", "WordToken"]
+

@@ -21,9 +21,8 @@ The old candidate-aware offline dataset build is not part of the architecture.
 - Train examples are sampled on the fly.
 - Frozen val/test/regression examples may be materialized as JSONL in
   `data/generated_eval`.
-- Large `data/processed/train.csv`, `val.csv`, `test.csv`,
-  `correction_dataset.csv.gz`, layer CSV/GZIP files, clean pools, and dataset
-  manifests are obsolete and removed.
+- Large materialized CSV/GZIP training artifacts and offline dataset manifests
+  are obsolete and removed.
 
 ## Model Shape
 
@@ -38,13 +37,11 @@ The old candidate-aware offline dataset build is not part of the architecture.
   fixes.
 - Neural token edits and neural punctuation run after deterministic rules when
   confidence passes configured thresholds.
-- CandidateGenerator is not used by the target model-backed runtime.
-- The old StrictValidator data-prep boundary is removed. A future ScopeGuard
-  will enforce runtime scope.
+- Runtime scope is enforced by `src.runtime.scope_guard.ScopeGuard`.
 - GUI behavior remains stable: user enters text, presses `Исправить`, and gets
   corrected text plus edits.
 
-## Future Packages
+## Current Packages
 
 - `src/grammar_gen/` - online AST generation.
 - `src/runtime/` - deterministic-first runtime orchestration.

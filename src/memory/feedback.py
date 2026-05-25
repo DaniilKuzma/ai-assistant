@@ -3,9 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from src.candidates.candidate_generator import Candidate
 from src.memory.correction_memory import CorrectionMemory, CorrectionMemoryEntry, VALID_DECISIONS
-from src.validation.diff_analyzer import Edit
+from src.schema.edits import RuntimeEdit
 
 
 @dataclass(frozen=True)
@@ -30,7 +29,7 @@ class CorrectionFeedbackService:
     def remember_edit_decision(
         self,
         source_text: str,
-        edit: Edit,
+        edit: RuntimeEdit,
         decision: str,
         metadata: dict[str, Any] | None = None,
     ) -> CorrectionMemoryEntry:
@@ -38,21 +37,10 @@ class CorrectionFeedbackService:
         _validate_decision(decision)
         return self.memory.remember_edit(source_text, edit, decision, doc_id=self.doc_id, metadata=metadata)
 
-    def remember_candidate_decision(
-        self,
-        source_text: str,
-        candidate: Candidate,
-        decision: str,
-        metadata: dict[str, Any] | None = None,
-    ) -> CorrectionMemoryEntry:
-        _validate_candidate(candidate)
-        _validate_decision(decision)
-        return self.memory.remember_candidate(source_text, candidate, decision, doc_id=self.doc_id, metadata=metadata)
-
     def accept_edit(
         self,
         source_text: str,
-        edit: Edit,
+        edit: RuntimeEdit,
         metadata: dict[str, Any] | None = None,
     ) -> CorrectionMemoryEntry:
         return self.remember_edit_decision(source_text, edit, "accepted", metadata=metadata)
@@ -60,7 +48,7 @@ class CorrectionFeedbackService:
     def reject_edit(
         self,
         source_text: str,
-        edit: Edit,
+        edit: RuntimeEdit,
         metadata: dict[str, Any] | None = None,
     ) -> CorrectionMemoryEntry:
         return self.remember_edit_decision(source_text, edit, "rejected", metadata=metadata)
@@ -68,7 +56,7 @@ class CorrectionFeedbackService:
     def ignore_edit(
         self,
         source_text: str,
-        edit: Edit,
+        edit: RuntimeEdit,
         metadata: dict[str, Any] | None = None,
     ) -> CorrectionMemoryEntry:
         return self.remember_edit_decision(source_text, edit, "ignored", metadata=metadata)
@@ -81,11 +69,6 @@ def _validate_decision(decision: str) -> None:
     raise ValueError(f"Unsupported correction feedback decision: {decision!r}. Expected one of: {allowed}.")
 
 
-def _validate_edit(edit: Edit) -> None:
-    if not isinstance(edit, Edit):
-        raise TypeError("CorrectionFeedbackService edit methods accept only Edit objects.")
-
-
-def _validate_candidate(candidate: Candidate) -> None:
-    if not isinstance(candidate, Candidate):
-        raise TypeError("CorrectionFeedbackService candidate methods accept only Candidate objects.")
+def _validate_edit(edit: RuntimeEdit) -> None:
+    if not isinstance(edit, RuntimeEdit):
+        raise TypeError("CorrectionFeedbackService edit methods accept only RuntimeEdit objects.")

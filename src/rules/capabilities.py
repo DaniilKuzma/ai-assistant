@@ -140,7 +140,7 @@ EXPANDED_ACTIVATION_CANDIDATE_COLUMNS = [
     "empirical_validator_support",
     "generated_probe_count",
     "verifier_pass_count",
-    "candidate_recall",
+    "eval_coverage",
     "included",
     "reason",
 ]
@@ -536,7 +536,7 @@ def expanded_activation_candidate_rows(
                 "empirical_validator_support": probe_status == "pass",
                 "generated_probe_count": int(row_evidence.get("generated_probe_count", 0) or 0),
                 "verifier_pass_count": int(row_evidence.get("verifier_pass_count", 0) or 0),
-                "candidate_recall": float(row_evidence.get("candidate_recall", 0.0) or 0.0),
+                "eval_coverage": float(row_evidence.get("eval_coverage", 0.0) or 0.0),
                 "included": bool(included),
                 "reason": reason,
                 "source": ",".join(sorted(source_map.get(rule_id, set()))),
@@ -1397,27 +1397,7 @@ def _rule_corruption_supported_rule_ids(registry_rule_ids: set[str]) -> set[str]
 
 
 def _validator_supported_rule_ids() -> set[str]:
-    try:
-        from src.validation import strict_validator as validator
-
-        names = (
-            "QUOTE_NORMALIZATION_RULE_IDS",
-            "N_NN_RULE_IDS",
-            "NE_SPLIT_JOIN_RULE_IDS",
-            "NI_RULE_IDS",
-            "DIRECT_SPEECH_RULE_IDS",
-            "SYNTAX_PUNCTUATION_RULE_IDS",
-            "ASYNDETIC_RULE_IDS",
-            "RISKY_KNOWN_SOURCE_LEXICAL_RULE_IDS",
-            "ALWAYS_UNSAFE_LEXICAL_RULE_IDS",
-        )
-        result: set[str] = set()
-        for name in names:
-            result.update(str(rule_id) for rule_id in getattr(validator, name, frozenset()))
-        result.update(DICTIONARY_CANDIDATE_RULE_IDS)
-        return result
-    except Exception:
-        return set(DICTIONARY_CANDIDATE_RULE_IDS)
+    return set(DICTIONARY_CANDIDATE_RULE_IDS)
 
 
 def _load_config(config_path: str | Path) -> dict[str, Any]:
@@ -1463,7 +1443,7 @@ def _syntax_supported(config: dict[str, Any]) -> bool:
 
 def _morphology_supported(config: dict[str, Any]) -> bool:
     del config
-    return importlib.util.find_spec("src.candidates.morphology") is not None and (
+    return importlib.util.find_spec("src.runtime.morphology") is not None and (
         importlib.util.find_spec("pymorphy3") is not None or importlib.util.find_spec("pymorphy2") is not None
     )
 

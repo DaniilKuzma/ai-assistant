@@ -16,39 +16,42 @@
 
 ## Source Layout
 
-- `src/grammar_gen/` - future AST-first online generation.
-- `src/runtime/` - future deterministic-first runtime orchestration.
-- `src/schema/` - future shared schemas for generated examples, labels, and
-  runtime edits.
-- `src/data/` - intentionally empty legacy namespace; old dataset builders were
-  removed.
+- `src/grammar_gen/` - AST-first online generation.
+- `src/runtime/` - deterministic-first runtime orchestration, scope guarding,
+  and morphology helpers.
+- `src/schema/` - shared schemas for generated examples, labels, edit types,
+  lexical resources, and runtime edits.
+- `src/data/` - intentionally empty legacy namespace.
 - `src/preprocessing/` - tokenizer, sentence splitter, protected spans,
   punctuation gaps.
 - `src/rules/` - deterministic rules and rule metadata.
 - `src/model/` - encoder loading, multitask model, heads, losses.
 - `src/training/` - tensorization, trainer, train entry point, artifact
   save/load.
-- `src/inference/` - current inference code retained until the runtime rewrite.
-- `src/evaluation/` - evaluation and report helpers retained where they do not
-  require the removed data-prep pipeline.
+- `src/inference/` - direct model-backed inference adapter.
+- `src/evaluation/` - direct evaluation and report helpers.
 - `src/memory/` - correction memory and incremental segment cache.
 - `src/docx/` - DOCX read/correct/write flow.
 - `src/app/` - Streamlit UI.
 
 ## Entry Points
 
-- Training smoke entry: `python -m src.training.train configs/config.yaml`
+- Generator audit: `python scripts/audit_generator.py configs/config.yaml`
+- Frozen eval build: `python scripts/build_frozen_eval.py configs/config.yaml`
+- Generation benchmark: `python scripts/benchmark_generation.py configs/config.yaml`
+- Training smoke entry: `python -m src.training.train configs/config.yaml --smoke --debug-model`
+- Model evaluation: `python scripts/evaluate_model.py configs/config.yaml`
 - Streamlit: `streamlit run src/app/streamlit_app.py`
 - Tests: `python -m pytest -q`
 
 ## Data And Generated Artifacts
 
 - `data/processed/` - no materialized training datasets; keep `.gitkeep` only.
-- `data/generated_eval/` - future frozen val/test/regression JSONL outputs.
+- `data/generated_eval/` - frozen val/test/regression JSONL outputs.
 - `reports/` - generated reports; keep `.gitkeep` only in source control.
 - `models/adapters/latest` - configured LoRA adapter output.
 - `models/heads/latest` - configured custom head output.
-- `lexicon/` - future lexicon resources.
+- `lexicon/` - lexicon resources.
 
-Old CSV/GZIP dataset artifacts and dataset reports were removed with the
-candidate-aware offline data-prep pipeline.
+Old CSV/GZIP training artifacts and offline data-prep reports are not part of
+the current architecture.

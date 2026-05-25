@@ -6,7 +6,7 @@ import re
 from typing import Any
 
 from src.schema import GeneratedExample
-from src.schema.labels import gap_label_to_id, rule_label_to_id, token_label_to_id
+from src.schema.labels import gap_label_to_id, rule_tag_to_id, token_label_to_id
 
 
 IGNORE_INDEX = -100
@@ -26,7 +26,7 @@ class DirectTrainingFeature:
     gap_mask: list[bool]
     token_edit_label_ids: list[int]
     gap_label_ids: list[int]
-    rule_label_ids: list[int]
+    rule_tag_ids: list[int]
     sample_weight: float = 1.0
 
 
@@ -113,7 +113,7 @@ def build_direct_training_feature(
     word_token_indices = [0] * max_words
     word_token_mask = [False] * max_words
     token_edit_label_ids = [IGNORE_INDEX] * max_words
-    rule_label_ids = [IGNORE_INDEX] * max_words
+    rule_tag_ids = [IGNORE_INDEX] * max_words
 
     source_tokens = example.source_tokens[:max_words]
     for index, word in enumerate(source_tokens):
@@ -123,7 +123,7 @@ def build_direct_training_feature(
         word_token_indices[index] = token_index
         word_token_mask[index] = True
         token_edit_label_ids[index] = token_label_to_id(example.token_edit_labels[index])
-        rule_label_ids[index] = rule_label_to_id(example.rule_ids[index])
+        rule_tag_ids[index] = rule_tag_to_id(example.rule_ids[index])
 
     gap_left_indices = [0] * max_words
     gap_right_indices = [-1] * max_words
@@ -154,7 +154,7 @@ def build_direct_training_feature(
         gap_mask=gap_mask,
         token_edit_label_ids=token_edit_label_ids,
         gap_label_ids=gap_label_ids,
-        rule_label_ids=rule_label_ids,
+        rule_tag_ids=rule_tag_ids,
         sample_weight=_sample_weight(example),
     )
 
@@ -192,8 +192,8 @@ class DirectBatchCollator:
                     [feature.gap_label_ids for feature in features],
                     dtype=torch.long,
                 ),
-                "rule_label_ids": torch.tensor(
-                    [feature.rule_label_ids for feature in features],
+                "rule_tag_ids": torch.tensor(
+                    [feature.rule_tag_ids for feature in features],
                     dtype=torch.long,
                 ),
                 "sample_weight": torch.tensor(
@@ -272,3 +272,4 @@ __all__ = [
     "IGNORE_INDEX",
     "build_direct_training_feature",
 ]
+

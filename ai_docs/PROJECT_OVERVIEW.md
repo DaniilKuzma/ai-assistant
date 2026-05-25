@@ -25,9 +25,8 @@ as the main model-backed path.
 
 ## Data Policy
 
-The old clean sentence pool scan, CandidateGenerator-backed dataset builder,
-rule_lab, rule cards, corruption operators, strict synthetic validation, and
-large CSV/GZIP train/val/test artifacts were removed.
+The old offline data-prep stack and large CSV/GZIP train/val/test artifacts
+were removed.
 
 Frozen validation, test, and regression sets may be written as JSONL under
 `data/generated_eval`. Training data is generated online.

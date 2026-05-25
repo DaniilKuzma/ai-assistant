@@ -12,7 +12,7 @@ import pandas as pd
 from src.rules.coverage_matrix import iter_coverage_entries, load_rules_coverage
 from src.rules.rule_ids import UNKNOWN_RULE_ID, normalize_rule_id
 from src.validation.diff_analyzer import DiffAnalyzer, Edit
-from src.validation.edit_classifier import coarse_error_type
+from src.schema.edit_types import coarse_error_type
 
 
 RULE_PRECISION_RECALL_COLUMNS = [

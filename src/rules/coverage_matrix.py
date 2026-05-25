@@ -123,7 +123,7 @@ REQUIRED_V3_DATASET_FIELDS = frozenset(
     {
         "eligible_now",
         "reason",
-        "last_known_candidate_recall",
+        "last_known_eval_coverage",
         "last_known_eval_count",
         "production_ready_now",
         "training_eligible_now",
@@ -133,7 +133,7 @@ REQUIRED_V3_DATASET_FIELDS = frozenset(
         "current_synthetic_support",
         "current_hard_negative_support",
         "current_validator_support",
-        "current_candidate_recall",
+        "current_eval_coverage",
         "current_gap_coverage",
         "risk_level",
         "needs_before_training",

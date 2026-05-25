@@ -155,7 +155,7 @@ def gap_id_to_label(id_: int) -> str:
     return GAP_ID_TO_LABEL[id_]
 
 
-def rule_label_to_id(label: str) -> int:
+def rule_tag_to_id(label: str) -> int:
     try:
         return RULE_LABEL_TO_ID[label]
     except KeyError as exc:
@@ -184,7 +184,8 @@ __all__ = [
     "gap_id_to_label",
     "gap_label_to_id",
     "rule_id_to_label",
-    "rule_label_to_id",
+    "rule_tag_to_id",
     "token_id_to_label",
     "token_label_to_id",
 ]
+

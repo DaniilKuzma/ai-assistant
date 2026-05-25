@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from src.validation.diff_analyzer import DiffAnalyzer, Edit
-from src.validation.edit_classifier import coarse_error_type
+from src.schema.edit_types import coarse_error_type
 
 
 DEFAULT_COMBINED_SCORE_WEIGHTS = {

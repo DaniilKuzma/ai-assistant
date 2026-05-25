@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Iterable
 
-from src.candidates.morphology import has_pos, is_known_word, normal_forms, parses
+from src.runtime.morphology import has_pos, is_known_word, normal_forms, parses
 from src.preprocessing.tokenizer import tokenize_words
 from src.rules.base import RuleCandidate, RuleContext, RuleCorruption, RuleEdit, RuleMode, RuleSpec
 

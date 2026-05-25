@@ -6,8 +6,5 @@
   not materialized.
 - Frozen validation, test, and regression sets may be materialized as JSONL in
   `data/generated_eval`.
-- CandidateGenerator, rule_lab, clean sentence pool scanning, corruption
-  operators, and strict synthetic-row validation are removed from data prep.
-- CandidateGenerator is not part of the target model-backed runtime.
-- The old StrictValidator data-prep role is removed; a future ScopeGuard will
-  cover runtime boundaries.
+- The old offline data-prep stack is removed.
+- Runtime safety is handled by conservative direct edit scope guarding.

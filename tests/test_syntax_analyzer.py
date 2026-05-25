@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import builtins
 
-from src.candidates.candidate_generator import CandidateGenerator
 from src.nlp.syntax_analyzer import SyntaxAnalyzer, analyze_syntax, syntax_pipeline
 from src.nlp.syntax_types import SyntaxAnalysis
 
 
-SAMPLE_TEXT = "Проект готов, потому что команда закончила работу."
+SAMPLE_TEXT = "РџСЂРѕРµРєС‚ РіРѕС‚РѕРІ, РїРѕС‚РѕРјСѓ С‡С‚Рѕ РєРѕРјР°РЅРґР° Р·Р°РєРѕРЅС‡РёР»Р° СЂР°Р±РѕС‚Сѓ."
 
 
 def test_analyze_syntax_returns_canonical_analysis_for_basic_sentence():
@@ -30,8 +29,8 @@ def test_analyze_syntax_returns_canonical_analysis_for_basic_sentence():
         assert any(token.pos for token in analysis.tokens)
         assert any(token.dep_rel for token in analysis.tokens)
         assert any(token.head_id is not None for token in analysis.tokens)
-        assert any(token.text == "потому" for token in analysis.tokens)
-        assert any(token.text == "что" for token in analysis.tokens)
+        assert any(token.text == "РїРѕС‚РѕРјСѓ" for token in analysis.tokens)
+        assert any(token.text == "С‡С‚Рѕ" for token in analysis.tokens)
 
 
 def test_analyze_syntax_reuses_lru_cache_for_repeated_text():
@@ -53,10 +52,10 @@ def test_analyze_syntax_skips_cache_for_enormous_text_by_default():
     analyzer = SyntaxAnalyzer({"cache_enabled": True, "cache_max_size": 8, "cache_max_text_length": 10})
     analyzer.clear_cache()
 
-    analyzer.analyze("Текст.")
-    analyzer.analyze("Текст.")
-    analyzer.analyze("Очень длинный текст для синтаксического анализа.")
-    analyzer.analyze("Очень длинный текст для синтаксического анализа.")
+    analyzer.analyze("РўРµРєСЃС‚.")
+    analyzer.analyze("РўРµРєСЃС‚.")
+    analyzer.analyze("РћС‡РµРЅСЊ РґР»РёРЅРЅС‹Р№ С‚РµРєСЃС‚ РґР»СЏ СЃРёРЅС‚Р°РєСЃРёС‡РµСЃРєРѕРіРѕ Р°РЅР°Р»РёР·Р°.")
+    analyzer.analyze("РћС‡РµРЅСЊ РґР»РёРЅРЅС‹Р№ С‚РµРєСЃС‚ РґР»СЏ СЃРёРЅС‚Р°РєСЃРёС‡РµСЃРєРѕРіРѕ Р°РЅР°Р»РёР·Р°.")
     stats = analyzer.cache_info()
 
     assert stats["hits"] == 1
@@ -88,23 +87,3 @@ def test_analyze_syntax_unavailable_backend_fails_open(monkeypatch):
     assert isinstance(analysis.phrases, list)
     assert analysis.cache_key
 
-
-def test_candidate_generator_from_config_respects_disabled_syntax(monkeypatch):
-    calls = 0
-
-    def count_parse_syntax(_text: str):
-        nonlocal calls
-        calls += 1
-        return []
-
-    monkeypatch.setattr("src.nlp.syntax.parse_syntax", count_parse_syntax)
-    generator = CandidateGenerator.from_config(
-        {
-            "nlp": {"syntax": {"enabled": False}},
-            "dictionary": {"enabled": False},
-        }
-    )
-
-    generator.generate("Даниил проверь текст.")
-
-    assert calls == 0

@@ -4,11 +4,8 @@ from dataclasses import dataclass, replace
 import difflib
 import re
 
-from src.candidates.candidate_generator import Candidate, CandidateGenerator
-from src.candidates.frequent_errors import CONTEXT_DEPENDENT_WHITELIST, HYPHEN_WHITELIST, SPLIT_JOIN_WHITELIST, WRONG_TO_CORRECT
-from src.candidates.spelling_rules import spelling_candidate_specs
+from src.schema.lexical_resources import CONTEXT_DEPENDENT_WHITELIST, HYPHEN_WHITELIST, SPLIT_JOIN_WHITELIST, WRONG_TO_CORRECT
 from src.preprocessing.tokenizer import PUNCTUATION
-from src.preprocessing.tokenizer import tokenize_words
 
 
 FINAL_PUNCT = ".!?…"
@@ -35,7 +32,7 @@ class Edit:
 class DiffAnalyzer:
     """Classify text differences into the strict edit taxonomy."""
 
-    def analyze(self, source: str, target: str, *, candidates: list[Candidate] | None = None) -> list[Edit]:
+    def analyze(self, source: str, target: str) -> list[Edit]:
         edits: list[Edit] = []
         working_source = source
         working_target = target
@@ -46,7 +43,7 @@ class DiffAnalyzer:
             working_source = _strip_final_punctuation(working_source)
             working_target = _strip_final_punctuation(working_target)
 
-        edits.extend(self._known_word_edits(source, target, candidates=candidates))
+        edits.extend(self._known_word_edits(source, target))
         edits.extend(self._case_edits(source, target))
         edits.extend(self._punctuation_edits(working_source, working_target))
 
@@ -73,8 +70,6 @@ class DiffAnalyzer:
         self,
         source: str,
         target: str,
-        *,
-        candidates: list[Candidate] | None = None,
     ) -> list[Edit]:
         edits: list[Edit] = []
         source_lower = source.lower()
@@ -127,32 +122,6 @@ class DiffAnalyzer:
                     )
                 )
 
-        reusable_candidates = candidates if candidates is not None else CandidateGenerator().generate(source)
-        for candidate in reusable_candidates:
-            if candidate.edit_type not in {"hyphen", "split_join", "spelling"}:
-                continue
-            if candidate.replacement.lower() not in target_lower:
-                continue
-            if not _candidate_matches_word_alignment(source, target, candidate.start, candidate.end, candidate.replacement):
-                continue
-            if candidate.edit_type == "hyphen":
-                edit_type = "hyphen_change"
-            elif candidate.edit_type == "split_join":
-                edit_type = _split_join_edit_type(candidate.source, candidate.replacement)
-            else:
-                edit_type = "spelling_replace"
-            edits.append(
-                Edit(
-                    candidate.source,
-                    candidate.replacement,
-                    edit_type,
-                    candidate.start,
-                    candidate.end,
-                    confidence=candidate.confidence,
-                    rule_id=candidate.rule_id,
-                )
-            )
-
         for wrong, correct in HYPHEN_WHITELIST.items():
             if wrong == correct:
                 continue
@@ -167,28 +136,6 @@ class DiffAnalyzer:
                         start + len(wrong),
                         confidence=0.95,
                         rule_id="hyphen_whitelist",
-                    )
-                )
-
-        for token in tokenize_words(source):
-            for spec in spelling_candidate_specs(token.text):
-                replacement = spec.replacement.lower()
-                if replacement not in target_lower:
-                    continue
-                if not _candidate_matches_word_alignment(source, target, token.start, token.end, spec.replacement):
-                    continue
-                edit_type = "spelling_replace"
-                if spec.edit_type == "split_join":
-                    edit_type = _split_join_edit_type(token.text, spec.replacement)
-                edits.append(
-                    Edit(
-                        token.text,
-                        spec.replacement,
-                        edit_type,
-                        token.start,
-                        token.end,
-                        confidence=spec.confidence,
-                        rule_id=spec.rule,
                     )
                 )
 
@@ -291,39 +238,6 @@ def _is_sentence_start_case_position(text: str, position: int) -> bool:
 
 def _is_russian_letter(char: str) -> bool:
     return bool(re.fullmatch(r"[А-Яа-яЁё]", char))
-
-
-def _candidate_matches_word_alignment(source: str, target: str, start: int, end: int, replacement: str) -> bool:
-    source_words = tokenize_words(source)
-    target_words = tokenize_words(target)
-    source_indexes = [
-        index
-        for index, word in enumerate(source_words)
-        if start <= word.start and word.end <= end
-    ]
-    if not source_indexes:
-        return False
-    replacement_words = [word.text.lower() for word in tokenize_words(replacement)]
-    matcher = difflib.SequenceMatcher(
-        a=[word.text.lower() for word in source_words],
-        b=[word.text.lower() for word in target_words],
-    )
-    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
-        if tag == "equal" or i1 > source_indexes[0] or i2 < source_indexes[-1] + 1:
-            continue
-        if source_indexes != list(range(i1, i2)):
-            if source_indexes[0] >= i1 and source_indexes[-1] < i2:
-                target_segment = [word.text.lower() for word in target_words[j1:j2]]
-                return _contains_contiguous(target_segment, replacement_words)
-            continue
-        return [word.text.lower() for word in target_words[j1:j2]] == replacement_words
-    return False
-
-
-def _contains_contiguous(values: list[str], needle: list[str]) -> bool:
-    if not needle or len(needle) > len(values):
-        return False
-    return any(values[index : index + len(needle)] == needle for index in range(len(values) - len(needle) + 1))
 
 
 def _punctuation_inserts(position: int, inserted: str) -> list[Edit]:

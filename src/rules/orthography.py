@@ -4,11 +4,11 @@ from dataclasses import dataclass
 import re
 from typing import Any, Iterable
 
-from src.candidates.frequent_errors import (
+from src.schema.lexical_resources import (
     HYPHEN_WHITELIST,
     WRONG_TO_CORRECT,
 )
-from src.candidates.morphology import has_pos, is_known_word, normal_forms, parses
+from src.runtime.morphology import has_pos, is_known_word, normal_forms, parses
 from src.preprocessing.tokenizer import tokenize_words
 from src.rules.base import RuleCandidate, RuleContext, RuleCorruption, RuleEdit, RuleMode, RuleSpec
 from src.rules.syntax_orthography import syntax_orthography_rules

@@ -37,7 +37,7 @@ def test_direct_collator_returns_tensors_for_online_features() -> None:
     assert batch["gap_mask"].shape == (2, 24)
     assert batch["labels"]["token_edit_label_ids"].shape == (2, 24)
     assert batch["labels"]["gap_label_ids"].shape == (2, 24)
-    assert batch["labels"]["rule_label_ids"].shape == (2, 24)
+    assert batch["labels"]["rule_tag_ids"].shape == (2, 24)
     assert batch["labels"]["sample_weight"].shape == (2,)
 
 
@@ -47,3 +47,4 @@ def _config() -> dict:
     config["generation"] = {**config.get("generation", {}), "samples_per_epoch": 5}
     config["training"] = {**config.get("training", {}), "num_workers": 0}
     return config
+

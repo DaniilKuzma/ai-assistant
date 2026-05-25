@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from src.candidates.frequent_errors import CONTEXT_DEPENDENT_WHITELIST
+from src.schema.lexical_resources import CONTEXT_DEPENDENT_WHITELIST
 
 
 SPELLING_TYPES = {"spelling_replace", "split_word", "join_words", "hyphen_change", "case_change"}

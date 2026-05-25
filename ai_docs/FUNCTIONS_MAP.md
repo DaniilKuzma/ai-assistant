@@ -1,30 +1,36 @@
 # Functions Map
 
-This map reflects the AST-first cleanup state. The old data-prep builders,
-candidate dataset config resolver, rule_lab helpers, and matrix dataset helpers
-were removed.
+This map reflects the active AST-first online generation and direct edit tagging
+architecture.
 
 ## Active Stable Areas
 
 - `src.config.load_config.load_config` - load YAML configuration.
-- `src.model.encoder.load_tokenizer` - load the encoder tokenizer when model
-  training or model-tokenized evaluation is enabled.
-- `src.model.edit_model.CandidateAwareEditModel` - current encoder-only model
-  wrapper retained until the direct tagger rename/refactor lands.
-- `src.training.train.train` - training entry point; currently uses smoke
-  online-generation placeholders until `src.grammar_gen` is implemented.
-- `src.training.tensorization.build_features_from_rows` - current feature
-  builder retained for compatibility during the architecture transition.
-- `src.inference.corrector.Corrector` - deterministic fallback corrector.
-- `src.inference.model_corrector.TrainedModelCorrector` - current model-backed
-  corrector retained until the runtime rewrite.
-- `src.evaluation.evaluate.evaluate_rows_detailed` - row-level evaluation.
+- `src.grammar_gen.generator.OnlineExampleGenerator` - sample AST-generated
+  train/eval examples online.
+- `src.grammar_gen.audit.audit_batch` - validate generated examples and report
+  generation failures.
+- `src.schema.examples.GeneratedExample` - shared generated-example contract.
+- `src.schema.edits.RuntimeEdit` - runtime edit contract used by correction,
+  memory, and feedback.
+- `src.schema.edit_types.coarse_error_type` - shared edit taxonomy grouping for
+  evaluation reports.
+- `src.model.edit_model.DirectEditTaggerModel` - encoder-only direct edit
+  tagger with token, gap, and rule heads.
+- `src.training.tensorization.build_direct_training_feature` - tensorize
+  generated examples for direct edit tagging.
+- `src.training.train.train` - online-generation training entry point.
+- `src.runtime.corrector.Corrector` - deterministic-first runtime orchestration.
+- `src.runtime.scope_guard.ScopeGuard` - conservative runtime safety boundary.
+- `src.inference.model_corrector.TrainedModelCorrector` - adapter for trained
+  direct models.
+- `src.evaluation.evaluate.evaluate_corrector` - direct runtime/model
+  evaluation entry.
 
-## Planned Areas
+## Script Entrypoints
 
-- `src.grammar_gen` - RuleProgram, Grammar AST, morphology realization, error
-  rendering, and online example sampling.
-- `src.schema` - generated example, token edit, punctuation gap, and runtime edit
-  schemas.
-- `src.runtime` - deterministic-first runtime orchestration and future
-  ScopeGuard.
+- `scripts/audit_generator.py` - generator audit CLI.
+- `scripts/build_frozen_eval.py` - frozen JSONL eval set builder.
+- `scripts/benchmark_generation.py` - generation throughput benchmark.
+- `scripts/evaluate_model.py` - direct model/runtime evaluation.
+- `scripts/tune_thresholds.py` - direct runtime threshold tuning.

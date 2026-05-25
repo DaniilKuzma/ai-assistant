@@ -3,8 +3,8 @@
 - Keep scope strict: Russian spelling and punctuation only.
 - Do not add seq2seq or free-form rewrite correction.
 - Do not restore materialized CSV training datasets.
-- Do not reintroduce clean sentence pool scanning, rule_lab, corruption
-  operators, or CandidateGenerator-backed data prep.
+- Do not reintroduce the old offline data-prep stack or materialized training
+  dataset builders.
 - Prefer the new packages for future work:
   - `src/grammar_gen/`
   - `src/runtime/`

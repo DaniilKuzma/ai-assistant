@@ -26,14 +26,14 @@ pip install -e .
 Для быстрых проверок полезны targeted suites:
 
 ```bash
-.venv/bin/python -m pytest -q tests/test_inference_smoke.py tests/test_streamlit_app.py
-.venv/bin/python -m pytest -q tests/test_rules_coverage.py tests/test_negative_rule_suites.py
+.venv/bin/python -m pytest -q tests/test_streamlit_app.py
+.venv/bin/python -m pytest -q tests/test_rules_coverage.py tests/test_no_legacy_candidate_architecture.py
 ```
 
 ## Training
 
 ```bash
-.venv/bin/python -m src.training.train configs/config.yaml
+.venv/bin/python -m src.training.train configs/config.yaml --smoke --debug-model
 ```
 
 Главные настройки:
@@ -62,7 +62,6 @@ Reports пишутся в `reports/`.
 - `evaluation_summary.csv`
 - `error_by_type.csv`
 - `rule_precision_recall.csv`
-- `candidate_recall_by_rule.csv`
 - `gap_label_coverage_by_rule.csv`
 - `clean_overcorrection_examples.csv`
 - `dirty_worse_examples.csv`

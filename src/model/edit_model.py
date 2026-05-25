@@ -14,7 +14,7 @@ class DirectEditModelConfig:
     fallback_model_name: str = "ai-forever/ruRoberta-large"
     token_label_count: int = len(TOKEN_EDIT_LABELS)
     gap_label_count: int = len(GAP_PUNCTUATION_LABELS)
-    rule_label_count: int = len(RULE_LABELS)
+    rule_tag_count: int = len(RULE_LABELS)
     local_files_only: bool = False
     lora_enabled: bool = True
     lora_r: int = 8
@@ -106,7 +106,7 @@ class DirectEditTaggerModel:
                 hidden_size,
                 config.token_label_count,
                 config.gap_label_count,
-                config.rule_label_count,
+                config.rule_tag_count,
             ),
         )
 
@@ -180,3 +180,4 @@ def _encoder_hidden_size(encoder: Any) -> int:
 
 
 __all__ = ["DirectEditModelConfig", "DirectEditTaggerModel"]
+

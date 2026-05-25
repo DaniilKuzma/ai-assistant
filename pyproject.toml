@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "russian-edit-corrector"
 version = "0.1.0"
-description = "AST-first Russian spelling and punctuation corrector with direct edit tagging."
+description = "AST-first online generated direct edit tagger for Russian spelling and punctuation correction."
 requires-python = ">=3.10"
 readme = "AI_INDEX.md"
 

@@ -8,8 +8,7 @@ from pathlib import Path
 import re
 from typing import Any
 
-from src.candidates.candidate_generator import Candidate
-from src.validation.diff_analyzer import Edit
+from src.schema.edits import RuntimeEdit
 
 
 VALID_DECISIONS = {"accepted", "rejected", "ignored", "manual"}
@@ -93,23 +92,10 @@ class CorrectionMemory:
         self.context_window_chars = max(0, int(context_window_chars))
         self._entries: dict[str, CorrectionMemoryEntry] = {}
 
-    def remember_candidate(
-        self,
-        text: str,
-        candidate: Candidate,
-        decision: str,
-        doc_id: str = "default",
-        metadata: dict[str, Any] | None = None,
-    ) -> CorrectionMemoryEntry:
-        entry = self._build_entry(text, candidate, decision, doc_id, metadata)
-        if self.enabled:
-            self._entries[entry.key] = entry
-        return entry
-
     def remember_edit(
         self,
         text: str,
-        edit: Edit,
+        edit: RuntimeEdit,
         decision: str,
         doc_id: str = "default",
         metadata: dict[str, Any] | None = None,
@@ -119,18 +105,10 @@ class CorrectionMemory:
             self._entries[entry.key] = entry
         return entry
 
-    def lookup_candidate(
-        self,
-        text: str,
-        candidate: Candidate,
-        doc_id: str = "default",
-    ) -> CorrectionMemoryMatch | None:
-        return self._lookup(text, candidate, doc_id)
-
     def lookup_edit(
         self,
         text: str,
-        edit: Edit,
+        edit: RuntimeEdit,
         doc_id: str = "default",
     ) -> CorrectionMemoryMatch | None:
         return self._lookup(text, edit, doc_id)
@@ -168,7 +146,7 @@ class CorrectionMemory:
     def clear(self) -> None:
         self._entries.clear()
 
-    def _lookup(self, text: str, item: Candidate | Edit, doc_id: str) -> CorrectionMemoryMatch | None:
+    def _lookup(self, text: str, item: RuntimeEdit, doc_id: str) -> CorrectionMemoryMatch | None:
         if not self.enabled:
             return None
 
@@ -190,7 +168,7 @@ class CorrectionMemory:
     def _build_entry(
         self,
         text: str,
-        item: Candidate | Edit,
+        item: RuntimeEdit,
         decision: str,
         doc_id: str,
         metadata: dict[str, Any] | None,
@@ -232,14 +210,14 @@ class _Context:
     right: str
 
 
-def _context_for_item(text: str, item: Candidate | Edit, window: int) -> _Context:
+def _context_for_item(text: str, item: RuntimeEdit, window: int) -> _Context:
     start, end = _resolve_span(text, item)
     left_start = max(0, start - window)
     right_end = min(len(text), end + window)
     return _Context(left=text[left_start:start], right=text[end:right_end])
 
 
-def _resolve_span(text: str, item: Candidate | Edit) -> tuple[int, int]:
+def _resolve_span(text: str, item: RuntimeEdit) -> tuple[int, int]:
     start = int(item.start)
     end = int(item.end)
     if 0 <= start <= end <= len(text):

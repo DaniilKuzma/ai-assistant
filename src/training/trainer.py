@@ -271,7 +271,7 @@ def _direct_losses(
     )
     rule_loss = _cross_entropy_ignore(
         outputs["rule_logits"],
-        labels["rule_label_ids"],
+        labels["rule_tag_ids"],
         labels.get("sample_weight"),
     )
     total = (
@@ -310,7 +310,7 @@ def _cross_entropy_ignore(logits: Any, labels: Any, sample_weight: Any | None) -
 def _batch_exact_matches(outputs: Mapping[str, Any], labels: Mapping[str, Any]) -> Any:
     token_exact = _head_exact(outputs["token_edit_logits"], labels["token_edit_label_ids"])
     gap_exact = _head_exact(outputs["gap_punctuation_logits"], labels["gap_label_ids"])
-    rule_exact = _head_exact(outputs["rule_logits"], labels["rule_label_ids"])
+    rule_exact = _head_exact(outputs["rule_logits"], labels["rule_tag_ids"])
     return token_exact & gap_exact & rule_exact
 
 
@@ -524,9 +524,10 @@ def _label_maps() -> dict[str, Any]:
         "token_id_to_label": list(TOKEN_ID_TO_LABEL),
         "gap_label_to_id": dict(GAP_LABEL_TO_ID),
         "gap_id_to_label": list(GAP_ID_TO_LABEL),
-        "rule_label_to_id": dict(RULE_LABEL_TO_ID),
+        "rule_tag_to_id": dict(RULE_LABEL_TO_ID),
         "rule_id_to_label": list(RULE_ID_TO_LABEL),
     }
 
 
 __all__ = ["train_model"]
+

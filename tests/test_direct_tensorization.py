@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import fields
 
 from src.schema import GeneratedExample, WordToken
-from src.schema.labels import gap_label_to_id, rule_label_to_id, token_label_to_id
+from src.schema.labels import gap_label_to_id, rule_tag_to_id, token_label_to_id
 from src.training.tensorization import (
     DebugTokenizer,
     DirectTrainingFeature,
@@ -25,7 +25,7 @@ def test_generated_example_builds_direct_feature_shapes() -> None:
     assert len(feature.gap_mask) == 8
     assert len(feature.token_edit_label_ids) == 8
     assert len(feature.gap_label_ids) == 8
-    assert len(feature.rule_label_ids) == 8
+    assert len(feature.rule_tag_ids) == 8
     assert feature.word_token_mask[:3] == [True, True, True]
     assert feature.word_token_mask[3:] == [False] * 5
     assert feature.gap_mask[:3] == [True, True, True]
@@ -45,14 +45,14 @@ def test_direct_feature_maps_schema_labels_to_ids() -> None:
         gap_label_to_id("NONE"),
         gap_label_to_id("DOT"),
     ]
-    assert feature.rule_label_ids[:3] == [
-        rule_label_to_id("clean_identity"),
-        rule_label_to_id("ne_verb"),
-        rule_label_to_id("final_punctuation"),
+    assert feature.rule_tag_ids[:3] == [
+        rule_tag_to_id("clean_identity"),
+        rule_tag_to_id("ne_verb"),
+        rule_tag_to_id("final_punctuation"),
     ]
     assert feature.token_edit_label_ids[3:] == [-100] * 5
     assert feature.gap_label_ids[3:] == [-100] * 5
-    assert feature.rule_label_ids[3:] == [-100] * 5
+    assert feature.rule_tag_ids[3:] == [-100] * 5
     assert feature.gap_left_indices[:3] == feature.word_token_indices[:3]
     assert feature.gap_right_indices[0] == feature.word_token_indices[1]
     assert feature.gap_right_indices[1] == feature.word_token_indices[2]
@@ -69,14 +69,14 @@ def test_direct_feature_has_no_candidate_fields() -> None:
 
 
 def _example() -> GeneratedExample:
-    source_text = "Он незнал ответа"
+    source_text = "РћРЅ РЅРµР·РЅР°Р» РѕС‚РІРµС‚Р°"
     return GeneratedExample(
         source_text=source_text,
-        target_text="Он не знал ответа.",
+        target_text="РћРЅ РЅРµ Р·РЅР°Р» РѕС‚РІРµС‚Р°.",
         source_tokens=[
-            WordToken(text="Он", start=0, end=2, lemma="он", pos="PRON"),
-            WordToken(text="незнал", start=3, end=9, lemma="знать", pos="VERB"),
-            WordToken(text="ответа", start=10, end=16, lemma="ответ", pos="NOUN"),
+            WordToken(text="РћРЅ", start=0, end=2, lemma="РѕРЅ", pos="PRON"),
+            WordToken(text="РЅРµР·РЅР°Р»", start=3, end=9, lemma="Р·РЅР°С‚СЊ", pos="VERB"),
+            WordToken(text="РѕС‚РІРµС‚Р°", start=10, end=16, lemma="РѕС‚РІРµС‚", pos="NOUN"),
         ],
         token_edit_labels=["KEEP", "SPLIT_NE_VERB", "KEEP"],
         gap_labels=["NONE", "NONE", "DOT"],
@@ -86,3 +86,4 @@ def _example() -> GeneratedExample:
         explanation_ids=["ne_verb"],
         metadata={"unit": True},
     )
+

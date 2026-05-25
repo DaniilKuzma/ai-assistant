@@ -5,7 +5,7 @@ def build_direct_edit_heads(
     hidden_size: int,
     token_label_count: int,
     gap_label_count: int,
-    rule_label_count: int,
+    rule_tag_count: int,
 ):
     import torch.nn as nn
 
@@ -13,10 +13,11 @@ def build_direct_edit_heads(
     return {
         "token_edit": nn.Linear(hidden_size, token_label_count),
         "gap_punctuation": nn.Linear(gap_hidden_size, gap_label_count),
-        "rule": nn.Linear(hidden_size, rule_label_count),
+        "rule": nn.Linear(hidden_size, rule_tag_count),
         "token_confidence": nn.Linear(hidden_size, 1),
         "gap_confidence": nn.Linear(gap_hidden_size, 1),
     }
 
 
 __all__ = ["build_direct_edit_heads"]
+

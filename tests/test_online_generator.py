@@ -58,24 +58,6 @@ def test_generation_does_not_create_train_csv() -> None:
     assert not train_path.exists()
 
 
-def test_generation_does_not_access_clean_sentence_pool(monkeypatch) -> None:
-    original_open = Path.open
-    forbidden = Path("data/processed/clean_sentence_pool.csv.gz")
-
-    def guarded_open(self: Path, *args, **kwargs):
-        try:
-            relative = self.resolve().relative_to(ROOT)
-        except ValueError:
-            relative = self
-        if relative.as_posix() == forbidden.as_posix():
-            raise AssertionError(f"unexpected access to {forbidden}")
-        return original_open(self, *args, **kwargs)
-
-    monkeypatch.setattr(Path, "open", guarded_open)
-
-    _generator().sample_batch(20)
-
-
 def test_generation_speed_sanity() -> None:
     generator = _generator()
     started = time.perf_counter()

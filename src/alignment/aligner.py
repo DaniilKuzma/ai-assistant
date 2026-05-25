@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from src.validation.diff_analyzer import DiffAnalyzer, Edit
-from src.validation.edit_classifier import is_allowed_edit_type
+from src.schema.edit_types import is_allowed_edit_type
 
 
 @dataclass(frozen=True)

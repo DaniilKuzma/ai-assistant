@@ -8,7 +8,7 @@ from typing import Any
 from src.grammar_gen.rules.base import GenerationMode
 from src.grammar_gen.safety import allowed_source_surface_failures, validate_surface
 from src.schema import GeneratedExample
-from src.schema.labels import gap_label_to_id, rule_label_to_id, token_label_to_id
+from src.schema.labels import gap_label_to_id, rule_tag_to_id, token_label_to_id
 
 
 LATIN_RE = re.compile(r"[A-Za-z]")
@@ -114,9 +114,9 @@ def _label_reasons(example: GeneratedExample) -> list[str]:
             reasons.append(f"unknown_gap_label:{label}")
     for rule_id in example.rule_ids + [example.primary_rule_id]:
         try:
-            rule_label_to_id(rule_id)
+            rule_tag_to_id(rule_id)
         except ValueError:
-            reasons.append(f"unknown_rule_label:{rule_id}")
+            reasons.append(f"unknown_rule_tag:{rule_id}")
     return reasons
 
 
@@ -168,3 +168,4 @@ def _dedupe(values: list[str]) -> list[str]:
 
 
 __all__ = ["audit_batch", "audit_example"]
+

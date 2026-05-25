@@ -6,12 +6,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
 from src.config.load_config import load_config
-from src.grammar_gen import Lexicon, MorphologyEngine
-from src.grammar_gen.generator import OnlineExampleGenerator
-from src.grammar_gen.rules.registry import default_rule_registry
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -63,20 +58,6 @@ def test_benchmark_cli_writes_json_report_to_requested_output(tmp_path: Path) ->
     assert sum(report["mode_distribution"].values()) == 25
 
 
-def test_candidate_opportunity_config_is_rejected() -> None:
-    config = _config_with({"data": {"candidate_opportunity": "data/processed/train.csv"}})
-
-    with pytest.raises(ValueError, match="candidate_opportunity"):
-        _make_generator(config)
-
-
-def test_removed_generation_path_is_rejected() -> None:
-    config = _config_with({"paths": {"generated_eval_dir": "data/processed/train.csv"}})
-
-    with pytest.raises(RuntimeError, match="data/processed/train.csv"):
-        _make_generator(config)
-
-
 def test_grammar_gen_does_not_import_pandas() -> None:
     offenders: list[str] = []
     for path in (ROOT / "src" / "grammar_gen").rglob("*.py"):
@@ -100,23 +81,3 @@ def test_benchmark_generation_does_not_create_train_csv() -> None:
     benchmark_generation(load_config(ROOT / "configs" / "config.yaml"), count=50, seed=13)
 
     assert not train_csv.exists()
-
-
-def _config_with(overrides: dict) -> dict:
-    config = load_config(ROOT / "configs" / "config.yaml")
-    for key, value in overrides.items():
-        if isinstance(value, dict) and isinstance(config.get(key), dict):
-            config[key] = {**config[key], **value}
-        else:
-            config[key] = value
-    return config
-
-
-def _make_generator(config: dict) -> OnlineExampleGenerator:
-    return OnlineExampleGenerator(
-        default_rule_registry(),
-        Lexicon.default(),
-        MorphologyEngine(use_pymorphy=False),
-        config,
-        seed=13,
-    )
