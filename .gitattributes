@@ -1,2 +1,4 @@
 data/processed/short_dataset_v3/train.csv filter=lfs diff=lfs merge=lfs -text
 data/processed/train.csv filter=lfs diff=lfs merge=lfs -text
+reports/dataset_build/operator_rejection_report.csv filter=lfs diff=lfs merge=lfs -text
+reports/dataset_build/atomic_positive_rejection_report.csv filter=lfs diff=lfs merge=lfs -text

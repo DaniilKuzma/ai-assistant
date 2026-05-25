@@ -12,7 +12,8 @@ import pandas as pd
 
 from src.candidates.candidate_generator import Candidate, CandidateGenerator
 from src.data.dataset_contract import DATASET_CONTRACT, HARD_NEGATIVE_OPEN, LAYER_ATOMIC_HARD_NEGATIVE
-from src.data.dataset_quality import normalized_pair_hash
+from src.data.dataset_quality import clean_or_hard_quality_reasons, normalized_pair_hash
+from src.data.training_quality_audit import contains_artificial_marker_text, plain_quote_bracket_balance_reasons
 from src.rules.rule_ids import UNKNOWN_RULE_ID, normalize_rule_id
 
 
@@ -113,6 +114,20 @@ def generate_atomic_hard_negatives(
                 continue
             if not _is_non_keep_candidate(candidate):
                 continue
+            quality_reasons = _hard_negative_quality_failure_reasons(text, text)
+            if quality_reasons:
+                for reason in quality_reasons:
+                    rejection_rows.append(
+                        _rejection_row(
+                            rule_id,
+                            text,
+                            f"hard_negative_quality_failed:{reason}",
+                            "clean_pool",
+                            candidate_rule_ids=candidate_rule_ids,
+                        )
+                    )
+                    rejected_by_rule[rule_id] += 1
+                continue
             dedupe_key = _dedupe_key(rule_id, text, candidate)
             if dedupe_key in seen:
                 rejection_rows.append(
@@ -165,6 +180,20 @@ def generate_atomic_hard_negatives(
             for candidate in candidates:
                 candidate_rule_id = normalize_rule_id(getattr(candidate, "rule_id", ""))
                 if candidate_rule_id != rule_id or not _is_non_keep_candidate(candidate):
+                    continue
+                quality_reasons = _hard_negative_quality_failure_reasons(template, template)
+                if quality_reasons:
+                    for reason in quality_reasons:
+                        rejection_rows.append(
+                            _rejection_row(
+                                rule_id,
+                                template,
+                                f"hard_negative_quality_failed:{reason}",
+                                "fallback_template",
+                                candidate_rule_ids=candidate_rule_ids,
+                            )
+                        )
+                        rejected_by_rule[rule_id] += 1
                     continue
                 dedupe_key = _dedupe_key(rule_id, template, candidate)
                 if dedupe_key in seen:
@@ -309,6 +338,21 @@ def _dedupe_key(rule_id: str, sentence: str, candidate: Candidate) -> tuple[str,
         int(getattr(candidate, "end", -1)),
         str(getattr(candidate, "replacement", "")),
     )
+
+
+def _hard_negative_quality_failure_reasons(source: str, target: str) -> list[str]:
+    reasons: list[str] = []
+    if source != target:
+        reasons.append("non_identity")
+    if contains_artificial_marker_text(source, target):
+        reasons.append("artificial_marker")
+    balance_reasons = plain_quote_bracket_balance_reasons(source)
+    reasons.extend(balance_reasons)
+    quality_reasons = clean_or_hard_quality_reasons(source)
+    if balance_reasons:
+        quality_reasons = [reason for reason in quality_reasons if reason != "unbalanced_quote_or_bracket"]
+    reasons.extend(quality_reasons)
+    return list(dict.fromkeys(reasons))
 
 
 def _hard_negative_row(

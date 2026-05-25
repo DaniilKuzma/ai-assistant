@@ -13,6 +13,16 @@ from src.validation.diff_analyzer import DiffAnalyzer, Edit
 from src.validation.edit_classifier import is_allowed_edit_type
 
 
+TRAINING_CONTEXT_SPLIT_JOIN_BY_RULE: dict[str, tuple[str, str]] = {
+    "context_chto_by": ("что бы", "чтобы"),
+    "context_tak_zhe": ("так же", "также"),
+    "context_to_zhe": ("то же", "тоже"),
+    "context_za_to": ("за то", "зато"),
+    "context_nesmotrya": ("не смотря", "несмотря"),
+    "context_vsledstvie": ("в следствие", "вследствие"),
+}
+
+
 @dataclass
 class ValidationResult:
     source: str
@@ -58,11 +68,24 @@ class StrictValidator:
     def pre_validate(self, text: str) -> list[ProtectedSpan]:
         return find_protected_spans(text)
 
-    def validate(self, source: str, target: str, trusted_edits: list[Any] | None = None) -> ValidationResult:
+    def validate(
+        self,
+        source: str,
+        target: str,
+        trusted_edits: list[Any] | None = None,
+        *,
+        allow_training_context_pairs: bool = False,
+        expected_rule_id: str = "",
+    ) -> ValidationResult:
         edits = self.diff_analyzer.analyze(source, target)
         protected = self.pre_validate(source)
         trusted = trusted_edits or []
         trusted_context_keys = _trusted_context_pair_keys(trusted, self.context_pair_threshold)
+        training_context_keys = (
+            _trusted_training_context_pair_keys(source, trusted, expected_rule_id)
+            if allow_training_context_pairs
+            else set()
+        )
         trusted_strict_edits = _trusted_strict_edits(source, trusted)
         trusted_tsya_keys = _trusted_tsya_keys(source, trusted, self.tsya_threshold)
         validated: list[Edit] = []
@@ -82,7 +105,9 @@ class StrictValidator:
                 validated.append(edit.with_status("rejected", guard_reason))
                 continue
             if _is_context_dependent_edit(edit):
-                if _has_trusted_context_pair_key(edit, trusted_context_keys):
+                if _has_trusted_context_pair_key(edit, training_context_keys):
+                    validated.append(edit.with_status("accepted", "trusted training context pair"))
+                elif _has_trusted_context_pair_key(edit, trusted_context_keys):
                     if _passes_context_pair_guard(source, edit):
                         validated.append(edit.with_status("accepted", "trusted high-confidence context pair"))
                     else:
@@ -1204,6 +1229,33 @@ def _trusted_context_pair_keys(trusted_edits: list[Any], threshold: float) -> se
         if CONTEXT_DEPENDENT_WHITELIST.get(source) != replacement:
             continue
         keys.add((int(getattr(edit, "start", -1)), int(getattr(edit, "end", -1)), source, replacement))
+    return keys
+
+
+def _trusted_training_context_pair_keys(
+    source_text: str,
+    trusted_edits: list[Any],
+    expected_rule_id: str,
+) -> set[tuple[int, int, str, str]]:
+    expected = str(expected_rule_id or "").strip()
+    allowed = TRAINING_CONTEXT_SPLIT_JOIN_BY_RULE.get(expected)
+    if allowed is None:
+        return set()
+    allowed_source, allowed_replacement = allowed
+    keys: set[tuple[int, int, str, str]] = set()
+    for edit in trusted_edits:
+        rule_id = str(getattr(edit, "rule_id", "") or "").strip()
+        source = str(getattr(edit, "source", "") or "")
+        replacement = str(getattr(edit, "replacement", "") or "")
+        start = int(getattr(edit, "start", -1))
+        end = int(getattr(edit, "end", -1))
+        if rule_id != expected:
+            continue
+        if source.lower() != allowed_source or replacement.lower() != allowed_replacement:
+            continue
+        if not _source_span_matches(source_text, source, start, end):
+            continue
+        keys.add((start, end, source.lower(), replacement.lower()))
     return keys
 
 

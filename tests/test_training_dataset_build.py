@@ -5,6 +5,7 @@ import pandas as pd
 import yaml
 
 from src.candidates.candidate_generator import Candidate
+import src.data.operator_dataset_builder as operator_builder
 from src.data.full_dataset_builder import build_dataset_from_config
 from src.rules.capabilities import RuleCapability
 from tests.candidate_contract_fixtures import (
@@ -213,16 +214,22 @@ def test_candidate_contract_pipeline_builds_atomic_from_clean_pool_without_outpu
     quota = pd.read_csv(Path(config["paths"]["reports_dir"]) / "dataset_build" / "active_rule_quota_report.csv")
     assert list(quota.columns)[:8] == [
         "rule_id",
-        "atomic_positive_count",
-        "hard_negative_count",
-        "min_required",
-        "hard_negative_min_required",
-        "preferred",
+        "pre_gate_atomic_positive_count",
+        "selected_atomic_positive_count",
+        "pre_gate_hard_negative_count",
+        "selected_hard_negative_count",
+        "min_atomic_required",
+        "preferred_atomic",
+        "min_hard_negative_required",
+    ]
+    assert list(quota.columns)[8:11] == [
+        "candidate_recall",
         "status",
         "reason",
     ]
-    assert quota.set_index("rule_id").loc["unit_atomic", "atomic_positive_count"] == 2
-    assert quota.set_index("rule_id").loc["unit_atomic", "hard_negative_min_required"] == 1
+    assert quota.set_index("rule_id").loc["unit_atomic", "pre_gate_atomic_positive_count"] == 2
+    assert quota.set_index("rule_id").loc["unit_atomic", "selected_atomic_positive_count"] == 2
+    assert quota.set_index("rule_id").loc["unit_atomic", "min_hard_negative_required"] == 1
     assert {
         "operator_atomic_count",
         "syntax_synthetic_atomic_count",
@@ -251,11 +258,18 @@ def test_candidate_contract_pipeline_builds_atomic_from_clean_pool_without_outpu
     layer_report = pd.read_csv(reports_dir / "layer_target_report.csv").set_index("layer")
     assert int(layer_report.loc["atomic_positive", "requested_target"]) == 4
     assert int(layer_report.loc["atomic_positive", "effective_target"]) == 2
+    assert int(layer_report.loc["atomic_positive", "pre_gate_available_count"]) == 2
     assert int(layer_report.loc["atomic_positive", "selected_count"]) == 2
+    assert int(layer_report.loc["atomic_positive", "removed_by_final_active_filter"]) == 0
+    assert int(layer_report.loc["atomic_positive", "removed_by_diversity_pruning"]) == 0
+    assert int(layer_report.loc["atomic_positive", "removed_by_quality_sanitizer"]) == 0
     assert int(layer_report.loc["atomic_positive", "deficit"]) == 2
     assert layer_report.loc["atomic_positive", "adjustment_reason"] == "requested_exceeds_per_rule_capacity"
     active_coverage = pd.read_csv(reports_dir / "active_rule_coverage_report.csv").set_index("rule_id")
+    assert {"pre_gate_atomic_positive_count", "selected_atomic_positive_count"} <= set(active_coverage.columns)
     assert active_coverage.loc["unit_atomic", "status"] == "pass"
+    assert int(active_coverage.loc["unit_atomic", "pre_gate_atomic_positive_count"]) == 2
+    assert int(active_coverage.loc["unit_atomic", "selected_atomic_positive_count"]) == 2
     hard_coverage = pd.read_csv(reports_dir / "hard_negative_coverage_report.csv").set_index("target_rule_id")
     assert hard_coverage.loc["unit_atomic", "status"] == "pass"
     candidate_report = pd.read_csv(reports_dir / "expanded_activation_candidate_report.csv").set_index("rule_id")
@@ -272,19 +286,47 @@ def test_candidate_contract_pipeline_reports_under_quota_rules_without_training_
 
     result = build_dataset_from_config(config, force=True)
     manifest = json.loads(Path(config["data"]["manifest_path"]).read_text(encoding="utf-8"))
-    frame = pd.read_csv(config["data"]["processed_train_path"])
     reports_dir = Path(config["paths"]["reports_dir"]) / "dataset_build"
     hard_coverage = pd.read_csv(reports_dir / "hard_negative_coverage_report.csv").set_index("target_rule_id")
+    guard = pd.read_csv(reports_dir / "atomic_positive_drop_guard_report.csv").iloc[0]
 
     assert result["verdict"] == "DATASET_BLOCKED"
     assert "unit_atomic" in manifest["expanded_training_candidate_rule_ids"]
     assert "unit_atomic" in manifest["under_quota_rule_ids"]
-    assert "unit_atomic" in manifest["final_active_rule_ids"]
+    assert "unit_atomic" not in manifest["final_active_rule_ids"]
     assert "hard_negative_under_min:unit_atomic" in manifest["audit_errors"]
+    assert "destructive_atomic_positive_drop_detected" in manifest["audit_errors"]
     assert manifest["rules_under_hard_negative_min"] == ["unit_atomic"]
     assert hard_coverage.loc["unit_atomic", "status"] == "fail"
     assert hard_coverage.loc["unit_atomic", "reason"] == "hard_negative_under_min"
-    assert frame["rule_ids"].astype(str).str.contains("unit_atomic", regex=False).any()
+    assert int(guard["pre_gate_atomic_positive_available_count"]) > 0
+    assert int(guard["selected_atomic_positive_count"]) == 0
+    assert Path(config["data"]["processed_train_path"]).exists() is False
+
+
+def test_candidate_contract_pipeline_blocks_silent_atomic_positive_drop(tmp_path: Path, monkeypatch):
+    clean_pool_path = write_unit_clean_pool(tmp_path / "clean_sentence_pool.csv.gz")
+    config = candidate_contract_config(tmp_path, clean_pool_path)
+    patch_unit_operator_pipeline(monkeypatch)
+
+    def drop_all_final_active_rules(**_kwargs):
+        return [], [], {"unit_atomic": "forced_empty_final_active"}, [], []
+
+    monkeypatch.setattr(operator_builder, "_final_active_rule_ids_after_gates", drop_all_final_active_rules)
+
+    result = build_dataset_from_config(config, force=True)
+    manifest = json.loads(Path(config["data"]["manifest_path"]).read_text(encoding="utf-8"))
+    reports_dir = Path(config["paths"]["reports_dir"]) / "dataset_build"
+    guard = pd.read_csv(reports_dir / "atomic_positive_drop_guard_report.csv").iloc[0]
+
+    assert result["verdict"] == "DATASET_BLOCKED"
+    assert "destructive_atomic_positive_drop_detected" in result["audit_errors"]
+    assert manifest["final_active_rule_count"] == 0
+    assert int(guard["pre_gate_atomic_positive_available_count"]) > 0
+    assert int(guard["selected_atomic_positive_count"]) == 0
+    assert int(guard["removed_by_final_active_filter"]) > 0
+    assert guard["suspected_reason"] == "final_active_filter"
+    assert not Path(config["data"]["processed_train_path"]).exists()
 
 
 def test_candidate_contract_pipeline_counts_syntax_synthetic_rows_toward_quota(tmp_path: Path, monkeypatch):
@@ -568,7 +610,7 @@ def test_candidate_contract_pipeline_warns_atomic_below_preferred_without_block(
 def test_candidate_contract_pipeline_final_active_count_gate_blocks(tmp_path: Path, monkeypatch):
     clean_pool_path = write_unit_clean_pool(tmp_path / "clean_sentence_pool.csv.gz")
     config = candidate_contract_config(tmp_path, clean_pool_path)
-    config["data"]["rule_activation"]["expected_min_final_active_rule_count"] = 43
+    config["data"]["rule_activation"]["expected_min_final_active_rule_count"] = 25
     config["data"]["rule_activation"]["fail_below_final_active_rule_count"] = True
     patch_unit_operator_pipeline(monkeypatch)
 
@@ -577,4 +619,88 @@ def test_candidate_contract_pipeline_final_active_count_gate_blocks(tmp_path: Pa
 
     assert result["verdict"] == "DATASET_BLOCKED"
     assert manifest["final_active_rule_count"] == 1
-    assert "final_active_rule_count_below_min:1<43" in manifest["audit_errors"]
+    assert "final_active_rule_count_below_min:1<25" in manifest["audit_errors"]
+
+
+def test_candidate_contract_pipeline_final_active_target_warning_does_not_block(tmp_path: Path, monkeypatch):
+    clean_pool_path = write_unit_clean_pool(tmp_path / "clean_sentence_pool.csv.gz")
+    config = candidate_contract_config(tmp_path, clean_pool_path)
+    config["data"]["rule_activation"]["expected_min_final_active_rule_count"] = 0
+    config["data"]["rule_activation"]["fail_below_final_active_rule_count"] = False
+    config["data"]["rule_activation"]["target_final_active_rule_count"] = 76
+    config["data"]["rule_activation"]["warn_below_target_final_active_rule_count"] = True
+    patch_unit_operator_pipeline(monkeypatch)
+
+    result = build_dataset_from_config(config, force=True)
+    manifest = json.loads(Path(config["data"]["manifest_path"]).read_text(encoding="utf-8"))
+
+    assert result["verdict"] == "READY_FOR_TRAINING_DATASET"
+    assert manifest["final_active_rule_count"] == 1
+    assert "final_active_rule_count_below_target:1<76" in manifest["warnings"]
+    assert not any(error.startswith("final_active_rule_count_below_min:") for error in manifest["audit_errors"])
+
+
+def test_post_compose_sanitizer_removes_bad_clean_and_hard_rows():
+    clean_bad = operator_builder._identity_row(
+        'Он сказал: "текст готов.',
+        operator_builder.CLEAN_IDENTITY_OPEN,
+        "unit",
+        "unit",
+        "open_clean",
+    )
+    hard_bad = operator_builder._identity_row(
+        "Он сделал так же (как раньше.",
+        operator_builder.HARD_NEGATIVE_OPEN,
+        "unit",
+        "unit",
+        "open_clean",
+    )
+    atomic = {
+        "source": "В отчете было млоко.",
+        "target": "В отчете было молоко.",
+        "split": "train",
+        "source_type": operator_builder.SYNTHETIC_OPEN_CLEAN,
+        "dataset_layer": operator_builder.LAYER_ATOMIC_POSITIVE,
+        "rule_id": "unit_atomic",
+        "rule_ids": json.dumps(["unit_atomic"], ensure_ascii=False),
+        "metadata": "{}",
+        "normalized_pair_hash": "atomic",
+        "gold_edit_count": 1,
+    }
+    clean_good = operator_builder._identity_row(
+        "Команда проверила короткую заметку утром после заседания редакции.",
+        operator_builder.CLEAN_IDENTITY_OPEN,
+        "unit",
+        "unit",
+        "open_clean",
+    )
+    hard_good = operator_builder._identity_row(
+        "Он сделал так же, как раньше.",
+        operator_builder.HARD_NEGATIVE_OPEN,
+        "unit",
+        "unit",
+        "open_clean",
+    )
+
+    result = operator_builder._post_compose_sanitize_clean_hard_rows(
+        pd.DataFrame([clean_bad, hard_bad, atomic]),
+        clean_identity_pool=[clean_good],
+        hard_negative_pool=[hard_good],
+        requested_total=3,
+        split_sizes={"train": 3, "val": 0, "test": 0},
+        seed=1,
+    )
+
+    assert len(result.frame) == 3
+    assert result.audit_errors == []
+    assert result.removed_by_layer == {
+        operator_builder.LAYER_ATOMIC_POSITIVE: 0,
+        operator_builder.LAYER_ATOMIC_HARD_NEGATIVE: 1,
+        operator_builder.LAYER_CLEAN_IDENTITY: 1,
+        operator_builder.LAYER_REAL_ATOMIC: 0,
+        operator_builder.LAYER_STRESS_MULTI_ERROR: 0,
+    }
+    reasons = {row["reason"] for row in result.removed_rows}
+    assert "unbalanced_ascii_quotes" in reasons
+    assert "unbalanced_parentheses" in reasons
+    assert not result.frame["source"].astype(str).str.contains('"текст готов|\\(как раньше', regex=True).any()

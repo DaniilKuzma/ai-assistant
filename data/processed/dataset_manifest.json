@@ -1,0 +1,1737 @@
+{
+  "verdict": "DATASET_BLOCKED",
+  "dataset_contract": "candidate_opportunity",
+  "dataset_hash": "c117cfdbd66b626c6457d09523c743b654877c7d2c77b174decbcb6edac29b72",
+  "config_hash": "da01fb81ceab5900dcc43ee15f1b4398c8974ee6efc7ded0881c4c15415afea1",
+  "total": 320000,
+  "requested_total": 320000,
+  "requested_split_sizes": {
+    "train": 256000,
+    "val": 32000,
+    "test": 32000
+  },
+  "split_sizes": {
+    "train": 256000,
+    "val": 32000,
+    "test": 32000
+  },
+  "composition": {
+    "clean_identity_from_open_clean": 200914,
+    "hard_negative_from_open_clean": 118378,
+    "real_error_pair": 708,
+    "clean_identity": 200914,
+    "hard_negative": 118378,
+    "multi_error_stress": 355
+  },
+  "composition_by_split": {
+    "train": {
+      "clean_identity_from_open_clean": 160808,
+      "hard_negative_from_open_clean": 94611,
+      "real_error_pair": 581
+    },
+    "val": {
+      "clean_identity_from_open_clean": 20111,
+      "hard_negative_from_open_clean": 11826,
+      "real_error_pair": 63
+    },
+    "test": {
+      "clean_identity_from_open_clean": 19995,
+      "hard_negative_from_open_clean": 11941,
+      "real_error_pair": 64
+    }
+  },
+  "layer_counts": {
+    "atomic_positive": 0,
+    "atomic_hard_negative": 118378,
+    "clean_identity": 200914,
+    "real_atomic": 353,
+    "stress_multi_error": 355
+  },
+  "layer_counts_by_split": {
+    "train": {
+      "atomic_hard_negative": 94611,
+      "clean_identity": 160808,
+      "real_atomic": 294,
+      "stress_multi_error": 287
+    },
+    "val": {
+      "atomic_hard_negative": 11826,
+      "clean_identity": 20111,
+      "real_atomic": 29,
+      "stress_multi_error": 34
+    },
+    "test": {
+      "atomic_hard_negative": 11941,
+      "clean_identity": 19995,
+      "real_atomic": 30,
+      "stress_multi_error": 34
+    }
+  },
+  "requested_layer_targets": {
+    "atomic_positive": 190000,
+    "atomic_hard_negative": 76000,
+    "clean_identity": 32000,
+    "real_atomic": 6000,
+    "stress_multi_error": 16000
+  },
+  "effective_layer_targets": {
+    "atomic_positive": 190000,
+    "atomic_hard_negative": 76000,
+    "clean_identity": 32000,
+    "real_atomic": 6000,
+    "stress_multi_error": 16000
+  },
+  "layer_target_adjustments": {},
+  "layer_target_report": [
+    {
+      "layer": "atomic_positive",
+      "requested_target": 190000,
+      "effective_target": 190000,
+      "available_count": 92411,
+      "selected_count": 0,
+      "deficit": 190000,
+      "adjustment_reason": ""
+    },
+    {
+      "layer": "atomic_hard_negative",
+      "requested_target": 76000,
+      "effective_target": 76000,
+      "available_count": 86759,
+      "selected_count": 118378,
+      "deficit": 0,
+      "adjustment_reason": ""
+    },
+    {
+      "layer": "clean_identity",
+      "requested_target": 32000,
+      "effective_target": 32000,
+      "available_count": 547607,
+      "selected_count": 200914,
+      "deficit": 0,
+      "adjustment_reason": ""
+    },
+    {
+      "layer": "real_atomic",
+      "requested_target": 6000,
+      "effective_target": 6000,
+      "available_count": 353,
+      "selected_count": 353,
+      "deficit": 5647,
+      "adjustment_reason": ""
+    },
+    {
+      "layer": "stress_multi_error",
+      "requested_target": 16000,
+      "effective_target": 16000,
+      "available_count": 16000,
+      "selected_count": 355,
+      "deficit": 15645,
+      "adjustment_reason": ""
+    }
+  ],
+  "rule_id_counts": {},
+  "rule_id_counts_atomic_positive_only": {},
+  "hard_negative_counts_by_target_rule": {
+    "abbreviation_case_protection": 58,
+    "address_comma": 32,
+    "apposition_comma": 1667,
+    "asyndetic_dash": 32,
+    "bracket_pair_balance": 12,
+    "capitalization_sentence_start": 1845,
+    "clarification_comma": 198,
+    "clean_identity_hard_negative": 54022,
+    "comma_conjunction": 389,
+    "comma_subordinate": 1842,
+    "comparative_turnover_comma": 194,
+    "consequence_dash": 6,
+    "context_chto_by": 1684,
+    "context_nesmotrya": 947,
+    "context_tak_zhe": 1749,
+    "context_to_zhe": 2057,
+    "context_vsledstvie": 178,
+    "context_za_to": 704,
+    "detached_adverbial_comma": 1429,
+    "detached_participial_comma": 1282,
+    "dictionary_fuzzy": 905,
+    "direct_speech_colon": 1287,
+    "direct_speech_dash": 318,
+    "direct_speech_quotes": 661,
+    "double_consonant_candidate": 1879,
+    "enumeration_colon": 268,
+    "enumeration_dash": 1789,
+    "explanation_colon": 841,
+    "extra_letter_candidate": 1162,
+    "frequent_error_exact": 2,
+    "homogeneous_comma": 1907,
+    "hyphen_koe_koy": 1,
+    "hyphen_particles": 44,
+    "hyphen_po_adverbs": 1901,
+    "hyphen_whitelist": 2,
+    "introductory_comma": 454,
+    "keyboard_typo_candidate": 877,
+    "missing_hard_sign": 2078,
+    "missing_letter_candidate": 1193,
+    "n_nn_adjective": 1805,
+    "n_nn_deverbal_adjective": 299,
+    "n_nn_participle": 2091,
+    "n_nn_short_form": 1574,
+    "ne_adjective": 1690,
+    "ne_adverb": 1822,
+    "ne_participle": 1920,
+    "ne_predicative": 1870,
+    "ne_short_form": 2063,
+    "ne_verb": 2097,
+    "ni_particle_context": 78,
+    "ni_stable_expression": 247,
+    "pattern_жо_же": 874,
+    "pattern_жы_жи": 2,
+    "pattern_цы_ци": 74,
+    "pattern_чо_че": 192,
+    "pattern_шо_ше": 2039,
+    "pattern_шы_ши": 2,
+    "pattern_що_ще": 4,
+    "pattern_щю_щу": 1,
+    "pol_polu_compounds": 92,
+    "prefix_pre_pri": 1795,
+    "prefix_s_to_z": 271,
+    "prefix_z_to_s": 2,
+    "punctuation_delete_replace": 54,
+    "quote_pair_balance": 24,
+    "semicolon": 6,
+    "subject_predicate_dash": 1977,
+    "swapped_letters_candidate": 1881,
+    "tsya_soft_delete": 1800,
+    "tsya_soft_insert": 1836
+  },
+  "active_rule_coverage": [],
+  "hard_negative_coverage": [],
+  "rule_id_counts_by_split": {
+    "train": {},
+    "val": {},
+    "test": {}
+  },
+  "error_type_counts": {
+    "case": 267,
+    "clean_identity": 200914,
+    "final_punctuation": 81,
+    "hard_negative": 118378,
+    "hyphen": 1,
+    "punctuation": 21,
+    "spelling": 325,
+    "split_join": 13
+  },
+  "operator_based_generation": true,
+  "active_rule_count": 0,
+  "active_rule_ids": [],
+  "final_active_rule_ids": [],
+  "final_active_rule_count": 0,
+  "expanded_training_candidate_rule_ids": [
+    "abbreviation_case_protection",
+    "address_comma",
+    "apposition_comma",
+    "asyndetic_dash",
+    "bracket_pair_balance",
+    "capitalization_sentence_start",
+    "clarification_comma",
+    "comma_conjunction",
+    "comma_subordinate",
+    "comparative_turnover_comma",
+    "consequence_dash",
+    "context_chto_by",
+    "context_nesmotrya",
+    "context_tak_zhe",
+    "context_to_zhe",
+    "context_vsledstvie",
+    "context_za_to",
+    "cy_exception",
+    "detached_adverbial_comma",
+    "detached_participial_comma",
+    "dictionary_fuzzy",
+    "direct_speech_colon",
+    "direct_speech_dash",
+    "direct_speech_quotes",
+    "double_consonant_candidate",
+    "enumeration_colon",
+    "enumeration_dash",
+    "explanation_colon",
+    "extra_letter_candidate",
+    "final_punctuation_default",
+    "frequent_error_exact",
+    "homogeneous_comma",
+    "hyphen_koe_koy",
+    "hyphen_particles",
+    "hyphen_po_adverbs",
+    "hyphen_whitelist",
+    "introductory_comma",
+    "keyboard_typo_candidate",
+    "missing_hard_sign",
+    "missing_letter_candidate",
+    "n_nn_adjective",
+    "n_nn_deverbal_adjective",
+    "n_nn_participle",
+    "n_nn_short_form",
+    "ne_adjective",
+    "ne_adverb",
+    "ne_participle",
+    "ne_predicative",
+    "ne_short_form",
+    "ne_verb",
+    "ni_particle_context",
+    "ni_stable_expression",
+    "pattern_жо_же",
+    "pattern_жы_жи",
+    "pattern_цы_ци",
+    "pattern_чо_че",
+    "pattern_чю_чу",
+    "pattern_чя_ча",
+    "pattern_шо_ше",
+    "pattern_шы_ши",
+    "pattern_що_ще",
+    "pattern_щю_щу",
+    "pattern_щя_ща",
+    "pol_polu_compounds",
+    "prefix_pre_pri",
+    "prefix_s_to_z",
+    "prefix_z_to_s",
+    "punctuation_delete_replace",
+    "quote_pair_balance",
+    "sdelat_prefix",
+    "semicolon",
+    "soft_to_hard_sign",
+    "subject_predicate_dash",
+    "swapped_letters_candidate",
+    "tsya_soft_delete",
+    "tsya_soft_insert"
+  ],
+  "expanded_training_candidate_rule_count": 76,
+  "under_quota_rule_ids": [
+    "abbreviation_case_protection",
+    "address_comma",
+    "apposition_comma",
+    "asyndetic_dash",
+    "bracket_pair_balance",
+    "capitalization_sentence_start",
+    "clarification_comma",
+    "comma_conjunction",
+    "comma_subordinate",
+    "comparative_turnover_comma",
+    "consequence_dash",
+    "context_chto_by",
+    "context_nesmotrya",
+    "context_tak_zhe",
+    "context_to_zhe",
+    "context_vsledstvie",
+    "context_za_to",
+    "cy_exception",
+    "detached_adverbial_comma",
+    "detached_participial_comma",
+    "dictionary_fuzzy",
+    "direct_speech_colon",
+    "direct_speech_dash",
+    "direct_speech_quotes",
+    "double_consonant_candidate",
+    "enumeration_colon",
+    "enumeration_dash",
+    "explanation_colon",
+    "extra_letter_candidate",
+    "final_punctuation_default",
+    "frequent_error_exact",
+    "homogeneous_comma",
+    "hyphen_koe_koy",
+    "hyphen_particles",
+    "hyphen_po_adverbs",
+    "hyphen_whitelist",
+    "introductory_comma",
+    "keyboard_typo_candidate",
+    "missing_hard_sign",
+    "missing_letter_candidate",
+    "n_nn_adjective",
+    "n_nn_deverbal_adjective",
+    "n_nn_participle",
+    "n_nn_short_form",
+    "ne_adjective",
+    "ne_adverb",
+    "ne_participle",
+    "ne_predicative",
+    "ne_short_form",
+    "ne_verb",
+    "ni_particle_context",
+    "ni_stable_expression",
+    "pattern_жо_же",
+    "pattern_жы_жи",
+    "pattern_цы_ци",
+    "pattern_чо_че",
+    "pattern_чю_чу",
+    "pattern_чя_ча",
+    "pattern_шо_ше",
+    "pattern_шы_ши",
+    "pattern_що_ще",
+    "pattern_щю_щу",
+    "pattern_щя_ща",
+    "pol_polu_compounds",
+    "prefix_pre_pri",
+    "prefix_s_to_z",
+    "prefix_z_to_s",
+    "punctuation_delete_replace",
+    "quote_pair_balance",
+    "sdelat_prefix",
+    "semicolon",
+    "soft_to_hard_sign",
+    "subject_predicate_dash",
+    "swapped_letters_candidate",
+    "tsya_soft_delete",
+    "tsya_soft_insert"
+  ],
+  "active_rules_below_preferred": [],
+  "rules_under_hard_negative_min": [],
+  "expanded_activation_blocked_counts": {
+    "BLOCK_DISABLED": 1,
+    "below_min_atomic_positive_quota": 76,
+    "broad_normalization_bucket": 2,
+    "needs_NER": 1
+  },
+  "excluded_rule_ids": [
+    {
+      "rule_id": "abbreviation_case_protection",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "address_comma",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "apposition_comma",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "asyndetic_dash",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "bracket_pair_balance",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "capitalization_ner",
+      "reason": "BLOCK_NEEDS_NER"
+    },
+    {
+      "rule_id": "capitalization_sentence_start",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "clarification_comma",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "comma_conjunction",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "comma_subordinate",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "comparative_turnover_comma",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "consequence_dash",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "context_chto_by",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "context_nesmotrya",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "context_tak_zhe",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "context_to_zhe",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "context_vsledstvie",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "context_za_to",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "cy_exception",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "detached_adverbial_comma",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "detached_participial_comma",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "dictionary_fuzzy",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "direct_speech_colon",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "direct_speech_dash",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "direct_speech_quotes",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "double_consonant_candidate",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "enumeration_colon",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "enumeration_dash",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "explanation_colon",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "extra_letter_candidate",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "final_punctuation_default",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "frequent_error_exact",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "homogeneous_comma",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "hyphen_koe_koy",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "hyphen_particles",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "hyphen_po_adverbs",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "hyphen_whitelist",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "introductory_comma",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "keyboard_typo_candidate",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "missing_hard_sign",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "missing_letter_candidate",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "n_nn_adjective",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "n_nn_deverbal_adjective",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "n_nn_participle",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "n_nn_short_form",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "ne_adjective",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "ne_adverb",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "ne_participle",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "ne_predicative",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "ne_short_form",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "ne_verb",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "neural_punctuation",
+      "reason": "BLOCK_MISSING_MODULE"
+    },
+    {
+      "rule_id": "ni_particle_context",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "ni_stable_expression",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "pattern_жо_же",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "pattern_жы_жи",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "pattern_цы_ци",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "pattern_чо_че",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "pattern_чю_чу",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "pattern_чя_ча",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "pattern_шо_ше",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "pattern_шы_ши",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "pattern_що_ще",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "pattern_щю_щу",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "pattern_щя_ща",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "pol_polu_compounds",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "prefix_pre_pri",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "prefix_s_to_z",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "prefix_z_to_s",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "punctuation_delete_replace",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "quote_close",
+      "reason": "INCLUDE_AFTER_THRESHOLD_CALIBRATION"
+    },
+    {
+      "rule_id": "quote_open",
+      "reason": "INCLUDE_AFTER_THRESHOLD_CALIBRATION"
+    },
+    {
+      "rule_id": "quote_pair_balance",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "sdelat_prefix",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "semicolon",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "soft_to_hard_sign",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "subject_predicate_dash",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "swapped_letters_candidate",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "tsya_soft_delete",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "tsya_soft_insert",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "yo_e_candidate",
+      "reason": "BLOCK_YO_E_DISABLED"
+    }
+  ],
+  "excluded_active_rule_ids": [
+    "abbreviation_case_protection",
+    "address_comma",
+    "apposition_comma",
+    "asyndetic_dash",
+    "bracket_pair_balance",
+    "capitalization_ner",
+    "capitalization_sentence_start",
+    "clarification_comma",
+    "comma_conjunction",
+    "comma_subordinate",
+    "comparative_turnover_comma",
+    "consequence_dash",
+    "context_chto_by",
+    "context_nesmotrya",
+    "context_tak_zhe",
+    "context_to_zhe",
+    "context_vsledstvie",
+    "context_za_to",
+    "cy_exception",
+    "detached_adverbial_comma",
+    "detached_participial_comma",
+    "dictionary_fuzzy",
+    "direct_speech_colon",
+    "direct_speech_dash",
+    "direct_speech_quotes",
+    "double_consonant_candidate",
+    "enumeration_colon",
+    "enumeration_dash",
+    "explanation_colon",
+    "extra_letter_candidate",
+    "final_punctuation_default",
+    "frequent_error_exact",
+    "homogeneous_comma",
+    "hyphen_koe_koy",
+    "hyphen_particles",
+    "hyphen_po_adverbs",
+    "hyphen_whitelist",
+    "introductory_comma",
+    "keyboard_typo_candidate",
+    "missing_hard_sign",
+    "missing_letter_candidate",
+    "n_nn_adjective",
+    "n_nn_deverbal_adjective",
+    "n_nn_participle",
+    "n_nn_short_form",
+    "ne_adjective",
+    "ne_adverb",
+    "ne_participle",
+    "ne_predicative",
+    "ne_short_form",
+    "ne_verb",
+    "neural_punctuation",
+    "ni_particle_context",
+    "ni_stable_expression",
+    "pattern_жо_же",
+    "pattern_жы_жи",
+    "pattern_цы_ци",
+    "pattern_чо_че",
+    "pattern_чю_чу",
+    "pattern_чя_ча",
+    "pattern_шо_ше",
+    "pattern_шы_ши",
+    "pattern_що_ще",
+    "pattern_щю_щу",
+    "pattern_щя_ща",
+    "pol_polu_compounds",
+    "prefix_pre_pri",
+    "prefix_s_to_z",
+    "prefix_z_to_s",
+    "punctuation_delete_replace",
+    "quote_close",
+    "quote_open",
+    "quote_pair_balance",
+    "sdelat_prefix",
+    "semicolon",
+    "soft_to_hard_sign",
+    "subject_predicate_dash",
+    "swapped_letters_candidate",
+    "tsya_soft_delete",
+    "tsya_soft_insert",
+    "yo_e_candidate"
+  ],
+  "rules_without_operator": [],
+  "underfilled_rule_ids": [],
+  "low_count_active_rule_ids": [],
+  "operator_acceptance_counts": {},
+  "activation_stage_counts": {
+    "mixed": 85,
+    "production_ready": 4,
+    "threshold_calibration": 12,
+    "validator_dependent": 607
+  },
+  "operator_rejection_counts": {
+    "candidate_missing": 697413,
+    "unbalanced_quote_or_bracket": 43465,
+    "non_atomic_edit_count": 30569,
+    "strict_validator_rejected": 27839,
+    "numeric_table": 603,
+    "artificial_marker": 72,
+    "url_or_email": 3,
+    "unsupported_edit_type": 25,
+    "target_quality_failed": 5,
+    "numeric_table,unbalanced_quote_or_bracket": 6
+  },
+  "semantic_alignment_failed_rows": 0,
+  "numeric_punctuation_mismatch_count": 0,
+  "known_quality_bugs": {
+    "synthetic_positive_identity": 0,
+    "final_punctuation_positive_identity": 0,
+    "bad_dash_spacing": 0,
+    "unsafe_known_phrases": 0,
+    "n_nn_short_form_noun_rewrite": 0,
+    "missing_generation_strategy": 0,
+    "missing_error_bearing_sentence_source": 0,
+    "synthetic_candidate_present_missing": 0,
+    "artificial_marker_metka": 18,
+    "artificial_marker_later_editor_checked_record": 0,
+    "artificial_marker_random_filler_tokens": 0,
+    "quote_bracket_unbalanced_target_guillemets": 0,
+    "quote_bracket_unbalanced_target_ascii_quotes": 0,
+    "quote_bracket_unbalanced_target_parentheses": 0,
+    "quote_bracket_unbalanced_target_square_brackets": 0,
+    "quote_bracket_unbalanced_target_curly_brackets": 0
+  },
+  "quote_bracket_balance_bugs": {
+    "unbalanced_target_guillemets": 0,
+    "unbalanced_target_ascii_quotes": 0,
+    "unbalanced_target_parentheses": 0,
+    "unbalanced_target_square_brackets": 0,
+    "unbalanced_target_curly_brackets": 0
+  },
+  "clean_hard_balance_bugs": {
+    "unbalanced_guillemets": 13,
+    "unbalanced_ascii_quotes": 1,
+    "unbalanced_parentheses": 12,
+    "unbalanced_square_brackets": 0,
+    "unbalanced_curly_brackets": 0
+  },
+  "atomic_purity_summary": {
+    "failed_rows": 0,
+    "failed_by_rule": {}
+  },
+  "extra_edit_summary": {
+    "failed_rows": 0,
+    "failed_by_rule": {}
+  },
+  "unknown_rule_train_summary": {
+    "failed_rows": 0,
+    "failed_by_rule": {}
+  },
+  "mixed_script_clean_summary": {
+    "failed_rows": 0,
+    "failed_by_rule": {}
+  },
+  "real_pair_atomization_summary": {
+    "failed_rows": 0,
+    "failed_by_rule": {}
+  },
+  "rule_semantic_alignment": {
+    "failed_rows": 0,
+    "failed_by_rule": {},
+    "rejected_rows": 0,
+    "excluded_rules": []
+  },
+  "candidate_recall_summary": {
+    "rules_with_gold": 25,
+    "active_rules_with_gold": 0,
+    "min_excluding_unknown": 1.0,
+    "mean_excluding_unknown": 1.0,
+    "active_min_excluding_unknown": 1.0,
+    "active_mean_excluding_unknown": 1.0
+  },
+  "gap_label_coverage_summary": {
+    "rules_with_gold": 18,
+    "active_rules_with_gold": 0,
+    "min_excluding_unknown": 1.0,
+    "mean_excluding_unknown": 1.0,
+    "active_min_excluding_unknown": 1.0,
+    "active_mean_excluding_unknown": 1.0
+  },
+  "corpus_opportunity_share": 0.0,
+  "fallback_template_share": 0.0,
+  "error_bearing_sentence_source_counts": {},
+  "generation_strategy_shares": {},
+  "rule_diversity_summary": {
+    "active_rule_count": 0,
+    "failed_rule_count": 0,
+    "failed_rule_ids": []
+  },
+  "extended_quality_audit_summary": {
+    "issue_count": 5,
+    "blocking_issue_count": 5
+  },
+  "extended_quality_issue_count": 5,
+  "failed_diversity_rule_ids": [],
+  "backfilled_rule_ids": [],
+  "still_excluded_after_backfill": [
+    {
+      "rule_id": "abbreviation_case_protection",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "address_comma",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "apposition_comma",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "asyndetic_dash",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "bracket_pair_balance",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "capitalization_ner",
+      "reason": "BLOCK_NEEDS_NER"
+    },
+    {
+      "rule_id": "capitalization_sentence_start",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "clarification_comma",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "comma_conjunction",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "comma_subordinate",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "comparative_turnover_comma",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "consequence_dash",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "context_chto_by",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "context_nesmotrya",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "context_tak_zhe",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "context_to_zhe",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "context_vsledstvie",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "context_za_to",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "cy_exception",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "detached_adverbial_comma",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "detached_participial_comma",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "dictionary_fuzzy",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "direct_speech_colon",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "direct_speech_dash",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "direct_speech_quotes",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "double_consonant_candidate",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "enumeration_colon",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "enumeration_dash",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "explanation_colon",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "extra_letter_candidate",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "final_punctuation_default",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "frequent_error_exact",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "homogeneous_comma",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "hyphen_koe_koy",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "hyphen_particles",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "hyphen_po_adverbs",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "hyphen_whitelist",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "introductory_comma",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "keyboard_typo_candidate",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "missing_hard_sign",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "missing_letter_candidate",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "n_nn_adjective",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "n_nn_deverbal_adjective",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "n_nn_participle",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "n_nn_short_form",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "ne_adjective",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "ne_adverb",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "ne_participle",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "ne_predicative",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "ne_short_form",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "ne_verb",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "neural_punctuation",
+      "reason": "BLOCK_MISSING_MODULE"
+    },
+    {
+      "rule_id": "ni_particle_context",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "ni_stable_expression",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "pattern_жо_же",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "pattern_жы_жи",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "pattern_цы_ци",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "pattern_чо_че",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "pattern_чю_чу",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "pattern_чя_ча",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "pattern_шо_ше",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "pattern_шы_ши",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "pattern_що_ще",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "pattern_щю_щу",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "pattern_щя_ща",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "pol_polu_compounds",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "prefix_pre_pri",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "prefix_s_to_z",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "prefix_z_to_s",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "punctuation_delete_replace",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "quote_close",
+      "reason": "INCLUDE_AFTER_THRESHOLD_CALIBRATION"
+    },
+    {
+      "rule_id": "quote_open",
+      "reason": "INCLUDE_AFTER_THRESHOLD_CALIBRATION"
+    },
+    {
+      "rule_id": "quote_pair_balance",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "sdelat_prefix",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "semicolon",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "soft_to_hard_sign",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "subject_predicate_dash",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "swapped_letters_candidate",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "tsya_soft_delete",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "tsya_soft_insert",
+      "reason": "below_min_atomic_positive_quota"
+    },
+    {
+      "rule_id": "yo_e_candidate",
+      "reason": "BLOCK_YO_E_DISABLED"
+    }
+  ],
+  "synthetic_normalized_pair_duplicate_rate": 0.0,
+  "top_normalized_pair_count": 1,
+  "synthetic_top_normalized_pair_count": 0,
+  "real_pair_count": 708,
+  "real_error_pair_count": 708,
+  "real_atomic_count": 353,
+  "syntax_supported_active_rule_ids": [],
+  "syntax_supported_training_candidate_rule_ids": [
+    "address_comma",
+    "apposition_comma",
+    "asyndetic_dash",
+    "bracket_pair_balance",
+    "clarification_comma",
+    "comma_conjunction",
+    "comma_subordinate",
+    "comparative_turnover_comma",
+    "consequence_dash",
+    "context_chto_by",
+    "context_nesmotrya",
+    "context_tak_zhe",
+    "context_to_zhe",
+    "context_vsledstvie",
+    "context_za_to",
+    "detached_adverbial_comma",
+    "detached_participial_comma",
+    "direct_speech_colon",
+    "direct_speech_dash",
+    "direct_speech_quotes",
+    "enumeration_colon",
+    "enumeration_dash",
+    "explanation_colon",
+    "homogeneous_comma",
+    "introductory_comma",
+    "n_nn_adjective",
+    "n_nn_deverbal_adjective",
+    "n_nn_participle",
+    "n_nn_short_form",
+    "ne_adjective",
+    "ne_adverb",
+    "ne_participle",
+    "ne_predicative",
+    "ne_short_form",
+    "ne_verb",
+    "ni_particle_context",
+    "ni_stable_expression",
+    "punctuation_delete_replace",
+    "quote_pair_balance",
+    "semicolon",
+    "subject_predicate_dash",
+    "tsya_soft_delete",
+    "tsya_soft_insert"
+  ],
+  "syntax_atomic_positive_count": 0,
+  "syntax_atomic_positive_count_by_rule": {},
+  "syntax_hard_negative_count_by_rule": {
+    "address_comma": 28,
+    "apposition_comma": 27,
+    "asyndetic_dash": 32,
+    "bracket_pair_balance": 12,
+    "clarification_comma": 28,
+    "comma_conjunction": 26,
+    "comma_subordinate": 25,
+    "comparative_turnover_comma": 50,
+    "consequence_dash": 6,
+    "context_chto_by": 4,
+    "context_nesmotrya": 4,
+    "context_tak_zhe": 7,
+    "context_to_zhe": 4,
+    "context_vsledstvie": 4,
+    "context_za_to": 4,
+    "detached_adverbial_comma": 28,
+    "detached_participial_comma": 26,
+    "direct_speech_colon": 19,
+    "direct_speech_dash": 8,
+    "direct_speech_quotes": 4,
+    "enumeration_colon": 16,
+    "enumeration_dash": 12,
+    "explanation_colon": 6,
+    "homogeneous_comma": 26,
+    "introductory_comma": 26,
+    "n_nn_adjective": 2,
+    "n_nn_deverbal_adjective": 12,
+    "n_nn_participle": 6,
+    "n_nn_short_form": 1,
+    "ne_adjective": 3,
+    "ne_adverb": 2,
+    "ne_participle": 3,
+    "ne_predicative": 4,
+    "ne_short_form": 1,
+    "ne_verb": 5,
+    "ni_particle_context": 12,
+    "ni_stable_expression": 14,
+    "punctuation_delete_replace": 50,
+    "quote_pair_balance": 24,
+    "semicolon": 6,
+    "subject_predicate_dash": 28,
+    "tsya_soft_delete": 8,
+    "tsya_soft_insert": 17
+  },
+  "syntax_rules_under_quota": [
+    "address_comma",
+    "apposition_comma",
+    "asyndetic_dash",
+    "bracket_pair_balance",
+    "clarification_comma",
+    "comma_conjunction",
+    "comma_subordinate",
+    "comparative_turnover_comma",
+    "consequence_dash",
+    "context_chto_by",
+    "context_nesmotrya",
+    "context_tak_zhe",
+    "context_to_zhe",
+    "context_vsledstvie",
+    "context_za_to",
+    "detached_adverbial_comma",
+    "detached_participial_comma",
+    "direct_speech_colon",
+    "direct_speech_dash",
+    "direct_speech_quotes",
+    "enumeration_colon",
+    "enumeration_dash",
+    "explanation_colon",
+    "homogeneous_comma",
+    "introductory_comma",
+    "n_nn_adjective",
+    "n_nn_deverbal_adjective",
+    "n_nn_participle",
+    "n_nn_short_form",
+    "ne_adjective",
+    "ne_adverb",
+    "ne_participle",
+    "ne_predicative",
+    "ne_short_form",
+    "ne_verb",
+    "ni_particle_context",
+    "ni_stable_expression",
+    "punctuation_delete_replace",
+    "quote_pair_balance",
+    "semicolon",
+    "subject_predicate_dash",
+    "tsya_soft_delete",
+    "tsya_soft_insert"
+  ],
+  "real_stress_count": 367,
+  "clean_identity_count": 200914,
+  "hard_negative_count": 118378,
+  "stress_count": 355,
+  "low_resource_rule_ids": [
+    "abbreviation_case_protection",
+    "address_comma",
+    "apposition_comma",
+    "asyndetic_dash",
+    "bracket_pair_balance",
+    "capitalization_sentence_start",
+    "clarification_comma",
+    "comma_conjunction",
+    "comma_subordinate",
+    "comparative_turnover_comma",
+    "consequence_dash",
+    "context_chto_by",
+    "context_nesmotrya",
+    "context_tak_zhe",
+    "context_to_zhe",
+    "context_vsledstvie",
+    "context_za_to",
+    "cy_exception",
+    "detached_adverbial_comma",
+    "detached_participial_comma",
+    "dictionary_fuzzy",
+    "direct_speech_colon",
+    "direct_speech_dash",
+    "direct_speech_quotes",
+    "double_consonant_candidate",
+    "enumeration_colon",
+    "enumeration_dash",
+    "explanation_colon",
+    "extra_letter_candidate",
+    "final_punctuation_default",
+    "frequent_error_exact",
+    "homogeneous_comma",
+    "hyphen_koe_koy",
+    "hyphen_particles",
+    "hyphen_po_adverbs",
+    "hyphen_whitelist",
+    "introductory_comma",
+    "keyboard_typo_candidate",
+    "missing_hard_sign",
+    "missing_letter_candidate",
+    "n_nn_adjective",
+    "n_nn_deverbal_adjective",
+    "n_nn_participle",
+    "n_nn_short_form",
+    "ne_adjective",
+    "ne_adverb",
+    "ne_participle",
+    "ne_predicative",
+    "ne_short_form",
+    "ne_verb",
+    "ni_particle_context",
+    "ni_stable_expression",
+    "pattern_жо_же",
+    "pattern_жы_жи",
+    "pattern_цы_ци",
+    "pattern_чо_че",
+    "pattern_чю_чу",
+    "pattern_чя_ча",
+    "pattern_шо_ше",
+    "pattern_шы_ши",
+    "pattern_що_ще",
+    "pattern_щю_щу",
+    "pattern_щя_ща",
+    "pol_polu_compounds",
+    "prefix_pre_pri",
+    "prefix_s_to_z",
+    "prefix_z_to_s",
+    "punctuation_delete_replace",
+    "quote_pair_balance",
+    "sdelat_prefix",
+    "semicolon",
+    "soft_to_hard_sign",
+    "subject_predicate_dash",
+    "swapped_letters_candidate",
+    "tsya_soft_delete",
+    "tsya_soft_insert"
+  ],
+  "eval_only_rule_ids": [],
+  "disabled_rule_ids": [
+    "yo_e_candidate"
+  ],
+  "hard_negative_accepted_bad_edits": 0,
+  "audit_errors": [
+    "stress_ratio_outside_3_5_percent",
+    "known_quality_bugs_present:artificial_marker_metka",
+    "clean_hard_balance_bugs_present:unbalanced_guillemets",
+    "clean_hard_balance_bugs_present:unbalanced_ascii_quotes",
+    "clean_hard_balance_bugs_present:unbalanced_parentheses",
+    "corpus_opportunity_share_below_threshold",
+    "extended_quality_audit_blocking_issues",
+    "final_active_rule_count_below_min:0<76"
+  ],
+  "warnings": [
+    "layer_target_deficit:atomic_positive",
+    "layer_target_deficit:real_atomic",
+    "layer_target_deficit:stress_multi_error",
+    "final_active_rule_count_below_target:0<76"
+  ],
+  "generated_at": "2026-05-24T21:14:40.793024+00:00",
+  "seed": 13,
+  "rule_capability_counts": {
+    "BLOCK_DISABLED": 1,
+    "BLOCK_METADATA_ONLY": 84,
+    "BLOCK_NEEDS_DICTIONARY": 114,
+    "BLOCK_NEEDS_NER": 12,
+    "BLOCK_NEEDS_SYNTAX": 7,
+    "BLOCK_NO_CANDIDATE_PATH": 5,
+    "BLOCK_PLANNED": 58,
+    "INCLUDE_AFTER_THRESHOLD_CALIBRATION": 102,
+    "INCLUDE_AFTER_TRAINING": 2,
+    "INCLUDE_AFTER_VALIDATOR": 8,
+    "INCLUDE_NOW": 12
+  },
+  "production_ready_rule_ids": [
+    "address_comma",
+    "comma_conjunction",
+    "comma_subordinate",
+    "comparative_turnover_comma",
+    "detached_adverbial_comma",
+    "direct_speech_dash",
+    "homogeneous_comma",
+    "hyphen_koe_koy",
+    "hyphen_particles",
+    "hyphen_whitelist",
+    "introductory_comma",
+    "subject_predicate_dash"
+  ],
+  "production_ready_rule_count": 12,
+  "training_candidate_rule_ids": [
+    "abbreviation_case_protection",
+    "address_comma",
+    "apposition_comma",
+    "asyndetic_dash",
+    "bracket_pair_balance",
+    "capitalization_sentence_start",
+    "clarification_comma",
+    "comma_conjunction",
+    "comma_subordinate",
+    "comparative_turnover_comma",
+    "consequence_dash",
+    "context_chto_by",
+    "context_nesmotrya",
+    "context_tak_zhe",
+    "context_to_zhe",
+    "context_vsledstvie",
+    "context_za_to",
+    "cy_exception",
+    "detached_adverbial_comma",
+    "detached_participial_comma",
+    "dictionary_fuzzy",
+    "direct_speech_colon",
+    "direct_speech_dash",
+    "direct_speech_quotes",
+    "double_consonant_candidate",
+    "enumeration_colon",
+    "enumeration_dash",
+    "explanation_colon",
+    "extra_letter_candidate",
+    "final_punctuation_default",
+    "frequent_error_exact",
+    "homogeneous_comma",
+    "hyphen_koe_koy",
+    "hyphen_particles",
+    "hyphen_po_adverbs",
+    "hyphen_whitelist",
+    "introductory_comma",
+    "keyboard_typo_candidate",
+    "missing_hard_sign",
+    "missing_letter_candidate",
+    "n_nn_adjective",
+    "n_nn_deverbal_adjective",
+    "n_nn_participle",
+    "n_nn_short_form",
+    "ne_adjective",
+    "ne_adverb",
+    "ne_participle",
+    "ne_predicative",
+    "ne_short_form",
+    "ne_verb",
+    "ni_particle_context",
+    "ni_stable_expression",
+    "pattern_жо_же",
+    "pattern_жы_жи",
+    "pattern_цы_ци",
+    "pattern_чо_че",
+    "pattern_чю_чу",
+    "pattern_чя_ча",
+    "pattern_шо_ше",
+    "pattern_шы_ши",
+    "pattern_що_ще",
+    "pattern_щю_щу",
+    "pattern_щя_ща",
+    "pol_polu_compounds",
+    "prefix_pre_pri",
+    "prefix_s_to_z",
+    "prefix_z_to_s",
+    "punctuation_delete_replace",
+    "quote_pair_balance",
+    "sdelat_prefix",
+    "semicolon",
+    "soft_to_hard_sign",
+    "subject_predicate_dash",
+    "swapped_letters_candidate",
+    "tsya_soft_delete",
+    "tsya_soft_insert"
+  ],
+  "training_candidate_rule_count": 76,
+  "activation_policy": {
+    "mode": "expanded_safe",
+    "include_decisions": [
+      "INCLUDE_AFTER_THRESHOLD_CALIBRATION",
+      "INCLUDE_AFTER_TRAINING",
+      "INCLUDE_NOW"
+    ],
+    "include_after_validator_when_runtime_supported": true,
+    "require_candidate_path": true,
+    "require_synthetic_support": true,
+    "require_hard_negative_support": true,
+    "require_validator_support_or_empirical_pass": true,
+    "exclude_blocked": true,
+    "exclude_ner_required_without_ner": true,
+    "min_empirical_validator_passes": 3,
+    "max_empirical_validator_examples": 10,
+    "expected_min_production_ready_rule_count": 12,
+    "expected_min_training_candidate_rule_count": 76,
+    "target_training_candidate_rule_count": 76,
+    "fail_below_min_training_candidate_rule_count": true,
+    "warn_below_target_training_candidate_rule_count": true,
+    "expected_min_final_active_rule_count": 76,
+    "target_final_active_rule_count": 76,
+    "fail_below_final_active_rule_count": true,
+    "warn_below_target_final_active_rule_count": true,
+    "errors": [
+      "final_active_rule_count_below_min:0<76"
+    ],
+    "warnings": [
+      "final_active_rule_count_below_target:0<76"
+    ]
+  },
+  "target_training_candidate_rule_count": 76,
+  "target_final_active_rule_count": 76,
+  "validator_probe_summary": {
+    "enabled": false,
+    "probed_rule_count": 0,
+    "passed_rule_ids": [],
+    "failed_rule_reasons": {},
+    "rows": []
+  },
+  "blocked_rule_ids": [
+    "capitalization_ner",
+    "yo_e_candidate"
+  ],
+  "mining_only_rule_ids": [],
+  "missing_dictionary_rule_count": 0,
+  "missing_syntax_rule_count": 0,
+  "missing_morphology_rule_count": 0,
+  "missing_ner_rule_count": 12,
+  "capability_rule_ids": [
+    "abbreviation_case_protection",
+    "address_comma",
+    "apposition_comma",
+    "asyndetic_dash",
+    "bracket_pair_balance",
+    "capitalization_ner",
+    "capitalization_sentence_start",
+    "clarification_comma",
+    "comma_conjunction",
+    "comma_subordinate",
+    "comparative_turnover_comma",
+    "consequence_dash",
+    "context_chto_by",
+    "context_nesmotrya",
+    "context_tak_zhe",
+    "context_to_zhe",
+    "context_vsledstvie",
+    "context_za_to",
+    "cy_exception",
+    "detached_adverbial_comma",
+    "detached_participial_comma",
+    "dictionary_fuzzy",
+    "direct_speech_colon",
+    "direct_speech_dash",
+    "direct_speech_quotes",
+    "double_consonant_candidate",
+    "enumeration_colon",
+    "enumeration_dash",
+    "explanation_colon",
+    "extra_letter_candidate",
+    "final_punctuation_default",
+    "frequent_error_exact",
+    "homogeneous_comma",
+    "hyphen_koe_koy",
+    "hyphen_particles",
+    "hyphen_po_adverbs",
+    "hyphen_whitelist",
+    "introductory_comma",
+    "keyboard_typo_candidate",
+    "missing_hard_sign",
+    "missing_letter_candidate",
+    "n_nn_adjective",
+    "n_nn_deverbal_adjective",
+    "n_nn_participle",
+    "n_nn_short_form",
+    "ne_adjective",
+    "ne_adverb",
+    "ne_participle",
+    "ne_predicative",
+    "ne_short_form",
+    "ne_verb",
+    "ni_particle_context",
+    "ni_stable_expression",
+    "pattern_жо_же",
+    "pattern_жы_жи",
+    "pattern_цы_ци",
+    "pattern_чо_че",
+    "pattern_чю_чу",
+    "pattern_чя_ча",
+    "pattern_шо_ше",
+    "pattern_шы_ши",
+    "pattern_що_ще",
+    "pattern_щю_щу",
+    "pattern_щя_ща",
+    "pol_polu_compounds",
+    "prefix_pre_pri",
+    "prefix_s_to_z",
+    "prefix_z_to_s",
+    "punctuation_delete_replace",
+    "quote_close",
+    "quote_open",
+    "quote_pair_balance",
+    "sdelat_prefix",
+    "semicolon",
+    "soft_to_hard_sign",
+    "subject_predicate_dash",
+    "swapped_letters_candidate",
+    "tsya_soft_delete",
+    "tsya_soft_insert",
+    "yo_e_candidate"
+  ],
+  "expected_min_final_active_rule_count": 76,
+  "report_freshness": {
+    "status": "fresh",
+    "errors": [],
+    "report_count": 68
+  },
+  "final_verdict": "DATASET_BLOCKED"
+}

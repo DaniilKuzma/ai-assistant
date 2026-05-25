@@ -1,6 +1,6 @@
 # Source Ingestion Report
 
-- accepted_clean_sentences: 597268
+- accepted_clean_sentences: 595768
 - min_clean_sentences: 300000
 - dominance_violations: 
 

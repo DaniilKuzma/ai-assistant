@@ -6,6 +6,7 @@ import pandas as pd
 from src.data.training_dataset import training_dataset_quality_errors
 from src.data._training_dataset_builder import _hyphen_po_bad_positive
 from src.data.training_quality_audit import (
+    artificial_marker_counts,
     atomic_purity_audit_frame,
     audit_training_dataset,
     extra_edit_audit_frame,
@@ -16,6 +17,7 @@ from src.data.training_quality_audit import (
     unknown_rule_train_audit_frame,
     write_report_manifest,
 )
+from src.data.operator_dataset_builder import _contains_artificial_marker
 
 
 METKA = "\u043c\u0435\u0442\u043a\u0430"
@@ -199,6 +201,29 @@ def test_quality_audit_counts_artificial_marker_suffixes_as_blocking():
         "random_filler_tokens": 1,
     }
     assert audit["extended_quality_audit_summary"]["blocking_issue_count"] >= 1
+
+
+def test_artificial_marker_detection_uses_cyrillic_token_boundaries():
+    assert _contains_artificial_marker("метка", "метка") is True
+    assert _contains_artificial_marker("[МЕТКА]", "[МЕТКА]") is True
+    assert _contains_artificial_marker("__метка__", "__метка__") is True
+    assert _contains_artificial_marker("позже редактор проверил запись", "") is True
+    assert _contains_artificial_marker("", "позже редактор проверил материал") is True
+    assert _contains_artificial_marker("заметка", "заметка") is False
+    assert _contains_artificial_marker("заметки редактора", "заметки редактора") is False
+    assert _contains_artificial_marker("короткая заметка", "короткая заметка") is False
+
+
+def test_artificial_marker_counts_do_not_count_zametka_as_metka():
+    frame = pd.DataFrame(
+        [
+            {"source": "Короткая заметка готова.", "target": "Короткая заметка готова.", "source_type": "clean_identity_from_open_clean"},
+            {"source": "Заметки редактора лежат рядом.", "target": "Заметки редактора лежат рядом.", "source_type": "clean_identity_from_open_clean"},
+            {"source": "Слово метка осталось.", "target": "Слово метка осталось.", "source_type": "clean_identity_from_open_clean"},
+        ]
+    )
+
+    assert artificial_marker_counts(frame)["metka"] == 1
 
 
 def test_quality_audit_counts_malformed_dash_spacing_outside_dash_rules():

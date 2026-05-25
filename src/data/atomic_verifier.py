@@ -11,7 +11,7 @@ from src.data.dataset_verifiers import PUNCTUATION_RULE_FAMILIES, TYPO_RULE_FAMI
 from src.rules.rule_ids import UNKNOWN_RULE_ID, normalize_rule_id
 from src.validation.diff_analyzer import DiffAnalyzer, Edit
 from src.validation.edit_classifier import is_allowed_edit_type
-from src.validation.strict_validator import StrictValidator
+from src.validation.strict_validator import StrictValidator, TRAINING_CONTEXT_SPLIT_JOIN_BY_RULE
 
 
 UNAMBIGUOUS_RULE_FAMILY_ALIASES: dict[str, set[str]] = {
@@ -89,6 +89,7 @@ def verify_atomic_positive(
 ) -> AtomicVerificationResult:
     candidates = _generated_candidates(source, candidate_generator)
     edits = gold_edits_for_pair(source, target, candidates=candidates)
+    edits = _context_split_join_normalized_edits(source, target, rule_id, candidates, edits)
     return _verify_atomic_positive_with_candidates(
         source,
         target,
@@ -107,6 +108,9 @@ def verify_candidate_covered_pair(
 ) -> AtomicVerificationResult:
     candidates = _generated_candidates(source, candidate_generator)
     edits = gold_edits_for_pair(source, target, candidates=candidates)
+    first_rule_id = next(iter(rule_ids or ()), "")
+    if first_rule_id:
+        edits = _context_split_join_normalized_edits(source, target, first_rule_id, candidates, edits)
     normalized_rule_ids = _candidate_covered_rule_ids(source, target, rule_ids, candidates, edits)
     if not normalized_rule_ids:
         return _verify_atomic_positive_with_candidates(source, target, UNKNOWN_RULE_ID, candidates, edits)
@@ -215,7 +219,13 @@ def _verify_atomic_positive_with_candidates(
     strict_validator_passed = True
     extra_edit_count = 0
     if require_strict_validator:
-        validation = StrictValidator().validate(source, target, trusted_edits=[matched_candidate])
+        validation = StrictValidator().validate(
+            source,
+            target,
+            trusted_edits=[matched_candidate],
+            allow_training_context_pairs=_is_training_context_split_join_candidate(matched_candidate, normalized_rule_id),
+            expected_rule_id=normalized_rule_id,
+        )
         accepted_edits = validation.accepted_edits
         matched_accepted_count = sum(1 for accepted in accepted_edits if candidate_matches_edit(matched_candidate, accepted))
         extra_edit_count = sum(1 for accepted in accepted_edits if not candidate_matches_edit(matched_candidate, accepted))
@@ -276,6 +286,93 @@ def _generated_candidates(
     if max_candidates is not None:
         return rank_candidates_for_budget(candidates, int(max_candidates))
     return candidates
+
+
+def _context_split_join_normalized_edits(
+    source: str,
+    target: str,
+    rule_id: str,
+    candidates: list[Candidate],
+    edits: list[Edit],
+) -> list[Edit]:
+    normalized_rule_id = normalize_rule_id(rule_id)
+    if normalized_rule_id not in TRAINING_CONTEXT_SPLIT_JOIN_BY_RULE:
+        return edits
+    matched_candidate = _training_context_split_join_candidate(source, target, normalized_rule_id, candidates)
+    if matched_candidate is None:
+        return edits
+    candidate_source = str(getattr(matched_candidate, "source", ""))
+    candidate_replacement = str(getattr(matched_candidate, "replacement", ""))
+    edit_type = "split_word" if " " not in candidate_source and " " in candidate_replacement else "join_words"
+    logical_edit = Edit(
+        candidate_source,
+        candidate_replacement,
+        edit_type,
+        int(getattr(matched_candidate, "start", -1)),
+        int(getattr(matched_candidate, "end", -1)),
+        confidence=float(getattr(matched_candidate, "confidence", 0.0) or 0.0),
+        rule_id=normalized_rule_id,
+    )
+    if not edits:
+        return [logical_edit]
+    if any(candidate_matches_edit(matched_candidate, edit) for edit in edits):
+        return [logical_edit]
+    if _edits_are_overlapping_known_context_pair(edits, logical_edit):
+        return [logical_edit]
+    return edits
+
+
+def _training_context_split_join_candidate(
+    source: str,
+    target: str,
+    rule_id: str,
+    candidates: list[Candidate],
+) -> Candidate | None:
+    allowed = TRAINING_CONTEXT_SPLIT_JOIN_BY_RULE.get(rule_id)
+    if allowed is None:
+        return None
+    allowed_source, allowed_replacement = allowed
+    for candidate in candidates:
+        if not _is_training_context_split_join_candidate(candidate, rule_id):
+            continue
+        if str(getattr(candidate, "source", "")).lower() != allowed_source:
+            continue
+        if str(getattr(candidate, "replacement", "")).lower() != allowed_replacement:
+            continue
+        if candidate_applies_to_target(source, target, candidate):
+            return candidate
+    return None
+
+
+def _is_training_context_split_join_candidate(candidate: Candidate | None, rule_id: str) -> bool:
+    if candidate is None:
+        return False
+    normalized_rule_id = normalize_rule_id(rule_id)
+    allowed = TRAINING_CONTEXT_SPLIT_JOIN_BY_RULE.get(normalized_rule_id)
+    if allowed is None:
+        return False
+    source_fragment, target_fragment = allowed
+    return (
+        normalize_rule_id(getattr(candidate, "rule_id", "")) == normalized_rule_id
+        and str(getattr(candidate, "edit_type", "") or "") == "split_join"
+        and str(getattr(candidate, "source", "") or "").lower() == source_fragment
+        and str(getattr(candidate, "replacement", "") or "").lower() == target_fragment
+    )
+
+
+def _edits_are_overlapping_known_context_pair(edits: list[Edit], logical_edit: Edit) -> bool:
+    if not edits:
+        return False
+    logical_range = range(logical_edit.start, logical_edit.end)
+    for edit in edits:
+        if edit.start < 0 or edit.end < 0:
+            return False
+        edit_range = range(edit.start, edit.end)
+        if not (logical_range.start < edit_range.stop and edit_range.start < logical_range.stop):
+            return False
+        if edit.edit_type not in {"split_word", "join_words"}:
+            return False
+    return True
 
 
 def _matching_candidate_from_candidates(

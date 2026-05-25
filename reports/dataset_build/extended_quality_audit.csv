@@ -1,0 +1,6 @@
+check_name,rule_id,severity,count,example
+artificial_marker_metka,,blocking,18,
+artificial_marker_metka,,blocking,18,
+clean_hard_balance_unbalanced_guillemets,,blocking,13,Редактор сказал: «открытая заявка готов.
+clean_hard_balance_unbalanced_ascii_quotes,,blocking,1,"И я готов этого добиватся в своей дальнейшей политической деятельности""."
+clean_hard_balance_unbalanced_parentheses,,blocking,12,Проверь документ свежая сводка).

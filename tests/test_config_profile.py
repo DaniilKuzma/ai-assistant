@@ -11,20 +11,21 @@ def test_main_config_is_canonical_train_profile_for_candidate_opportunity_datase
 
     assert config["training"]["mode"] == "train"
     assert config["training"]["run_model_training"] is True
-    assert config["training"]["max_train_examples"] == 160000
-    assert config["training"]["max_val_examples"] == 20000
-    assert config["training"]["max_test_examples"] == 20000
-    assert config["data"]["target_total_examples"] == 200000
-    assert config["data"]["total_examples"] == 200000
+    assert config["training"]["max_train_examples"] == 256000
+    assert config["training"]["max_val_examples"] == 32000
+    assert config["training"]["max_test_examples"] == 32000
+    assert config["data"]["target_total_examples"] == 320000
+    assert config["data"]["total_examples"] == 320000
     assert config["data"]["dataset_contract"] == "candidate_opportunity"
+    assert config["data"]["dataset_build_workers"] == 8
     assert config["data"]["processed_train_path"] == "data/processed/correction_dataset.csv.gz"
     assert config["data"]["manifest_path"] == "data/processed/dataset_manifest.json"
     assert config["data"]["composition"] == {
-        "atomic_positive_ratio": 0.45,
-        "atomic_hard_negative_ratio": 0.35,
-        "clean_identity_ratio": 0.12,
+        "atomic_positive_ratio": 0.59375,
+        "atomic_hard_negative_ratio": 0.2375,
+        "clean_identity_ratio": 0.10,
         "stress_multi_error_ratio": 0.05,
-        "real_atomic_train_ratio": 0.03,
+        "real_atomic_train_ratio": 0.01875,
         "allow_layer_target_adjustment": True,
         "fail_on_unadjusted_layer_deficit": True,
     }
@@ -42,18 +43,53 @@ def test_main_config_is_canonical_train_profile_for_candidate_opportunity_datase
     assert config["data"]["stress"]["enabled"] is True
     assert config["data"]["stress"]["count_toward_rule_quota"] is False
     assert config["data"]["stress"]["loss_weight"] == 0.4
-    assert config["data"]["rule_quota"]["min_atomic_positives_per_active_rule"] == 1000
-    assert config["data"]["rule_quota"]["preferred_atomic_positives_per_active_rule"] == 2500
-    assert config["data"]["rule_quota"]["min_hard_negatives_per_active_rule"] == 500
+    assert config["data"]["stress"]["min_ratio"] == 0.03
+    assert config["data"]["stress"]["max_ratio"] == 0.05
+    assert config["data"]["stress"]["fail_on_under_target"] is False
+    assert config["data"]["rule_activation"]["expected_min_training_candidate_rule_count"] == 76
+    assert config["data"]["rule_activation"]["target_training_candidate_rule_count"] == 76
+    assert config["data"]["rule_activation"]["expected_min_final_active_rule_count"] == 25
+    assert config["data"]["rule_activation"]["target_final_active_rule_count"] == 76
+    assert config["data"]["rule_activation"]["fail_below_final_active_rule_count"] is True
+    assert config["data"]["rule_activation"]["warn_below_target_final_active_rule_count"] is True
+    assert config["data"]["rule_quota"]["min_atomic_positives_per_active_rule"] == 500
+    assert config["data"]["rule_quota"]["preferred_atomic_positives_per_active_rule"] == 1500
+    assert config["data"]["rule_quota"]["max_total_per_rule_id"] == 1500
+    assert config["data"]["rule_quota"]["min_hard_negatives_per_active_rule"] == 200
     assert config["data"]["rule_quota"]["disable_rule_if_quota_not_met"] is True
+    assert config["data"]["rule_data_compiler"] == {
+        "enabled": True,
+        "source_priority": [
+            "corpus_mined",
+            "syntax_mined",
+            "morphology_mined",
+            "real_pattern_replay",
+            "rule_lab",
+        ],
+        "max_rule_lab_share_per_rule": 0.30,
+        "fail_on_high_rule_lab_share": False,
+        "min_unique_sentence_patterns_per_rule": 20,
+        "min_unique_left_contexts_per_rule": 100,
+        "min_unique_right_contexts_per_rule": 100,
+        "max_near_duplicate_share": 0.02,
+        "fail_on_low_structural_diversity": False,
+    }
     assert config["data"]["audit"]["fail_on_extra_edits_in_atomic"] is True
     assert config["data"]["audit"]["fail_on_unknown_rule_in_train"] is True
     assert config["data"]["audit"]["fail_on_stale_reports"] is True
     assert config["data"]["audit"]["min_candidate_recall_for_active_rule"] == 0.95
+    assert config["data"]["audit"]["fail_on_corpus_opportunity_share_below_threshold"] is False
+    assert config["data"]["audit"]["destructive_diversity_pruning_enabled"] is False
     assert "training_dataset" in config["data"]
     assert "training_dataset_core" in config["data"]
     assert config["data"]["training_dataset"]["legacy_builder"] is False
     assert config["data"]["training_dataset_core"]["legacy_builder"] is False
+    for section_name in ("training_dataset", "training_dataset_core"):
+        section = config["data"][section_name]
+        assert section["active_rule_quota"]["min_total_per_active_rule"] == 500
+        assert section["active_rule_quota"]["preferred_total_per_active_rule"] == 1500
+        assert section["rule_caps"]["max_total_per_rule_id"] == 1500
+        assert section["rule_caps"]["max_train_per_rule_id"] == 1200
     assert config["data"]["clean_corpus"]["enabled"] is True
     assert config["data"]["external_local_files_only"] is True
     assert config["data"]["punctuation_hard_negative_clean_ratio"] > 0.0

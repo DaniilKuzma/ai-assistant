@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 
 import yaml
@@ -7,7 +8,14 @@ from src.candidates.candidate_generator import Candidate
 from src.data.training_dataset import compute_broad_dataset_targets, resolve_broad_active_training_rules
 from src.data.operator_dataset_builder import (
     LAYER_ATOMIC_POSITIVE,
+    _final_active_rule_ids_after_gates,
+    _chunk_rule_ids_for_workers,
+    _dataset_build_workers,
+    _merge_parallel_atomic_positive_results,
     _operator_rule_quota_config,
+    _pre_gate_atomic_counts_by_rule,
+    _pre_gate_hard_negative_counts_by_rule,
+    _prune_failed_diversity_rules,
     _requested_layer_targets_from_config,
     _resolve_effective_layer_targets,
     _rule_counts as _operator_rule_counts,
@@ -462,6 +470,194 @@ def test_candidate_opportunity_active_quota_counts_only_atomic_positive_layer():
     assert _operator_rule_counts(frame) == {"unit_atomic": 1}
 
 
+def test_destructive_diversity_pruning_disabled_by_default(monkeypatch):
+    frame = pd.DataFrame(
+        [
+            {
+                "source": "В тексте есть млоко.",
+                "target": "В тексте есть молоко.",
+                "source_type": SYNTHETIC_OPEN_CLEAN,
+                "rule_id": "unit_atomic",
+                "rule_ids": json.dumps(["unit_atomic"], ensure_ascii=False),
+                "dataset_layer": "atomic_positive",
+                "count_toward_rule_quota": True,
+                "gold_edit_count": 1,
+            }
+        ]
+    )
+
+    def fake_audit(_frame, active_rule_ids):
+        return {
+            "rule_diversity_summary": {
+                "failed_rule_count": 1,
+                "failed_rule_ids": list(active_rule_ids),
+            }
+        }
+
+    import src.data.operator_dataset_builder as operator_builder
+
+    monkeypatch.setattr(operator_builder, "audit_training_dataset", fake_audit)
+
+    result_frame, active_rule_ids, excluded_rule_ids, audit = _prune_failed_diversity_rules(
+        frame=frame,
+        active_rule_ids=["unit_atomic"],
+        excluded_rule_ids={},
+        requested_total=1,
+        split_sizes={"train": 1, "val": 0, "test": 0},
+        seed=17,
+        config={},
+    )
+
+    assert len(result_frame) == 1
+    assert active_rule_ids == ["unit_atomic"]
+    assert excluded_rule_ids == {}
+    assert "rule_diversity_warning:unit_atomic" in audit["warnings"]
+
+
+def test_destructive_diversity_pruning_requires_explicit_config(monkeypatch):
+    frame = pd.DataFrame(
+        [
+            {
+                "source": "В тексте есть млоко.",
+                "target": "В тексте есть молоко.",
+                "source_type": SYNTHETIC_OPEN_CLEAN,
+                "rule_id": "unit_atomic",
+                "rule_ids": json.dumps(["unit_atomic"], ensure_ascii=False),
+                "dataset_layer": "atomic_positive",
+                "count_toward_rule_quota": True,
+                "gold_edit_count": 1,
+            }
+        ]
+    )
+
+    def fake_audit(_frame, active_rule_ids):
+        return {
+            "rule_diversity_summary": {
+                "failed_rule_count": len(active_rule_ids),
+                "failed_rule_ids": list(active_rule_ids),
+            }
+        }
+
+    import src.data.operator_dataset_builder as operator_builder
+
+    monkeypatch.setattr(operator_builder, "audit_training_dataset", fake_audit)
+
+    result_frame, active_rule_ids, excluded_rule_ids, _audit = _prune_failed_diversity_rules(
+        frame=frame,
+        active_rule_ids=["unit_atomic"],
+        excluded_rule_ids={},
+        requested_total=1,
+        split_sizes={"train": 1, "val": 0, "test": 0},
+        seed=17,
+        config={"data": {"audit": {"destructive_diversity_pruning_enabled": True}}},
+    )
+
+    assert not result_frame["rule_ids"].astype(str).str.contains("unit_atomic", regex=False).any()
+    assert active_rule_ids == []
+    assert excluded_rule_ids == {"unit_atomic": "diversity_failed"}
+
+
+def test_final_active_gates_use_pre_gate_counts_and_warn_below_target():
+    final_active, under_quota, blockers, warnings, audit_errors = _final_active_rule_ids_after_gates(
+        expanded_candidate_rule_ids=["unit_atomic"],
+        provisional_active_rule_ids=["unit_atomic"],
+        pre_gate_atomic_counts_by_rule={"unit_atomic": 500},
+        pre_gate_hard_negative_counts_by_rule={"unit_atomic": 200},
+        pre_gate_candidate_recall_by_rule={"unit_atomic": 1.0},
+        pre_gate_gold_counts_by_rule={"unit_atomic": 1},
+        quota_config={
+            "min_atomic_positives_per_active_rule": 500,
+            "preferred_atomic_positives_per_active_rule": 1500,
+            "min_hard_negatives_per_active_rule": 200,
+        },
+        config={
+            "data": {
+                "audit": {"min_candidate_recall_for_active_rule": 0.95},
+                "rule_activation": {
+                    "target_final_active_rule_count": 76,
+                    "warn_below_target_final_active_rule_count": True,
+                    "expected_min_final_active_rule_count": 25,
+                    "fail_below_final_active_rule_count": False,
+                },
+            }
+        },
+    )
+
+    assert final_active == ["unit_atomic"]
+    assert under_quota[0]["status"] == "active"
+    assert blockers == {}
+    assert "active_rule_below_preferred:unit_atomic" in warnings
+    assert "final_active_rule_count_below_target:1<76" in warnings
+    assert audit_errors == []
+
+
+def test_final_active_gates_block_atomic_min_hard_min_and_final_min():
+    rule_ids = [f"rule_{index}" for index in range(24)]
+    atomic_counts = {rule_id: 500 for rule_id in rule_ids}
+    hard_counts = {rule_id: 200 for rule_id in rule_ids}
+    atomic_counts["atomic_low"] = 499
+    hard_counts["atomic_low"] = 200
+    atomic_counts["hard_low"] = 500
+    hard_counts["hard_low"] = 199
+
+    final_active, under_quota, blockers, warnings, audit_errors = _final_active_rule_ids_after_gates(
+        expanded_candidate_rule_ids=[*rule_ids, "atomic_low", "hard_low"],
+        provisional_active_rule_ids=[*rule_ids, "atomic_low", "hard_low"],
+        pre_gate_atomic_counts_by_rule=atomic_counts,
+        pre_gate_hard_negative_counts_by_rule=hard_counts,
+        pre_gate_candidate_recall_by_rule={rule_id: 1.0 for rule_id in [*rule_ids, "atomic_low", "hard_low"]},
+        pre_gate_gold_counts_by_rule={rule_id: 1 for rule_id in [*rule_ids, "atomic_low", "hard_low"]},
+        quota_config={
+            "min_atomic_positives_per_active_rule": 500,
+            "preferred_atomic_positives_per_active_rule": 1500,
+            "min_hard_negatives_per_active_rule": 200,
+        },
+        config={
+            "data": {
+                "audit": {"min_candidate_recall_for_active_rule": 0.95},
+                "rule_activation": {
+                    "expected_min_final_active_rule_count": 25,
+                    "fail_below_final_active_rule_count": True,
+                    "target_final_active_rule_count": 76,
+                    "warn_below_target_final_active_rule_count": True,
+                },
+            }
+        },
+    )
+
+    under_by_rule = {row["rule_id"]: row for row in under_quota}
+    assert final_active == sorted(rule_ids)
+    assert under_by_rule["atomic_low"]["status"] == "under_quota"
+    assert under_by_rule["atomic_low"]["reason"] == "below_min_atomic_positive_quota"
+    assert under_by_rule["hard_low"]["status"] == "under_quota"
+    assert under_by_rule["hard_low"]["reason"] == "below_min_hard_negative_quota"
+    assert blockers["atomic_low"] == "below_min_atomic_positive_quota"
+    assert blockers["hard_low"] == "below_min_hard_negative_quota"
+    assert "final_active_rule_count_below_target:24<76" in warnings
+    assert "final_active_rule_count_below_min:24<25" in audit_errors
+
+
+def test_pre_gate_count_helpers_accept_rows_and_frames():
+    rows = [
+        {
+            "rule_ids": json.dumps(["unit_atomic"], ensure_ascii=False),
+            "dataset_layer": "atomic_positive",
+            "count_toward_rule_quota": True,
+            "gold_edit_count": 1,
+        },
+        {
+            "target_rule_id": "unit_atomic",
+            "metadata": json.dumps({"target_rule_id": "unit_atomic"}, ensure_ascii=False),
+            "dataset_layer": "atomic_hard_negative",
+        },
+    ]
+
+    assert _pre_gate_atomic_counts_by_rule(rows) == {"unit_atomic": 1}
+    assert _pre_gate_atomic_counts_by_rule(pd.DataFrame(rows)) == {"unit_atomic": 1}
+    assert _pre_gate_hard_negative_counts_by_rule(rows) == {"unit_atomic": 1}
+    assert _pre_gate_hard_negative_counts_by_rule(pd.DataFrame(rows)) == {"unit_atomic": 1}
+
+
 def test_final_targeted_fill_is_capped_by_fallback_share_budget():
     rows = []
     for idx in range(100):
@@ -497,3 +693,75 @@ def test_quality_source_minimum_targets_do_not_require_exact_synthetic_target():
     assert targets[REAL_ERROR_PAIR] == 1969
     assert targets[CLEAN_IDENTITY_OPEN] == 23241
     assert targets[HARD_NEGATIVE_OPEN] == 23241
+
+
+def test_dataset_build_workers_default_to_serial_and_clamp_config(monkeypatch):
+    monkeypatch.delenv("RUSSIAN_CORRECTOR_DATASET_WORKERS", raising=False)
+
+    assert _dataset_build_workers({"data": {}}) == 1
+    assert _dataset_build_workers({"data": {"dataset_build_workers": 0}}) == 1
+    assert _dataset_build_workers({"data": {"dataset_build_workers": 9999}}) == max(1, os.cpu_count() or 1)
+
+
+def test_parallel_atomic_positive_merge_is_deterministic_and_strips_worker_keys():
+    quota_config = {
+        "min_atomic_positives_per_active_rule": 1,
+        "preferred_atomic_positives_per_active_rule": 1,
+        "max_total_per_rule_id": 1,
+    }
+    chunk_results = [
+        {
+            "rows": [
+                {
+                    "source": "late source",
+                    "target": "late target",
+                    "rule_id": "rule_a",
+                    "_parallel_pool_index": 9,
+                    "_parallel_rule_order": 0,
+                    "_parallel_local_index": 0,
+                },
+                {
+                    "source": "rule b source",
+                    "target": "rule b target",
+                    "rule_id": "rule_b",
+                    "_parallel_pool_index": 1,
+                    "_parallel_rule_order": 1,
+                    "_parallel_local_index": 0,
+                },
+            ],
+            "rejections": [],
+            "attempts": {"rule_a": 2, "rule_b": 1},
+            "opportunities_seen": {"rule_a": 2, "rule_b": 1},
+            "rejection_counts": {},
+        },
+        {
+            "rows": [
+                {
+                    "source": "early source",
+                    "target": "early target",
+                    "rule_id": "rule_a",
+                    "_parallel_pool_index": 0,
+                    "_parallel_rule_order": 0,
+                    "_parallel_local_index": 0,
+                }
+            ],
+            "rejections": [],
+            "attempts": {"rule_a": 1},
+            "opportunities_seen": {"rule_a": 1},
+            "rejection_counts": {},
+        },
+    ]
+
+    result, seen_hashes, counts = _merge_parallel_atomic_positive_results(
+        rule_ids=["rule_a", "rule_b"],
+        chunk_results=chunk_results,
+        target_per_rule=1,
+        quota_config=quota_config,
+    )
+
+    assert _chunk_rule_ids_for_workers(["rule_a", "rule_b", "rule_c"], 2) == [["rule_a", "rule_c"], ["rule_b"]]
+    assert [row["source"] for row in result.rows] == ["early source", "rule b source"]
+    assert all(not key.startswith("_parallel_") for row in result.rows for key in row)
+    assert counts == {"rule_a": 1, "rule_b": 1}
+    assert len(seen_hashes) == 2
+    assert {row["rule_id"]: row["status"] for row in result.generation_rows} == {"rule_a": "ready", "rule_b": "ready"}

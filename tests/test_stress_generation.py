@@ -8,7 +8,7 @@ import pandas as pd
 from src.candidates.candidate_generator import Candidate
 from src.data.corruption_operators import CorruptionResult, Opportunity
 from src.data.dataset_contract import DATASET_CONTRACT, LAYER_STRESS_MULTI_ERROR, SYNTHETIC_OPEN_CLEAN
-from src.data.operator_dataset_builder import _rule_counts, _stress_count
+from src.data.operator_dataset_builder import _audit_errors, _audit_warnings, _operator_audit_config, _rule_counts, _stress_count
 from src.data.stress_generation import generate_multi_error_stress_rows
 
 
@@ -215,3 +215,85 @@ def test_stress_counter_requires_stress_layer_and_multi_edit_gold_count():
     }
 
     assert _stress_count(pd.DataFrame([metadata_only_fake_stress, single_edit_fake_stress, real_stress])) == 1
+
+
+def test_stress_under_target_warns_by_default():
+    audit_config = _operator_audit_config(
+        {
+            "data": {
+                "stress": {"min_ratio": 0.03, "max_ratio": 0.05},
+                "audit": {},
+            }
+        }
+    )
+    kwargs = _operator_audit_kwargs(stress_count=1000, corpus_share=0.80, audit_config=audit_config)
+
+    errors = _audit_errors(**kwargs)
+    warnings = _audit_warnings(
+        total=kwargs["total"],
+        composition=kwargs["composition"],
+        corpus_share=kwargs["corpus_share"],
+        audit_config=kwargs["audit_config"],
+        production_gates=True,
+    )
+
+    assert "stress_ratio_outside_3_5_percent" not in errors
+    assert "stress_ratio_below_target" in warnings
+
+
+def test_corpus_opportunity_share_warns_by_default():
+    audit_config = _operator_audit_config(
+        {
+            "data": {
+                "stress": {"min_ratio": 0.03, "max_ratio": 0.05},
+                "audit": {},
+            }
+        }
+    )
+    kwargs = _operator_audit_kwargs(stress_count=8000, corpus_share=0.50, audit_config=audit_config)
+
+    errors = _audit_errors(**kwargs)
+    warnings = _audit_warnings(
+        total=kwargs["total"],
+        composition=kwargs["composition"],
+        corpus_share=kwargs["corpus_share"],
+        audit_config=kwargs["audit_config"],
+        production_gates=True,
+    )
+
+    assert "corpus_opportunity_share_below_threshold" not in errors
+    assert "corpus_opportunity_share_below_threshold" in warnings
+
+
+def _operator_audit_kwargs(*, stress_count: int, corpus_share: float, audit_config: dict) -> dict:
+    total = 200000
+    return {
+        "total": total,
+        "requested_total": total,
+        "split_sizes": {"train": 160000, "val": 20000, "test": 20000},
+        "composition": {
+            "clean_identity_from_open_clean": 25000,
+            "hard_negative_from_open_clean": 25000,
+            "real_error_pair": 1000,
+            "multi_error_stress": stress_count,
+        },
+        "active_rule_ids": [],
+        "rule_counts": {},
+        "known": {},
+        "quote": {},
+        "clean_hard": {},
+        "numeric_mismatch": 0,
+        "corpus_share": corpus_share,
+        "fallback_share": 0.10,
+        "diversity": {"failed_rule_count": 0},
+        "extended_summary": {"blocking_issue_count": 0},
+        "semantic_summary": {"failed_rows": 0},
+        "atomic_purity_summary": {"failed_rows": 0},
+        "extra_edit_summary": {"failed_rows": 0},
+        "unknown_rule_train_summary": {"failed_rows": 0},
+        "mixed_script_clean_summary": {"failed_rows": 0},
+        "real_pair_atomization_summary": {"failed_rows": 0},
+        "recall_summary": {"active_min_excluding_unknown": 1.0},
+        "audit_config": audit_config,
+        "production_gates": True,
+    }

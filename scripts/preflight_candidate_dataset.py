@@ -56,6 +56,56 @@ TARGET_TRAINING_CANDIDATE_RULE_COUNT = 69
 TARGET_FINAL_ACTIVE_RULE_COUNT = 69
 
 
+def _activation_thresholds(activation: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "expected_min_production_ready_rule_count": _activation_int(
+            activation,
+            "expected_min_production_ready_rule_count",
+            MIN_PRODUCTION_READY_RULE_COUNT,
+        ),
+        "expected_min_training_candidate_rule_count": _activation_int(
+            activation,
+            "expected_min_training_candidate_rule_count",
+            MIN_TRAINING_CANDIDATE_RULE_COUNT,
+        ),
+        "expected_min_final_active_rule_count": _activation_int(
+            activation,
+            "expected_min_final_active_rule_count",
+            MIN_FINAL_ACTIVE_RULE_COUNT,
+        ),
+        "target_training_candidate_rule_count": _activation_int(
+            activation,
+            "target_training_candidate_rule_count",
+            TARGET_TRAINING_CANDIDATE_RULE_COUNT,
+        ),
+        "target_final_active_rule_count": _activation_int(
+            activation,
+            "target_final_active_rule_count",
+            TARGET_FINAL_ACTIVE_RULE_COUNT,
+        ),
+        "fail_below_min_training_candidate_rule_count": _activation_bool(
+            activation,
+            "fail_below_min_training_candidate_rule_count",
+            True,
+        ),
+        "warn_below_target_training_candidate_rule_count": _activation_bool(
+            activation,
+            "warn_below_target_training_candidate_rule_count",
+            True,
+        ),
+        "fail_below_final_active_rule_count": _activation_bool(
+            activation,
+            "fail_below_final_active_rule_count",
+            True,
+        ),
+        "warn_below_target_final_active_rule_count": _activation_bool(
+            activation,
+            "warn_below_target_final_active_rule_count",
+            True,
+        ),
+    }
+
+
 @dataclass(frozen=True)
 class PreflightOptions:
     config_path: Path | str = Path("configs/config.yaml")
@@ -175,23 +225,24 @@ def check_config(config: Mapping[str, Any]) -> dict[str, Any]:
     )
     _expect_float(errors, "data.clean_pool.high_confidence_candidate_threshold", clean_pool.get("high_confidence_candidate_threshold"), 0.95)
     _expect_equal(errors, "data.rule_activation.mode", activation.get("mode"), "expanded_safe")
+    thresholds = _activation_thresholds(activation)
     _expect_min(
         errors,
         "data.rule_activation.expected_min_production_ready_rule_count",
-        activation.get("expected_min_production_ready_rule_count"),
-        MIN_PRODUCTION_READY_RULE_COUNT,
+        thresholds["expected_min_production_ready_rule_count"],
+        0,
     )
     _expect_min(
         errors,
         "data.rule_activation.expected_min_training_candidate_rule_count",
-        activation.get("expected_min_training_candidate_rule_count"),
-        MIN_TRAINING_CANDIDATE_RULE_COUNT,
+        thresholds["expected_min_training_candidate_rule_count"],
+        0,
     )
     _expect_min(
         errors,
         "data.rule_activation.expected_min_final_active_rule_count",
-        activation.get("expected_min_final_active_rule_count"),
-        MIN_FINAL_ACTIVE_RULE_COUNT,
+        thresholds["expected_min_final_active_rule_count"],
+        0,
     )
     _target_check(
         errors,
@@ -200,7 +251,8 @@ def check_config(config: Mapping[str, Any]) -> dict[str, Any]:
         key="target_training_candidate_rule_count",
         fail_key="fail_below_target_training_candidate_rule_count",
         warn_key="warn_below_target_training_candidate_rule_count",
-        minimum=TARGET_TRAINING_CANDIDATE_RULE_COUNT,
+        minimum=thresholds["expected_min_training_candidate_rule_count"],
+        default=TARGET_TRAINING_CANDIDATE_RULE_COUNT,
     )
     _target_check(
         errors,
@@ -209,7 +261,8 @@ def check_config(config: Mapping[str, Any]) -> dict[str, Any]:
         key="target_final_active_rule_count",
         fail_key="fail_below_target_final_active_rule_count",
         warn_key="warn_below_target_final_active_rule_count",
-        minimum=TARGET_FINAL_ACTIVE_RULE_COUNT,
+        minimum=thresholds["expected_min_final_active_rule_count"],
+        default=TARGET_FINAL_ACTIVE_RULE_COUNT,
     )
     return {
         "ok": not errors,
@@ -229,16 +282,31 @@ def check_activation(config: Mapping[str, Any]) -> dict[str, Any]:
     blocker_counts = Counter(str(row.get("blocker") or "unknown") for row in blocked_rows)
     errors = list(fields.get("activation_policy", {}).get("errors", []) or [])
     warnings = list(fields.get("activation_policy", {}).get("warnings", []) or [])
+    activation = dict((dict(config.get("data", {}) or {}).get("rule_activation", {}) or {}))
+    thresholds = _activation_thresholds(activation)
 
     production_count = int(fields.get("production_ready_rule_count", 0) or 0)
     training_count = int(fields.get("training_candidate_rule_count", 0) or 0)
     final_count = int(fields.get("final_active_rule_count", fields.get("active_rule_count", 0)) or 0)
-    if production_count < MIN_PRODUCTION_READY_RULE_COUNT:
-        errors.append(f"production_ready_rule_count_below_min:{production_count}<{MIN_PRODUCTION_READY_RULE_COUNT}")
-    if training_count < MIN_TRAINING_CANDIDATE_RULE_COUNT:
-        errors.append(f"training_candidate_rule_count_below_min:{training_count}<{MIN_TRAINING_CANDIDATE_RULE_COUNT}")
-    if final_count < MIN_FINAL_ACTIVE_RULE_COUNT:
-        errors.append(f"final_active_rule_count_below_min:{final_count}<{MIN_FINAL_ACTIVE_RULE_COUNT}")
+    min_production = int(thresholds["expected_min_production_ready_rule_count"])
+    min_training = int(thresholds["expected_min_training_candidate_rule_count"])
+    target_training = int(thresholds["target_training_candidate_rule_count"])
+    min_final = int(thresholds["expected_min_final_active_rule_count"])
+    target_final = int(thresholds["target_final_active_rule_count"])
+    if production_count < min_production:
+        errors.append(f"production_ready_rule_count_below_min:{production_count}<{min_production}")
+    if training_count < min_training and bool(thresholds["fail_below_min_training_candidate_rule_count"]):
+        errors.append(f"training_candidate_rule_count_below_min:{training_count}<{min_training}")
+    if (
+        target_training > 0
+        and training_count < target_training
+        and bool(thresholds["warn_below_target_training_candidate_rule_count"])
+    ):
+        warnings.append(f"training_candidate_rule_count_below_target:{training_count}<{target_training}")
+    if final_count < min_final and bool(thresholds["fail_below_final_active_rule_count"]):
+        errors.append(f"final_active_rule_count_below_min:{final_count}<{min_final}")
+    if target_final > 0 and final_count < target_final and bool(thresholds["warn_below_target_final_active_rule_count"]):
+        warnings.append(f"final_active_rule_count_below_target:{final_count}<{target_final}")
 
     return {
         "ok": not errors,
@@ -545,6 +613,25 @@ def _expect_min(errors: list[str], path: str, actual: Any, minimum: int) -> None
         errors.append(f"config_{path}_below_min:{value}<{minimum}")
 
 
+def _activation_int(activation: Mapping[str, Any], key: str, default: int) -> int:
+    try:
+        return max(0, int(activation.get(key, default) or 0))
+    except (TypeError, ValueError):
+        return max(0, int(default))
+
+
+def _activation_bool(activation: Mapping[str, Any], key: str, default: bool) -> bool:
+    raw = activation.get(key, default)
+    if isinstance(raw, bool):
+        return raw
+    text = str(raw).strip().lower()
+    if text in {"", "0", "false", "no", "off", "none", "null", "nan"}:
+        return False
+    if text in {"1", "true", "yes", "on"}:
+        return True
+    return bool(raw)
+
+
 def _target_check(
     errors: list[str],
     warnings: list[str],
@@ -554,9 +641,10 @@ def _target_check(
     fail_key: str,
     warn_key: str,
     minimum: int,
+    default: int,
 ) -> None:
     try:
-        value = int(activation.get(key, 0) or 0)
+        value = int(activation.get(key, default) or 0)
     except (TypeError, ValueError):
         errors.append(f"config_data.rule_activation.{key}_below_target:{activation.get(key)!r}<{minimum}")
         return

@@ -27,6 +27,8 @@ def test_training_dataset_core_builds_from_open_clean_sources_without_meta_templ
     )
 
     config = load_config("configs/config.yaml")
+    config["data"]["dataset_contract"] = "training_dataset_core"
+    config["data"]["training_dataset_core"]["legacy_builder"] = True
     config["data"]["processed_train_path"] = str(tmp_path / "data" / "training_dataset_core" / "correction_dataset.csv.gz")
     config["data"]["manifest_path"] = str(tmp_path / "reports" / "training_dataset_core" / "dataset_manifest.json")
     config["paths"]["reports_dir"] = str(tmp_path / "reports" / "training_dataset_core")

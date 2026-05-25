@@ -1,0 +1,27 @@
+# Operator Dataset Generation Report
+
+- verdict: DATASET_BLOCKED
+- dataset_hash: c117cfdbd66b626c6457d09523c743b654877c7d2c77b174decbcb6edac29b72
+- config_hash: da01fb81ceab5900dcc43ee15f1b4398c8974ee6efc7ded0881c4c15415afea1
+- total: 320000
+- split_sizes: {"test": 32000, "train": 256000, "val": 32000}
+- production_ready_rule_count: 12
+- training_candidate_rule_count: 76
+- expanded_training_candidate_rule_count: 76
+- active_rule_count: 0
+- final_active_rule_count: 0
+- expected_min_final_active_rule_count: 76
+- target_final_active_rule_count: 76
+- activation_stage_counts: {"mixed": 85, "production_ready": 4, "threshold_calibration": 12, "validator_dependent": 607}
+- requested_layer_targets: {"atomic_hard_negative": 76000, "atomic_positive": 190000, "clean_identity": 32000, "real_atomic": 6000, "stress_multi_error": 16000}
+- effective_layer_targets: {"atomic_hard_negative": 76000, "atomic_positive": 190000, "clean_identity": 32000, "real_atomic": 6000, "stress_multi_error": 16000}
+- layer_target_adjustments: {}
+- active_rule_coverage_summary: {}
+- hard_negative_coverage_summary: {}
+- operator_based_generation: True
+- semantic_alignment_failed_rows: 0
+- numeric_punctuation_mismatch_count: 0
+- corpus_opportunity_share: 0.000000
+- fallback_template_share: 0.000000
+- warnings: ["layer_target_deficit:atomic_positive", "layer_target_deficit:real_atomic", "layer_target_deficit:stress_multi_error", "final_active_rule_count_below_target:0<76"]
+- audit_errors: ["stress_ratio_outside_3_5_percent", "known_quality_bugs_present:artificial_marker_metka", "clean_hard_balance_bugs_present:unbalanced_guillemets", "clean_hard_balance_bugs_present:unbalanced_ascii_quotes", "clean_hard_balance_bugs_present:unbalanced_parentheses", "corpus_opportunity_share_below_threshold", "extended_quality_audit_blocking_issues", "final_active_rule_count_below_min:0<76"]

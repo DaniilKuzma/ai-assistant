@@ -51,7 +51,11 @@ SYNTAX_PUNCTUATION_ALIGNMENT_RULE_IDS = {
     "subject_predicate_dash",
     "asyndetic_dash",
 }
-METKA_SUBSTRING = "\u043c\u0435\u0442\u043a\u0430"
+CYRILLIC_LETTER_CLASS = "\u0410-\u042f\u0430-\u044f\u0401\u0451"
+METKA_TOKEN_RE = re.compile(
+    rf"(?<![{CYRILLIC_LETTER_CLASS}])\u043c\u0435\u0442\u043a\u0430(?![{CYRILLIC_LETTER_CLASS}])",
+    re.IGNORECASE,
+)
 LATER_EDITOR_PATTERNS = (
     "\u043f\u043e\u0437\u0436\u0435 \u0440\u0435\u0434\u0430\u043a\u0442\u043e\u0440 "
     "\u043f\u0440\u043e\u0432\u0435\u0440\u0438\u043b \u0437\u0430\u043f\u0438\u0441\u044c",
@@ -536,6 +540,11 @@ def target_has_quote_bracket_balance_bug(text: str) -> bool:
 
 def text_has_quote_bracket_balance_bug(text: str) -> bool:
     return any(_plain_quote_bracket_balance_flags(text).values())
+
+
+def plain_quote_bracket_balance_reasons(text: str) -> list[str]:
+    flags = _plain_quote_bracket_balance_flags(text)
+    return [key for key in CLEAN_HARD_BALANCE_KEYS if bool(flags.get(key))]
 
 
 def quote_bracket_balance_counts(frame: pd.DataFrame) -> dict[str, int]:
@@ -1209,10 +1218,18 @@ def artificial_marker_counts(frame: pd.DataFrame) -> dict[str, int]:
     for phrase in LATER_EDITOR_PATTERNS:
         later = later | combined.str.contains(phrase, regex=False, na=False)
     return {
-        "metka": int(combined.str.contains(METKA_SUBSTRING, regex=False, na=False).sum()),
+        "metka": int(combined.map(lambda value: bool(METKA_TOKEN_RE.search(str(value)))).sum()),
         "later_editor_checked_record": int(later.sum()),
         "random_filler_tokens": int((synthetic & combined.str.contains(RANDOM_FILLER_RE, na=False)).sum()),
     }
+
+
+def contains_artificial_marker_text(*texts: str) -> bool:
+    combined = "\n".join(str(text) for text in texts).lower()
+    return (
+        bool(METKA_TOKEN_RE.search(combined))
+        or any(pattern in combined for pattern in LATER_EDITOR_PATTERNS)
+    )
 
 
 def error_bearing_sentence_source_counts(frame: pd.DataFrame) -> dict[str, int]:

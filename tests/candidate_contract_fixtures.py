@@ -103,6 +103,7 @@ def candidate_contract_config(tmp_path: Path, clean_pool_path: Path) -> dict:
     config["data"]["processed_train_path"] = str(tmp_path / "data" / "operator_dataset.csv.gz")
     config["data"]["manifest_path"] = str(tmp_path / "reports" / "dataset_manifest.json")
     config["data"]["dataset_contract"] = "candidate_opportunity"
+    config["data"]["dataset_build_workers"] = 1
     config["data"]["clean_pool_path"] = str(clean_pool_path)
     config["data"]["clean_pool_chunksize"] = 2
     config["data"]["total_examples"] = 10

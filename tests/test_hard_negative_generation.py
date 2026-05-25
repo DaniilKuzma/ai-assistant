@@ -153,7 +153,7 @@ def test_fallback_template_is_rejected_when_candidate_is_not_generated(tmp_path)
 
 def test_counts_by_rule_counts_accepted_rows_per_target_rule():
     tak_text = "Он сделал так же, как раньше."
-    za_text = "Он отвечает за то решение."
+    za_text = "Он отвечает за то решение на сегодняшнем заседании редакции."
     generator = StaticCandidateGenerator(
         {
             tak_text: [_context_candidate(tak_text, "context_tak_zhe", "так же", "также")],
@@ -177,3 +177,40 @@ def test_counts_by_rule_counts_accepted_rows_per_target_rule():
         "context_za_to": 1,
     }
     assert {row["target_rule_id"] for row in result.rows} == {"context_tak_zhe", "context_za_to"}
+
+
+def test_hard_negative_quality_gate_rejects_unbalanced_quote_and_parenthesis_rows():
+    bad_guillemets = "Он сказал: «так же, как раньше."
+    bad_ascii_quotes = 'Он сказал: "так же, как раньше.'
+    bad_parentheses = "Он сделал так же (как раньше."
+    balanced = "Он сделал так же, как раньше."
+    generator = StaticCandidateGenerator(
+        {
+            bad_guillemets: [_context_candidate(bad_guillemets, "context_tak_zhe", "так же", "также")],
+            bad_ascii_quotes: [_context_candidate(bad_ascii_quotes, "context_tak_zhe", "так же", "также")],
+            bad_parentheses: [_context_candidate(bad_parentheses, "context_tak_zhe", "так же", "также")],
+            balanced: [_context_candidate(balanced, "context_tak_zhe", "так же", "также")],
+        }
+    )
+
+    result = generate_atomic_hard_negatives(
+        clean_rows=[
+            {"text": bad_guillemets},
+            {"text": bad_ascii_quotes},
+            {"text": bad_parentheses},
+            {"text": balanced},
+        ],
+        rule_ids=["context_tak_zhe"],
+        candidate_generator=generator,
+        min_per_rule=1,
+        preferred_per_rule=4,
+        seed=1,
+        max_scan_rows=10,
+        fallback_templates_enabled=False,
+    )
+
+    assert [row["source"] for row in result.rows] == [balanced]
+    reasons = {row["reason"] for row in result.rejection_rows}
+    assert "hard_negative_quality_failed:unbalanced_guillemets" in reasons
+    assert "hard_negative_quality_failed:unbalanced_ascii_quotes" in reasons
+    assert "hard_negative_quality_failed:unbalanced_parentheses" in reasons

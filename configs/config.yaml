@@ -49,9 +49,9 @@ training:
   run_model_training: true
   evaluation_split: val
   checkpoint_metric: combined_score
-  max_train_examples: 160000
-  max_val_examples: 20000
-  max_test_examples: 20000
+  max_train_examples: 256000
+  max_val_examples: 32000
+  max_test_examples: 32000
   batch_size: 128
   gradient_accumulation_steps: 1
   epochs: 3
@@ -110,6 +110,7 @@ evaluation:
   write_rule_worse_examples_during_training: false
 data:
   dataset_contract: candidate_opportunity
+  dataset_build_workers: 8
   rule_activation:
     mode: expanded_safe
     include_decisions:
@@ -131,23 +132,23 @@ data:
     fail_below_min_training_candidate_rule_count: true
     warn_below_target_training_candidate_rule_count: true
     fail_below_final_active_rule_count: true
-    expected_min_final_active_rule_count: 76
+    expected_min_final_active_rule_count: 25
     target_final_active_rule_count: 76
     warn_below_target_final_active_rule_count: true
   synthetic_seed: 13
   processed_train_path: data/processed/correction_dataset.csv.gz
   manifest_path: data/processed/dataset_manifest.json
-  target_total_examples: 200000
-  total_examples: 200000
-  train_examples: 160000
-  val_examples: 20000
-  test_examples: 20000
+  target_total_examples: 320000
+  total_examples: 320000
+  train_examples: 256000
+  val_examples: 32000
+  test_examples: 32000
   composition:
-    atomic_positive_ratio: 0.45
-    atomic_hard_negative_ratio: 0.35
-    clean_identity_ratio: 0.12
+    atomic_positive_ratio: 0.59375
+    atomic_hard_negative_ratio: 0.2375
+    clean_identity_ratio: 0.10
     stress_multi_error_ratio: 0.05
-    real_atomic_train_ratio: 0.03
+    real_atomic_train_ratio: 0.01875
     allow_layer_target_adjustment: true
     fail_on_unadjusted_layer_deficit: true
   clean_pool:
@@ -168,20 +169,41 @@ data:
     enabled: true
     count_toward_rule_quota: false
     loss_weight: 0.4
+    min_ratio: 0.03
+    max_ratio: 0.05
+    fail_on_under_target: false
   rule_quota:
-    min_atomic_positives_per_active_rule: 1000
-    preferred_atomic_positives_per_active_rule: 2500
-    min_hard_negatives_per_active_rule: 500
+    min_atomic_positives_per_active_rule: 500
+    preferred_atomic_positives_per_active_rule: 1500
+    max_total_per_rule_id: 1500
+    min_hard_negatives_per_active_rule: 200
     disable_rule_if_quota_not_met: true
+  rule_data_compiler:
+    enabled: true
+    source_priority:
+      - corpus_mined
+      - syntax_mined
+      - morphology_mined
+      - real_pattern_replay
+      - rule_lab
+    max_rule_lab_share_per_rule: 0.30
+    fail_on_high_rule_lab_share: false
+    min_unique_sentence_patterns_per_rule: 20
+    min_unique_left_contexts_per_rule: 100
+    min_unique_right_contexts_per_rule: 100
+    max_near_duplicate_share: 0.02
+    fail_on_low_structural_diversity: false
   audit:
     fail_on_extra_edits_in_atomic: true
     fail_on_unknown_rule_in_train: true
     fail_on_stale_reports: true
+    fail_on_corpus_opportunity_share_below_threshold: false
+    destructive_diversity_pruning_enabled: false
     min_candidate_recall_for_active_rule: 0.95
   clean_identity_ratio: 0.1
   punctuation_hard_negative_clean_ratio: 0.25
-  val_ratio: 0.05
-  test_ratio: 0.05
+  val_ratio: 0.1
+  test_ratio: 0.1
   domain: training_dataset
   use_external_sources: true
   external_local_files_only: true
@@ -292,14 +314,14 @@ data:
   - Чистый текст.
   config_path: configs/config.yaml
   exact_split_sizes:
-    train: 160000
-    val: 20000
-    test: 20000
+    train: 256000
+    val: 32000
+    test: 32000
   training_dataset:
     enabled: true
     legacy_builder: false
-    requested_total: 200000
-    expected_total: 200000
+    requested_total: 320000
+    expected_total: 320000
     smoke:
       enabled: false
       requested_total: 60000
@@ -313,31 +335,31 @@ data:
     open_corpora_sources_path: configs/open_corpora_sources.yaml
     real_error_sources_path: configs/real_error_sources.yaml
     source_type_targets:
-      synthetic_augmented_from_open_clean: 81775
-      real_error_pair: 1920
-      clean_identity_from_open_clean: 58153
-      hard_negative_from_open_clean: 58152
+      synthetic_augmented_from_open_clean: 206000
+      real_error_pair: 6000
+      clean_identity_from_open_clean: 32000
+      hard_negative_from_open_clean: 76000
     split_source_type_targets: &id001
       train:
-        synthetic_augmented_from_open_clean: 65369
-        real_error_pair: 1550
-        clean_identity_from_open_clean: 46537
-        hard_negative_from_open_clean: 46544
+        synthetic_augmented_from_open_clean: 164800
+        real_error_pair: 4800
+        clean_identity_from_open_clean: 25600
+        hard_negative_from_open_clean: 60800
       val:
-        synthetic_augmented_from_open_clean: 8174
-        real_error_pair: 189
-        clean_identity_from_open_clean: 5775
-        hard_negative_from_open_clean: 5862
+        synthetic_augmented_from_open_clean: 20600
+        real_error_pair: 600
+        clean_identity_from_open_clean: 3200
+        hard_negative_from_open_clean: 7600
       test:
-        synthetic_augmented_from_open_clean: 8232
-        real_error_pair: 181
-        clean_identity_from_open_clean: 5841
-        hard_negative_from_open_clean: 5746
+        synthetic_augmented_from_open_clean: 20600
+        real_error_pair: 600
+        clean_identity_from_open_clean: 3200
+        hard_negative_from_open_clean: 7600
     active_rule_quota:
       enabled: true
       strategy: broad_canonical
-      min_total_per_active_rule: 1000
-      preferred_total_per_active_rule: 2500
+      min_total_per_active_rule: 500
+      preferred_total_per_active_rule: 1500
       corpus_opportunity_scan_limit: 60000
       corpus_opportunity_specific_scan_limit: 60000
       split_minimums: {}
@@ -366,8 +388,8 @@ data:
         preferred_total_per_rule: 500
         max_total_per_rule: 1200
     rule_caps:
-      max_total_per_rule_id: 2500
-      max_train_per_rule_id: 2000
+      max_total_per_rule_id: 1500
+      max_train_per_rule_id: 1200
       max_rule_share_train: 0.1
       max_error_type_share_train: 0.35
       targeted_duplicate_cap: 2
@@ -379,20 +401,20 @@ data:
     audit:
       candidate_recall_min: 0.95
       gap_coverage_min: 0.85
-      synthetic_min: 81775
-      min_active_rule_count: 1000
+      synthetic_min: 190000
+      min_active_rule_count: 2500
       min_clean_identity_eval_split: 500
       min_hard_negative_eval_split: 500
       min_rows_for_template_gates: 1000
       min_rows_for_candidate_gates: 1000
       min_rows_for_eval_source_split_gates: 1000
       require_all_source_types: true
-    multi_error_stress_target: 6000
+    multi_error_stress_target: 16000
   training_dataset_core:
     enabled: true
     legacy_builder: false
-    requested_total: 200000
-    expected_total: 200000
+    requested_total: 320000
+    expected_total: 320000
     smoke:
       enabled: false
       requested_total: 60000
@@ -406,16 +428,16 @@ data:
     open_corpora_sources_path: configs/open_corpora_sources.yaml
     real_error_sources_path: configs/real_error_sources.yaml
     source_type_targets:
-      synthetic_augmented_from_open_clean: 81775
-      real_error_pair: 1920
-      clean_identity_from_open_clean: 58153
-      hard_negative_from_open_clean: 58152
+      synthetic_augmented_from_open_clean: 206000
+      real_error_pair: 6000
+      clean_identity_from_open_clean: 32000
+      hard_negative_from_open_clean: 76000
     split_source_type_targets: *id001
     active_rule_quota:
       enabled: true
       strategy: broad_canonical
-      min_total_per_active_rule: 1000
-      preferred_total_per_active_rule: 2500
+      min_total_per_active_rule: 500
+      preferred_total_per_active_rule: 1500
       corpus_opportunity_scan_limit: 60000
       corpus_opportunity_specific_scan_limit: 60000
       split_minimums: {}
@@ -444,8 +466,8 @@ data:
         preferred_total_per_rule: 500
         max_total_per_rule: 1200
     rule_caps:
-      max_total_per_rule_id: 2500
-      max_train_per_rule_id: 2000
+      max_total_per_rule_id: 1500
+      max_train_per_rule_id: 1200
       max_rule_share_train: 0.1
       max_error_type_share_train: 0.35
       targeted_duplicate_cap: 2
@@ -457,15 +479,15 @@ data:
     audit:
       candidate_recall_min: 0.95
       gap_coverage_min: 0.85
-      synthetic_min: 81775
-      min_active_rule_count: 1000
+      synthetic_min: 190000
+      min_active_rule_count: 2500
       min_clean_identity_eval_split: 500
       min_hard_negative_eval_split: 500
       min_rows_for_template_gates: 1000
       min_rows_for_candidate_gates: 1000
       min_rows_for_eval_source_split_gates: 1000
       require_all_source_types: true
-    multi_error_stress_target: 6000
+    multi_error_stress_target: 16000
 thresholds:
   mode: calibrated_guarded
   conservative:
