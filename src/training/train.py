@@ -3,18 +3,13 @@ from __future__ import annotations
 import argparse
 import copy
 from dataclasses import dataclass
-import json
 import os
 from pathlib import Path
 import time
 from typing import Any
 
-import pandas as pd
-
 from src.candidates.candidate_generator import CandidateGenerator
 from src.config.load_config import load_config
-from src.data.dataset_builder import build_synthetic_dataset
-from src.data.dataset_stats import dataset_stats
 from src.evaluation.reports import write_loss_curve, write_threshold_precision_recall_plot, write_training_report
 from src.evaluation.evaluate import EvaluationReportOptions, evaluate_rows_detailed
 from src.evaluation.fast_eval import (
@@ -263,7 +258,58 @@ def train(config_path: str | Path = "configs/config.yaml") -> dict[str, Any]:
     return result
 
 
+def _online_generation_smoke_rows() -> list[dict[str, Any]]:
+    return [
+        {
+            "source": "Он вернулся домой.",
+            "target": "Он вернулся домой.",
+            "split": "train",
+            "source_type": "online_ast_smoke",
+            "error_types": "clean",
+            "is_clean": True,
+            "is_synthetic": True,
+        },
+        {
+            "source": "Она сказала что придет.",
+            "target": "Она сказала, что придет.",
+            "split": "val",
+            "source_type": "online_ast_smoke",
+            "error_types": "punctuation",
+            "is_clean": False,
+            "is_synthetic": True,
+        },
+        {
+            "source": "Нужно учится каждый день.",
+            "target": "Нужно учиться каждый день.",
+            "split": "test",
+            "source_type": "online_ast_smoke",
+            "error_types": "spelling",
+            "is_clean": False,
+            "is_synthetic": True,
+        },
+    ]
+
+
+def _row_stats(rows: list[dict[str, Any]]) -> dict[str, int]:
+    split_counts: dict[str, int] = {}
+    for row in rows:
+        split = str(row.get("split", "train"))
+        split_counts[split] = split_counts.get(split, 0) + 1
+    return {
+        "total": len(rows),
+        "clean": sum(1 for row in rows if bool(row.get("is_clean", False))),
+        "synthetic": sum(1 for row in rows if bool(row.get("is_synthetic", False))),
+        **{f"split_{split}": count for split, count in sorted(split_counts.items())},
+    }
+
+
 def _load_training_rows(config: dict[str, Any]) -> list[dict[str, Any]]:
+    """Temporary smoke rows until src.grammar_gen provides online batches."""
+
+    rows = _online_generation_smoke_rows()
+    max_examples = int(config.get("training", {}).get("smoke_steps", len(rows)) or len(rows))
+    return rows[:max_examples]
+
     data_config = config.get("data", {})
     processed_path = data_config.get("processed_train_path")
     if processed_path and Path(processed_path).exists():
@@ -283,6 +329,9 @@ def _load_training_rows(config: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def _full_dataset_stats(config: dict[str, Any], fallback_rows: list[dict[str, Any]]) -> dict[str, int]:
+    del config
+    return _row_stats(fallback_rows)
+
     processed_path = config.get("data", {}).get("processed_train_path")
     if processed_path and Path(processed_path).exists():
         return dataset_stats(pd.read_csv(processed_path, usecols=["is_clean", "is_synthetic", "split", "error_types"]))
@@ -290,6 +339,16 @@ def _full_dataset_stats(config: dict[str, Any], fallback_rows: list[dict[str, An
 
 
 def _dataset_training_metadata(config: dict[str, Any]) -> dict[str, Any]:
+    del config
+    return {
+        "dataset_path": "",
+        "manifest_path": "",
+        "manifest_verdict": "",
+        "dataset_rows": 0,
+        "split_counts": {},
+        "data_generation_mode": "online_ast",
+    }
+
     data_config = config.get("data", {})
     dataset_path_value = str(data_config.get("processed_train_path") or "")
     manifest_path_value = str(data_config.get("manifest_path") or "")
@@ -467,6 +526,12 @@ def _training_evaluation_split(config: dict[str, Any]) -> str:
 
 
 def _load_rows_for_split(config: dict[str, Any], *, split: str, fallback_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    rows = [row for row in fallback_rows if str(row.get("split", "train")) == split]
+    if not rows:
+        rows = [row for row in _online_generation_smoke_rows() if str(row.get("split", "train")) == split]
+    max_examples = int(config.get("training", {}).get(_limit_key_for_split(split), len(rows)) or len(rows))
+    return rows[:max_examples]
+
     data_config = config.get("data", {})
     processed_path = data_config.get("processed_train_path")
     training_config = config.get("training", {})

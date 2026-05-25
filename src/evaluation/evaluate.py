@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Any
 
 from src.candidates.candidate_generator import CandidateGenerator
-from src.evaluation.candidate_recall import write_candidate_recall_reports
 from src.evaluation.metrics import compute_metrics, mark_correct_edits
 from src.evaluation.reports import write_edit_logs, write_required_evaluation_reports
 from src.evaluation.rule_metrics import write_rule_reports
@@ -176,12 +175,7 @@ def write_evaluation_outputs(
     if options.write_score_distribution:
         write_candidate_score_distribution_by_rule(evaluated, candidate_decisions, accepted, rejected, output_dir)
     if options.write_candidate_recall:
-        write_candidate_recall_reports(
-            evaluated,
-            output_dir,
-            candidate_generator=candidate_generator,
-            max_candidates=candidate_recall_max_candidates,
-        )
+        del candidate_generator, candidate_recall_max_candidates
 
 
 def _with_progress(rows: list[dict], *, enabled: bool, description: str):

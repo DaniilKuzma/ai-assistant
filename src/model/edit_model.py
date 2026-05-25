@@ -22,7 +22,7 @@ class EditModelConfig:
 
 
 class CandidateAwareEditModel:
-    """Encoder-only multitask model for candidate-aware edit correction."""
+    """Encoder-only multitask model retained until the direct tagger refactor."""
 
     def __init__(self, config: EditModelConfig) -> None:
         self.config = config

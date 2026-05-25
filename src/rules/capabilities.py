@@ -10,7 +10,6 @@ from typing import Any, Iterable, Mapping
 import pandas as pd
 import yaml
 
-from src.config.candidate_dataset_config import candidate_dataset_rule_activation
 from src.rules.coverage_matrix import iter_coverage_entries, load_rules_coverage
 from src.rules.rule_ids import RULE_ID_ALIASES, UNKNOWN_RULE_ID, normalize_rule_id
 
@@ -118,6 +117,15 @@ VALIDATOR_PROBE_REPORT_COLUMNS = [
     "example_count",
     "passed_examples",
 ]
+
+
+def _rule_activation_config(config: Mapping[str, Any]) -> dict[str, Any]:
+    generation = config.get("generation", {}) if isinstance(config, Mapping) else {}
+    if isinstance(generation, Mapping):
+        activation = generation.get("rule_activation", {})
+        if isinstance(activation, Mapping):
+            return dict(activation)
+    return {}
 EXPANDED_ACTIVATION_CANDIDATE_COLUMNS = [
     "rule_id",
     "taxonomy_key",
@@ -333,7 +341,7 @@ def resolve_training_decision(capability: RuleCapability) -> tuple[str, str]:
 
 
 def activation_policy_from_config(config: Mapping[str, Any]) -> RuleActivationPolicy:
-    raw = candidate_dataset_rule_activation(config)
+    raw = _rule_activation_config(config)
     mode = str(raw.get("mode") or "strict").strip() or "strict"
     if "include_decisions" in raw:
         include_decisions = {str(item) for item in raw.get("include_decisions") or [] if str(item)}
@@ -802,7 +810,7 @@ def activation_stage_counts_from_frame(frame: pd.DataFrame) -> dict[str, int]:
 def _expanded_activation_policy(config: Mapping[str, Any] | None = None) -> RuleActivationPolicy:
     if config is not None:
         return activation_policy_from_config(config)
-    return activation_policy_from_config({"data": {"candidate_opportunity": {"rule_activation": {"mode": "expanded_safe"}}}})
+    return activation_policy_from_config({"generation": {"rule_activation": {"mode": "expanded_safe"}}})
 
 
 def _best_activation_by_rule(rows: Iterable[Mapping[str, Any]]) -> dict[str, dict[str, Any]]:
@@ -823,12 +831,7 @@ def _best_activation_by_rule(rows: Iterable[Mapping[str, Any]]) -> dict[str, dic
 
 
 def _legacy_candidate_backed_rule_ids() -> set[str]:
-    try:
-        from src.data.training_dataset import LEGACY_CANDIDATE_BACKED_RULE_IDS
-
-        return {normalize_rule_id(rule_id) for rule_id in LEGACY_CANDIDATE_BACKED_RULE_IDS}
-    except Exception:
-        return set()
+    return set()
 
 
 def _expanded_activation_bucket(rule_id: str, capability: RuleCapability | None, policy: RuleActivationPolicy) -> str:
@@ -1045,23 +1048,8 @@ def _empirical_validator_probe_for_capability(
         row = _validator_probe_row(rule_id, "no_generation_probe_source", 0, 0, source_name, {})
         _VALIDATOR_PROBE_CACHE[cache_key] = row
         return dict(row)
-    try:
-        from src.candidates.candidate_generator import CandidateGenerator
-        from src.data.atomic_verifier import verify_atomic_positive
-
-        candidate_generator = CandidateGenerator.from_config(_load_config(DEFAULT_CONFIG_PATH))
-    except Exception:
-        candidate_generator = None
-        from src.data.atomic_verifier import verify_atomic_positive
-
     passed = 0
-    reasons: Counter[str] = Counter()
-    for source, target in examples[: policy.max_empirical_validator_examples]:
-        verification = verify_atomic_positive(source, target, rule_id, candidate_generator=candidate_generator)
-        if verification.passed:
-            passed += 1
-        else:
-            reasons[str(verification.reason)] += 1
+    reasons: Counter[str] = Counter({"legacy_data_prep_removed": 1})
     status = "pass" if passed >= policy.min_empirical_validator_passes else "fail"
     reason = "" if status == "pass" else "validator_probe_failed"
     row = _validator_probe_row(rule_id, reason, len(examples[: policy.max_empirical_validator_examples]), passed, source_name, reasons)
@@ -1085,55 +1073,18 @@ def _validator_probe_examples(rule_id: str, max_examples: int) -> tuple[list[tup
 
 
 def _operator_probe_examples(rule_id: str, max_examples: int) -> list[tuple[str, str]]:
-    try:
-        from src.data.corruption_operators import build_default_operator_registry
-        from src.data.matrix_eval_dataset import DEFAULT_CLEAN_SENTENCES
-
-        operator = build_default_operator_registry().get(rule_id)
-        if operator is None:
-            return []
-        examples: list[tuple[str, str]] = []
-        for clean in DEFAULT_CLEAN_SENTENCES[: max(20, max_examples * 3)]:
-            for opportunity in operator.find_opportunities(clean)[:3]:
-                try:
-                    result = operator.corrupt(clean, opportunity)
-                except Exception:
-                    continue
-                if result.source != result.target:
-                    examples.append((result.source, result.target))
-                if len(examples) >= max_examples:
-                    return examples
-        return examples
-    except Exception:
-        return []
+    del rule_id, max_examples
+    return []
 
 
 def _syntax_probe_examples(rule_id: str, max_examples: int) -> list[tuple[str, str]]:
-    try:
-        from src.rules.syntax_synthetic import build_syntax_eval_examples
-
-        frame = build_syntax_eval_examples(selected_rule_ids=[rule_id], min_examples_per_rule=max_examples)
-        if frame.empty:
-            return []
-        return [
-            (str(row["source"]), str(row["target"]))
-            for row in frame.head(max_examples).to_dict("records")
-            if str(row.get("source", "")) != str(row.get("target", ""))
-        ]
-    except Exception:
-        return []
+    del rule_id, max_examples
+    return []
 
 
 def _backfill_probe_examples(rule_id: str, max_examples: int) -> list[tuple[str, str]]:
-    try:
-        from src.candidates.candidate_generator import CandidateGenerator
-        from src.data.synthetic_generator import TargetedBackfillGenerator
-
-        candidate_generator = CandidateGenerator.from_config(_load_config(DEFAULT_CONFIG_PATH))
-        result = TargetedBackfillGenerator(candidate_generator, seed=13).generate_for_rule(rule_id, max_examples)
-        return [(example.source, example.target) for example in result.examples[:max_examples]]
-    except Exception:
-        return []
+    del rule_id, max_examples
+    return []
 
 
 def _validator_probe_row(
@@ -1424,21 +1375,11 @@ def _registry_rule_ids() -> set[str]:
 
 
 def _operator_rule_ids() -> set[str]:
-    try:
-        from src.data.corruption_operators import build_default_operator_registry
-
-        return set(build_default_operator_registry().rule_ids())
-    except Exception:
-        return set()
+    return set()
 
 
 def _syntax_supported_rule_ids() -> set[str]:
-    try:
-        from src.rules.syntax_synthetic import SUPPORTED_SYNTAX_RULE_IDS
-
-        return {str(rule_id) for rule_id in SUPPORTED_SYNTAX_RULE_IDS}
-    except Exception:
-        return set()
+    return set()
 
 
 def _rule_corruption_supported_rule_ids(registry_rule_ids: set[str]) -> set[str]:

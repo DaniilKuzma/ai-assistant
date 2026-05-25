@@ -1,15 +1,17 @@
-# Инструкции для AI-агентов
+# Instructions For AI Agents
 
-Перед любым анализом проекта сначала открой `AI_INDEX.md`.
+Read `AI_INDEX.md` before project analysis. Use it as the project map instead
+of scanning the whole repository first.
 
-Не начинай со сканирования всего репозитория. Используй `AI_INDEX.md` как карту проекта: оттуда переходи в нужный документ из `ai_docs/`, а затем точечно читай код, конфиги или отчеты.
+Working rules:
 
-Короткий порядок работы:
-
-1. Прочитай `AI_INDEX.md`.
-2. Если меняешь архитектуру, inference, training, data pipeline или правила, прочитай соответствующие документы в `ai_docs/`.
-3. Перед правками проверь `git status` и не откатывай чужие изменения.
-4. Не меняй строгий scope проекта без явного решения: ассистент исправляет только орфографию и пунктуацию русского текста.
-5. Не добавляй generative/seq2seq rewrite-подходы: архитектура проекта edit-based и candidate-aware.
-6. Не удаляй validator/fallback safety checks ради качества метрик без отдельного решения.
-
+1. Check `git status` before edits and do not revert changes you did not make.
+2. Keep the project scope strict: Russian spelling and punctuation only.
+3. The current architecture is AST-first online generation plus direct edit
+   tagging. Do not restore the old candidate-aware dataset pipeline.
+4. Do not add seq2seq or free-form rewrite correction.
+5. Do not recreate materialized train/val/test CSV datasets.
+6. Do not use `CandidateGenerator`, rule_lab, clean sentence pool scanning, or
+   strict synthetic-row validation for data prep.
+7. Runtime safety remains conservative. The old `StrictValidator` data-prep
+   role is gone; a future `ScopeGuard` will cover runtime boundaries.

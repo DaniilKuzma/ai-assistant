@@ -1,63 +1,43 @@
 # Project Overview
 
-## Назначение
+## Purpose
 
-`russian-edit-corrector` — ассистент для контролируемого исправления русского текста. Проект исправляет только:
+`russian-edit-corrector` is a controlled assistant for Russian spelling and
+punctuation correction.
 
-- орфографические ошибки;
-- пунктуационные ошибки.
+The project does not do literary editing. It must not change meaning, style,
+word order, tense, case, synonyms, or add semantic content.
 
-Система не является литературным редактором. Она не должна менять смысл, стиль, порядок слов, падежи, времена, синонимы или добавлять новые смысловые слова.
+## Current Approach
 
-## Текущий Подход
+The target architecture is AST-first online generation plus direct edit tagging:
 
-Проект использует candidate-aware edit-based correction:
+- controlled `RuleProgram` objects render grammar ASTs;
+- morphology realizes grammatical Russian forms;
+- an error renderer creates spelling or punctuation mistakes;
+- labels are produced directly as token edit tags and punctuation gap labels;
+- training consumes generated examples online instead of reading a huge
+  materialized train CSV.
 
-- генерируются ограниченные кандидаты исправлений;
-- encoder-only модель оценивает кандидатов и пунктуационные gaps;
-- `StrictValidator` фильтрует все изменения перед применением;
-- итоговый текст собирается только из accepted edits.
+RuRoBERTa remains an encoder-only model with LoRA and custom heads. The model is
+not a seq2seq rewriter and no longer scores pre-generated correction candidates
+as the main model-backed path.
 
-Seq2seq и готовые generative correction-модели намеренно не используются.
+## Data Policy
 
-## Уникальная особенность: контекстная память решений и инкрементальная проверка
+The old clean sentence pool scan, CandidateGenerator-backed dataset builder,
+rule_lab, rule cards, corruption operators, strict synthetic validation, and
+large CSV/GZIP train/val/test artifacts were removed.
 
-Проект поддерживает контекстную память корректорских решений. Это не пользовательский словарь:
+Frozen validation, test, and regression sets may be written as JSONL under
+`data/generated_eval`. Training data is generated online.
 
-- пользовательский словарь хранит слова или допустимые формы;
-- `CorrectionMemory` хранит решение по конкретному исправлению в конкретном документе и контексте;
-- решение может быть `accepted`, `rejected`, `ignored` или `manual`;
-- ключ памяти учитывает правило, тип правки, исходный фрагмент, замену и левый/правый контекст.
+## Main Artifacts
 
-Память меняет inference/pipeline: уже известное решение может повторно принять candidate или подавить ранее отклоненный candidate в таком же контексте. Она не обучает веса ruRoberta, LoRA adapters или custom heads.
-
-Память не расширяет strict scope проекта. Даже memory-selected исправления остаются candidate-aware edits и проходят через `StrictValidator`; система по-прежнему исправляет только орфографию и пунктуацию.
-
-Инкрементальная проверка дополняет этот сценарий: для новой версии текста или DOCX можно переиспользовать кеш неизмененных сегментов/абзацев и заново проверять только измененные части. Это оптимизация pipeline, а не изменение качества модели или правил.
-
-## Основные Зависимости
-
-- Python `>=3.10`
-- PyTorch
-- Transformers `4.57.3`
-- PEFT/LoRA
-- pandas, numpy, scikit-learn, matplotlib
-- pymorphy3, natasha, razdel, rapidfuzz
-- Streamlit
-- python-docx
-- pytest, jupyter
-
-Полный список — `requirements.txt`.
-
-## Главные Артефакты
-
-- dataset: `data/processed/correction_dataset.csv.gz`
-- model adapters: `models/current/adapters`
-- custom heads: `models/current/heads/heads.pt`
-- reports: `reports/`
-- notebook pipeline: `notebooks/main_pipeline.ipynb`
-
-## Текущий Риск
-
-По `reports/pretraining_readiness_report.md` проект функционально проходит тесты и dry-run, но статус pretraining readiness остается `BLOCKED` из-за clean overcorrection в no-training evaluation с существующим checkpoint.
-
+- Config: `configs/config.yaml`
+- Architecture decision: `docs/architecture_decision_ast_first.md`
+- Online generation package: `src/grammar_gen/`
+- Runtime package: `src/runtime/`
+- Shared schemas: `src/schema/`
+- Lexicon assets: `lexicon/`
+- Frozen eval JSONL target: `data/generated_eval/`

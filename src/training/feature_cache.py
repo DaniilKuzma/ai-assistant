@@ -105,7 +105,7 @@ def build_or_load_features(
 
 def feature_cache_path(config: dict[str, Any], rows: list[dict[str, Any]], *, split: str, limit: int | None = None) -> Path:
     cache_config = config.get("training", {}).get("feature_cache", {}) or {}
-    cache_dir = Path(cache_config.get("cache_dir") or "data/processed/features_cache")
+    cache_dir = Path(cache_config.get("cache_dir") or ".cache/training_features")
     model_config = config.get("model", {})
     max_length = int(model_config.get("max_sequence_length", 192))
     max_candidates = int(model_config.get("max_candidates", 32))
