@@ -11,6 +11,8 @@ from src.grammar_gen.rules.common import (
     gap_labels_from_text,
     label_span,
     make_clean_identity_example,
+    metadata_with_safety_clauses,
+    metadata_without_safety_clauses,
     replace_once_checked,
     token_labels_all_keep,
 )
@@ -53,13 +55,21 @@ class TozheRule(RuleProgram):
         realizer: Realizer,
         rng: RandomSource,
     ) -> GeneratedExample:
-        target = _additive_sentence(builder, realizer, rng)
+        target, sentence = _additive_sentence(builder, realizer, rng)
         source = replace_once_checked(target, "тоже", "то же")
         source_tokens = realizer.tokenize_words_with_offsets(source)
         labels = token_labels_all_keep(source_tokens)
         start = find_token_sequence(source_tokens, ("то", "же"))
         label_span(labels, start, start + 2, "MERGE_TO_ZHE_TO_TOZHE")
-        return _example(source, target, source_tokens, labels, self.info.rule_id, GenerationMode.POSITIVE, {})
+        return _example(
+            source,
+            target,
+            source_tokens,
+            labels,
+            self.info.rule_id,
+            GenerationMode.POSITIVE,
+            metadata_with_safety_clauses(sentence, builder.lexicon),
+        )
 
     def _hard_negative(
         self,
@@ -72,7 +82,13 @@ class TozheRule(RuleProgram):
                 "Студент сделал то же, что эксперт.",
             )
         )
-        return _identity_example(text, realizer, self.info.rule_id, GenerationMode.HARD_NEGATIVE, {})
+        return _identity_example(
+            text,
+            realizer,
+            self.info.rule_id,
+            GenerationMode.HARD_NEGATIVE,
+            metadata_without_safety_clauses(),
+        )
 
     def _clean_identity(
         self,
@@ -80,12 +96,17 @@ class TozheRule(RuleProgram):
         realizer: Realizer,
         rng: RandomSource,
     ) -> GeneratedExample:
-        text = _additive_sentence(builder, realizer, rng) if rng.chance(0.5) else "Студент выбрал то же самое."
+        if rng.chance(0.5):
+            text, sentence = _additive_sentence(builder, realizer, rng)
+            metadata = metadata_with_safety_clauses(sentence, builder.lexicon)
+        else:
+            text = "Студент выбрал то же самое."
+            metadata = metadata_without_safety_clauses()
         tokens = realizer.tokenize_words_with_offsets(text)
-        return make_clean_identity_example(text, tokens, rule_id=self.info.rule_id)
+        return make_clean_identity_example(text, tokens, rule_id=self.info.rule_id, metadata=metadata)
 
 
-def _additive_sentence(builder: GrammarBuilder, realizer: Realizer, rng: RandomSource) -> str:
+def _additive_sentence(builder: GrammarBuilder, realizer: Realizer, rng: RandomSource) -> tuple[str, SimpleSentence]:
     frame = next(frame for frame in builder.lexicon.frames.frames if frame.frame_id == "check_document")
     subject_entry = rng.choice(
         tuple(
@@ -106,7 +127,7 @@ def _additive_sentence(builder: GrammarBuilder, realizer: Realizer, rng: RandomS
             ),
         )
     )
-    return realizer.render_sentence(sentence)
+    return realizer.render_sentence(sentence), sentence
 
 
 def _entry(builder: GrammarBuilder, lemma: str) -> NounEntry:

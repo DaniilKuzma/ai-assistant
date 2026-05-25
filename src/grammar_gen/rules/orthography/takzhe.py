@@ -11,6 +11,8 @@ from src.grammar_gen.rules.common import (
     gap_labels_from_text,
     label_span,
     make_clean_identity_example,
+    metadata_with_safety_clauses,
+    metadata_without_safety_clauses,
     replace_once_checked,
     token_labels_all_keep,
 )
@@ -53,13 +55,21 @@ class TakzheRule(RuleProgram):
         realizer: Realizer,
         rng: RandomSource,
     ) -> GeneratedExample:
-        target = _additive_sentence(builder, realizer, rng, "также")
+        target, sentence = _additive_sentence(builder, realizer, rng, "также")
         source = replace_once_checked(target, "также", "так же")
         source_tokens = realizer.tokenize_words_with_offsets(source)
         labels = token_labels_all_keep(source_tokens)
         start = find_token_sequence(source_tokens, ("так", "же"))
         label_span(labels, start, start + 2, "MERGE_TAK_ZHE_TO_TAKZHE")
-        return _example(source, target, source_tokens, labels, self.info.rule_id, GenerationMode.POSITIVE, {})
+        return _example(
+            source,
+            target,
+            source_tokens,
+            labels,
+            self.info.rule_id,
+            GenerationMode.POSITIVE,
+            metadata_with_safety_clauses(sentence, builder.lexicon),
+        )
 
     def _hard_negative(self, realizer: Realizer) -> GeneratedExample:
         text = "Студент сделал так же, как эксперт."
@@ -68,7 +78,7 @@ class TakzheRule(RuleProgram):
             realizer,
             self.info.rule_id,
             GenerationMode.HARD_NEGATIVE,
-            {"trap_type": "comparison_tak_zhe"},
+            metadata_without_safety_clauses({"trap_type": "comparison_tak_zhe"}),
         )
 
     def _clean_identity(
@@ -77,13 +87,14 @@ class TakzheRule(RuleProgram):
         realizer: Realizer,
         rng: RandomSource,
     ) -> GeneratedExample:
-        text = (
-            _additive_sentence(builder, realizer, rng, "также")
-            if rng.chance(0.5)
-            else "Студент сделал так же, как эксперт."
-        )
+        if rng.chance(0.5):
+            text, sentence = _additive_sentence(builder, realizer, rng, "также")
+            metadata = metadata_with_safety_clauses(sentence, builder.lexicon)
+        else:
+            text = "Студент сделал так же, как эксперт."
+            metadata = metadata_without_safety_clauses()
         tokens = realizer.tokenize_words_with_offsets(text)
-        return make_clean_identity_example(text, tokens, rule_id=self.info.rule_id)
+        return make_clean_identity_example(text, tokens, rule_id=self.info.rule_id, metadata=metadata)
 
 
 def _additive_sentence(
@@ -91,7 +102,7 @@ def _additive_sentence(
     realizer: Realizer,
     rng: RandomSource,
     additive: str,
-) -> str:
+) -> tuple[str, SimpleSentence]:
     frame = next(frame for frame in builder.lexicon.frames.frames if frame.frame_id == "check_document")
     subject_entry = rng.choice(
         tuple(
@@ -112,7 +123,7 @@ def _additive_sentence(
             ),
         )
     )
-    return realizer.render_sentence(sentence)
+    return realizer.render_sentence(sentence), sentence
 
 
 def _entry(builder: GrammarBuilder, lemma: str) -> NounEntry:

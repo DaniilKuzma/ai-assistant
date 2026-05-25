@@ -4,7 +4,11 @@ from src.grammar_gen.builders import GrammarBuilder
 from src.grammar_gen.randomness import RandomSource
 from src.grammar_gen.realizer import Realizer
 from src.grammar_gen.rules.base import GenerationMode, RuleInfo, RuleProgram
-from src.grammar_gen.rules.common import make_punctuation_example
+from src.grammar_gen.ast import SimpleSentence
+from src.grammar_gen.rules.common import (
+    make_punctuation_example,
+    metadata_with_safety_clauses,
+)
 from src.schema import GeneratedExample
 
 
@@ -35,7 +39,7 @@ class FinalPunctuationRule(RuleProgram):
         mode: GenerationMode,
     ) -> GeneratedExample:
         if mode is GenerationMode.POSITIVE:
-            target = _target_with_mark(builder, realizer, rng)
+            target, ast = _target_with_mark(builder, realizer, rng)
             source = target[:-1]
             return _example(
                 source,
@@ -43,20 +47,43 @@ class FinalPunctuationRule(RuleProgram):
                 realizer,
                 self.info.rule_id,
                 mode,
-                {"expected_error": "missing_final_punctuation"},
+                metadata_with_safety_clauses(
+                    ast,
+                    builder.lexicon,
+                    {"expected_error": "missing_final_punctuation"},
+                ),
             )
         if mode is GenerationMode.HARD_NEGATIVE:
-            text = _target_with_mark(builder, realizer, rng)
-            return _example(text, text, realizer, self.info.rule_id, mode, {"trap_type": "already_final"})
+            text, ast = _target_with_mark(builder, realizer, rng)
+            return _example(
+                text,
+                text,
+                realizer,
+                self.info.rule_id,
+                mode,
+                metadata_with_safety_clauses(ast, builder.lexicon, {"trap_type": "already_final"}),
+            )
         if mode is GenerationMode.CLEAN_IDENTITY:
-            text = _target_with_mark(builder, realizer, rng)
-            return _example(text, text, realizer, self.info.rule_id, mode)
+            text, ast = _target_with_mark(builder, realizer, rng)
+            return _example(
+                text,
+                text,
+                realizer,
+                self.info.rule_id,
+                mode,
+                metadata_with_safety_clauses(ast, builder.lexicon),
+            )
         raise ValueError(f"Unsupported generation mode: {mode!r}")
 
 
-def _target_with_mark(builder: GrammarBuilder, realizer: Realizer, rng: RandomSource) -> str:
-    text = realizer.render_sentence(builder.simple_sentence())
-    return f"{text[:-1]}{rng.choice(FINAL_MARKS)}"
+def _target_with_mark(
+    builder: GrammarBuilder,
+    realizer: Realizer,
+    rng: RandomSource,
+) -> tuple[str, SimpleSentence]:
+    ast = builder.simple_sentence()
+    text = realizer.render_sentence(ast)
+    return f"{text[:-1]}{rng.choice(FINAL_MARKS)}", ast
 
 
 def _example(

@@ -4,7 +4,12 @@ from src.grammar_gen.builders import GrammarBuilder
 from src.grammar_gen.randomness import RandomSource
 from src.grammar_gen.realizer import Realizer
 from src.grammar_gen.rules.base import GenerationMode, RuleInfo, RuleProgram
-from src.grammar_gen.rules.common import make_punctuation_example, remove_punctuation_before
+from src.grammar_gen.rules.common import (
+    make_punctuation_example,
+    metadata_with_safety_clauses,
+    metadata_without_safety_clauses,
+    remove_punctuation_before,
+)
 from src.schema import GeneratedExample
 
 
@@ -34,9 +39,17 @@ class CommaSubordinateRule(RuleProgram):
         mode: GenerationMode,
     ) -> GeneratedExample:
         if mode is GenerationMode.POSITIVE:
-            target = realizer.render_sentence(builder.complex_subordinate_sentence("что"))
+            ast = builder.complex_subordinate_sentence("что")
+            target = realizer.render_sentence(ast)
             source = remove_punctuation_before(target, "что")
-            return _example(source, target, realizer, self.info.rule_id, mode)
+            return _example(
+                source,
+                target,
+                realizer,
+                self.info.rule_id,
+                mode,
+                metadata_with_safety_clauses(ast, builder.lexicon),
+            )
         if mode is GenerationMode.HARD_NEGATIVE:
             text = rng.choice(
                 (
@@ -45,10 +58,25 @@ class CommaSubordinateRule(RuleProgram):
                     "Студент не то что проверил отчёт.",
                 )
             )
-            return _example(text, text, realizer, self.info.rule_id, mode, {"trap_type": "chto_pronoun"})
+            return _example(
+                text,
+                text,
+                realizer,
+                self.info.rule_id,
+                mode,
+                metadata_without_safety_clauses({"trap_type": "chto_pronoun"}),
+            )
         if mode is GenerationMode.CLEAN_IDENTITY:
-            text = realizer.render_sentence(builder.complex_subordinate_sentence("что"))
-            return _example(text, text, realizer, self.info.rule_id, mode)
+            ast = builder.complex_subordinate_sentence("что")
+            text = realizer.render_sentence(ast)
+            return _example(
+                text,
+                text,
+                realizer,
+                self.info.rule_id,
+                mode,
+                metadata_with_safety_clauses(ast, builder.lexicon),
+            )
         raise ValueError(f"Unsupported generation mode: {mode!r}")
 
 

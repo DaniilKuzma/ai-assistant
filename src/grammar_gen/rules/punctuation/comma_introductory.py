@@ -5,7 +5,12 @@ from src.grammar_gen.builders import GrammarBuilder
 from src.grammar_gen.randomness import RandomSource
 from src.grammar_gen.realizer import Realizer
 from src.grammar_gen.rules.base import GenerationMode, RuleInfo, RuleProgram
-from src.grammar_gen.rules.common import make_punctuation_example, replace_once_checked
+from src.grammar_gen.rules.common import (
+    make_punctuation_example,
+    metadata_with_safety_clauses,
+    metadata_without_safety_clauses,
+    replace_once_checked,
+)
 from src.schema import GeneratedExample
 
 
@@ -35,9 +40,20 @@ class CommaIntroductoryRule(RuleProgram):
         mode: GenerationMode,
     ) -> GeneratedExample:
         if mode is GenerationMode.POSITIVE:
-            target = _introductory_target(builder, realizer, rng)
+            target, ast = _introductory_target(builder, realizer, rng)
             source = _remove_introductory_commas(target)
-            return _example(source, target, realizer, self.info.rule_id, mode)
+            return _example(
+                source,
+                target,
+                realizer,
+                self.info.rule_id,
+                mode,
+                metadata_with_safety_clauses(
+                    ast,
+                    builder.lexicon,
+                    {"introductory_position": ast.position},
+                ),
+            )
         if mode is GenerationMode.HARD_NEGATIVE:
             text = rng.choice(
                 (
@@ -45,21 +61,43 @@ class CommaIntroductoryRule(RuleProgram):
                     "Комиссия примерно проверила отчёт.",
                 )
             )
-            return _example(text, text, realizer, self.info.rule_id, mode, {"trap_type": "normal_adverb"})
+            return _example(
+                text,
+                text,
+                realizer,
+                self.info.rule_id,
+                mode,
+                metadata_without_safety_clauses({"trap_type": "normal_adverb"}),
+            )
         if mode is GenerationMode.CLEAN_IDENTITY:
-            text = _introductory_target(builder, realizer, rng)
-            return _example(text, text, realizer, self.info.rule_id, mode)
+            text, ast = _introductory_target(builder, realizer, rng)
+            return _example(
+                text,
+                text,
+                realizer,
+                self.info.rule_id,
+                mode,
+                metadata_with_safety_clauses(
+                    ast,
+                    builder.lexicon,
+                    {"introductory_position": ast.position},
+                ),
+            )
         raise ValueError(f"Unsupported generation mode: {mode!r}")
 
 
-def _introductory_target(builder: GrammarBuilder, realizer: Realizer, rng: RandomSource) -> str:
+def _introductory_target(
+    builder: GrammarBuilder,
+    realizer: Realizer,
+    rng: RandomSource,
+) -> tuple[str, IntroductorySentence]:
     position = "medial" if rng.chance(0.5) else "initial"
     ast = IntroductorySentence(
         introductory="конечно",
         clause=builder.random_clause(transitive=True),
         position=position,
     )
-    return realizer.render_sentence(ast)
+    return realizer.render_sentence(ast), ast
 
 
 def _remove_introductory_commas(target: str) -> str:

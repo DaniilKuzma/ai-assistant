@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from collections.abc import MutableSequence, Sequence
+from typing import Any
 
 from src.grammar_gen.rules.base import GenerationMode
+from src.grammar_gen.safety import safety_clauses_for_ast
 from src.schema import GeneratedExample, WordToken
 
 
@@ -25,6 +27,7 @@ def make_clean_identity_example(
     text: str,
     tokens: Sequence[WordToken],
     rule_id: str = "clean_identity",
+    metadata: dict[str, Any] | None = None,
 ) -> GeneratedExample:
     token_list = list(tokens)
     return GeneratedExample(
@@ -37,7 +40,7 @@ def make_clean_identity_example(
         primary_rule_id=rule_id,
         mode=GenerationMode.CLEAN_IDENTITY.value,
         explanation_ids=[],
-        metadata={},
+        metadata=metadata or {},
     )
 
 
@@ -66,6 +69,19 @@ def make_punctuation_example(
         explanation_ids=[rule_id],
         metadata=metadata or {},
     )
+
+
+def metadata_with_safety_clauses(ast, lexicon, metadata: dict[str, Any] | None = None) -> dict[str, Any]:
+    result = dict(metadata or {})
+    result["uses_safety_clauses"] = True
+    result["safety_clauses"] = safety_clauses_for_ast(ast, lexicon)
+    return result
+
+
+def metadata_without_safety_clauses(metadata: dict[str, Any] | None = None) -> dict[str, Any]:
+    result = dict(metadata or {})
+    result["uses_safety_clauses"] = False
+    return result
 
 
 def token_labels_all_keep(tokens: Sequence[WordToken]) -> list[str]:
@@ -218,6 +234,8 @@ __all__ = [
     "label_span",
     "make_clean_identity_example",
     "make_punctuation_example",
+    "metadata_with_safety_clauses",
+    "metadata_without_safety_clauses",
     "remove_punctuation_before",
     "replace_once_checked",
     "rule_ids_for_active_gap_labels",

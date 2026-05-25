@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from functools import lru_cache
 import re
 from typing import Any
@@ -15,13 +16,15 @@ from src.grammar_gen.ast import (
     VerbPhrase,
 )
 from src.grammar_gen.lexicon import Lexicon, NounEntry
+from src.grammar_gen.morphology import MorphologyEngine, is_valid_prepositional_phrase
 from src.grammar_gen.semantic_safety import reject_semantic_nonsense, validate_clause_semantics
-from src.grammar_gen.semantics import VerbFrame
+from src.grammar_gen.semantics import PrepSlot, VerbFrame
 from src.schema import GeneratedExample
 
 
 LATIN_RE = re.compile(r"[A-Za-z]")
 REPEATED_PUNCTUATION_RE = re.compile(r"([,!?;:])\1+|\.{2}(?!\.)|\.{4,}")
+BROKEN_PUNCTUATION_SPACING_RE = re.compile(r"\s+[,.!?;:]|[,;:](?=\S)|[.!?](?=[А-Яа-яЁё])")
 FINAL_PUNCTUATION_RE = re.compile(r"(\.\.\.|[.!?\u2026])$")
 FINAL_PUNCTUATION_LABELS = {
     ".": "DOT",
@@ -36,9 +39,43 @@ BAD_PAIR_REASONS = (
     ("bad_pair_devochka_proveril", re.compile(r"\bдевочка\s+проверил\b", re.IGNORECASE)),
     ("bad_pair_komissiya_reshil", re.compile(r"\bкомиссия\s+решил\b", re.IGNORECASE)),
     ("bad_pair_student_poshla", re.compile(r"\bстудент\s+пошла\b", re.IGNORECASE)),
+    ("bad_pair_student_podgotovila", re.compile(r"\bстудент\s+подготовила\b", re.IGNORECASE)),
+    ("bad_pair_redaktor_skazala", re.compile(r"\bредактор\s+сказала\b", re.IGNORECASE)),
     ("bad_pair_vo_ogorod", re.compile(r"\bво\s+огород\b", re.IGNORECASE)),
+    ("bad_pair_dom_kupil_produkty", re.compile(r"\bдом\s+купил\s+продукты\b", re.IGNORECASE)),
+    ("bad_pair_okno_obyasnilo_reshenie", re.compile(r"\bокно\s+объяснило\s+решение\b", re.IGNORECASE)),
+    ("bad_pair_dokument_sel_yabloko", re.compile(r"\bдокумент\s+съел\s+яблоко\b", re.IGNORECASE)),
+    ("bad_pair_otchet_skazal_fakt", re.compile(r"\bотч[её]т\s+сказал\s+факт\b", re.IGNORECASE)),
+    ("bad_pair_stol_reshil_vopros", re.compile(r"\bстол\s+решил\s+вопрос\b", re.IGNORECASE)),
+    ("bad_pair_produkty_prochitali_dokument", re.compile(r"\bпродукты\s+прочитали\s+документ\b", re.IGNORECASE)),
 )
 VO_WHITELIST = ("во дворе",)
+MERGE_OR_HYPHEN_LABELS = frozenset(
+    {
+        "MERGE_TAK_ZHE_TO_TAKZHE",
+        "MERGE_TO_ZHE_TO_TOZHE",
+        "MERGE_ZA_TO_TO_ZATO",
+        "HYPHENATE_PARTICLE_TO",
+        "HYPHENATE_PARTICLE_LIBO",
+        "HYPHENATE_PARTICLE_NIBUD",
+        "HYPHENATE_KOE",
+        "HYPHENATE_PO_ADVERB",
+    }
+)
+SINGLE_TOKEN_EDIT_LABELS = frozenset(
+    {
+        "DELETE",
+        "LOWERCASE",
+        "UPPERCASE",
+        "SPLIT_NE_VERB",
+        "SPLIT_TAKZHE_TO_TAK_ZHE",
+        "SPLIT_TOZHE_TO_TO_ZHE",
+        "SPLIT_ZATO_TO_ZA_TO",
+        "FIX_TSYA_TO_TTSYA",
+        "FIX_TTSYA_TO_TSYA",
+        "DICT_REPLACE",
+    }
+)
 
 
 def validate_surface(text: str) -> list[str]:
@@ -47,6 +84,8 @@ def validate_surface(text: str) -> list[str]:
         reasons.append("template_brace")
     if "  " in text:
         reasons.append("double_space")
+    if BROKEN_PUNCTUATION_SPACING_RE.search(text):
+        reasons.append("broken_punctuation_spacing")
     if LATIN_RE.search(text):
         reasons.append("latin_letters")
     if _has_bad_vo_phrase(text.lower()):
@@ -58,20 +97,68 @@ def validate_surface(text: str) -> list[str]:
     if REPEATED_PUNCTUATION_RE.search(text):
         reasons.append("repeated_punctuation")
 
-    lowered = text.lower()
-    for reason, pattern in BAD_PAIR_REASONS:
-        if pattern.search(lowered):
-            reasons.append(reason)
+    reasons.extend(check_known_bad_phrases(text))
 
     return _dedupe(reasons)
 
 
+def check_known_bad_phrases(text: str) -> list[str]:
+    lowered = text.lower()
+    reasons: list[str] = []
+    for reason, pattern in BAD_PAIR_REASONS:
+        if pattern.search(lowered):
+            reasons.append(reason)
+    return _dedupe(reasons)
+
+
 def validate_generated_pair(example: GeneratedExample) -> list[str]:
+    reasons: list[str] = []
     source_reasons = validate_surface(example.source_text)
     target_reasons = validate_surface(example.target_text)
     allowed_source = allowed_source_surface_failures(example)
     real_source_reasons = [reason for reason in source_reasons if reason not in allowed_source]
-    return _dedupe(real_source_reasons + target_reasons)
+    reasons.extend(real_source_reasons)
+    reasons.extend(target_reasons)
+    reasons.extend(_validate_metadata_json_safety(example.metadata))
+    reasons.extend(_validate_token_edit_counts(example))
+    reasons.extend(_validate_safety_clause_metadata(example))
+    return _dedupe(reasons)
+
+
+def assert_json_safe_metadata(value: Any) -> None:
+    if _json_safety_reason(value, "$") is not None:
+        reason = _json_safety_reason(value, "$")
+        raise ValueError(reason or "metadata is not JSON-safe")
+
+
+def count_logical_token_edits(token_labels: list[str] | tuple[str, ...]) -> int:
+    count = 0
+    expecting_skip_merged = False
+
+    for label in token_labels:
+        if label == "KEEP":
+            expecting_skip_merged = False
+            continue
+
+        if label == "SKIP_MERGED":
+            if not expecting_skip_merged:
+                raise ValueError("SKIP_MERGED without preceding merge/hyphen operation")
+            expecting_skip_merged = False
+            continue
+
+        if label in MERGE_OR_HYPHEN_LABELS:
+            count += 1
+            expecting_skip_merged = True
+            continue
+
+        if label in SINGLE_TOKEN_EDIT_LABELS:
+            count += 1
+            expecting_skip_merged = False
+            continue
+
+        raise ValueError(f"Unknown token edit label for logical edit count: {label}")
+
+    return count
 
 
 def allowed_source_surface_failures(example: GeneratedExample) -> set[str]:
@@ -89,9 +176,11 @@ def allowed_source_surface_failures(example: GeneratedExample) -> set[str]:
 
 def validate_ast_sentence(ast: Any, rendered_text: str) -> list[str]:
     reasons = validate_surface(rendered_text)
+    reasons.extend(check_subject_verb_agreement(ast, rendered_text))
+    reasons.extend(check_np_agreement(ast, rendered_text))
+    reasons.extend(check_preposition_case_compatibility(ast, rendered_text))
     for clause in _clauses_for_ast(ast):
         reasons.extend(_validate_clause_semantics(clause))
-    reasons.extend(f"semantic_surface:{reason}" for reason in reject_semantic_nonsense(rendered_text))
     return _dedupe(reasons)
 
 
@@ -99,6 +188,130 @@ def assert_valid_or_raise(ast: Any, rendered_text: str) -> None:
     reasons = validate_ast_sentence(ast, rendered_text)
     if reasons:
         raise ValueError(f"Invalid generated sentence: {', '.join(reasons)}")
+
+
+def safety_clauses_for_ast(ast: Any, lexicon: Lexicon | None = None) -> list[dict[str, Any]]:
+    lexicon = lexicon or _default_lexicon()
+    clauses: list[dict[str, Any]] = []
+    for clause in _clauses_for_ast(ast):
+        frame = _resolve_frame(lexicon, clause.predicate)
+        if frame is None:
+            raise ValueError("Clause predicate must have a known frame_id.")
+        clauses.append(build_safety_clause_from_clause(clause, frame))
+    return clauses
+
+
+def build_safety_clause_from_clause(clause: Clause, frame: VerbFrame) -> dict[str, Any]:
+    object_payload: dict[str, Any] | None = None
+    prep_slots: list[dict[str, str]] = []
+
+    if clause.predicate.object_np is not None:
+        object_np = clause.predicate.object_np
+        if object_np.preposition is None:
+            object_payload = _np_payload(object_np)
+        else:
+            slot = _matching_prep_slot(frame, object_np.preposition, object_np.case, object_np.semantic_class)
+            prep_slots.append(
+                {
+                    "preposition": object_np.preposition,
+                    "case": _canonical_case(object_np.case),
+                    "noun_lemma": object_np.noun_lemma,
+                    "semantic_class": object_np.semantic_class,
+                    "allowed_semantic_class": slot.semantic_class if slot is not None else object_np.semantic_class,
+                }
+            )
+
+    return {
+        "frame_id": frame.frame_id,
+        "verb_lemma": clause.predicate.verb_lemma,
+        "frame_family": frame.frame_family,
+        "subject": _np_payload(clause.subject),
+        "object": object_payload,
+        "allowed_subject_classes": list(frame.subject_classes),
+        "allowed_object_classes": list(frame.object_classes),
+        "prep_slots": prep_slots,
+    }
+
+
+def check_subject_verb_agreement(ast: Any, rendered_text: str) -> list[str]:
+    reasons: list[str] = []
+    morphology = _default_morphology()
+    lowered = rendered_text.lower()
+
+    for clause in _clauses_for_ast(ast):
+        predicate = clause.predicate
+        subject = clause.subject
+        if predicate.tense != "past":
+            continue
+
+        masc = morphology.inflect_verb_past(predicate.verb_lemma, "masc", "sing")
+        fem = morphology.inflect_verb_past(predicate.verb_lemma, "fem", "sing")
+        neut = morphology.inflect_verb_past(predicate.verb_lemma, "neut", "sing")
+        plur = morphology.inflect_verb_past(predicate.verb_lemma, "plur", "plur")
+
+        if subject.number == "plur":
+            if any(_contains_word(lowered, form) for form in (masc, fem, neut)):
+                reasons.append("subject_verb_number_agreement")
+            continue
+
+        if subject.gender == "fem" and _contains_word(lowered, masc):
+            reasons.append("subject_verb_gender_agreement")
+        elif subject.gender == "masc" and _contains_word(lowered, fem):
+            reasons.append("subject_verb_gender_agreement")
+        elif subject.gender == "neut" and any(_contains_word(lowered, form) for form in (masc, fem)):
+            reasons.append("subject_verb_gender_agreement")
+
+    return _dedupe(reasons)
+
+
+def check_np_agreement(ast: Any, rendered_text: str) -> list[str]:
+    reasons: list[str] = []
+    morphology = _default_morphology()
+    lowered = rendered_text.lower()
+
+    for np in _noun_phrases_for_ast(ast):
+        for adjective in np.adjective_lemmas:
+            expected = morphology.inflect_adjective(adjective, np.gender, _adjective_case(np), np.number)
+            if expected and not _contains_word(lowered, expected):
+                reasons.append("np_adjective_agreement")
+
+    return _dedupe(reasons)
+
+
+def check_preposition_case_compatibility(ast: Any, rendered_text: str) -> list[str]:
+    reasons: list[str] = []
+    lexicon = _default_lexicon()
+    frame_checked_prepositional_objects: set[int] = set()
+
+    if _has_bad_vo_phrase(rendered_text.lower()):
+        reasons.append("bad_vo_phrase")
+
+    for clause in _clauses_for_ast(ast):
+        object_np = clause.predicate.object_np
+        if object_np is None or object_np.preposition is None:
+            continue
+        frame_checked_prepositional_objects.add(id(object_np))
+        frame = _resolve_frame(lexicon, clause.predicate)
+        noun_entry = _resolve_noun(lexicon, object_np)
+        if frame is None or noun_entry is None:
+            reasons.append("invalid_prep_slot_semantics")
+            continue
+        if not lexicon.frames.validate_prep_slot(frame, object_np.preposition, noun_entry, object_np.case):
+            reasons.append("invalid_prep_slot_semantics")
+
+    for np in _noun_phrases_for_ast(ast):
+        if np.preposition is None:
+            continue
+        if id(np) in frame_checked_prepositional_objects:
+            continue
+        noun_entry = _resolve_noun(lexicon, np)
+        if noun_entry is None:
+            reasons.append("unknown_preposition_np")
+            continue
+        if not is_valid_prepositional_phrase(np.preposition, noun_entry, np.case):
+            reasons.append("invalid_preposition_case_or_semantics")
+
+    return _dedupe(reasons)
 
 
 def _clauses_for_ast(ast: Any) -> tuple[Clause, ...]:
@@ -123,6 +336,9 @@ def _validate_clause_semantics(clause: Clause) -> list[str]:
 
     payload = {"frame": frame, "subject": subject, "object_np": object_entry}
     reasons = validate_clause_semantics(payload)
+
+    if not clause.predicate.frame_id:
+        reasons.append("missing_frame_id")
 
     if frame is not None and subject is not None and clause.predicate.verb_lemma != frame.verb_lemma:
         reasons.append("verb_frame_mismatch")
@@ -163,8 +379,7 @@ def _resolve_frame(lexicon: Lexicon, predicate: VerbPhrase) -> VerbFrame | None:
         for frame in lexicon.frames.frames:
             if frame.frame_id == predicate.frame_id:
                 return frame
-    frames = lexicon.frames.frames_for_verb(predicate.verb_lemma)
-    return frames[0] if frames else None
+    return None
 
 
 def _resolve_noun(lexicon: Lexicon, np: NounPhrase | None) -> NounEntry | None:
@@ -174,6 +389,248 @@ def _resolve_noun(lexicon: Lexicon, np: NounPhrase | None) -> NounEntry | None:
         if noun.lemma == np.noun_lemma:
             return noun
     return None
+
+
+def _validate_metadata_json_safety(metadata: dict[str, Any]) -> list[str]:
+    reason = _json_safety_reason(metadata, "$")
+    return ["metadata_not_json_safe"] if reason is not None else []
+
+
+def _json_safety_reason(value: Any, path: str) -> str | None:
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return None
+    if isinstance(value, list):
+        for index, item in enumerate(value):
+            reason = _json_safety_reason(item, f"{path}[{index}]")
+            if reason is not None:
+                return reason
+        return None
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if not isinstance(key, str):
+                return f"{path} contains non-string key {key!r}"
+            reason = _json_safety_reason(item, f"{path}.{key}")
+            if reason is not None:
+                return reason
+        return None
+    return f"{path} contains non-JSON-safe {type(value).__name__}"
+
+
+def _validate_token_edit_counts(example: GeneratedExample) -> list[str]:
+    reasons: list[str] = []
+    try:
+        logical_token_edits = count_logical_token_edits(example.token_edit_labels)
+    except ValueError:
+        return ["invalid_token_edit_sequence"]
+
+    expected_token = _optional_int(example.metadata.get("expected_token_edit_count"))
+    if expected_token is None and "expected_token_edit_count" in example.metadata:
+        reasons.append("invalid_expected_token_edit_count")
+    elif expected_token is not None and expected_token != logical_token_edits:
+        reasons.append("expected_token_edit_count_mismatch")
+
+    expected_gap = _optional_int(example.metadata.get("expected_gap_edit_count"))
+    if expected_gap is None and "expected_gap_edit_count" in example.metadata:
+        reasons.append("invalid_expected_gap_edit_count")
+
+    expected_total = _optional_int(example.metadata.get("expected_edit_count"))
+    if expected_total is None and "expected_edit_count" in example.metadata:
+        reasons.append("invalid_expected_edit_count")
+    elif expected_total is not None:
+        gap_component = expected_gap if expected_gap is not None else 0
+        if expected_total != logical_token_edits + gap_component:
+            reasons.append("expected_edit_count_mismatch")
+
+    return reasons
+
+
+def _optional_int(value: Any) -> int | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return None
+    try:
+        result = int(value)
+    except (TypeError, ValueError):
+        return None
+    if result < 0:
+        return None
+    return result
+
+
+def _validate_safety_clause_metadata(example: GeneratedExample) -> list[str]:
+    uses_safety_clauses = example.metadata.get("uses_safety_clauses")
+    if uses_safety_clauses is not True:
+        return []
+
+    raw_clauses = example.metadata.get("safety_clauses")
+    if not isinstance(raw_clauses, list) or not raw_clauses:
+        return ["missing_safety_clauses"]
+
+    reasons: list[str] = []
+    for clause in raw_clauses:
+        reasons.extend(_validate_safety_clause(clause))
+    return _dedupe(reasons)
+
+
+def _validate_safety_clause(clause: Any) -> list[str]:
+    if not isinstance(clause, Mapping):
+        return ["invalid_safety_clause"]
+
+    lexicon = _default_lexicon()
+    frame_id = str(clause.get("frame_id") or "").strip()
+    verb_lemma = str(clause.get("verb_lemma") or "").strip()
+    reasons: list[str] = []
+
+    if not frame_id:
+        reasons.append("missing_frame_id")
+        frame = None
+    else:
+        frame = _frame_by_id(lexicon, frame_id)
+        if frame is None:
+            reasons.append("unknown_frame_id")
+
+    if not verb_lemma:
+        reasons.append("missing_verb_lemma")
+    if frame is None:
+        return reasons
+    if verb_lemma and verb_lemma != frame.verb_lemma:
+        reasons.append("verb_frame_mismatch")
+
+    subject = clause.get("subject")
+    if not isinstance(subject, Mapping):
+        reasons.append("missing_subject")
+    else:
+        subject_class = str(subject.get("semantic_class") or "")
+        allowed_subject_classes = _string_list(clause.get("allowed_subject_classes")) or list(frame.subject_classes)
+        if subject_class not in frame.subject_classes or subject_class not in allowed_subject_classes:
+            reasons.append("invalid_subject_semantics")
+
+    obj = clause.get("object")
+    allowed_object_classes = _string_list(clause.get("allowed_object_classes")) or list(frame.object_classes)
+    if frame.object_classes:
+        if obj is None:
+            reasons.append("missing_object")
+        elif not isinstance(obj, Mapping):
+            reasons.append("invalid_object_np")
+        else:
+            object_class = str(obj.get("semantic_class") or "")
+            if object_class not in frame.object_classes or object_class not in allowed_object_classes:
+                reasons.append("invalid_object_semantics")
+    elif obj is not None:
+        reasons.append("unexpected_object")
+
+    reasons.extend(_validate_safety_prep_slots(clause.get("prep_slots"), frame))
+    return _dedupe(reasons)
+
+
+def _validate_safety_prep_slots(raw_slots: Any, frame: VerbFrame) -> list[str]:
+    if raw_slots is None:
+        return []
+    if not isinstance(raw_slots, list):
+        return ["invalid_prep_slots"]
+
+    reasons: list[str] = []
+    for slot in raw_slots:
+        if not isinstance(slot, Mapping):
+            reasons.append("invalid_prep_slot")
+            continue
+        preposition = str(slot.get("preposition") or "")
+        case = _canonical_case(str(slot.get("case") or ""))
+        semantic_class = str(slot.get("semantic_class") or "")
+        allowed_semantic_class = str(slot.get("allowed_semantic_class") or semantic_class)
+        if semantic_class != allowed_semantic_class:
+            reasons.append("invalid_prep_slot_semantics")
+            continue
+        if _matching_prep_slot(frame, preposition, case, semantic_class) is None:
+            reasons.append("invalid_prep_slot_semantics")
+    return reasons
+
+
+def _frame_by_id(lexicon: Lexicon, frame_id: str) -> VerbFrame | None:
+    for frame in lexicon.frames.frames:
+        if frame.frame_id == frame_id:
+            return frame
+    return None
+
+
+def _string_list(value: Any) -> list[str]:
+    if not isinstance(value, Sequence) or isinstance(value, (str, bytes)):
+        return []
+    return [str(item) for item in value]
+
+
+def _np_payload(np: NounPhrase) -> dict[str, str]:
+    return {
+        "lemma": np.noun_lemma,
+        "semantic_class": np.semantic_class,
+        "gender": np.gender,
+        "number": np.number,
+        "animacy": np.animacy,
+    }
+
+
+def _noun_phrases_for_ast(ast: Any) -> tuple[NounPhrase, ...]:
+    phrases: list[NounPhrase] = []
+    for clause in _clauses_for_ast(ast):
+        phrases.append(clause.subject)
+        if clause.predicate.object_np is not None:
+            phrases.append(clause.predicate.object_np)
+
+    if isinstance(ast, DashSubjectPredicateSentence):
+        phrases.extend((ast.subject, ast.predicate_nominal))
+    return tuple(phrases)
+
+
+def _adjective_case(np: NounPhrase) -> str:
+    if np.case != "accs" or np.animacy != "inanim":
+        return np.case
+    if np.number == "plur" or np.gender in {"masc", "neut"}:
+        return "nomn"
+    return np.case
+
+
+def _matching_prep_slot(
+    frame: VerbFrame,
+    preposition: str,
+    case: str,
+    semantic_class: str,
+) -> PrepSlot | None:
+    normalized_case = _canonical_case(case)
+    for slot in frame.prep_slots:
+        if (
+            slot.preposition == preposition
+            and _canonical_case(slot.case) == normalized_case
+            and slot.semantic_class == semantic_class
+        ):
+            return slot
+    return None
+
+
+def _canonical_case(case: str) -> str:
+    return {
+        "nom": "nomn",
+        "nomn": "nomn",
+        "gen": "gent",
+        "gent": "gent",
+        "dat": "datv",
+        "datv": "datv",
+        "acc": "accs",
+        "accs": "accs",
+        "ins": "ablt",
+        "ablt": "ablt",
+        "prep": "loct",
+        "loct": "loct",
+    }.get(case, case)
+
+
+def _contains_word(text: str, word: str) -> bool:
+    if not word:
+        return False
+    pattern = rf"(?<![А-Яа-яЁё-]){re.escape(word.lower())}(?![А-Яа-яЁё-])"
+    if re.search(pattern, text, re.IGNORECASE):
+        return True
+    return re.search(pattern, _default_morphology().normalize_yo(text), re.IGNORECASE) is not None
 
 
 def _has_bad_vo_phrase(text: str) -> bool:
@@ -233,3 +690,8 @@ def _dedupe(values: list[str]) -> list[str]:
 @lru_cache(maxsize=1)
 def _default_lexicon() -> Lexicon:
     return Lexicon.default()
+
+
+@lru_cache(maxsize=1)
+def _default_morphology() -> MorphologyEngine:
+    return MorphologyEngine()

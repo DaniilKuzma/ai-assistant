@@ -9,6 +9,8 @@ from src.grammar_gen.rules.base import GenerationMode, RuleInfo, RuleProgram
 from src.grammar_gen.rules.common import (
     gap_labels_from_text,
     make_clean_identity_example,
+    metadata_with_safety_clauses,
+    metadata_without_safety_clauses,
     replace_once_checked,
     token_labels_all_keep,
 )
@@ -75,7 +77,11 @@ class NeVerbRule(RuleProgram):
             token_edit_labels=labels,
             rule_id=self.info.rule_id,
             mode=GenerationMode.POSITIVE,
-            metadata={"phenomenon": "ne_verb"},
+            metadata=metadata_with_safety_clauses(
+                sentence,
+                builder.lexicon,
+                {"phenomenon": "ne_verb"},
+            ),
         )
 
     def _hard_negative(
@@ -94,7 +100,7 @@ class NeVerbRule(RuleProgram):
             realizer,
             self.info.rule_id,
             GenerationMode.HARD_NEGATIVE,
-            {"trap_type": "lexicalized_ne_verb"},
+            metadata_without_safety_clauses({"trap_type": "lexicalized_ne_verb"}),
         )
 
     def _clean_identity(
@@ -106,7 +112,12 @@ class NeVerbRule(RuleProgram):
         sentence = _sentence_with_negated_allowed_verb(builder, rng)
         text = realizer.render_sentence(sentence)
         tokens = realizer.tokenize_words_with_offsets(text)
-        return make_clean_identity_example(text, tokens, rule_id=self.info.rule_id)
+        return make_clean_identity_example(
+            text,
+            tokens,
+            rule_id=self.info.rule_id,
+            metadata=metadata_with_safety_clauses(sentence, builder.lexicon),
+        )
 
 
 def _sentence_with_negated_allowed_verb(builder: GrammarBuilder, rng: RandomSource) -> SimpleSentence:

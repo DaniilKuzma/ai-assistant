@@ -32,6 +32,15 @@ class GenerationError(RuntimeError):
     pass
 
 
+class _GeneratedPairValidationError(ValueError):
+    def __init__(self, example: GeneratedExample, rule_id: str, mode: GenerationMode, failures: list[str]) -> None:
+        self.example = example
+        self.rule_id = rule_id
+        self.mode = mode
+        self.failures = failures
+        super().__init__(f"Invalid generated pair: {', '.join(failures)}.")
+
+
 class OnlineExampleGenerator:
     def __init__(
         self,
@@ -101,6 +110,11 @@ class OnlineExampleGenerator:
     ) -> GeneratedExample:
         retries = self._max_generation_retries()
         failures: list[str] = []
+        last_rule_id = rule_id
+        last_mode = requested_mode.value if requested_mode is not None else None
+        last_source: str | None = None
+        last_target: str | None = None
+        last_validation_failures: list[str] = []
 
         if rule_id is not None and self.registry.get_rule(rule_id) is None:
             raise GenerationError(f"Rule {rule_id!r} is not registered.")
@@ -108,6 +122,8 @@ class OnlineExampleGenerator:
         for attempt in range(1, retries + 1):
             try:
                 rule, selected_mode = self._select_rule_and_mode(requested_mode, rule_id, rng)
+                last_rule_id = rule.info.rule_id
+                last_mode = selected_mode.value
                 example = rule.generate(builder, self.realizer, rng, selected_mode)
                 validated = self._validate_example(example, rule, selected_mode)
                 return _with_generation_metadata(
@@ -115,15 +131,28 @@ class OnlineExampleGenerator:
                     generation_index=generation_index,
                     generation_seed=generation_seed,
                 )
+            except _GeneratedPairValidationError as exc:
+                last_rule_id = exc.rule_id
+                last_mode = exc.mode.value
+                last_source = exc.example.source_text
+                last_target = exc.example.target_text
+                last_validation_failures = list(exc.failures)
+                failures.append(f"attempt {attempt}: validation: {', '.join(exc.failures)}")
             except Exception as exc:
                 failures.append(f"attempt {attempt}: {type(exc).__name__}: {exc}")
 
         details = "; ".join(failures[-5:]) if failures else "no attempts recorded"
-        mode_detail = requested_mode.value if requested_mode is not None else None
+        mode_detail = last_mode if last_mode is not None else None
+        last_pair_detail = (
+            f" last_source={last_source!r}; last_target={last_target!r}; failures={last_validation_failures!r}."
+            if last_source is not None or last_target is not None or last_validation_failures
+            else ""
+        )
         raise GenerationError(
             "Failed to generate example "
             f"after {retries} retries "
-            f"(mode={mode_detail!r}, rule_id={rule_id!r}). "
+            f"(mode={mode_detail!r}, rule_id={last_rule_id!r})."
+            f"{last_pair_detail} "
             f"Recent failures: {details}"
         )
 
@@ -208,9 +237,11 @@ class OnlineExampleGenerator:
         if validated.primary_rule_id not in validated.rule_ids:
             raise ValueError("GeneratedExample primary_rule_id must appear in rule_ids.")
 
+        validated = _with_rule_metadata_defaults(validated, rule, mode)
+
         pair_reasons = validate_generated_pair(validated)
         if pair_reasons:
-            raise ValueError(f"Invalid generated pair: {', '.join(pair_reasons)}.")
+            raise _GeneratedPairValidationError(validated, rule.info.rule_id, mode, pair_reasons)
 
         return validated
 
@@ -352,6 +383,44 @@ def _with_generation_metadata(
     if generation_seed is not None:
         example.metadata["generation_seed"] = generation_seed
     return GeneratedExample.from_dict(example.to_dict())
+
+
+def _with_rule_metadata_defaults(
+    example: GeneratedExample,
+    rule: RuleProgram,
+    mode: GenerationMode,
+) -> GeneratedExample:
+    metadata = dict(example.metadata)
+    metadata.setdefault("uses_safety_clauses", False)
+
+    token_expected, gap_expected = _expected_edit_counts(example, rule, mode, metadata)
+    metadata.setdefault("expected_token_edit_count", token_expected)
+    metadata.setdefault("expected_gap_edit_count", gap_expected)
+    metadata.setdefault("expected_edit_count", token_expected + gap_expected)
+
+    data = example.to_dict()
+    data["metadata"] = metadata
+    return GeneratedExample.from_dict(data)
+
+
+def _expected_edit_counts(
+    example: GeneratedExample,
+    rule: RuleProgram,
+    mode: GenerationMode,
+    metadata: Mapping[str, Any],
+) -> tuple[int, int]:
+    if mode is not GenerationMode.POSITIVE or example.source_text == example.target_text:
+        return 0, 0
+
+    if rule.info.family == "punctuation":
+        if rule.info.rule_id == "comma_introductory" and metadata.get("introductory_position") == "medial":
+            return 0, 2
+        return 0, 1
+
+    if rule.info.family == "orthography_contextual":
+        return 1, 0
+
+    return 0, 0
 
 
 __all__ = ["GenerationError", "OnlineExampleGenerator", "validate_generation_config"]
