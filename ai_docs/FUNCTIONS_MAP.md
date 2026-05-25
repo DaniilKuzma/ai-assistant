@@ -48,6 +48,9 @@
 
 ## Data And Evaluation
 
+- `src.config.candidate_dataset_config.get_candidate_dataset_config` — normalized canonical view of `data.candidate_opportunity`; primary source for dataset settings.
+- `src.config.candidate_dataset_config.validate_candidate_dataset_config` — rejects legacy `data.training_dataset` / `data.training_dataset_core`, duplicate top-level dataset keys, invalid totals/quotas/activation/thresholds.
+- `src.config.candidate_dataset_config.candidate_dataset_paths`, `candidate_dataset_totals`, `candidate_dataset_rule_quota`, `candidate_dataset_rule_activation`, `candidate_dataset_audit`, `candidate_dataset_composition` — typed section helpers used by build/preflight/setup modules.
 - `src.data.full_dataset_builder.build_dataset_from_config` — сборка полного dataset по config.
 - `src.data.dataset_contract.ensure_contract_columns` — добавляет contract/layer/weight/quota columns к rows или DataFrame.
 - `src.data.dataset_contract.row_dataset_layer` — определяет слой строки по explicit metadata или legacy source type.

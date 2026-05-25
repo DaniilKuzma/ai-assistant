@@ -17,6 +17,13 @@ from src.candidates.candidate_generator import CandidateGenerator
 from src.candidates.frequent_errors import HYPHEN_WHITELIST, WRONG_TO_CORRECT
 from src.candidates.matching import candidate_matches_edit
 from src.candidates.morphology import morph_analyzer
+from src.config.candidate_dataset_config import (
+    DATASET_CONTRACT,
+    candidate_dataset_core_compat_config,
+    candidate_dataset_paths,
+    candidate_dataset_totals,
+    get_candidate_dataset_config,
+)
 from src.data.clean_corpus_sources import load_clean_corpus_sentences
 from src.data.dataset_stats import dataset_stats
 from src.data.external_sources import load_external_pair_sources, load_hf_jsonl_pairs
@@ -696,27 +703,23 @@ def write_dataset(
 
 def build_dataset_from_config(config: dict[str, Any], force: bool = False) -> dict[str, Any]:
     data_config = config.get("data", {})
-    if bool((data_config.get("training_dataset_core") or {}).get("enabled", False)) and "training_dataset_core" in str(data_config.get("processed_train_path", "")):
-        from src.data._training_dataset_builder import build_training_dataset_core_from_config
-
-        return build_training_dataset_core_from_config(config, force=force)
-    if bool((data_config.get("training_dataset") or {}).get("enabled", False)) and _uses_canonical_training_dataset_paths(data_config):
+    candidate = get_candidate_dataset_config(config)
+    paths = candidate_dataset_paths(config)
+    has_canonical_block = isinstance(data_config, dict) and isinstance(data_config.get("candidate_opportunity"), dict)
+    if has_canonical_block and str(candidate.get("contract") or "") == DATASET_CONTRACT:
         from src.data.training_dataset import build_training_dataset_from_config
 
         return build_training_dataset_from_config(config, force=force)
-    if bool((data_config.get("training_dataset_core") or {}).get("enabled", False)):
-        from src.data._training_dataset_builder import build_training_dataset_core_from_config
-
-        return build_training_dataset_core_from_config(config, force=force)
-    output_path = Path(data_config.get("processed_train_path") or "data/processed/correction_dataset.csv.gz")
-    manifest_path = Path(data_config.get("manifest_path") or "reports/dataset_manifest.json")
-    configured_target_total = int(data_config.get("target_total_examples", 450_000))
-    short_config = data_config.get("training_dataset", {}) or {}
+    output_path = Path(str(paths.get("correction_dataset_path") or data_config.get("processed_train_path") or "data/processed/correction_dataset.csv.gz"))
+    manifest_path = Path(str(paths.get("manifest_path") or data_config.get("manifest_path") or "reports/dataset_manifest.json"))
+    totals = candidate_dataset_totals(config)
+    configured_target_total = int(totals.get("total_examples") or data_config.get("target_total_examples", 450_000))
+    short_config = candidate_dataset_core_compat_config(config)
     exact_split_sizes = _exact_split_sizes_from_config(data_config)
     source_type_targets = _source_type_targets_from_config(short_config)
     split_source_type_targets = _split_source_type_targets_from_config(short_config)
     synthetic_error_type_targets = _synthetic_error_type_targets_from_config(short_config)
-    is_exact_training_dataset = bool(short_config.get("enabled", False) or exact_split_sizes or source_type_targets)
+    is_exact_training_dataset = bool(has_canonical_block or exact_split_sizes or source_type_targets)
     if exact_split_sizes:
         configured_target_total = sum(exact_split_sizes.values())
     target_total = configured_target_total
@@ -1297,7 +1300,7 @@ def _training_dataset_audit_errors(
 ) -> list[str]:
     errors: list[str] = []
     data_config = config.get("data", {})
-    short_config = data_config.get("training_dataset", {}) or {}
+    short_config = candidate_dataset_core_compat_config(config)
     total = len(rows)
 
     expected_splits = _exact_split_sizes_from_config(data_config)

@@ -5,8 +5,10 @@ import json
 from pathlib import Path
 
 import pandas as pd
+import yaml
 
 from src.candidates.candidate_generator import Candidate
+from src.config.candidate_dataset_config import candidate_dataset_paths
 from src.config.load_config import load_config
 from src.data.dataset_contract import DATASET_CONTRACT, LAYER_ATOMIC_HARD_NEGATIVE, LAYER_ATOMIC_POSITIVE
 from src.rules.capabilities import RuleCapability
@@ -209,7 +211,15 @@ def test_corpus_backed_miner_creates_positive_from_real_clean_sentence():
         clean_rows,
         ["context_tak_zhe"],
         ContextCandidateGenerator(),
-        {"data": {"rule_quota": {"preferred_atomic_positives_per_active_rule": 2}}},
+        {
+            "data": {
+                "candidate_opportunity": {
+                    "contract": "candidate_opportunity",
+                    "totals": {"total_examples": 1, "train_examples": 1, "val_examples": 0, "test_examples": 0},
+                    "rule_quota": {"preferred_atomic_positives_per_active_rule": 2},
+                }
+            }
+        },
     )
 
     assert len(result.atomic_positive_rows) == 1
@@ -294,12 +304,163 @@ def test_compiler_writes_reports(tmp_path: Path):
     assert diversity.loc[0, "rule_lab_share"] == 0
 
 
-def test_compiler_does_not_depend_on_rule_lab_module():
-    compiler = _load_compiler()
-    source = Path(compiler.__file__).read_text(encoding="utf-8")
+def _rule_lab_recipe_path(tmp_path: Path) -> Path:
+    path = tmp_path / "rule_lab_recipes.yaml"
+    path.write_text(
+        yaml.safe_dump(
+            {
+                "rules": {
+                    "context_tak_zhe": {
+                        "enabled": True,
+                        "family": "split_join",
+                        "mutation": {"target_fragment": "также", "source_fragment": "так же"},
+                        "positive_templates": [
+                            {
+                                "template_id": "also_basic",
+                                "target": "{subject} также {verb_past} {object} {time} и передал его комиссии.",
+                            }
+                        ],
+                        "hard_negative_templates": [
+                            {
+                                "template_id": "as_before",
+                                "text": "Так же, как раньше, {subject} проверил {object} {time}.",
+                            }
+                        ],
+                        "slots": {
+                            "subject": {"values": ["редактор", "эксперт"]},
+                            "verb_past": {"values": ["подготовил", "проверил"]},
+                            "object": {"values": ["документ", "отчёт"]},
+                            "time": {"values": ["утром", "вечером"]},
+                        },
+                        "diversity": {"max_per_template_share": 1.0, "max_per_slot_value_share": 1.0},
+                        "seed": 13,
+                    },
+                    "context_chto_by": {
+                        "enabled": True,
+                        "family": "split_join",
+                        "mutation": {"target_fragment": "чтобы", "source_fragment": "что бы"},
+                        "positive_templates": [
+                            {
+                                "template_id": "purpose_basic",
+                                "target": "{subject} {verb_past}, чтобы {infinitive} {object} {time} для комиссии.",
+                            }
+                        ],
+                        "hard_negative_templates": [
+                            {
+                                "template_id": "concessive_trap",
+                                "text": "Что бы {subject} ни {verb_past}, комиссия проверит {object} {time}.",
+                            }
+                        ],
+                        "slots": {
+                            "subject": {"values": ["редактор", "эксперт"]},
+                            "verb_past": {"values": ["пришёл", "вернулся"]},
+                            "infinitive": {"values": ["проверить", "уточнить"]},
+                            "object": {"values": ["документ", "отчёт"]},
+                            "time": {"values": ["утром", "вечером"]},
+                        },
+                        "diversity": {"max_per_template_share": 1.0, "max_per_slot_value_share": 1.0},
+                        "seed": 11,
+                    }
+                }
+            },
+            allow_unicode=True,
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+    return path
 
-    assert "rule_lab_generation" not in source
-    assert all(row.rule_lab_positive_count == 0 for row in compiler.compile_rule_data([], [], ContextCandidateGenerator(), {}).source_stats_rows)
+
+def _rule_lab_config(path: Path, *, preferred: int = 2) -> dict:
+    return {
+        "data": {
+            "candidate_opportunity": {
+                "paths": {"rule_lab_recipes_config": str(path)},
+                "rule_quota": {
+                    "min_atomic_positives_per_active_rule": 1,
+                    "preferred_atomic_positives_per_active_rule": preferred,
+                    "min_hard_negatives_per_active_rule": 1,
+                },
+                "rule_data_compiler": {
+                    "enabled": True,
+                    "source_priority": ["corpus_mined", "rule_lab"],
+                },
+                "rule_lab": {
+                    "enabled": True,
+                    "fill_underfilled_rules": True,
+                    "max_generated_per_rule": 20,
+                    "max_hard_negatives_per_rule": 20,
+                    "fail_on_low_diversity": False,
+                    "max_per_template_share": 1.0,
+                    "max_per_slot_value_share": 1.0,
+                },
+            }
+        }
+    }
+
+
+def test_rule_lab_fills_underfilled_rule_only_after_compiler_sources(tmp_path: Path):
+    compiler = _load_compiler()
+    result = compiler.compile_rule_data(
+        [_clean_row("Редакция также подготовила отчет для комиссии и отправила его в архив.")],
+        ["context_tak_zhe"],
+        ContextCandidateGenerator(),
+        _rule_lab_config(_rule_lab_recipe_path(tmp_path), preferred=2),
+        target_counts={"atomic_positive": 2, "atomic_hard_negative": 1},
+    )
+
+    assert len(result.atomic_positive_rows) == 2
+    assert [row["activation_source"] for row in result.atomic_positive_rows] == ["corpus_mined", "rule_lab"]
+    assert all(row["count_toward_rule_quota"] is True for row in result.atomic_positive_rows)
+    assert len(result.hard_negative_rows) == 1
+    assert result.hard_negative_rows[0]["activation_source"] == "rule_lab"
+    assert result.hard_negative_rows[0]["count_toward_rule_quota"] is False
+
+
+def test_rule_lab_skips_rule_already_at_preferred(tmp_path: Path):
+    compiler = _load_compiler()
+    existing = {
+        "source": "Редактор пришёл, что бы проверить документ утром.",
+        "target": "Редактор пришёл, чтобы проверить документ утром.",
+        "rule_id": "context_chto_by",
+        "target_rule_id": "context_chto_by",
+        "dataset_layer": LAYER_ATOMIC_POSITIVE,
+        "count_toward_rule_quota": True,
+    }
+
+    result = compiler.compile_rule_data(
+        [],
+        ["context_chto_by"],
+        ContextCandidateGenerator(),
+        _rule_lab_config(_rule_lab_recipe_path(tmp_path), preferred=1),
+        existing_rows=[existing],
+        target_counts={"atomic_positive": 1, "atomic_hard_negative": 0},
+    )
+
+    assert result.atomic_positive_rows == []
+    assert result.source_stats_rows[0].rule_lab_positive_count == 0
+
+
+def test_compiler_writes_rule_lab_reports(tmp_path: Path):
+    compiler = _load_compiler()
+    result = compiler.compile_rule_data(
+        [],
+        ["context_chto_by"],
+        ContextCandidateGenerator(),
+        _rule_lab_config(_rule_lab_recipe_path(tmp_path), preferred=1),
+        target_counts={"atomic_positive": 1, "atomic_hard_negative": 1},
+    )
+
+    compiler.write_rule_data_compiler_reports(result, tmp_path)
+
+    assert (tmp_path / "rule_lab_generation_report.csv").exists()
+    assert (tmp_path / "rule_lab_rejection_report.csv").exists()
+    assert (tmp_path / "rule_lab_diversity_report.csv").exists()
+    assert (tmp_path / "rule_lab_template_validation_report.csv").exists()
+    assert (tmp_path / "rule_lab_slot_usage_report.csv").exists()
+    assert (tmp_path / "rule_lab_recipe_status_report.csv").exists()
+    source_report = pd.read_csv(tmp_path / "rule_data_source_report.csv")
+    assert int(source_report.set_index("rule_id").loc["context_chto_by", "rule_lab_positive_count"]) == 1
 
 
 def test_compiler_handles_missing_clean_rows_gracefully():
@@ -327,25 +488,23 @@ def test_compiler_rows_count_toward_quota_in_tiny_builder_fixture(tmp_path: Path
     ).to_csv(clean_pool_path, index=False)
 
     config = load_config("configs/config.yaml")
+    candidate = config["data"]["candidate_opportunity"]
     config["paths"]["reports_dir"] = str(tmp_path / "reports")
-    config["data"]["processed_train_path"] = str(tmp_path / "data" / "operator_dataset.csv.gz")
-    config["data"]["manifest_path"] = str(tmp_path / "reports" / "dataset_manifest.json")
-    config["data"]["clean_pool_path"] = str(clean_pool_path)
-    config["data"]["clean_pool_chunksize"] = 2
-    config["data"]["dataset_build_workers"] = 1
-    config["data"]["total_examples"] = 3
-    config["data"]["target_total_examples"] = 3
-    config["data"]["train_examples"] = 3
-    config["data"]["val_examples"] = 0
-    config["data"]["test_examples"] = 0
-    config["data"]["composition"] = {
+    candidate["paths"]["reports_dir"] = str(tmp_path / "reports" / "dataset_build")
+    candidate["paths"]["correction_dataset_path"] = str(tmp_path / "data" / "operator_dataset.csv.gz")
+    candidate["paths"]["manifest_path"] = str(tmp_path / "reports" / "dataset_manifest.json")
+    candidate["paths"]["clean_pool_path"] = str(clean_pool_path)
+    candidate["clean_pool_chunksize"] = 2
+    candidate["dataset_build_workers"] = 1
+    candidate["totals"] = {"total_examples": 3, "train_examples": 3, "val_examples": 0, "test_examples": 0}
+    candidate["composition"] = {
         "atomic_positive_target": 1,
         "atomic_hard_negative_target": 1,
         "clean_identity_target": 1,
         "stress_multi_error_target": 0,
         "real_atomic_train_target": 0,
     }
-    config["data"]["rule_quota"] = {
+    candidate["rule_quota"] = {
         "rule_ids": ["context_tak_zhe"],
         "min_atomic_positives_per_active_rule": 1,
         "preferred_atomic_positives_per_active_rule": 1,
@@ -353,11 +512,11 @@ def test_compiler_rows_count_toward_quota_in_tiny_builder_fixture(tmp_path: Path
         "min_hard_negatives_per_active_rule": 1,
         "disable_rule_if_quota_not_met": True,
     }
-    config["data"]["rule_activation"]["expected_min_final_active_rule_count"] = 0
-    config["data"]["rule_activation"]["target_final_active_rule_count"] = 0
-    config["data"]["rule_activation"]["fail_below_final_active_rule_count"] = False
-    config["data"]["rule_activation"]["warn_below_target_final_active_rule_count"] = False
-    config["data"]["rule_data_compiler"] = {"enabled": True}
+    candidate["rule_activation"]["expected_min_final_active_rule_count"] = 0
+    candidate["rule_activation"]["target_final_active_rule_count"] = 0
+    candidate["rule_activation"]["fail_below_final_active_rule_count"] = False
+    candidate["rule_activation"]["warn_below_target_final_active_rule_count"] = False
+    candidate["rule_data_compiler"] = {"enabled": True}
 
     def _empty_operator_atomic_result(*_args, **_kwargs):
         return operator_builder.AtomicPositiveGenerationResult(
@@ -396,7 +555,7 @@ def test_compiler_rows_count_toward_quota_in_tiny_builder_fixture(tmp_path: Path
     )
 
     result = build_dataset_from_config(config, force=True)
-    frame = pd.read_csv(config["data"]["processed_train_path"])
+    frame = pd.read_csv(candidate_dataset_paths(config)["correction_dataset_path"])
     quota = pd.read_csv(Path(config["paths"]["reports_dir"]) / "dataset_build" / "active_rule_quota_report.csv")
 
     assert result["total"] == 3

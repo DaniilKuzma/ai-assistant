@@ -16,6 +16,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.candidates.candidate_generator import CandidateGenerator
+from src.config.candidate_dataset_config import get_candidate_dataset_config, candidate_dataset_paths
 from src.data.clean_sentence_pool import CleanSentencePoolResult, build_clean_sentence_pool
 from src.data.real_error_sources import RealErrorLoadResult, load_real_error_pairs
 from src.data.sage_sources import prepare_punctuation_jsonl_file, prepare_sage_jsonl_files
@@ -47,15 +48,16 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
 
-    processed_dir = Path(args.processed_dir)
-    report_dir = Path(args.report_dir)
+    config = _read_yaml(Path(args.config))
+    paths = candidate_dataset_paths(config)
+    processed_dir = Path(args.processed_dir or str(paths["processed_dir"]))
+    report_dir = Path(args.report_dir or str(paths["reports_dir"]))
     processed_dir.mkdir(parents=True, exist_ok=True)
     report_dir.mkdir(parents=True, exist_ok=True)
     manifest_path = processed_dir / "source_ingestion_manifest.json"
 
-    config = _read_yaml(Path(args.config))
-    clean_config_path = _source_config_path(config, "open_corpora_sources_path", "configs/open_corpora_sources.yaml")
-    real_config_path = _source_config_path(config, "real_error_sources_path", "configs/real_error_sources.yaml")
+    clean_config_path = Path(str(paths["open_corpora_sources_config"]))
+    real_config_path = Path(str(paths["real_error_sources_config"]))
 
     clean_config = _read_yaml(clean_config_path) if args.clean and clean_config_path.exists() else {}
     real_config = _read_yaml(real_config_path) if args.real and real_config_path.exists() else {}
@@ -80,7 +82,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.clean and clean_config:
             clean_result = build_clean_sentence_pool(
                 clean_config,
-                output_path=processed_dir / "clean_sentence_pool.csv.gz",
+                output_path=Path(str(paths["clean_pool_path"])),
                 reports_dir=report_dir,
             )
         elif args.clean:
@@ -104,7 +106,7 @@ def main(argv: list[str] | None = None) -> int:
         real_config=real_config,
         notes=dry_run_notes,
         report_dir=report_dir,
-        dataset_contract=str((config.get("data", {}) or {}).get("dataset_contract") or ""),
+        dataset_contract=str(get_candidate_dataset_config(config).get("contract") or ""),
     )
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     _write_summary_report(report_dir / "source_setup_summary.md", manifest)
@@ -128,8 +130,8 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--max-clean-sentences", type=int, default=0)
     parser.add_argument("--max-real-pairs", type=int, default=0)
-    parser.add_argument("--report-dir", default="reports/source_setup")
-    parser.add_argument("--processed-dir", default="data/processed")
+    parser.add_argument("--report-dir", default=None)
+    parser.add_argument("--processed-dir", default=None)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--allow-partial", action="store_true")
     return parser.parse_args(argv)
@@ -142,21 +144,16 @@ def _read_yaml(path: Path) -> dict[str, Any]:
         return yaml.safe_load(handle) or {}
 
 
-def _source_config_path(config: dict[str, Any], key: str, default: str) -> Path:
-    core = dict(config.get("data", {}).get("training_dataset_core", {}) or {})
-    return Path(str(core.get(key) or default))
-
-
 def _apply_top_level_data_overlays(config: dict[str, Any], *, clean_config: dict[str, Any], real_config: dict[str, Any]) -> None:
-    data = config.get("data", {}) or {}
-    clean_pool = data.get("clean_pool", {}) or {}
+    candidate = get_candidate_dataset_config(config)
+    clean_pool = candidate.get("clean_pool", {}) or {}
     if clean_pool and clean_config is not None:
         pool = clean_config.setdefault("pool", {})
         if isinstance(pool, dict):
             pool.update(clean_pool)
 
-    real_pairs = data.get("real_pairs", {}) or {}
-    stress = data.get("stress", {}) or {}
+    real_pairs = candidate.get("real_pairs", {}) or {}
+    stress = candidate.get("stress", {}) or {}
     if (real_pairs or stress) and real_config is not None:
         validation = real_config.setdefault("validation", {})
         if isinstance(validation, dict):

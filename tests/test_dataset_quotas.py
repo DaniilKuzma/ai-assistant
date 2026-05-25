@@ -1,8 +1,9 @@
-import json
+﻿import json
 from pathlib import Path
 
 import pandas as pd
 
+from src.config.candidate_dataset_config import candidate_dataset_core_compat_config, candidate_dataset_paths
 from src.config.load_config import load_config
 from src.data._training_dataset_builder import _effective_active_rule_ids, _rule_counts_from_rows, _rule_id_counts
 from src.data.full_dataset_builder import build_dataset_from_config
@@ -10,66 +11,32 @@ from src.data.operator_dataset_builder import _rule_counts as _operator_rule_cou
 from src.rules.capabilities import RuleCapability
 
 
-def test_training_dataset_core_blocks_when_required_sources_missing_and_downloads_disabled(tmp_path: Path, monkeypatch):
+def test_candidate_dataset_blocks_when_clean_pool_missing(tmp_path: Path, monkeypatch):
     monkeypatch.delenv("RUSSIAN_CORRECTOR_ALLOW_SOURCE_DOWNLOADS", raising=False)
     config = load_config("configs/config.yaml")
-    config["data"]["processed_train_path"] = str(tmp_path / "data" / "correction_dataset.csv.gz")
-    config["data"]["manifest_path"] = str(tmp_path / "reports" / "dataset_manifest.json")
+    candidate = config["data"]["candidate_opportunity"]
+    candidate["paths"]["correction_dataset_path"] = str(tmp_path / "data" / "correction_dataset.csv.gz")
+    candidate["paths"]["manifest_path"] = str(tmp_path / "reports" / "dataset_manifest.json")
+    candidate["paths"]["reports_dir"] = str(tmp_path / "reports")
+    candidate["paths"]["clean_pool_path"] = str(tmp_path / "missing-clean-pool.csv.gz")
     config["paths"]["reports_dir"] = str(tmp_path / "reports")
-    config["data"]["target_total_examples"] = 30
-    config["data"]["train_examples"] = 20
-    config["data"]["val_examples"] = 5
-    config["data"]["test_examples"] = 5
-    config["data"]["training_dataset_core"]["legacy_builder"] = True
-    config["data"]["training_dataset_core"]["open_corpora_sources"] = {
-        "clean_sources": {
-            "missing_clean": {
-                "enabled": True,
-                "type": "local_text",
-                "local_path": str(tmp_path / "missing-clean.txt"),
-            }
-        },
-        "download_policy": {"mode": "local_first_with_controlled_downloads"},
-    }
-    config["data"]["training_dataset_core"]["real_error_sources"] = {
-        "real_sources": {
-            "missing_real": {
-                "enabled": True,
-                "type": "local_jsonl",
-                "local_path": str(tmp_path / "missing-real.jsonl"),
-            }
-        },
-        "download_policy": {"mode": "local_first_with_controlled_downloads"},
-    }
+    candidate["totals"] = {"total_examples": 30, "train_examples": 20, "val_examples": 5, "test_examples": 5}
 
     result = build_dataset_from_config(config, force=True)
     manifest = json.loads((tmp_path / "reports" / "dataset_manifest.json").read_text(encoding="utf-8"))
 
-    assert result["verdict"] == "BLOCKED_BY_MISSING_EXTERNAL_SOURCES"
-    assert manifest["verdict"] == "BLOCKED_BY_MISSING_EXTERNAL_SOURCES"
-    assert manifest["missing_external_sources"]
+    assert result["verdict"] == "DATASET_BLOCKED"
+    assert manifest["verdict"] == "DATASET_BLOCKED"
+    assert manifest["audit_errors"] == ["missing_clean_sentence_pool"]
     assert not (tmp_path / "data" / "correction_dataset.csv.gz").exists()
 
 
-def test_training_dataset_core_quota_backfill_uses_candidate_backed_rules_and_reports(tmp_path: Path):
+def test_candidate_dataset_quota_compat_view_uses_canonical_block(tmp_path: Path):
     config = _tiny_quota_config(tmp_path)
+    paths = candidate_dataset_paths(config)
+    core = candidate_dataset_core_compat_config(config)
 
-    result = build_dataset_from_config(config, force=True)
-    frame = pd.read_csv(tmp_path / "data" / "training_dataset_core" / "correction_dataset.csv.gz")
-    manifest = json.loads((tmp_path / "reports" / "training_dataset_core" / "dataset_manifest.json").read_text(encoding="utf-8"))
-    quota = pd.read_csv(tmp_path / "reports" / "training_dataset_core" / "active_rule_quota_report.csv")
-    rejected = pd.read_csv(tmp_path / "reports" / "training_dataset_core" / "rejected_backfill_templates.csv")
-    blocked = pd.read_csv(tmp_path / "reports" / "training_dataset_core" / "blocked_rules_report.csv")
-    matrix = pd.read_csv(tmp_path / "reports" / "training_dataset_core" / "rule_capability_matrix.csv")
-
-    assert result["verdict"] == "READY_FOR_TRAINING_DATASET"
-    assert frame["split"].value_counts().to_dict() == {"train": 60, "val": 10, "test": 10}
-    assert manifest["low_count_active_rule_ids"] == []
-    assert manifest["active_rule_quota_summary"]["underfilled_count"] == 0
-    assert manifest["composition_by_split"]["val"]["clean_identity_from_open_clean"] >= 2
-    assert manifest["composition_by_split"]["test"]["hard_negative_from_open_clean"] >= 2
-
-    expected_rules = {
+    expected_rules = [
         "comma_subordinate",
         "subject_predicate_dash",
         "homogeneous_comma",
@@ -77,28 +44,24 @@ def test_training_dataset_core_quota_backfill_uses_candidate_backed_rules_and_re
         "address_comma",
         "comma_conjunction",
         "hyphen_whitelist",
-    }
-    blocked_config_rules = {"capitalization_ner", "yo_e_candidate"}
-    assert expected_rules <= set(manifest["active_rule_ids"])
-    assert blocked_config_rules.isdisjoint(set(manifest["active_rule_ids"]))
-    assert blocked_config_rules.isdisjoint(set(frame["rule_ids"].astype(str)))
-    assert expected_rules <= set(quota["rule_id"])
-    assert blocked_config_rules.isdisjoint(set(quota["rule_id"]))
-    assert set(quota.set_index("rule_id").loc[list(expected_rules), "action"]) <= {"ok", "backfilled"}
-    assert all(manifest["rule_id_counts"][rule_id] >= 3 for rule_id in expected_rules)
-    assert "capitalization_ner" in " ".join(blocked["project_rule_ids"].astype(str).tolist())
-    assert "yo_e_candidate" in " ".join(blocked["project_rule_ids"].astype(str).tolist())
-    assert len(matrix) >= len(blocked)
-    assert (tmp_path / "reports" / "training_dataset_core" / "rule_eligibility_report.csv").exists()
-    assert (tmp_path / "reports" / "training_dataset_core" / "missing_module_rules_report.csv").exists()
-    assert {"rule_id", "reason"} <= set(rejected.columns)
-    assert not frame["source"].str.contains("правило|серии|семейство|context-pairs", case=False, regex=True).any()
-    assert not frame["target"].str.contains("правило|серии|семейство|context-pairs", case=False, regex=True).any()
+        "capitalization_ner",
+        "yo_e_candidate",
+    ]
+    assert paths["correction_dataset_path"] == str(tmp_path / "data" / "training_dataset_core" / "correction_dataset.csv.gz")
+    assert core["legacy_builder"] is False
+    assert core["requested_total"] == 80
+    assert core["active_rule_quota"]["rule_ids"] == expected_rules
+    assert core["active_rule_quota"]["min_total_per_active_rule"] == 3
+    assert core["active_rule_quota"]["preferred_total_per_active_rule"] == 3
+    assert core["rule_caps"]["max_total_per_rule_id"] == 3
+    assert core["source_type_targets"]["synthetic_augmented_from_open_clean"] == 22
+    assert core["source_type_targets"]["clean_identity_from_open_clean"] == 29
+    assert core["source_type_targets"]["hard_negative_from_open_clean"] == 29
 
 
 def test_effective_active_rule_ids_filter_blocked_eval_and_mining_rules():
     config = load_config("configs/config.yaml")
-    core_config = dict(config["data"]["training_dataset_core"])
+    core_config = candidate_dataset_core_compat_config(config)
     quota_config = {
         "rule_ids": [
             "dictionary_fuzzy",
@@ -131,7 +94,7 @@ def test_rule_quota_counts_only_atomic_positive_contract_rows():
             "dataset_layer": "atomic_positive",
             "count_toward_rule_quota": True,
             "gold_edit_count": 1,
-            "edits": json.dumps([{"source": "млоко", "replacement": "молоко"}], ensure_ascii=False),
+            "edits": json.dumps([{"source": "РјР»РѕРєРѕ", "replacement": "РјРѕР»РѕРєРѕ"}], ensure_ascii=False),
         },
         {
             "rule_ids": json.dumps(["unit_atomic"]),
@@ -195,64 +158,30 @@ def _capability(
 
 
 def _tiny_quota_config(tmp_path: Path) -> dict:
-    clean_sentences = _clean_sentences(240)
-    clean_path = tmp_path / "clean-a.txt"
-    clean_path.write_text("\n".join(clean_sentences[:120]) + "\n", encoding="utf-8")
-    clean_path_b = tmp_path / "clean-b.txt"
-    clean_path_b.write_text("\n".join(clean_sentences[120:]) + "\n", encoding="utf-8")
-    real_path = tmp_path / "real.jsonl"
-    real_path.write_text(
-        '{"source": "Жызнь в городе стала заметно спокойнее.", "correction": "Жизнь в городе стала заметно спокойнее.", "domain": "unit"}\n',
-        encoding="utf-8",
-    )
     config = load_config("configs/config.yaml")
-    config["data"]["processed_train_path"] = str(tmp_path / "data" / "training_dataset_core" / "correction_dataset.csv.gz")
-    config["data"]["manifest_path"] = str(tmp_path / "reports" / "training_dataset_core" / "dataset_manifest.json")
+    candidate = config["data"]["candidate_opportunity"]
+    candidate["paths"]["correction_dataset_path"] = str(tmp_path / "data" / "training_dataset_core" / "correction_dataset.csv.gz")
+    candidate["paths"]["manifest_path"] = str(tmp_path / "reports" / "training_dataset_core" / "dataset_manifest.json")
+    candidate["paths"]["reports_dir"] = str(tmp_path / "reports" / "training_dataset_core")
+    candidate["paths"]["clean_pool_path"] = str(tmp_path / "data" / "training_dataset_core" / "clean_sentence_pool.csv.gz")
     config["paths"]["reports_dir"] = str(tmp_path / "reports" / "training_dataset_core")
-    config["data"]["target_total_examples"] = 80
-    config["data"]["train_examples"] = 60
-    config["data"]["val_examples"] = 10
-    config["data"]["test_examples"] = 10
-    core = config["data"]["training_dataset_core"]
-    core["legacy_builder"] = True
-    core["source_type_targets"] = {
-        "synthetic_augmented_from_open_clean": 22,
-        "real_error_pair": 0,
-        "clean_identity_from_open_clean": 29,
-        "hard_negative_from_open_clean": 29,
+    candidate["totals"] = {"total_examples": 80, "train_examples": 60, "val_examples": 10, "test_examples": 10}
+    candidate["composition"] = {
+        "atomic_positive_target": 22,
+        "real_atomic_train_target": 0,
+        "clean_identity_target": 29,
+        "atomic_hard_negative_target": 29,
+        "stress_multi_error_target": 0,
     }
-    core["split_source_type_targets"] = {
-        "train": {
-            "synthetic_augmented_from_open_clean": 16,
-            "real_error_pair": 0,
-            "clean_identity_from_open_clean": 22,
-            "hard_negative_from_open_clean": 22,
-        },
-        "val": {
-            "synthetic_augmented_from_open_clean": 3,
-            "real_error_pair": 0,
-            "clean_identity_from_open_clean": 3,
-            "hard_negative_from_open_clean": 4,
-        },
-        "test": {
-            "synthetic_augmented_from_open_clean": 3,
-            "real_error_pair": 0,
-            "clean_identity_from_open_clean": 4,
-            "hard_negative_from_open_clean": 3,
-        },
-    }
-    core["max_general_synthetic_fill"] = 0
-    core["min_clean_pool_for_ready"] = 40
-    core["min_clean_pool_hard_min"] = 40
-    core["multi_error_stress_target"] = 0
-    core["pool"]["min_clean_sentences"] = 40
-    core["pool"]["max_source_share"] = 1.0
-    core["pool"]["max_subcorpus_share"] = 1.0
-    core["audit"]["min_active_rule_count"] = 3
-    core["audit"]["require_all_source_types"] = False
-    core["audit"]["corpus_opportunity_share_min"] = 0.0
-    core["audit"]["fallback_template_share_max"] = 1.0
-    core["active_rule_quota"] = {
+    candidate["min_clean_pool_for_ready"] = 40
+    candidate["min_clean_pool_hard_min"] = 40
+    candidate["max_source_share"] = 1.0
+    candidate["max_subcorpus_share"] = 1.0
+    candidate["audit"]["min_active_rule_count"] = 3
+    candidate["audit"]["require_all_source_types"] = False
+    candidate["audit"]["corpus_opportunity_share_min"] = 0.0
+    candidate["audit"]["fallback_template_share_max"] = 1.0
+    candidate["rule_quota"] = {
         "rule_ids": [
             "comma_subordinate",
             "subject_predicate_dash",
@@ -264,51 +193,25 @@ def _tiny_quota_config(tmp_path: Path) -> dict:
             "capitalization_ner",
             "yo_e_candidate",
         ],
-        "min_total_per_active_rule": 3,
-        "preferred_total_per_active_rule": 3,
+        "min_atomic_positives_per_active_rule": 3,
+        "preferred_atomic_positives_per_active_rule": 3,
+        "max_total_per_rule_id": 3,
+        "min_hard_negatives_per_active_rule": 0,
+        "disable_rule_if_quota_not_met": True,
         "split_minimums": {"train": 1, "val": 1, "test": 1},
-    }
-    core["open_corpora_sources"] = {
-        "clean_sources": {
-            "unit_news_a": {
-                "enabled": True,
-                "type": "local_text",
-                "local_path": str(clean_path),
-                "source_subcorpus": "news",
-                "domain": "news",
-                "style": "neutral",
-                "license_status": "unit",
-                "max_sentences": 200,
-            },
-            "unit_news_b": {
-                "enabled": True,
-                "type": "local_text",
-                "local_path": str(clean_path_b),
-                "source_subcorpus": "analysis",
-                "domain": "analysis",
-                "style": "neutral",
-                "license_status": "unit",
-                "max_sentences": 200,
-            }
-        },
-        "download_policy": {"mode": "local_first"},
-    }
-    core["real_error_sources"] = {
-        "real_sources": {},
-        "download_policy": {"mode": "local_first"},
     }
     return config
 
 
 def _clean_sentences(count: int) -> list[str]:
     base = [
-        "Эксперты сообщили, что жизнь в городе стала спокойнее после реформы.",
-        "Редакция отметила, что библиотека открылась после долгой реконструкции.",
-        "Аналитики считают, что цифровой отчет помогает оценить работу региона.",
-        "Компания заявила, что новый подъезд к станции будет готов осенью.",
-        "Исследователи подчеркнули, что длинный период наблюдений повысил точность.",
-        "Комиссия решила, что кто-то должен проверить документы перед публикацией.",
-        "Авторы сообщили: «Проект готов», и эксперты приняли итоговый отчет.",
-        "Когда документ будет готов, команда отправит его в городской архив.",
+        "Р­РєСЃРїРµСЂС‚С‹ СЃРѕРѕР±С‰РёР»Рё, С‡С‚Рѕ Р¶РёР·РЅСЊ РІ РіРѕСЂРѕРґРµ СЃС‚Р°Р»Р° СЃРїРѕРєРѕР№РЅРµРµ РїРѕСЃР»Рµ СЂРµС„РѕСЂРјС‹.",
+        "Р РµРґР°РєС†РёСЏ РѕС‚РјРµС‚РёР»Р°, С‡С‚Рѕ Р±РёР±Р»РёРѕС‚РµРєР° РѕС‚РєСЂС‹Р»Р°СЃСЊ РїРѕСЃР»Рµ РґРѕР»РіРѕР№ СЂРµРєРѕРЅСЃС‚СЂСѓРєС†РёРё.",
+        "РђРЅР°Р»РёС‚РёРєРё СЃС‡РёС‚Р°СЋС‚, С‡С‚Рѕ С†РёС„СЂРѕРІРѕР№ РѕС‚С‡РµС‚ РїРѕРјРѕРіР°РµС‚ РѕС†РµРЅРёС‚СЊ СЂР°Р±РѕС‚Сѓ СЂРµРіРёРѕРЅР°.",
+        "РљРѕРјРїР°РЅРёСЏ Р·Р°СЏРІРёР»Р°, С‡С‚Рѕ РЅРѕРІС‹Р№ РїРѕРґСЉРµР·Рґ Рє СЃС‚Р°РЅС†РёРё Р±СѓРґРµС‚ РіРѕС‚РѕРІ РѕСЃРµРЅСЊСЋ.",
+        "РСЃСЃР»РµРґРѕРІР°С‚РµР»Рё РїРѕРґС‡РµСЂРєРЅСѓР»Рё, С‡С‚Рѕ РґР»РёРЅРЅС‹Р№ РїРµСЂРёРѕРґ РЅР°Р±Р»СЋРґРµРЅРёР№ РїРѕРІС‹СЃРёР» С‚РѕС‡РЅРѕСЃС‚СЊ.",
+        "РљРѕРјРёСЃСЃРёСЏ СЂРµС€РёР»Р°, С‡С‚Рѕ РєС‚Рѕ-С‚Рѕ РґРѕР»Р¶РµРЅ РїСЂРѕРІРµСЂРёС‚СЊ РґРѕРєСѓРјРµРЅС‚С‹ РїРµСЂРµРґ РїСѓР±Р»РёРєР°С†РёРµР№.",
+        "РђРІС‚РѕСЂС‹ СЃРѕРѕР±С‰РёР»Рё: В«РџСЂРѕРµРєС‚ РіРѕС‚РѕРІВ», Рё СЌРєСЃРїРµСЂС‚С‹ РїСЂРёРЅСЏР»Рё РёС‚РѕРіРѕРІС‹Р№ РѕС‚С‡РµС‚.",
+        "РљРѕРіРґР° РґРѕРєСѓРјРµРЅС‚ Р±СѓРґРµС‚ РіРѕС‚РѕРІ, РєРѕРјР°РЅРґР° РѕС‚РїСЂР°РІРёС‚ РµРіРѕ РІ РіРѕСЂРѕРґСЃРєРѕР№ Р°СЂС…РёРІ.",
     ]
     return [sentence.replace(".", f" {index}.") for index in range(count) for sentence in [base[index % len(base)]]]

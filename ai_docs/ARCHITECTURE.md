@@ -52,12 +52,14 @@ Entry point: `src/training/train.py`.
 Основные шаги:
 
 - загрузить `configs/config.yaml`;
-- canonical dataset build читает `data.dataset_contract: candidate_opportunity`;
+- canonical dataset build читает единственный source of truth `data.candidate_opportunity`;
+- `src.config.candidate_dataset_config` дает resolver/validator для totals, paths, `composition`, `rule_quota`, `rule_activation`, `rule_data_compiler`, `rule_lab` и `audit`;
 - `scripts/build_dataset.py` / `scripts/rebuild_training_dataset.py` собирают layered atomic dataset без запуска model training;
 - `src.data.operator_dataset_builder` строит слои `atomic_positive`, `atomic_hard_negative`, `clean_identity`, `real_atomic`, `stress_multi_error`;
 - atomic positives требуют candidate coverage и `StrictValidator`, а stress rows получают пониженный `loss_weight`;
 - manifest пишет `dataset_hash`, `verdict`, `audit_errors`, `layer_counts` и отчеты quota/audit gates;
-- старые `training_dataset` / `training_dataset_core` ключи остаются fallback-совместимыми, но top-level `data` keys имеют приоритет;
+- `data.training_dataset` и `data.training_dataset_core` удалены из production config; fallback-совместимость для старых fixtures допустима только в resolver layer;
+- не добавлять dataset settings в sibling `data.rule_quota`, `data.composition`, `data.audit` и другие top-level `data.*` дубли;
 - training entrypoint берет готовый layered dataset и строит training features;
 - при `training.run_model_training: true` обучить encoder+heads;
 - сохранить adapters, heads, config, labels, thresholds;

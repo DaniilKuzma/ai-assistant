@@ -15,6 +15,16 @@ from typing import Any, Iterable
 import pandas as pd
 
 from src.candidates.candidate_generator import CandidateGenerator
+from src.config.candidate_dataset_config import (
+    candidate_dataset_audit,
+    candidate_dataset_composition,
+    candidate_dataset_paths,
+    candidate_dataset_rule_activation,
+    candidate_dataset_rule_quota,
+    candidate_dataset_totals,
+    candidate_dataset_value,
+    get_candidate_dataset_config,
+)
 from src.data.atomic_verifier import verify_atomic_positive
 from src.data.corruption_operators import (
     Opportunity,
@@ -256,11 +266,12 @@ class PostComposeSanitizerResult:
 
 
 def build_operator_training_dataset_from_config(config: dict[str, Any], force: bool = False) -> dict[str, Any]:
-    data_config = config.get("data", {}) or {}
-    output_path = Path(str(data_config.get("processed_train_path") or "data/processed/correction_dataset.csv.gz"))
-    manifest_path = Path(str(data_config.get("manifest_path") or "data/processed/dataset_manifest.json"))
-    reports_root = Path(str((config.get("paths", {}) or {}).get("reports_dir") or "reports"))
-    reports_dir = reports_root if reports_root.name == "dataset_build" else reports_root / "dataset_build"
+    candidate_config = get_candidate_dataset_config(config)
+    data_config = candidate_config
+    paths = candidate_dataset_paths(config)
+    output_path = Path(str(paths["correction_dataset_path"]))
+    manifest_path = Path(str(paths["manifest_path"]))
+    reports_dir = Path(str(paths["reports_dir"]))
     requested_total = _requested_total_from_config(data_config, output_path=output_path, manifest_path=manifest_path)
     split_sizes = _split_sizes_from_config(data_config, requested_total)
     clean_pool_path = _clean_pool_path_from_config(config)
@@ -655,8 +666,13 @@ def build_operator_training_dataset_from_config(config: dict[str, Any], force: b
         corpus_mined_atomic_counts_by_rule=pre_gate_corpus_mined_atomic_counts,
         real_atomic_counts_by_rule=pre_gate_real_atomic_counts,
         atomic_drop_guard=atomic_drop_guard,
-        additional_warnings=final_gate_warnings,
-        additional_audit_errors=[*final_gate_audit_errors, *atomic_drop_audit_errors, *post_compose_sanitizer.audit_errors],
+        additional_warnings=[*final_gate_warnings, *rule_data_compiler_result.warnings],
+        additional_audit_errors=[
+            *final_gate_audit_errors,
+            *atomic_drop_audit_errors,
+            *rule_data_compiler_result.audit_errors,
+            *post_compose_sanitizer.audit_errors,
+        ],
         active_rule_coverage=active_rule_coverage,
         hard_negative_coverage=hard_negative_coverage,
         syntax_atomic_result=syntax_atomic_result,
@@ -740,7 +756,8 @@ def _eligible_rule_ids(config: dict[str, Any], *, capabilities: list[Any], polic
 
 
 def _requested_total_from_config(data_config: dict[str, Any], *, output_path: Path, manifest_path: Path) -> int:
-    configured = int(data_config.get("total_examples") or data_config.get("target_total_examples") or 200_000)
+    totals = dict(data_config.get("totals", {}) or {})
+    configured = int(totals.get("total_examples") or data_config.get("total_examples") or data_config.get("target_total_examples") or 200_000)
     if _is_canonical_dataset_path(output_path=output_path, manifest_path=manifest_path):
         return max(200_000, configured)
     split_total = sum(
@@ -752,9 +769,10 @@ def _requested_total_from_config(data_config: dict[str, Any], *, output_path: Pa
 
 
 def _split_sizes_from_config(data_config: dict[str, Any], requested_total: int) -> dict[str, int]:
+    totals = dict(data_config.get("totals", {}) or {})
     keys = {"train": "train_examples", "val": "val_examples", "test": "test_examples"}
-    if any(key in data_config for key in keys.values()):
-        split_sizes = {split: int(data_config.get(key, 0) or 0) for split, key in keys.items()}
+    if any(key in totals or key in data_config for key in keys.values()):
+        split_sizes = {split: int(totals.get(key, data_config.get(key, 0)) or 0) for split, key in keys.items()}
         if sum(split_sizes.values()) == requested_total:
             return split_sizes
     return _exact_split_sizes(requested_total)
@@ -772,23 +790,19 @@ def _production_audit_enabled(*, output_path: Path, manifest_path: Path, request
 
 
 def _clean_pool_path_from_config(config: dict[str, Any]) -> Path:
-    data_config = config.get("data", {}) or {}
-    core_config = data_config.get("training_dataset_core", {}) or {}
-    return Path(str(data_config.get("clean_pool_path") or core_config.get("clean_pool_path") or DEFAULT_CLEAN_POOL_PATH))
+    return Path(str(candidate_dataset_paths(config).get("clean_pool_path") or DEFAULT_CLEAN_POOL_PATH))
 
 
 def _clean_pool_chunksize(config: dict[str, Any]) -> int:
-    data_config = config.get("data", {}) or {}
-    core_config = data_config.get("training_dataset_core", {}) or {}
-    return max(1, int(data_config.get("clean_pool_chunksize") or core_config.get("clean_pool_chunksize") or DEFAULT_CLEAN_POOL_CHUNKSIZE))
+    candidate = get_candidate_dataset_config(config)
+    return max(1, int(candidate.get("clean_pool_chunksize") or DEFAULT_CLEAN_POOL_CHUNKSIZE))
 
 
 def _dataset_build_workers(config: dict[str, Any]) -> int:
-    data_config = config.get("data", {}) or {}
-    core_config = data_config.get("training_dataset_core", {}) or {}
+    candidate = get_candidate_dataset_config(config)
     raw = os.environ.get("RUSSIAN_CORRECTOR_DATASET_WORKERS")
     if raw is None:
-        raw = data_config.get("dataset_build_workers", core_config.get("dataset_build_workers", DEFAULT_DATASET_BUILD_WORKERS))
+        raw = candidate.get("dataset_build_workers", DEFAULT_DATASET_BUILD_WORKERS)
     try:
         requested = int(raw)
     except (TypeError, ValueError):
@@ -808,33 +822,27 @@ def _chunk_rule_ids_for_workers(rule_ids: list[str], workers: int) -> list[list[
 
 
 def _operator_rule_quota_config(config: dict[str, Any]) -> dict[str, Any]:
-    data_config = config.get("data", {}) or {}
-    core_config = data_config.get("training_dataset_core", {}) or {}
-    old_quota = dict(core_config.get("active_rule_quota", {}) or {})
-    old_caps = dict(core_config.get("rule_caps", {}) or {})
-    raw = dict(data_config.get("rule_quota", {}) or {})
-    min_total = int(raw.get("min_atomic_positives_per_active_rule") or old_quota.get("min_total_per_active_rule") or 1000)
-    preferred = int(raw.get("preferred_atomic_positives_per_active_rule") or old_quota.get("preferred_total_per_active_rule") or max(2500, min_total))
+    raw = candidate_dataset_rule_quota(config)
+    min_total = int(raw.get("min_atomic_positives_per_active_rule") or 1000)
+    preferred = int(raw.get("preferred_atomic_positives_per_active_rule") or max(2500, min_total))
     max_total_explicit = "max_total_per_rule_id" in raw
-    max_total = int(raw.get("max_total_per_rule_id") or old_caps.get("max_total_per_rule_id") or max(preferred, min_total))
-    min_hard = int(raw.get("min_hard_negatives_per_active_rule") or old_quota.get("min_hard_negatives_per_active_rule") or 500)
-    rule_ids = raw.get("rule_ids") or old_quota.get("rule_ids") or []
+    max_total = int(raw.get("max_total_per_rule_id") or max(preferred, min_total))
+    min_hard = int(raw.get("min_hard_negatives_per_active_rule") or 500)
+    rule_ids = raw.get("rule_ids") or []
     return {
         "min_atomic_positives_per_active_rule": max(0, min_total),
         "preferred_atomic_positives_per_active_rule": max(min_total, preferred),
         "max_total_per_rule_id": max(min_total, max_total),
         "max_total_per_rule_id_explicit": max_total_explicit,
         "min_hard_negatives_per_active_rule": max(0, min_hard),
-        "disable_rule_if_quota_not_met": _truthy(raw.get("disable_rule_if_quota_not_met", old_quota.get("disable_rule_if_quota_not_met", False))),
+        "disable_rule_if_quota_not_met": _truthy(raw.get("disable_rule_if_quota_not_met", False)),
         "rule_ids": [str(rule_id) for rule_id in rule_ids if str(rule_id)],
     }
 
 
 def _stress_loss_weight_from_config(config: dict[str, Any]) -> float:
-    data_config = config.get("data", {}) or {}
-    stress_config = data_config.get("stress", {}) or {}
-    core_config = data_config.get("training_dataset_core", {}) or {}
-    raw = stress_config.get("loss_weight", core_config.get("stress_loss_weight", 0.4))
+    stress_config = dict(candidate_dataset_value(config, "stress", {}) or {})
+    raw = stress_config.get("loss_weight", 0.4)
     try:
         return float(raw)
     except (TypeError, ValueError):
@@ -842,8 +850,7 @@ def _stress_loss_weight_from_config(config: dict[str, Any]) -> float:
 
 
 def _requested_layer_targets_from_config(config: dict[str, Any], requested_total: int) -> dict[str, int]:
-    data_config = config.get("data", {}) or {}
-    composition = dict(data_config.get("composition", {}) or {})
+    composition = candidate_dataset_composition(config)
     if composition:
         targets: dict[str, int] = {}
         remaining_layers: list[str] = []
@@ -859,20 +866,6 @@ def _requested_layer_targets_from_config(config: dict[str, Any], requested_total
             for layer in remaining_layers
         }
         targets.update(_allocate_counts_by_weight(remaining_total, weights))
-        return _normalize_layer_targets(targets, requested_total)
-
-    core_config = data_config.get("training_dataset_core", {}) or {}
-    legacy_source_targets = dict(core_config.get("source_type_targets", {}) or {})
-    if legacy_source_targets:
-        stress_target = max(0, int(core_config.get("multi_error_stress_target", 0) or 0))
-        synthetic_target = int(legacy_source_targets.get(SYNTHETIC_OPEN_CLEAN, 0) or 0)
-        targets = {
-            LAYER_ATOMIC_POSITIVE: max(0, synthetic_target - stress_target),
-            LAYER_ATOMIC_HARD_NEGATIVE: max(0, int(legacy_source_targets.get(HARD_NEGATIVE_OPEN, 0) or 0)),
-            LAYER_CLEAN_IDENTITY: max(0, int(legacy_source_targets.get(CLEAN_IDENTITY_OPEN, 0) or 0)),
-            LAYER_REAL_ATOMIC: max(0, int(legacy_source_targets.get(REAL_ERROR_PAIR, 0) or 0)),
-            LAYER_STRESS_MULTI_ERROR: stress_target,
-        }
         return _normalize_layer_targets(targets, requested_total)
 
     targets = _allocate_counts_by_weight(requested_total, DEFAULT_LAYER_RATIOS)
@@ -923,7 +916,7 @@ def _atomic_target_capacity_per_rule(quota_config: dict[str, Any]) -> int:
 
 
 def _allow_layer_target_adjustment(config: dict[str, Any]) -> bool:
-    composition = dict(((config.get("data", {}) or {}).get("composition", {}) or {}))
+    composition = candidate_dataset_composition(config)
     return _truthy(composition.get("allow_layer_target_adjustment", True))
 
 
@@ -1499,7 +1492,7 @@ def _compile_rule_data_if_enabled(
     config: dict[str, Any],
     existing_rows: list[dict[str, Any]],
 ) -> RuleDataCompilerResult:
-    compiler_config = ((config.get("data", {}) or {}).get("rule_data_compiler", {}) or {})
+    compiler_config = dict(candidate_dataset_value(config, "rule_data_compiler", {}) or {})
     if not bool(compiler_config.get("enabled", False)):
         return RuleDataCompilerResult()
     return compile_rule_data(
@@ -2646,11 +2639,11 @@ def _real_rows(frame: pd.DataFrame) -> list[dict[str, Any]]:
 
 
 def _real_atomic_cache_path(config: dict[str, Any], *, output_path: Path) -> Path:
-    data_config = config.get("data", {}) or {}
-    explicit = data_config.get("real_error_pairs_atomic_path")
+    paths = candidate_dataset_paths(config)
+    explicit = paths.get("real_error_pairs_atomic_path")
     if explicit:
         return Path(str(explicit))
-    validated = data_config.get("real_error_pairs_validated_path")
+    validated = paths.get("real_error_pairs_validated_path")
     output_dir = output_path.parent
     local_atomic = output_dir / "real_error_pairs_atomic.csv.gz"
     if local_atomic.exists():
@@ -2664,11 +2657,11 @@ def _real_atomic_cache_path(config: dict[str, Any], *, output_path: Path) -> Pat
 
 
 def _real_stress_cache_path(config: dict[str, Any], *, output_path: Path) -> Path:
-    data_config = config.get("data", {}) or {}
-    explicit = data_config.get("real_error_pairs_stress_path")
+    paths = candidate_dataset_paths(config)
+    explicit = paths.get("real_error_pairs_stress_path")
     if explicit:
         return Path(str(explicit))
-    validated = data_config.get("real_error_pairs_validated_path")
+    validated = paths.get("real_error_pairs_validated_path")
     output_dir = output_path.parent
     local_stress = output_dir / "real_error_pairs_stress.csv.gz"
     if local_stress.exists():
@@ -4090,7 +4083,7 @@ def _final_active_rule_ids_after_gates(
             }
         )
 
-    activation_config = dict(((config.get("data", {}) or {}).get("rule_activation", {}) or {}))
+    activation_config = candidate_dataset_rule_activation(config)
     final_count = len(final_active)
     expected_min = int(activation_config.get("expected_min_final_active_rule_count", 0) or 0)
     target = int(activation_config.get("target_final_active_rule_count", 0) or 0)
@@ -4744,20 +4737,16 @@ def _config_hash(config: dict[str, Any]) -> str:
 
 
 def _operator_audit_config(config: dict[str, Any]) -> dict[str, Any]:
-    data = config.get("data", {}) or {}
-    core = data.get("training_dataset_core", {}) or data.get("training_dataset", {}) or {}
-    result = dict((core.get("audit", {}) if isinstance(core, dict) else {}) or {})
-    stress = dict(data.get("stress", {}) or {})
+    result = candidate_dataset_audit(config)
+    stress = dict(candidate_dataset_value(config, "stress", {}) or {})
     if "min_ratio" in stress:
         result.setdefault("stress_min_ratio", stress["min_ratio"])
     if "max_ratio" in stress:
         result.setdefault("stress_max_ratio", stress["max_ratio"])
     if "fail_on_under_target" in stress:
         result.setdefault("fail_on_stress_under_target", stress["fail_on_under_target"])
-    top_level = dict(data.get("audit", {}) or {})
-    if "min_candidate_recall_for_active_rule" in top_level:
-        top_level.setdefault("candidate_recall_min", top_level["min_candidate_recall_for_active_rule"])
-    result.update(top_level)
+    if "min_candidate_recall_for_active_rule" in result:
+        result.setdefault("candidate_recall_min", result["min_candidate_recall_for_active_rule"])
     return result
 
 

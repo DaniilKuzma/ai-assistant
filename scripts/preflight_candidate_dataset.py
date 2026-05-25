@@ -16,6 +16,16 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
+from src.config.candidate_dataset_config import (
+    CANONICAL_DATASET_CONFIG_PATH,
+    candidate_dataset_audit,
+    candidate_dataset_paths,
+    candidate_dataset_rule_activation,
+    candidate_dataset_rule_quota,
+    candidate_dataset_totals,
+    get_candidate_dataset_config,
+    validate_candidate_dataset_config,
+)
 from src.config.load_config import load_config
 from src.data.clean_sentence_pool import (
     clean_sentence_rejection_reasons,
@@ -127,6 +137,9 @@ def run_preflight(options: PreflightOptions) -> dict[str, Any]:
     warnings: list[str] = []
     cleaned_paths: list[str] = []
 
+    config_validation_errors = validate_candidate_dataset_config(config)
+    errors.extend(config_validation_errors)
+
     dependency_summary = check_dependencies()
     errors.extend(dependency_summary["errors"])
 
@@ -203,44 +216,51 @@ def check_dependencies() -> dict[str, Any]:
 
 
 def check_config(config: Mapping[str, Any]) -> dict[str, Any]:
-    data = dict(config.get("data", {}) or {})
-    clean_pool = dict(data.get("clean_pool", {}) or {})
-    activation = dict(data.get("rule_activation", {}) or {})
-    errors: list[str] = []
+    candidate = get_candidate_dataset_config(config)
+    clean_pool = dict(candidate.get("clean_pool", {}) or {})
+    activation = candidate_dataset_rule_activation(config)
+    quota = candidate_dataset_rule_quota(config)
+    totals = candidate_dataset_totals(config)
+    errors: list[str] = validate_candidate_dataset_config(config)
     warnings: list[str] = []
 
-    _expect_equal(errors, "data.dataset_contract", data.get("dataset_contract"), "candidate_opportunity")
-    _expect_equal(errors, "data.clean_pool.reject_mixed_script_tokens", clean_pool.get("reject_mixed_script_tokens"), True)
+    _expect_equal(errors, "data.candidate_opportunity.contract", candidate.get("contract"), "candidate_opportunity")
+    _expect_equal(errors, "data.candidate_opportunity.clean_pool.reject_mixed_script_tokens", clean_pool.get("reject_mixed_script_tokens"), True)
     _expect_equal(
         errors,
-        "data.clean_pool.reject_latin_confusable_inside_cyrillic_word",
+        "data.candidate_opportunity.clean_pool.reject_latin_confusable_inside_cyrillic_word",
         clean_pool.get("reject_latin_confusable_inside_cyrillic_word"),
         True,
     )
     _expect_equal(
         errors,
-        "data.clean_pool.reject_if_candidate_generator_finds_high_confidence_fix",
+        "data.candidate_opportunity.clean_pool.reject_if_candidate_generator_finds_high_confidence_fix",
         clean_pool.get("reject_if_candidate_generator_finds_high_confidence_fix"),
         True,
     )
-    _expect_float(errors, "data.clean_pool.high_confidence_candidate_threshold", clean_pool.get("high_confidence_candidate_threshold"), 0.95)
-    _expect_equal(errors, "data.rule_activation.mode", activation.get("mode"), "expanded_safe")
+    _expect_float(
+        errors,
+        "data.candidate_opportunity.clean_pool.high_confidence_candidate_threshold",
+        clean_pool.get("high_confidence_candidate_threshold"),
+        0.95,
+    )
+    _expect_equal(errors, "data.candidate_opportunity.rule_activation.mode", activation.get("mode"), "expanded_safe")
     thresholds = _activation_thresholds(activation)
     _expect_min(
         errors,
-        "data.rule_activation.expected_min_production_ready_rule_count",
+        "data.candidate_opportunity.rule_activation.expected_min_production_ready_rule_count",
         thresholds["expected_min_production_ready_rule_count"],
         0,
     )
     _expect_min(
         errors,
-        "data.rule_activation.expected_min_training_candidate_rule_count",
+        "data.candidate_opportunity.rule_activation.expected_min_training_candidate_rule_count",
         thresholds["expected_min_training_candidate_rule_count"],
         0,
     )
     _expect_min(
         errors,
-        "data.rule_activation.expected_min_final_active_rule_count",
+        "data.candidate_opportunity.rule_activation.expected_min_final_active_rule_count",
         thresholds["expected_min_final_active_rule_count"],
         0,
     )
@@ -268,9 +288,14 @@ def check_config(config: Mapping[str, Any]) -> dict[str, Any]:
         "ok": not errors,
         "errors": errors,
         "warnings": warnings,
-        "dataset_contract": data.get("dataset_contract"),
+        "canonical_config_path": CANONICAL_DATASET_CONFIG_PATH,
+        "dataset_contract": candidate.get("contract"),
+        "totals": totals,
+        "rule_quota": quota,
         "clean_pool": clean_pool,
         "rule_activation": activation,
+        "rule_data_compiler": dict(candidate.get("rule_data_compiler", {}) or {}),
+        "rule_lab": dict(candidate.get("rule_lab", {}) or {}),
     }
 
 
@@ -282,7 +307,7 @@ def check_activation(config: Mapping[str, Any]) -> dict[str, Any]:
     blocker_counts = Counter(str(row.get("blocker") or "unknown") for row in blocked_rows)
     errors = list(fields.get("activation_policy", {}).get("errors", []) or [])
     warnings = list(fields.get("activation_policy", {}).get("warnings", []) or [])
-    activation = dict((dict(config.get("data", {}) or {}).get("rule_activation", {}) or {}))
+    activation = candidate_dataset_rule_activation(config)
     thresholds = _activation_thresholds(activation)
 
     production_count = int(fields.get("production_ready_rule_count", 0) or 0)
@@ -449,8 +474,7 @@ def scan_clean_pool(
             "message": "",
         }
 
-    data_config = dict(config.get("data", {}) or {})
-    pool_config = dict(data_config.get("clean_pool", {}) or {})
+    pool_config = dict(get_candidate_dataset_config(config).get("clean_pool", {}) or {})
     high_confidence_enabled = bool(full_scan and pool_config.get("reject_if_candidate_generator_finds_high_confidence_fix", False))
     candidate_generator = None
     if high_confidence_enabled:
@@ -490,7 +514,7 @@ def scan_clean_pool(
     if mixed_count > 0 or confusable_count > 0:
         code = "clean_pool_contamination_detected"
         message = "clean pool should be rebuilt via setup_data_sources"
-        if bool(dict(data_config.get("audit", {}) or {}).get("fail_on_clean_pool_contamination", False)):
+        if bool(candidate_dataset_audit(config).get("fail_on_clean_pool_contamination", False)):
             errors.append(code)
         else:
             warnings.append(code)
@@ -513,11 +537,30 @@ def print_preflight_summary(result: Mapping[str, Any]) -> None:
     activation = dict(result.get("activation_summary", {}) or {})
     stale = dict(result.get("stale_artifacts", {}) or {})
     clean = dict(result.get("clean_pool_summary", {}) or {})
+    config_summary = dict(result.get("config_summary", {}) or {})
+    totals = dict(config_summary.get("totals", {}) or {})
+    quota = dict(config_summary.get("rule_quota", {}) or {})
+    rule_activation = dict(config_summary.get("rule_activation", {}) or {})
+    compiler = dict(config_summary.get("rule_data_compiler", {}) or {})
+    rule_lab = dict(config_summary.get("rule_lab", {}) or {})
     summary = {
         "ok": bool(result.get("ok")),
+        "canonical_config_path": config_summary.get("canonical_config_path", CANONICAL_DATASET_CONFIG_PATH),
         "error_count": len(result.get("errors", []) or []),
         "warning_count": len(result.get("warnings", []) or []),
         "dependencies_ok": bool(dict(result.get("dependency_summary", {}) or {}).get("ok")),
+        "total_examples": totals.get("total_examples", 0),
+        "train_examples": totals.get("train_examples", 0),
+        "val_examples": totals.get("val_examples", 0),
+        "test_examples": totals.get("test_examples", 0),
+        "min_atomic_positives_per_active_rule": quota.get("min_atomic_positives_per_active_rule", 0),
+        "preferred_atomic_positives_per_active_rule": quota.get("preferred_atomic_positives_per_active_rule", 0),
+        "max_total_per_rule_id": quota.get("max_total_per_rule_id", 0),
+        "min_hard_negatives_per_active_rule": quota.get("min_hard_negatives_per_active_rule", 0),
+        "expected_min_final_active_rule_count": rule_activation.get("expected_min_final_active_rule_count", 0),
+        "target_final_active_rule_count": rule_activation.get("target_final_active_rule_count", 0),
+        "rule_data_compiler.enabled": bool(compiler.get("enabled", False)),
+        "rule_lab.enabled": bool(rule_lab.get("enabled", False)),
         "production_ready_rule_count": activation.get("production_ready_rule_count", 0),
         "training_candidate_rule_count": activation.get("training_candidate_rule_count", 0),
         "final_active_rule_count": activation.get("final_active_rule_count", 0),
@@ -570,13 +613,9 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _clean_pool_path(config: Mapping[str, Any], processed_dir: Path) -> Path:
-    data = dict(config.get("data", {}) or {})
-    raw_path = data.get("clean_pool_path")
+    raw_path = candidate_dataset_paths(config).get("clean_pool_path")
     if raw_path:
         return Path(str(raw_path))
-    core = dict(data.get("training_dataset_core", {}) or data.get("training_dataset", {}) or {})
-    if core.get("clean_pool_path"):
-        return Path(str(core["clean_pool_path"]))
     return processed_dir / "clean_sentence_pool.csv.gz"
 
 

@@ -100,25 +100,31 @@ def patch_unit_operator_pipeline(monkeypatch) -> None:
 def candidate_contract_config(tmp_path: Path, clean_pool_path: Path) -> dict:
     config = load_config("configs/config.yaml")
     config["paths"]["reports_dir"] = str(tmp_path / "reports")
-    config["data"]["processed_train_path"] = str(tmp_path / "data" / "operator_dataset.csv.gz")
-    config["data"]["manifest_path"] = str(tmp_path / "reports" / "dataset_manifest.json")
-    config["data"]["dataset_contract"] = "candidate_opportunity"
-    config["data"]["dataset_build_workers"] = 1
-    config["data"]["clean_pool_path"] = str(clean_pool_path)
-    config["data"]["clean_pool_chunksize"] = 2
-    config["data"]["total_examples"] = 10
-    config["data"]["target_total_examples"] = 10
-    config["data"]["train_examples"] = 8
-    config["data"]["val_examples"] = 1
-    config["data"]["test_examples"] = 1
-    config["data"]["composition"] = {
+    candidate = config["data"]["candidate_opportunity"]
+    candidate["dataset_build_workers"] = 1
+    candidate["clean_pool_chunksize"] = 2
+    candidate["paths"].update(
+        {
+            "reports_dir": str(tmp_path / "reports" / "dataset_build"),
+            "correction_dataset_path": str(tmp_path / "data" / "operator_dataset.csv.gz"),
+            "manifest_path": str(tmp_path / "reports" / "dataset_manifest.json"),
+            "clean_pool_path": str(clean_pool_path),
+        }
+    )
+    candidate["totals"] = {
+        "total_examples": 10,
+        "train_examples": 8,
+        "val_examples": 1,
+        "test_examples": 1,
+    }
+    candidate["composition"] = {
         "atomic_positive_target": 4,
         "atomic_hard_negative_target": 3,
         "clean_identity_target": 3,
         "stress_multi_error_target": 0,
         "real_atomic_train_target": 0,
     }
-    config["data"]["rule_quota"] = {
+    candidate["rule_quota"] = {
         "rule_ids": ["unit_atomic"],
         "min_atomic_positives_per_active_rule": 1,
         "preferred_atomic_positives_per_active_rule": 2,
@@ -126,26 +132,15 @@ def candidate_contract_config(tmp_path: Path, clean_pool_path: Path) -> dict:
         "min_hard_negatives_per_active_rule": 1,
         "disable_rule_if_quota_not_met": True,
     }
-    config["data"]["rule_activation"]["expected_min_final_active_rule_count"] = 0
-    config["data"]["rule_activation"]["target_final_active_rule_count"] = 0
-    config["data"]["rule_activation"]["fail_below_final_active_rule_count"] = False
-    config["data"]["rule_activation"]["warn_below_target_final_active_rule_count"] = False
-    config["data"]["audit"] = {
+    candidate["rule_activation"]["expected_min_final_active_rule_count"] = 0
+    candidate["rule_activation"]["target_final_active_rule_count"] = 0
+    candidate["rule_activation"]["fail_below_final_active_rule_count"] = False
+    candidate["rule_activation"]["warn_below_target_final_active_rule_count"] = False
+    candidate["audit"] = {
         "min_candidate_recall_for_active_rule": 0.95,
     }
-    config["data"]["stress"] = {"enabled": True, "loss_weight": 0.4, "count_toward_rule_quota": False}
-    core = config["data"]["training_dataset_core"]
-    core["enabled"] = True
-    core["dataset_contract"] = "candidate_opportunity"
-    core["legacy_builder"] = False
-    core["active_rule_quota"] = {
-        "rule_ids": ["unit_atomic"],
-        "min_total_per_active_rule": 1,
-        "preferred_total_per_active_rule": 2,
-        "split_minimums": {},
-    }
-    core["rule_caps"]["max_total_per_rule_id"] = 2
-    core["audit"]["require_all_source_types"] = False
+    candidate["stress"] = {"enabled": True, "loss_weight": 0.4, "count_toward_rule_quota": False}
+    candidate["audit"]["require_all_source_types"] = False
     return config
 
 

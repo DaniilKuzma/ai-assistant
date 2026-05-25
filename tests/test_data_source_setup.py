@@ -13,9 +13,12 @@ def test_setup_script_dry_run_writes_manifest_without_outputs(tmp_path: Path, mo
     config_path = tmp_path / "config.yaml"
     config_path.write_text(
         "data:\n"
-        "  training_dataset_core:\n"
-        "    open_corpora_sources_path: missing-clean.yaml\n"
-        "    real_error_sources_path: missing-real.yaml\n",
+        "  candidate_opportunity:\n"
+        "    contract: candidate_opportunity\n"
+        "    totals: {total_examples: 1, train_examples: 1, val_examples: 0, test_examples: 0}\n"
+        "    paths:\n"
+        "      open_corpora_sources_config: missing-clean.yaml\n"
+        "      real_error_sources_config: missing-real.yaml\n",
         encoding="utf-8",
     )
     report_dir = tmp_path / "reports"
@@ -89,9 +92,15 @@ def test_setup_script_writes_manifest_for_small_local_sources(tmp_path: Path, mo
     config_path = tmp_path / "config.yaml"
     config_path.write_text(
         f"data:\n"
-        f"  training_dataset_core:\n"
-        f"    open_corpora_sources_path: {clean_config.as_posix()}\n"
-        f"    real_error_sources_path: {real_config.as_posix()}\n",
+        f"  candidate_opportunity:\n"
+        f"    contract: candidate_opportunity\n"
+        f"    totals: {{total_examples: 1, train_examples: 1, val_examples: 0, test_examples: 0}}\n"
+        f"    paths:\n"
+        f"      processed_dir: {(tmp_path / 'processed').as_posix()}\n"
+        f"      reports_dir: {(tmp_path / 'reports').as_posix()}\n"
+        f"      clean_pool_path: {(tmp_path / 'processed' / 'clean_sentence_pool.csv.gz').as_posix()}\n"
+        f"      open_corpora_sources_config: {clean_config.as_posix()}\n"
+        f"      real_error_sources_config: {real_config.as_posix()}\n",
         encoding="utf-8",
     )
     processed_dir = tmp_path / "processed"
@@ -178,20 +187,25 @@ def test_setup_script_applies_top_level_contract_overlays_and_prints_summary(tmp
     config_path = tmp_path / "config.yaml"
     config_path.write_text(
         f"data:\n"
-        f"  dataset_contract: candidate_opportunity\n"
-        f"  clean_pool:\n"
-        f"    reject_mixed_script_tokens: true\n"
-        f"    reject_latin_confusable_inside_cyrillic_word: true\n"
-        f"    reject_if_candidate_generator_finds_high_confidence_fix: true\n"
-        f"  real_pairs:\n"
-        f"    train_policy: atomize_single_edit_known_rule_only\n"
-        f"    unknown_rule_policy: mining_only\n"
-        f"    multi_edit_policy: stress_or_eval_only\n"
-        f"  stress:\n"
-        f"    loss_weight: 0.4\n"
-        f"  training_dataset_core:\n"
-        f"    open_corpora_sources_path: {clean_config.as_posix()}\n"
-        f"    real_error_sources_path: {real_config.as_posix()}\n",
+        f"  candidate_opportunity:\n"
+        f"    contract: candidate_opportunity\n"
+        f"    totals: {{total_examples: 1, train_examples: 1, val_examples: 0, test_examples: 0}}\n"
+        f"    paths:\n"
+        f"      processed_dir: {(tmp_path / 'processed').as_posix()}\n"
+        f"      reports_dir: {(tmp_path / 'reports').as_posix()}\n"
+        f"      clean_pool_path: {(tmp_path / 'processed' / 'clean_sentence_pool.csv.gz').as_posix()}\n"
+        f"      open_corpora_sources_config: {clean_config.as_posix()}\n"
+        f"      real_error_sources_config: {real_config.as_posix()}\n"
+        f"    clean_pool:\n"
+        f"      reject_mixed_script_tokens: true\n"
+        f"      reject_latin_confusable_inside_cyrillic_word: true\n"
+        f"      reject_if_candidate_generator_finds_high_confidence_fix: true\n"
+        f"    real_pairs:\n"
+        f"      train_policy: atomize_single_edit_known_rule_only\n"
+        f"      unknown_rule_policy: mining_only\n"
+        f"      multi_edit_policy: stress_or_eval_only\n"
+        f"    stress:\n"
+        f"      loss_weight: 0.4\n",
         encoding="utf-8",
     )
     captured: dict[str, dict] = {}

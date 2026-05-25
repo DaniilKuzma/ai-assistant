@@ -10,6 +10,7 @@ from typing import Any, Iterable, Mapping
 import pandas as pd
 import yaml
 
+from src.config.candidate_dataset_config import candidate_dataset_rule_activation
 from src.rules.coverage_matrix import iter_coverage_entries, load_rules_coverage
 from src.rules.rule_ids import RULE_ID_ALIASES, UNKNOWN_RULE_ID, normalize_rule_id
 
@@ -332,8 +333,7 @@ def resolve_training_decision(capability: RuleCapability) -> tuple[str, str]:
 
 
 def activation_policy_from_config(config: Mapping[str, Any]) -> RuleActivationPolicy:
-    data_config = dict(config.get("data", {}) or {})
-    raw = dict(data_config.get("rule_activation", {}) or {})
+    raw = candidate_dataset_rule_activation(config)
     mode = str(raw.get("mode") or "strict").strip() or "strict"
     if "include_decisions" in raw:
         include_decisions = {str(item) for item in raw.get("include_decisions") or [] if str(item)}
@@ -802,7 +802,7 @@ def activation_stage_counts_from_frame(frame: pd.DataFrame) -> dict[str, int]:
 def _expanded_activation_policy(config: Mapping[str, Any] | None = None) -> RuleActivationPolicy:
     if config is not None:
         return activation_policy_from_config(config)
-    return activation_policy_from_config({"data": {"rule_activation": {"mode": "expanded_safe"}}})
+    return activation_policy_from_config({"data": {"candidate_opportunity": {"rule_activation": {"mode": "expanded_safe"}}}})
 
 
 def _best_activation_by_rule(rows: Iterable[Mapping[str, Any]]) -> dict[str, dict[str, Any]]:

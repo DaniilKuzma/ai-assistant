@@ -10,6 +10,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from scripts.build_dataset import _dataset_summary_payload
+from src.config.candidate_dataset_config import candidate_dataset_paths, validate_candidate_dataset_config
 from src.config.load_config import load_config
 from src.data.full_dataset_builder import build_dataset_from_config
 
@@ -22,8 +23,20 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     config = load_config(args.config)
+    config_errors = validate_candidate_dataset_config(config)
+    if config_errors:
+        print(
+            "[dataset-build] "
+            + json.dumps(
+                {"stage": "config_invalid", "errors": config_errors},
+                ensure_ascii=False,
+                sort_keys=True,
+            ),
+            flush=True,
+        )
+        return 1
     result = build_dataset_from_config(config, force=args.force)
-    summary = _dataset_summary_payload(result, manifest_path=Path(config["data"]["manifest_path"]))
+    summary = _dataset_summary_payload(result, manifest_path=Path(str(candidate_dataset_paths(config)["manifest_path"])))
     print(
         "[dataset-build] "
         + json.dumps(

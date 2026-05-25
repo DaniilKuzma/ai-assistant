@@ -10,6 +10,7 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
+from src.config.candidate_dataset_config import candidate_dataset_paths, validate_candidate_dataset_config
 from src.config.load_config import load_config
 from src.data.training_dataset import build_training_dataset_from_config
 from src.evaluation.activation_plan import write_verified_activation_plan
@@ -24,6 +25,18 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     config = load_config(args.config)
+    config_errors = validate_candidate_dataset_config(config)
+    if config_errors:
+        print(
+            "[dataset-build] "
+            + json.dumps(
+                {"stage": "config_invalid", "errors": config_errors},
+                ensure_ascii=False,
+                sort_keys=True,
+            ),
+            flush=True,
+        )
+        return 1
     preflight_result = run_preflight(_preflight_options_for_build(config, args))
     print_preflight_summary(preflight_result)
     if not preflight_result["ok"]:
@@ -31,23 +44,22 @@ def main(argv: list[str] | None = None) -> int:
     _write_activation_verified_reports()
     result = build_training_dataset_from_config(config, force=args.force)
     print(json.dumps(result, ensure_ascii=False, indent=2))
-    summary = _dataset_summary_payload(result, manifest_path=Path(config["data"]["manifest_path"]))
+    paths = candidate_dataset_paths(config)
+    manifest_path = Path(str(paths["manifest_path"]))
+    summary = _dataset_summary_payload(result, manifest_path=manifest_path)
     print("[dataset-build] " + json.dumps({"stage": "final_contract_summary", **summary}, ensure_ascii=False, sort_keys=True), flush=True)
-    _print_final_audit_summary(Path(config["data"]["manifest_path"]))
+    _print_final_audit_summary(manifest_path)
     if args.fail_on_blocked and str(summary.get("verdict", "")).endswith("BLOCKED"):
         return 2
     return 0
 
 
 def _preflight_options_for_build(config: dict[str, Any], args: argparse.Namespace) -> PreflightOptions:
-    data_config = dict(config.get("data", {}) or {})
-    processed_path = Path(str(data_config.get("processed_train_path") or "data/processed/correction_dataset.csv.gz"))
-    reports_root = Path(str((config.get("paths", {}) or {}).get("reports_dir") or "reports"))
-    reports_dir = reports_root if reports_root.name == "dataset_build" else reports_root / "dataset_build"
+    paths = candidate_dataset_paths(config)
     return PreflightOptions(
         config_path=args.config,
-        processed_dir=processed_path.parent,
-        reports_dir=reports_dir,
+        processed_dir=Path(str(paths["processed_dir"])),
+        reports_dir=Path(str(paths["reports_dir"])),
         block_stale_artifacts=not bool(args.force),
     )
 

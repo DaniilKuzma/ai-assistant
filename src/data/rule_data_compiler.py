@@ -10,6 +10,7 @@ from typing import Any, Iterable, Mapping
 import pandas as pd
 
 from src.candidates.candidate_generator import Candidate
+from src.config.candidate_dataset_config import candidate_dataset_rule_quota, candidate_dataset_value
 from src.data.atomic_verifier import AtomicVerificationResult, verify_atomic_positive
 from src.data.dataset_contract import (
     DATASET_CONTRACT,
@@ -19,6 +20,7 @@ from src.data.dataset_contract import (
     SYNTHETIC_OPEN_CLEAN,
 )
 from src.data.dataset_quality import clean_or_hard_quality_reasons, normalized_pair_hash, normalize_pair
+from src.data.rule_lab_generation import RuleLabGenerationResult, generate_rule_lab_rows, rule_lab_recipe_rule_ids
 from src.data.training_quality_audit import contains_artificial_marker_text, plain_quote_bracket_balance_reasons
 from src.rules.rule_ids import UNKNOWN_RULE_ID, normalize_rule_id
 from src.validation.strict_validator import TRAINING_CONTEXT_SPLIT_JOIN_BY_RULE
@@ -101,6 +103,14 @@ class RuleDataCompilerResult:
     source_stats_rows: list[RuleDataSourceStats] = field(default_factory=list)
     diversity_stats_rows: list[RuleStructuralDiversityStats] = field(default_factory=list)
     underfilled_rows: list[dict[str, Any]] = field(default_factory=list)
+    rule_lab_generation_rows: list[dict[str, Any]] = field(default_factory=list)
+    rule_lab_rejection_rows: list[dict[str, Any]] = field(default_factory=list)
+    rule_lab_diversity_rows: list[Any] = field(default_factory=list)
+    rule_lab_template_validation_rows: list[dict[str, Any]] = field(default_factory=list)
+    rule_lab_slot_usage_rows: list[dict[str, Any]] = field(default_factory=list)
+    rule_lab_recipe_status_rows: list[dict[str, Any]] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+    audit_errors: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -450,10 +460,41 @@ def compile_rule_data(
     rejections: list[dict[str, Any]] = []
     seen_positive = _existing_positive_keys(existing)
     seen_hard = _existing_hard_negative_keys(existing)
-    positive_counts: Counter[str] = Counter()
-    hard_counts: Counter[str] = Counter()
+    positive_counts = _existing_positive_counts(existing)
+    hard_counts = _existing_hard_negative_counts(existing)
+    rule_lab_result = RuleLabGenerationResult()
+    warnings: list[str] = []
+    audit_errors: list[str] = []
 
     for source_key in source_priority:
+        if source_key == SOURCE_RULE_LAB:
+            rule_lab_result = generate_rule_lab_rows(
+                rule_ids,
+                candidate_generator,
+                config,
+                clean_rows=rows,
+                existing_positive_rows=[*existing, *accepted_positive],
+                existing_hard_negative_rows=[*existing, *accepted_hard],
+                positive_counts_by_rule=positive_counts,
+                hard_counts_by_rule=hard_counts,
+                positive_target=positive_target,
+                hard_target=hard_target,
+            )
+            accepted_positive.extend(rule_lab_result.atomic_positive_rows)
+            accepted_hard.extend(rule_lab_result.hard_negative_rows)
+            rejections.extend(rule_lab_result.rejection_rows)
+            for row in rule_lab_result.atomic_positive_rows:
+                rule_id = normalize_rule_id(str(row.get("rule_id") or row.get("target_rule_id") or ""))
+                if rule_id != UNKNOWN_RULE_ID and _counts_toward_rule_quota(row):
+                    positive_counts[rule_id] += 1
+                    seen_positive.add(_positive_key(str(row.get("source", "")), str(row.get("target", "")), rule_id))
+            for row in rule_lab_result.hard_negative_rows:
+                rule_id = normalize_rule_id(str(row.get("target_rule_id") or _metadata(row).get("target_rule_id") or ""))
+                if rule_id != UNKNOWN_RULE_ID:
+                    hard_counts[rule_id] += 1
+                    seen_hard.add(_hard_negative_key(str(row.get("source", "")), rule_id))
+            continue
+
         miners = _miners_for_source(source_key, rule_ids, real_patterns_by_rule, real_unsafe_by_rule)
         for miner in miners:
             for context in miner.mine_positive_targets(rows, config):
@@ -498,8 +539,37 @@ def compile_rule_data(
                 accepted_hard.append(_hard_negative_row(text, context, candidate))
                 hard_counts[context.rule_id] += 1
 
+    share_by_rule = _rule_lab_share_by_rule(rule_ids, [*existing, *accepted_positive])
+    high_share_rule_ids = _rule_lab_high_share_rule_ids(share_by_rule, config)
+    if high_share_rule_ids:
+        warnings.extend(f"rule_lab_share_high:{rule_id}" for rule_id in high_share_rule_ids)
+        if _fail_on_high_rule_lab_share(config):
+            for rule_id in high_share_rule_ids:
+                blocked_count = sum(1 for row in accepted_positive if _row_activation_source(row) == SOURCE_RULE_LAB and _row_rule_id(row) == rule_id)
+                if blocked_count:
+                    rejections.append(
+                        {
+                            "rule_id": rule_id,
+                            "source": "",
+                            "target": "",
+                            "reason": f"rule_lab_share_high:{share_by_rule.get(rule_id, 0.0):.3f}",
+                            "stage": "rule_lab_share_gate",
+                            "source_name": SOURCE_RULE_LAB,
+                            "source_row_id": "",
+                            "miner_name": SOURCE_RULE_LAB,
+                        }
+                    )
+                    positive_counts[rule_id] -= blocked_count
+            accepted_positive = [
+                row
+                for row in accepted_positive
+                if not (_row_activation_source(row) == SOURCE_RULE_LAB and _row_rule_id(row) in set(high_share_rule_ids))
+            ]
+            audit_errors.extend(f"rule_lab_share_high:{rule_id}" for rule_id in high_share_rule_ids)
+            share_by_rule = _rule_lab_share_by_rule(rule_ids, [*existing, *accepted_positive])
+
     source_stats = _source_stats(rule_ids, accepted_positive, accepted_hard)
-    diversity_stats = _diversity_stats(rule_ids, accepted_positive, config)
+    diversity_stats = _diversity_stats(rule_ids, accepted_positive, config, rule_lab_share_by_rule=share_by_rule)
     underfilled = _underfilled_rows(
         rule_ids,
         positive_counts,
@@ -516,6 +586,14 @@ def compile_rule_data(
         source_stats_rows=source_stats,
         diversity_stats_rows=diversity_stats,
         underfilled_rows=underfilled,
+        rule_lab_generation_rows=rule_lab_result.generation_rows,
+        rule_lab_rejection_rows=rule_lab_result.rejection_rows,
+        rule_lab_diversity_rows=rule_lab_result.diversity_rows,
+        rule_lab_template_validation_rows=rule_lab_result.template_validation_rows,
+        rule_lab_slot_usage_rows=rule_lab_result.slot_usage_rows,
+        rule_lab_recipe_status_rows=rule_lab_result.recipe_status_rows,
+        warnings=_dedupe_ordered(warnings),
+        audit_errors=_dedupe_ordered(audit_errors),
     )
 
 
@@ -566,23 +644,102 @@ def write_rule_data_compiler_reports(result: RuleDataCompilerResult, reports_dir
         output_dir / "rule_underfilled_backlog.csv",
         index=False,
     )
+    _frame_with_columns(
+        result.rule_lab_generation_rows,
+        [
+            "rule_id",
+            "positive_requested",
+            "positive_generated",
+            "hard_negative_requested",
+            "hard_negative_generated",
+            "status",
+            "reason",
+        ],
+    ).to_csv(output_dir / "rule_lab_generation_report.csv", index=False)
+    _frame_with_columns(
+        result.rule_lab_rejection_rows,
+        [
+            "rule_id",
+            "source",
+            "target",
+            "reason",
+            "stage",
+            "template_id",
+            "source_name",
+            "source_row_id",
+            "miner_name",
+        ],
+    ).to_csv(output_dir / "rule_lab_rejection_report.csv", index=False)
+    _frame_with_columns(
+        _dataclass_or_mapping_rows(result.rule_lab_diversity_rows),
+        [
+            "rule_id",
+            "generated_count",
+            "accepted_count",
+            "unique_source_count",
+            "unique_target_count",
+            "template_count",
+            "dominant_template_id",
+            "dominant_template_share",
+            "dominant_slot_value_share",
+            "duplicate_count",
+            "near_duplicate_count",
+            "status",
+            "reason",
+        ],
+    ).to_csv(output_dir / "rule_lab_diversity_report.csv", index=False)
+    _frame_with_columns(
+        result.rule_lab_template_validation_rows,
+        ["rule_id", "template_id", "template_kind", "status", "reason"],
+    ).to_csv(output_dir / "rule_lab_template_validation_report.csv", index=False)
+    _frame_with_columns(
+        result.rule_lab_slot_usage_rows,
+        ["rule_id", "template_id", "slot_name", "slot_value", "count"],
+    ).to_csv(output_dir / "rule_lab_slot_usage_report.csv", index=False)
+    _frame_with_columns(
+        result.rule_lab_recipe_status_rows,
+        [
+            "rule_id",
+            "enabled",
+            "status",
+            "reason",
+            "disabled_reason",
+            "positive_template_count",
+            "hard_negative_template_count",
+        ],
+    ).to_csv(output_dir / "rule_lab_recipe_status_report.csv", index=False)
 
 
 def _frame_with_columns(rows: Iterable[Mapping[str, Any]], columns: list[str]) -> pd.DataFrame:
     return pd.DataFrame(list(rows)).reindex(columns=columns)
 
 
+def _dataclass_or_mapping_rows(rows: Iterable[Any]) -> list[dict[str, Any]]:
+    result: list[dict[str, Any]] = []
+    for row in rows:
+        if isinstance(row, Mapping):
+            result.append(dict(row))
+        elif hasattr(row, "__dataclass_fields__"):
+            result.append(asdict(row))
+    return result
+
+
 def _source_priority(config: dict[str, Any]) -> list[str]:
-    compiler_config = ((config.get("data", {}) or {}).get("rule_data_compiler", {}) or {})
+    compiler_config = dict(candidate_dataset_value(config, "rule_data_compiler", {}) or {})
     configured = compiler_config.get("source_priority") or DEFAULT_SOURCE_PRIORITY
     result: list[str] = []
     for source in configured:
         source_key = str(source)
+        if source_key == SOURCE_RULE_LAB:
+            continue
         if source_key in DEFAULT_SOURCE_PRIORITY and source_key not in result:
             result.append(source_key)
     for source_key in DEFAULT_SOURCE_PRIORITY:
+        if source_key == SOURCE_RULE_LAB:
+            continue
         if source_key not in result:
             result.append(source_key)
+    result.append(SOURCE_RULE_LAB)
     return result
 
 
@@ -619,6 +776,7 @@ def _miner_for_rule(rule_id: str) -> CorpusBackedSplitJoinMiner:
 def _supported_rule_ids(rule_ids: Iterable[str], config: dict[str, Any]) -> list[str]:
     result: list[str] = []
     real_patterns_enabled = bool(_real_pattern_paths(config))
+    rule_lab_enabled_rule_ids = rule_lab_recipe_rule_ids(config)
     for rule_id in rule_ids:
         normalized = normalize_rule_id(rule_id)
         if normalized == UNKNOWN_RULE_ID or normalized in result:
@@ -627,6 +785,7 @@ def _supported_rule_ids(rule_ids: Iterable[str], config: dict[str, Any]) -> list
             normalized in TRAINING_CONTEXT_SPLIT_JOIN_BY_RULE
             or normalized in SUPPORTED_MORPHOLOGY_RULES
             or normalized in SUPPORTED_SYNTAX_PUNCTUATION_RULES
+            or normalized in rule_lab_enabled_rule_ids
             or real_patterns_enabled
         ):
             result.append(normalized)
@@ -923,10 +1082,9 @@ def _syntax_operator_for_rule(rule_id: str) -> Any | None:
 
 
 def _real_pattern_paths(config: dict[str, Any]) -> list[Path]:
-    data_config = config.get("data", {}) or {}
-    compiler_config = (data_config.get("rule_data_compiler", {}) or {})
+    compiler_config = dict(candidate_dataset_value(config, "rule_data_compiler", {}) or {})
     configured = compiler_config.get("real_pattern_paths")
-    if configured is None and "rule_data_compiler" not in data_config:
+    if configured is None and not compiler_config:
         return []
     raw_paths = configured if configured is not None else DEFAULT_REAL_PATTERN_PATHS
     paths: list[Path] = []
@@ -1135,11 +1293,17 @@ def _source_stats(rule_ids: list[str], positives: list[dict[str, Any]], hard_row
     ]
 
 
-def _diversity_stats(rule_ids: list[str], positives: list[dict[str, Any]], config: dict[str, Any]) -> list[RuleStructuralDiversityStats]:
+def _diversity_stats(
+    rule_ids: list[str],
+    positives: list[dict[str, Any]],
+    config: dict[str, Any],
+    *,
+    rule_lab_share_by_rule: Mapping[str, float] | None = None,
+) -> list[RuleStructuralDiversityStats]:
     by_rule: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in positives:
         by_rule[str(row.get("rule_id", ""))].append(row)
-    compiler_config = ((config.get("data", {}) or {}).get("rule_data_compiler", {}) or {})
+    compiler_config = dict(candidate_dataset_value(config, "rule_data_compiler", {}) or {})
     min_patterns = int(compiler_config.get("min_unique_sentence_patterns_per_rule", 0) or 0)
     min_left = int(compiler_config.get("min_unique_left_contexts_per_rule", 0) or 0)
     min_right = int(compiler_config.get("min_unique_right_contexts_per_rule", 0) or 0)
@@ -1147,7 +1311,14 @@ def _diversity_stats(rule_ids: list[str], positives: list[dict[str, Any]], confi
     for rule_id in rule_ids:
         rows = by_rule.get(rule_id, [])
         if not rows:
-            result.append(RuleStructuralDiversityStats(rule_id=rule_id, status="empty", reason="no_atomic_positive_rows"))
+            result.append(
+                RuleStructuralDiversityStats(
+                    rule_id=rule_id,
+                    rule_lab_share=float((rule_lab_share_by_rule or {}).get(rule_id, 0.0) or 0.0),
+                    status="empty",
+                    reason="no_atomic_positive_rows",
+                )
+            )
             continue
         sources = [str(row.get("source", "")) for row in rows]
         targets = [str(row.get("target", "")) for row in rows]
@@ -1181,7 +1352,7 @@ def _diversity_stats(rule_ids: list[str], positives: list[dict[str, Any]], confi
                 unique_dependency_pattern_count=0,
                 dominant_template_share=dominant_template_share,
                 dominant_source_type_share=dominant_source_type_share,
-                rule_lab_share=0.0,
+                rule_lab_share=float((rule_lab_share_by_rule or {}).get(rule_id, 0.0) or 0.0),
                 near_duplicate_count=near_duplicates,
                 status=status,
                 reason=",".join(reasons),
@@ -1316,6 +1487,129 @@ def _existing_hard_negative_keys(rows: list[dict[str, Any]]) -> set[tuple[str, s
     return result
 
 
+def _existing_positive_counts(rows: list[dict[str, Any]]) -> Counter[str]:
+    counts: Counter[str] = Counter()
+    for row in rows:
+        if _row_dataset_layer(row) != LAYER_ATOMIC_POSITIVE:
+            continue
+        if not _counts_toward_rule_quota(row):
+            continue
+        rule_id = _row_rule_id(row)
+        if rule_id != UNKNOWN_RULE_ID:
+            counts[rule_id] += 1
+    return counts
+
+
+def _existing_hard_negative_counts(rows: list[dict[str, Any]]) -> Counter[str]:
+    counts: Counter[str] = Counter()
+    for row in rows:
+        if _row_dataset_layer(row) != LAYER_ATOMIC_HARD_NEGATIVE and not _bool_value(row.get("is_hard_negative") or _metadata(row).get("is_hard_negative")):
+            continue
+        rule_id = normalize_rule_id(str(row.get("target_rule_id") or _metadata(row).get("target_rule_id") or ""))
+        if rule_id != UNKNOWN_RULE_ID:
+            counts[rule_id] += 1
+    return counts
+
+
+def _rule_lab_share_by_rule(rule_ids: list[str], rows: list[dict[str, Any]]) -> dict[str, float]:
+    total_counts: Counter[str] = Counter()
+    rule_lab_counts: Counter[str] = Counter()
+    rule_id_set = set(rule_ids)
+    for row in rows:
+        if _row_dataset_layer(row) != LAYER_ATOMIC_POSITIVE:
+            continue
+        if not _counts_toward_rule_quota(row):
+            continue
+        rule_id = _row_rule_id(row)
+        if rule_id == UNKNOWN_RULE_ID or rule_id not in rule_id_set:
+            continue
+        total_counts[rule_id] += 1
+        if _row_activation_source(row) == SOURCE_RULE_LAB:
+            rule_lab_counts[rule_id] += 1
+    return {
+        rule_id: (float(rule_lab_counts.get(rule_id, 0)) / float(total_counts[rule_id]))
+        for rule_id in rule_ids
+        if total_counts.get(rule_id, 0)
+    }
+
+
+def _rule_lab_high_share_rule_ids(rule_lab_share_by_rule: Mapping[str, float], config: dict[str, Any]) -> list[str]:
+    rule_lab_config = dict(candidate_dataset_value(config, "rule_lab", {}) or {})
+    compiler_config = dict(candidate_dataset_value(config, "rule_data_compiler", {}) or {})
+    threshold = float(rule_lab_config.get("max_rule_lab_share_per_rule", compiler_config.get("max_rule_lab_share_per_rule", 0.30)) or 0.30)
+    return sorted(rule_id for rule_id, share in rule_lab_share_by_rule.items() if threshold >= 0 and float(share) > threshold)
+
+
+def _fail_on_high_rule_lab_share(config: dict[str, Any]) -> bool:
+    rule_lab_config = dict(candidate_dataset_value(config, "rule_lab", {}) or {})
+    compiler_config = dict(candidate_dataset_value(config, "rule_data_compiler", {}) or {})
+    return _bool_value(rule_lab_config.get("fail_on_high_rule_lab_share", compiler_config.get("fail_on_high_rule_lab_share", False)))
+
+
+def _row_rule_id(row: Mapping[str, Any]) -> str:
+    metadata = _metadata(row)
+    for value in (row.get("target_rule_id"), row.get("rule_id"), metadata.get("target_rule_id")):
+        rule_id = normalize_rule_id(str(value or ""))
+        if rule_id != UNKNOWN_RULE_ID and rule_id != SERVICE_HARD_NEGATIVE_RULE_ID:
+            return rule_id
+    rule_ids = row.get("rule_ids") or metadata.get("rule_ids")
+    for value in _list_value(rule_ids):
+        rule_id = normalize_rule_id(str(value or ""))
+        if rule_id != UNKNOWN_RULE_ID and rule_id != SERVICE_HARD_NEGATIVE_RULE_ID:
+            return rule_id
+    return UNKNOWN_RULE_ID
+
+
+def _row_dataset_layer(row: Mapping[str, Any]) -> str:
+    return str(row.get("dataset_layer") or _metadata(row).get("dataset_layer") or "")
+
+
+def _row_activation_source(row: Mapping[str, Any]) -> str:
+    return str(row.get("activation_source") or _metadata(row).get("activation_source") or "")
+
+
+def _counts_toward_rule_quota(row: Mapping[str, Any]) -> bool:
+    metadata = _metadata(row)
+    if "count_toward_rule_quota" in row:
+        return _bool_value(row.get("count_toward_rule_quota"))
+    if "count_toward_rule_quota" in metadata:
+        return _bool_value(metadata.get("count_toward_rule_quota"))
+    return True
+
+
+def _list_value(value: Any) -> list[Any]:
+    if isinstance(value, list):
+        return list(value)
+    if isinstance(value, tuple):
+        return list(value)
+    if not value:
+        return []
+    try:
+        parsed = json.loads(str(value))
+    except json.JSONDecodeError:
+        return [value]
+    if isinstance(parsed, list):
+        return list(parsed)
+    return [parsed]
+
+
+def _bool_value(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return False
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _dedupe_ordered(values: Iterable[str]) -> list[str]:
+    result: list[str] = []
+    for value in values:
+        text = str(value)
+        if text and text not in result:
+            result.append(text)
+    return result
+
+
 def _records(rows_or_frame: Iterable[Mapping[str, Any]] | pd.DataFrame) -> list[dict[str, Any]]:
     if isinstance(rows_or_frame, pd.DataFrame):
         return rows_or_frame.fillna("").to_dict("records")
@@ -1373,26 +1667,26 @@ def _edit_payload(edit: dict[str, Any], rule_id: str) -> dict[str, Any]:
 def _positive_target(config: dict[str, Any], target_counts: Mapping[str, Any] | None) -> int:
     if target_counts and "atomic_positive" in target_counts:
         return max(0, int(target_counts.get("atomic_positive") or 0))
-    quota = ((config.get("data", {}) or {}).get("rule_quota", {}) or {})
+    quota = candidate_dataset_rule_quota(config)
     return max(1, int(quota.get("preferred_atomic_positives_per_active_rule", 50) or 50))
 
 
 def _min_positive_required(config: dict[str, Any], target_counts: Mapping[str, Any] | None) -> int:
     if target_counts and "atomic_positive" in target_counts:
         return max(0, int(target_counts.get("atomic_positive") or 0))
-    quota = ((config.get("data", {}) or {}).get("rule_quota", {}) or {})
+    quota = candidate_dataset_rule_quota(config)
     return max(1, int(quota.get("min_atomic_positives_per_active_rule", _positive_target(config, target_counts)) or 1))
 
 
 def _hard_negative_target(config: dict[str, Any], target_counts: Mapping[str, Any] | None) -> int:
     if target_counts and "atomic_hard_negative" in target_counts:
         return max(0, int(target_counts.get("atomic_hard_negative") or 0))
-    quota = ((config.get("data", {}) or {}).get("rule_quota", {}) or {})
+    quota = candidate_dataset_rule_quota(config)
     return max(1, int(quota.get("min_hard_negatives_per_active_rule", 50) or 50))
 
 
 def _per_rule_scan_limit(config: dict[str, Any]) -> int:
-    compiler_config = ((config.get("data", {}) or {}).get("rule_data_compiler", {}) or {})
+    compiler_config = dict(candidate_dataset_value(config, "rule_data_compiler", {}) or {})
     return max(1, int(compiler_config.get("max_scan_rows_per_rule", 50_000) or 50_000))
 
 

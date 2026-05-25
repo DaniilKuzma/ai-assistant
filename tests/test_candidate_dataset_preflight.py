@@ -38,33 +38,66 @@ def _capability(rule_id: str, decision: str = "INCLUDE_NOW") -> RuleCapability:
 def _config(tmp_path: Path) -> dict:
     return {
         "data": {
-            "dataset_contract": "candidate_opportunity",
-            "clean_pool": {
-                "reject_mixed_script_tokens": True,
-                "reject_latin_confusable_inside_cyrillic_word": True,
-                "reject_if_candidate_generator_finds_high_confidence_fix": True,
-                "high_confidence_candidate_threshold": 0.95,
+            "candidate_opportunity": {
+                "contract": "candidate_opportunity",
+                "totals": {
+                    "total_examples": 240000,
+                    "train_examples": 192000,
+                    "val_examples": 24000,
+                    "test_examples": 24000,
+                },
+                "paths": {
+                    "processed_dir": str(tmp_path / "processed"),
+                    "reports_dir": str(tmp_path / "reports"),
+                    "clean_pool_path": str(tmp_path / "processed" / "clean_sentence_pool.csv.gz"),
+                    "correction_dataset_path": str(tmp_path / "processed" / "correction_dataset.csv.gz"),
+                    "manifest_path": str(tmp_path / "processed" / "dataset_manifest.json"),
+                    "open_corpora_sources_config": "configs/open_corpora_sources.yaml",
+                    "real_error_sources_config": "configs/real_error_sources.yaml",
+                    "rule_lab_recipes_config": "configs/rule_lab_recipes.yaml",
+                },
+                "clean_pool": {
+                    "reject_mixed_script_tokens": True,
+                    "reject_latin_confusable_inside_cyrillic_word": True,
+                    "reject_if_candidate_generator_finds_high_confidence_fix": True,
+                    "high_confidence_candidate_threshold": 0.95,
+                },
+                "rule_activation": {
+                    "mode": "expanded_safe",
+                    "include_decisions": [
+                        "INCLUDE_NOW",
+                        "INCLUDE_AFTER_THRESHOLD_CALIBRATION",
+                        "INCLUDE_AFTER_TRAINING",
+                    ],
+                    "expected_min_production_ready_rule_count": 12,
+                    "expected_min_training_candidate_rule_count": 76,
+                    "expected_min_final_active_rule_count": 25,
+                    "target_training_candidate_rule_count": 76,
+                    "target_final_active_rule_count": 76,
+                    "fail_below_min_training_candidate_rule_count": True,
+                    "warn_below_target_training_candidate_rule_count": True,
+                    "fail_below_final_active_rule_count": True,
+                    "warn_below_target_final_active_rule_count": True,
+                },
+                "rule_quota": {
+                    "min_atomic_positives_per_active_rule": 500,
+                    "preferred_atomic_positives_per_active_rule": 1500,
+                    "max_total_per_rule_id": 1500,
+                    "min_hard_negatives_per_active_rule": 200,
+                },
+                "composition": {
+                    "atomic_positive_ratio": 0.50,
+                    "atomic_hard_negative_ratio": 0.25,
+                    "clean_identity_ratio": 0.12,
+                    "stress_multi_error_ratio": 0.05,
+                    "real_atomic_train_ratio": 0.03,
+                    "allow_layer_target_adjustment": True,
+                },
+                "audit": {"fail_on_clean_pool_contamination": False},
+                "stress": {"enabled": True, "min_ratio": 0.03, "max_ratio": 0.05},
+                "rule_data_compiler": {"enabled": True},
+                "rule_lab": {"enabled": False},
             },
-            "rule_activation": {
-                "mode": "expanded_safe",
-                "include_decisions": [
-                    "INCLUDE_NOW",
-                    "INCLUDE_AFTER_THRESHOLD_CALIBRATION",
-                    "INCLUDE_AFTER_TRAINING",
-                ],
-                "expected_min_production_ready_rule_count": 12,
-                "expected_min_training_candidate_rule_count": 76,
-                "expected_min_final_active_rule_count": 25,
-                "target_training_candidate_rule_count": 76,
-                "target_final_active_rule_count": 76,
-                "fail_below_min_training_candidate_rule_count": True,
-                "warn_below_target_training_candidate_rule_count": True,
-                "fail_below_final_active_rule_count": True,
-                "warn_below_target_final_active_rule_count": True,
-            },
-            "audit": {"fail_on_clean_pool_contamination": False},
-            "processed_train_path": str(tmp_path / "processed" / "correction_dataset.csv.gz"),
-            "manifest_path": str(tmp_path / "processed" / "dataset_manifest.json"),
         },
         "nlp": {"syntax": {"enabled": True}},
         "dictionary": {"enabled": False},
@@ -261,7 +294,7 @@ def test_clean_stale_artifacts_keeps_raw_data(tmp_path: Path):
 def test_config_contains_explicit_high_confidence_threshold():
     config = yaml.safe_load(Path("configs/config.yaml").read_text(encoding="utf-8"))
 
-    assert config["data"]["clean_pool"]["high_confidence_candidate_threshold"] == 0.95
+    assert config["data"]["candidate_opportunity"]["clean_pool"]["high_confidence_candidate_threshold"] == 0.95
 
 
 def test_final_active_below_target_warns_without_blocking(tmp_path: Path, monkeypatch):
@@ -307,8 +340,12 @@ def test_operator_audit_soft_gates_warn_when_configured():
     audit_config = builder._operator_audit_config(
         {
             "data": {
-                "stress": {"min_ratio": 0.03, "max_ratio": 0.05},
-                "audit": {},
+                "candidate_opportunity": {
+                    "contract": "candidate_opportunity",
+                    "totals": {"total_examples": 1, "train_examples": 1, "val_examples": 0, "test_examples": 0},
+                    "stress": {"min_ratio": 0.03, "max_ratio": 0.05},
+                    "audit": {},
+                },
             }
         }
     )
@@ -335,8 +372,12 @@ def test_operator_audit_stress_above_max_stays_blocking():
     audit_config = builder._operator_audit_config(
         {
             "data": {
-                "stress": {"min_ratio": 0.03, "max_ratio": 0.05, "fail_on_under_target": False},
-                "audit": {"fail_on_corpus_opportunity_share_below_threshold": False},
+                "candidate_opportunity": {
+                    "contract": "candidate_opportunity",
+                    "totals": {"total_examples": 1, "train_examples": 1, "val_examples": 0, "test_examples": 0},
+                    "stress": {"min_ratio": 0.03, "max_ratio": 0.05, "fail_on_under_target": False},
+                    "audit": {"fail_on_corpus_opportunity_share_below_threshold": False},
+                },
             }
         }
     )

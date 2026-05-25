@@ -45,6 +45,15 @@ def _config() -> dict:
     return yaml.safe_load(Path("configs/config.yaml").read_text(encoding="utf-8"))
 
 
+def _candidate_config(**sections) -> dict:
+    candidate = {
+        "contract": "candidate_opportunity",
+        "totals": {"total_examples": 1, "train_examples": 1, "val_examples": 0, "test_examples": 0},
+    }
+    candidate.update(sections)
+    return {"data": {"candidate_opportunity": candidate}}
+
+
 class _CommaCandidateGenerator:
     def generate(self, text: str):
         candidates = []
@@ -79,16 +88,15 @@ def _patch_syntax_eval_rows(monkeypatch, rows: list[dict[str, object]]) -> None:
 
 
 def _syntax_config() -> dict:
-    return {
-        "data": {
-            "rule_quota": {
+    config = _candidate_config(
+        rule_quota={
                 "min_atomic_positives_per_active_rule": 1,
                 "preferred_atomic_positives_per_active_rule": 2,
                 "max_total_per_rule_id": 2,
-            }
         },
-        "nlp": {"syntax": {"enabled": True}},
-    }
+    )
+    config["nlp"] = {"syntax": {"enabled": True}}
+    return config
 
 
 def test_syntax_synthetic_atomic_positive_rows_are_verified(monkeypatch, tmp_path: Path):
@@ -273,9 +281,8 @@ def test_dynamic_targets_scale_from_active_rule_quotas_and_real_pair_count():
 
 
 def test_effective_atomic_target_adjusts_to_final_active_rule_capacity():
-    config = {
-        "data": {
-            "composition": {
+    config = _candidate_config(
+        composition={
                 "atomic_positive_ratio": 0.45,
                 "atomic_hard_negative_ratio": 0.35,
                 "clean_identity_ratio": 0.12,
@@ -283,13 +290,12 @@ def test_effective_atomic_target_adjusts_to_final_active_rule_capacity():
                 "real_atomic_train_ratio": 0.03,
                 "allow_layer_target_adjustment": True,
                 "fail_on_unadjusted_layer_deficit": True,
-            },
-            "rule_quota": {
+        },
+        rule_quota={
                 "min_atomic_positives_per_active_rule": 1000,
                 "preferred_atomic_positives_per_active_rule": 2500,
-            },
-        }
-    }
+        },
+    )
     requested = _requested_layer_targets_from_config(config, 200000)
     quota = _operator_rule_quota_config(config)
 
@@ -308,9 +314,8 @@ def test_effective_atomic_target_adjusts_to_final_active_rule_capacity():
 
 
 def test_effective_atomic_target_records_adjustment_when_requested_exceeds_capacity():
-    config = {
-        "data": {
-            "composition": {
+    config = _candidate_config(
+        composition={
                 "atomic_positive_ratio": 0.45,
                 "atomic_hard_negative_ratio": 0.35,
                 "clean_identity_ratio": 0.12,
@@ -318,13 +323,12 @@ def test_effective_atomic_target_records_adjustment_when_requested_exceeds_capac
                 "real_atomic_train_ratio": 0.03,
                 "allow_layer_target_adjustment": True,
                 "fail_on_unadjusted_layer_deficit": True,
-            },
-            "rule_quota": {
+        },
+        rule_quota={
                 "min_atomic_positives_per_active_rule": 1000,
                 "preferred_atomic_positives_per_active_rule": 1500,
-            },
-        }
-    }
+        },
+    )
     requested = _requested_layer_targets_from_config(config, 200000)
     quota = _operator_rule_quota_config(config)
 
@@ -348,23 +352,21 @@ def test_effective_atomic_target_records_adjustment_when_requested_exceeds_capac
 
 
 def test_effective_atomic_target_can_use_explicit_raised_max_without_adjustment():
-    config = {
-        "data": {
-            "composition": {
+    config = _candidate_config(
+        composition={
                 "atomic_positive_ratio": 0.45,
                 "atomic_hard_negative_ratio": 0.35,
                 "clean_identity_ratio": 0.12,
                 "stress_multi_error_ratio": 0.05,
                 "real_atomic_train_ratio": 0.03,
                 "allow_layer_target_adjustment": True,
-            },
-            "rule_quota": {
+        },
+        rule_quota={
                 "min_atomic_positives_per_active_rule": 1000,
                 "preferred_atomic_positives_per_active_rule": 1500,
                 "max_total_per_rule_id": 3000,
-            },
-        }
-    }
+        },
+    )
     requested = _requested_layer_targets_from_config(config, 200000)
     quota = _operator_rule_quota_config(config)
 
@@ -549,7 +551,7 @@ def test_destructive_diversity_pruning_requires_explicit_config(monkeypatch):
         requested_total=1,
         split_sizes={"train": 1, "val": 0, "test": 0},
         seed=17,
-        config={"data": {"audit": {"destructive_diversity_pruning_enabled": True}}},
+        config=_candidate_config(audit={"destructive_diversity_pruning_enabled": True}),
     )
 
     assert not result_frame["rule_ids"].astype(str).str.contains("unit_atomic", regex=False).any()
@@ -570,17 +572,15 @@ def test_final_active_gates_use_pre_gate_counts_and_warn_below_target():
             "preferred_atomic_positives_per_active_rule": 1500,
             "min_hard_negatives_per_active_rule": 200,
         },
-        config={
-            "data": {
-                "audit": {"min_candidate_recall_for_active_rule": 0.95},
-                "rule_activation": {
+        config=_candidate_config(
+            audit={"min_candidate_recall_for_active_rule": 0.95},
+            rule_activation={
                     "target_final_active_rule_count": 76,
                     "warn_below_target_final_active_rule_count": True,
                     "expected_min_final_active_rule_count": 25,
                     "fail_below_final_active_rule_count": False,
-                },
-            }
-        },
+            },
+        ),
     )
 
     assert final_active == ["unit_atomic"]
@@ -612,17 +612,15 @@ def test_final_active_gates_block_atomic_min_hard_min_and_final_min():
             "preferred_atomic_positives_per_active_rule": 1500,
             "min_hard_negatives_per_active_rule": 200,
         },
-        config={
-            "data": {
-                "audit": {"min_candidate_recall_for_active_rule": 0.95},
-                "rule_activation": {
+        config=_candidate_config(
+            audit={"min_candidate_recall_for_active_rule": 0.95},
+            rule_activation={
                     "expected_min_final_active_rule_count": 25,
                     "fail_below_final_active_rule_count": True,
                     "target_final_active_rule_count": 76,
                     "warn_below_target_final_active_rule_count": True,
-                },
-            }
-        },
+            },
+        ),
     )
 
     under_by_rule = {row["rule_id"]: row for row in under_quota}

@@ -10,8 +10,8 @@
 
 ## Конфиги
 
-- `configs/config.yaml` — главный конфиг модели, данных, thresholds, labels, metrics, paths.
-- `configs/config.yaml:data.dataset_contract` — canonical dataset contract; сейчас `candidate_opportunity`.
+- `configs/config.yaml` — главный конфиг модели, thresholds, labels, metrics, paths и единственный canonical dataset block.
+- `configs/config.yaml:data.candidate_opportunity` — единственный source of truth для candidate dataset settings; `data.training_dataset`, `data.training_dataset_core` и sibling dataset-дубли удалены.
 - `configs/rules.yaml` — coverage matrix правил Орфограммки: implemented, partial, planned, model/syntax/dictionary required.
 
 ## Source Layout
@@ -28,6 +28,7 @@
 - `src/inference/incremental_corrector.py` — text incremental correction wrapper; переиспользует кеш неизмененных сегментов.
 - `src/evaluation/` — metrics, reports, threshold sweep, rule/candidate recall reports.
 - `src/data/` — dataset builders, external sources, clean corpus sources, splits, stats.
+- `src/config/candidate_dataset_config.py` — lightweight resolver/validator для `data.candidate_opportunity`; production code должен читать dataset settings только через него.
 - `src/data/dataset_contract.py` — contract constants, layer inference, contract columns, stable dataset hash.
 - `src/data/operator_dataset_builder.py` — canonical `candidate_opportunity` builder: clean-pool opportunities, atomic positives, hard negatives, real atomic rows, stress rows, layer files, manifest.
 - `src/data/training_quality_audit.py` — quality/audit gates for atomic purity, unknown rules, mixed script clean rows, real-pair atomization and report writers.

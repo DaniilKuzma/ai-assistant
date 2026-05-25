@@ -5,6 +5,7 @@ import pandas as pd
 import yaml
 
 from src.candidates.candidate_generator import Candidate
+from src.config.candidate_dataset_config import candidate_dataset_paths, candidate_dataset_totals
 import src.data.operator_dataset_builder as operator_builder
 from src.data.full_dataset_builder import build_dataset_from_config
 from src.rules.capabilities import RuleCapability
@@ -16,6 +17,18 @@ from tests.candidate_contract_fixtures import (
     write_unit_clean_pool,
     write_unit_real_outputs,
 )
+
+
+def _candidate(config: dict) -> dict:
+    return config["data"]["candidate_opportunity"]
+
+
+def _dataset_path(config: dict) -> Path:
+    return Path(candidate_dataset_paths(config)["correction_dataset_path"])
+
+
+def _manifest_path(config: dict) -> Path:
+    return Path(candidate_dataset_paths(config)["manifest_path"])
 
 
 def _write_limited_unit_clean_pool(path: Path, count: int) -> Path:
@@ -150,18 +163,21 @@ def _patch_unit_syntax_pipeline(monkeypatch) -> None:
 
 def test_canonical_config_uses_broad_dataset_targets_and_no_versioned_paths():
     config = yaml.safe_load(Path("configs/config.yaml").read_text(encoding="utf-8"))
+    paths = candidate_dataset_paths(config)
+    totals = candidate_dataset_totals(config)
 
-    assert config["data"]["processed_train_path"] == "data/processed/correction_dataset.csv.gz"
-    assert config["data"]["manifest_path"] == "data/processed/dataset_manifest.json"
-    assert config["data"]["total_examples"] >= 200000
-    assert config["data"]["train_examples"] == int(config["data"]["total_examples"] * 0.8)
-    assert config["data"]["val_examples"] == int(config["data"]["total_examples"] * 0.1)
-    assert config["data"]["test_examples"] == (
-        config["data"]["total_examples"] - config["data"]["train_examples"] - config["data"]["val_examples"]
+    assert set(config["data"]) == {"candidate_opportunity"}
+    assert paths["correction_dataset_path"] == "data/processed/correction_dataset.csv.gz"
+    assert paths["manifest_path"] == "data/processed/dataset_manifest.json"
+    assert totals["total_examples"] >= 200000
+    assert totals["train_examples"] == int(totals["total_examples"] * 0.8)
+    assert totals["val_examples"] == int(totals["total_examples"] * 0.1)
+    assert totals["test_examples"] == (
+        totals["total_examples"] - totals["train_examples"] - totals["val_examples"]
     )
-    assert config["training"]["max_train_examples"] == config["data"]["train_examples"]
-    assert config["training"]["max_val_examples"] == config["data"]["val_examples"]
-    assert config["training"]["max_test_examples"] == config["data"]["test_examples"]
+    assert config["training"]["max_train_examples"] == totals["train_examples"]
+    assert config["training"]["max_val_examples"] == totals["val_examples"]
+    assert config["training"]["max_test_examples"] == totals["test_examples"]
 
     serialized = yaml.safe_dump(config["data"], allow_unicode=True)
     forbidden = ("short_dataset_v2", "short_dataset_v3", "current_capability_v", "wave", "phase", "latest")
@@ -173,7 +189,7 @@ def test_candidate_contract_pipeline_builds_atomic_from_clean_pool_without_outpu
 
     clean_pool_path = write_unit_clean_pool(tmp_path / "clean_sentence_pool.csv.gz")
     config = candidate_contract_config(tmp_path, clean_pool_path)
-    output_path = Path(config["data"]["processed_train_path"])
+    output_path = _dataset_path(config)
     patch_unit_operator_pipeline(monkeypatch)
 
     def fail_if_output_is_read(path: Path):
@@ -182,7 +198,7 @@ def test_candidate_contract_pipeline_builds_atomic_from_clean_pool_without_outpu
     monkeypatch.setattr(operator_builder, "_read_seed_dataset", fail_if_output_is_read, raising=False)
 
     result = build_dataset_from_config(config, force=True)
-    manifest = json.loads(Path(config["data"]["manifest_path"]).read_text(encoding="utf-8"))
+    manifest = json.loads(_manifest_path(config).read_text(encoding="utf-8"))
     frame = pd.read_csv(output_path)
     atomic = frame[frame["rule_id"].astype(str).eq("unit_atomic")]
 
@@ -281,11 +297,11 @@ def test_candidate_contract_pipeline_builds_atomic_from_clean_pool_without_outpu
 def test_candidate_contract_pipeline_reports_under_quota_rules_without_training_rows(tmp_path: Path, monkeypatch):
     clean_pool_path = write_unit_clean_pool(tmp_path / "clean_sentence_pool.csv.gz")
     config = candidate_contract_config(tmp_path, clean_pool_path)
-    config["data"]["rule_quota"]["min_hard_negatives_per_active_rule"] = 5
+    _candidate(config)["rule_quota"]["min_hard_negatives_per_active_rule"] = 5
     patch_unit_operator_pipeline(monkeypatch)
 
     result = build_dataset_from_config(config, force=True)
-    manifest = json.loads(Path(config["data"]["manifest_path"]).read_text(encoding="utf-8"))
+    manifest = json.loads(_manifest_path(config).read_text(encoding="utf-8"))
     reports_dir = Path(config["paths"]["reports_dir"]) / "dataset_build"
     hard_coverage = pd.read_csv(reports_dir / "hard_negative_coverage_report.csv").set_index("target_rule_id")
     guard = pd.read_csv(reports_dir / "atomic_positive_drop_guard_report.csv").iloc[0]
@@ -301,7 +317,7 @@ def test_candidate_contract_pipeline_reports_under_quota_rules_without_training_
     assert hard_coverage.loc["unit_atomic", "reason"] == "hard_negative_under_min"
     assert int(guard["pre_gate_atomic_positive_available_count"]) > 0
     assert int(guard["selected_atomic_positive_count"]) == 0
-    assert Path(config["data"]["processed_train_path"]).exists() is False
+    assert _dataset_path(config).exists() is False
 
 
 def test_candidate_contract_pipeline_blocks_silent_atomic_positive_drop(tmp_path: Path, monkeypatch):
@@ -315,7 +331,7 @@ def test_candidate_contract_pipeline_blocks_silent_atomic_positive_drop(tmp_path
     monkeypatch.setattr(operator_builder, "_final_active_rule_ids_after_gates", drop_all_final_active_rules)
 
     result = build_dataset_from_config(config, force=True)
-    manifest = json.loads(Path(config["data"]["manifest_path"]).read_text(encoding="utf-8"))
+    manifest = json.loads(_manifest_path(config).read_text(encoding="utf-8"))
     reports_dir = Path(config["paths"]["reports_dir"]) / "dataset_build"
     guard = pd.read_csv(reports_dir / "atomic_positive_drop_guard_report.csv").iloc[0]
 
@@ -326,23 +342,23 @@ def test_candidate_contract_pipeline_blocks_silent_atomic_positive_drop(tmp_path
     assert int(guard["selected_atomic_positive_count"]) == 0
     assert int(guard["removed_by_final_active_filter"]) > 0
     assert guard["suspected_reason"] == "final_active_filter"
-    assert not Path(config["data"]["processed_train_path"]).exists()
+    assert not _dataset_path(config).exists()
 
 
 def test_candidate_contract_pipeline_counts_syntax_synthetic_rows_toward_quota(tmp_path: Path, monkeypatch):
     clean_pool_path = write_unit_clean_pool(tmp_path / "clean_sentence_pool.csv.gz")
     config = candidate_contract_config(tmp_path, clean_pool_path)
-    config["data"]["rule_quota"]["rule_ids"] = ["unit_atomic", "comma_subordinate"]
-    config["data"]["training_dataset_core"]["active_rule_quota"]["rule_ids"] = ["unit_atomic", "comma_subordinate"]
-    config["data"]["composition"]["atomic_positive_target"] = 4
-    config["data"]["composition"]["atomic_hard_negative_target"] = 4
-    config["data"]["composition"]["clean_identity_target"] = 2
+    candidate = _candidate(config)
+    candidate["rule_quota"]["rule_ids"] = ["unit_atomic", "comma_subordinate"]
+    candidate["composition"]["atomic_positive_target"] = 4
+    candidate["composition"]["atomic_hard_negative_target"] = 4
+    candidate["composition"]["clean_identity_target"] = 2
     patch_unit_operator_pipeline(monkeypatch)
     _patch_unit_syntax_pipeline(monkeypatch)
 
     result = build_dataset_from_config(config, force=True)
-    manifest = json.loads(Path(config["data"]["manifest_path"]).read_text(encoding="utf-8"))
-    frame = pd.read_csv(config["data"]["processed_train_path"])
+    manifest = json.loads(_manifest_path(config).read_text(encoding="utf-8"))
+    frame = pd.read_csv(_dataset_path(config))
     reports_dir = Path(config["paths"]["reports_dir"]) / "dataset_build"
     quota = pd.read_csv(reports_dir / "active_rule_quota_report.csv").set_index("rule_id")
 
@@ -377,31 +393,24 @@ def test_candidate_contract_pipeline_smoke_links_real_outputs_and_prefers_compos
 
     clean_pool_path = write_unit_clean_pool(tmp_path / "clean_sentence_pool.csv.gz")
     config = candidate_contract_config(tmp_path, clean_pool_path)
-    real_paths = write_unit_real_outputs(Path(config["data"]["processed_train_path"]).parent)
-    config["data"]["total_examples"] = 8
-    config["data"]["target_total_examples"] = 8
-    config["data"]["train_examples"] = 6
-    config["data"]["val_examples"] = 1
-    config["data"]["test_examples"] = 1
-    config["data"]["exact_split_sizes"] = {"train": 6, "val": 1, "test": 1}
-    config["data"]["real_error_pairs_atomic_path"] = str(real_paths["atomic"])
-    config["data"]["real_error_pairs_stress_path"] = str(real_paths["stress"])
-    config["data"]["real_error_pairs_validated_path"] = str(real_paths["validated"])
-    config["data"]["composition"] = {
+    real_paths = write_unit_real_outputs(_dataset_path(config).parent)
+    candidate = _candidate(config)
+    candidate["totals"] = {
+        "total_examples": 8,
+        "train_examples": 6,
+        "val_examples": 1,
+        "test_examples": 1,
+    }
+    candidate["paths"]["real_error_pairs_atomic_path"] = str(real_paths["atomic"])
+    candidate["paths"]["real_error_pairs_stress_path"] = str(real_paths["stress"])
+    candidate["paths"]["real_error_pairs_validated_path"] = str(real_paths["validated"])
+    candidate["composition"] = {
         "atomic_positive_target": 2,
         "atomic_hard_negative_target": 2,
         "clean_identity_target": 2,
         "real_atomic_train_target": 1,
         "stress_multi_error_target": 1,
     }
-    conflicting_legacy_targets = {
-        "synthetic_augmented_from_open_clean": 8,
-        "real_error_pair": 0,
-        "clean_identity_from_open_clean": 0,
-        "hard_negative_from_open_clean": 0,
-    }
-    config["data"]["training_dataset"]["source_type_targets"] = dict(conflicting_legacy_targets)
-    config["data"]["training_dataset_core"]["source_type_targets"] = dict(conflicting_legacy_targets)
     patch_unit_operator_pipeline(monkeypatch)
 
     def fail_if_output_is_read(path: Path):
@@ -410,8 +419,8 @@ def test_candidate_contract_pipeline_smoke_links_real_outputs_and_prefers_compos
     monkeypatch.setattr(operator_builder, "_read_seed_dataset", fail_if_output_is_read, raising=False)
 
     result = build_dataset_from_config(config, force=True)
-    manifest = json.loads(Path(config["data"]["manifest_path"]).read_text(encoding="utf-8"))
-    frame = pd.read_csv(config["data"]["processed_train_path"])
+    manifest = json.loads(_manifest_path(config).read_text(encoding="utf-8"))
+    frame = pd.read_csv(_dataset_path(config))
     reports_dir = Path(config["paths"]["reports_dir"]) / "dataset_build"
 
     assert result["total"] == 8
@@ -452,7 +461,7 @@ def test_candidate_contract_pipeline_cleans_reports_and_blocks_stale_report_hash
     patch_unit_operator_pipeline(monkeypatch)
 
     build_dataset_from_config(config, force=True)
-    manifest = json.loads(Path(config["data"]["manifest_path"]).read_text(encoding="utf-8"))
+    manifest = json.loads(_manifest_path(config).read_text(encoding="utf-8"))
     generation_report = reports_dir / "dataset_generation_report.md"
     generation_text = generation_report.read_text(encoding="utf-8")
 
@@ -468,7 +477,7 @@ def test_candidate_contract_pipeline_cleans_reports_and_blocks_stale_report_hash
     )
 
     result = build_dataset_from_config(config, force=False)
-    blocked_manifest = json.loads(Path(config["data"]["manifest_path"]).read_text(encoding="utf-8"))
+    blocked_manifest = json.loads(_manifest_path(config).read_text(encoding="utf-8"))
 
     assert result["status"] == "blocked"
     assert result["verdict"] == "DATASET_BLOCKED"
@@ -477,15 +486,14 @@ def test_candidate_contract_pipeline_cleans_reports_and_blocks_stale_report_hash
     assert "stale_reports_hash_mismatch:candidate_recall_by_rule.csv" in blocked_manifest["report_freshness"]["errors"]
 
 
-def test_candidate_contract_pipeline_reads_top_level_audit_alias_first(tmp_path: Path, monkeypatch):
+def test_candidate_contract_pipeline_reads_canonical_audit(tmp_path: Path, monkeypatch):
     clean_pool_path = write_unit_clean_pool(tmp_path / "clean_sentence_pool.csv.gz")
     config = candidate_contract_config(tmp_path, clean_pool_path)
-    config["data"]["audit"] = {"min_candidate_recall_for_active_rule": 1.01}
-    config["data"]["training_dataset_core"]["audit"]["candidate_recall_min"] = 0.0
+    _candidate(config)["audit"]["min_candidate_recall_for_active_rule"] = 1.01
     patch_unit_operator_pipeline(monkeypatch)
 
     result = build_dataset_from_config(config, force=True)
-    manifest = json.loads(Path(config["data"]["manifest_path"]).read_text(encoding="utf-8"))
+    manifest = json.loads(_manifest_path(config).read_text(encoding="utf-8"))
 
     assert result["verdict"] == "DATASET_BLOCKED"
     assert "candidate_recall_active_min_below_threshold" in result["audit_errors"]
@@ -493,13 +501,13 @@ def test_candidate_contract_pipeline_reads_top_level_audit_alias_first(tmp_path:
     assert manifest["audit_errors"] == result["audit_errors"]
 
 
-def test_candidate_contract_pipeline_passes_top_level_stress_loss_weight(tmp_path: Path, monkeypatch):
+def test_candidate_contract_pipeline_passes_canonical_stress_loss_weight(tmp_path: Path, monkeypatch):
     import src.data.operator_dataset_builder as operator_builder
 
     clean_pool_path = write_unit_clean_pool(tmp_path / "clean_sentence_pool.csv.gz")
     config = candidate_contract_config(tmp_path, clean_pool_path)
-    config["data"]["composition"]["stress_multi_error_target"] = 1
-    config["data"]["stress"]["loss_weight"] = 0.23
+    _candidate(config)["composition"]["stress_multi_error_target"] = 1
+    _candidate(config)["stress"]["loss_weight"] = 0.23
     patch_unit_operator_pipeline(monkeypatch)
     captured: dict[str, float] = {}
 
@@ -547,10 +555,10 @@ def test_build_dataset_script_summary_payload_includes_contract_hash_audits_and_
 def test_candidate_contract_pipeline_blocks_when_clean_pool_missing(tmp_path: Path, monkeypatch):
     patch_unit_operator_pipeline(monkeypatch)
     config = candidate_contract_config(tmp_path, tmp_path / "missing_clean_sentence_pool.csv.gz")
-    output_path = Path(config["data"]["processed_train_path"])
+    output_path = _dataset_path(config)
 
     result = build_dataset_from_config(config, force=True)
-    manifest = json.loads(Path(config["data"]["manifest_path"]).read_text(encoding="utf-8"))
+    manifest = json.loads(_manifest_path(config).read_text(encoding="utf-8"))
 
     assert result["status"] == "blocked"
     assert result["verdict"] == "DATASET_BLOCKED"
@@ -561,22 +569,18 @@ def test_candidate_contract_pipeline_blocks_when_clean_pool_missing(tmp_path: Pa
 def test_candidate_contract_pipeline_blocks_atomic_positive_under_min(tmp_path: Path, monkeypatch):
     clean_pool_path = _write_limited_unit_clean_pool(tmp_path / "clean_sentence_pool.csv.gz", 2)
     config = candidate_contract_config(tmp_path, clean_pool_path)
-    config["data"]["total_examples"] = 4
-    config["data"]["target_total_examples"] = 4
-    config["data"]["train_examples"] = 2
-    config["data"]["val_examples"] = 1
-    config["data"]["test_examples"] = 1
-    config["data"]["exact_split_sizes"] = {"train": 2, "val": 1, "test": 1}
-    config["data"]["composition"]["atomic_positive_target"] = 3
-    config["data"]["composition"]["atomic_hard_negative_target"] = 1
-    config["data"]["composition"]["clean_identity_target"] = 0
-    config["data"]["rule_quota"]["min_atomic_positives_per_active_rule"] = 3
-    config["data"]["rule_quota"]["preferred_atomic_positives_per_active_rule"] = 3
-    config["data"]["rule_quota"]["max_total_per_rule_id"] = 3
+    candidate = _candidate(config)
+    candidate["totals"] = {"total_examples": 4, "train_examples": 2, "val_examples": 1, "test_examples": 1}
+    candidate["composition"]["atomic_positive_target"] = 3
+    candidate["composition"]["atomic_hard_negative_target"] = 1
+    candidate["composition"]["clean_identity_target"] = 0
+    candidate["rule_quota"]["min_atomic_positives_per_active_rule"] = 3
+    candidate["rule_quota"]["preferred_atomic_positives_per_active_rule"] = 3
+    candidate["rule_quota"]["max_total_per_rule_id"] = 3
     patch_unit_operator_pipeline(monkeypatch)
 
     result = build_dataset_from_config(config, force=True)
-    manifest = json.loads(Path(config["data"]["manifest_path"]).read_text(encoding="utf-8"))
+    manifest = json.loads(_manifest_path(config).read_text(encoding="utf-8"))
     reports_dir = Path(config["paths"]["reports_dir"]) / "dataset_build"
     active_coverage = pd.read_csv(reports_dir / "active_rule_coverage_report.csv").set_index("rule_id")
 
@@ -589,13 +593,13 @@ def test_candidate_contract_pipeline_blocks_atomic_positive_under_min(tmp_path: 
 def test_candidate_contract_pipeline_warns_atomic_below_preferred_without_block(tmp_path: Path, monkeypatch):
     clean_pool_path = write_unit_clean_pool(tmp_path / "clean_sentence_pool.csv.gz")
     config = candidate_contract_config(tmp_path, clean_pool_path)
-    config["data"]["rule_quota"]["min_atomic_positives_per_active_rule"] = 1
-    config["data"]["rule_quota"]["preferred_atomic_positives_per_active_rule"] = 3
-    config["data"]["rule_quota"]["max_total_per_rule_id"] = 2
+    _candidate(config)["rule_quota"]["min_atomic_positives_per_active_rule"] = 1
+    _candidate(config)["rule_quota"]["preferred_atomic_positives_per_active_rule"] = 3
+    _candidate(config)["rule_quota"]["max_total_per_rule_id"] = 2
     patch_unit_operator_pipeline(monkeypatch)
 
     result = build_dataset_from_config(config, force=True)
-    manifest = json.loads(Path(config["data"]["manifest_path"]).read_text(encoding="utf-8"))
+    manifest = json.loads(_manifest_path(config).read_text(encoding="utf-8"))
     reports_dir = Path(config["paths"]["reports_dir"]) / "dataset_build"
     active_coverage = pd.read_csv(reports_dir / "active_rule_coverage_report.csv").set_index("rule_id")
 
@@ -610,12 +614,12 @@ def test_candidate_contract_pipeline_warns_atomic_below_preferred_without_block(
 def test_candidate_contract_pipeline_final_active_count_gate_blocks(tmp_path: Path, monkeypatch):
     clean_pool_path = write_unit_clean_pool(tmp_path / "clean_sentence_pool.csv.gz")
     config = candidate_contract_config(tmp_path, clean_pool_path)
-    config["data"]["rule_activation"]["expected_min_final_active_rule_count"] = 25
-    config["data"]["rule_activation"]["fail_below_final_active_rule_count"] = True
+    _candidate(config)["rule_activation"]["expected_min_final_active_rule_count"] = 25
+    _candidate(config)["rule_activation"]["fail_below_final_active_rule_count"] = True
     patch_unit_operator_pipeline(monkeypatch)
 
     result = build_dataset_from_config(config, force=True)
-    manifest = json.loads(Path(config["data"]["manifest_path"]).read_text(encoding="utf-8"))
+    manifest = json.loads(_manifest_path(config).read_text(encoding="utf-8"))
 
     assert result["verdict"] == "DATASET_BLOCKED"
     assert manifest["final_active_rule_count"] == 1
@@ -625,14 +629,14 @@ def test_candidate_contract_pipeline_final_active_count_gate_blocks(tmp_path: Pa
 def test_candidate_contract_pipeline_final_active_target_warning_does_not_block(tmp_path: Path, monkeypatch):
     clean_pool_path = write_unit_clean_pool(tmp_path / "clean_sentence_pool.csv.gz")
     config = candidate_contract_config(tmp_path, clean_pool_path)
-    config["data"]["rule_activation"]["expected_min_final_active_rule_count"] = 0
-    config["data"]["rule_activation"]["fail_below_final_active_rule_count"] = False
-    config["data"]["rule_activation"]["target_final_active_rule_count"] = 76
-    config["data"]["rule_activation"]["warn_below_target_final_active_rule_count"] = True
+    _candidate(config)["rule_activation"]["expected_min_final_active_rule_count"] = 0
+    _candidate(config)["rule_activation"]["fail_below_final_active_rule_count"] = False
+    _candidate(config)["rule_activation"]["target_final_active_rule_count"] = 76
+    _candidate(config)["rule_activation"]["warn_below_target_final_active_rule_count"] = True
     patch_unit_operator_pipeline(monkeypatch)
 
     result = build_dataset_from_config(config, force=True)
-    manifest = json.loads(Path(config["data"]["manifest_path"]).read_text(encoding="utf-8"))
+    manifest = json.loads(_manifest_path(config).read_text(encoding="utf-8"))
 
     assert result["verdict"] == "READY_FOR_TRAINING_DATASET"
     assert manifest["final_active_rule_count"] == 1

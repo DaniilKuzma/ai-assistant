@@ -18,6 +18,12 @@ import yaml
 
 from src.candidates.candidate_generator import CandidateGenerator
 from src.candidates.matching import candidate_matches_edit
+from src.config.candidate_dataset_config import (
+    candidate_dataset_core_compat_config,
+    candidate_dataset_paths,
+    candidate_dataset_totals,
+    get_candidate_dataset_config,
+)
 from src.data.clean_sentence_pool import (
     CleanSentencePoolResult,
     META_LANGUAGE_PATTERNS,
@@ -183,11 +189,11 @@ _CURRENT_ACTIVE_RULE_IDS: set[str] | None = None
 
 
 def _use_operator_dataset_pipeline(config: dict[str, Any], *, output_path: Path, manifest_path: Path) -> bool:
-    data_config = config.get("data", {}) or {}
-    core_config = data_config.get("training_dataset_core", {}) or {}
+    candidate_config = get_candidate_dataset_config(config)
+    core_config = candidate_dataset_core_compat_config(config)
     if bool(core_config.get("legacy_builder", False)):
         return False
-    if str(data_config.get("dataset_contract", "")).strip() == "candidate_opportunity":
+    if str(candidate_config.get("contract", "")).strip() == "candidate_opportunity":
         return True
     if str(core_config.get("dataset_contract", "")).strip() == "candidate_opportunity":
         return True
@@ -204,21 +210,23 @@ def _progress(stage: str, **payload: Any) -> None:
 
 
 def build_training_dataset_core_from_config(config: dict[str, Any], force: bool = False) -> dict[str, Any]:
-    data_config = config.get("data", {})
-    core_config = data_config.get("training_dataset_core", {}) or {}
-    seed = int(data_config.get("synthetic_seed", core_config.get("seed", 17)))
-    output_path = Path(data_config.get("processed_train_path") or "data/processed/correction_dataset.csv.gz")
+    candidate_config = get_candidate_dataset_config(config)
+    core_config = candidate_dataset_core_compat_config(config)
+    paths = candidate_dataset_paths(config)
+    totals = candidate_dataset_totals(config)
+    seed = int(candidate_config.get("synthetic_seed", core_config.get("seed", 17)))
+    output_path = Path(str(paths["correction_dataset_path"]))
     output_dir = output_path.parent
-    reports_dir = Path(config.get("paths", {}).get("reports_dir") or "reports")
-    manifest_path = Path(data_config.get("manifest_path") or reports_dir / "dataset_manifest.json")
+    reports_dir = Path(str(paths["reports_dir"]))
+    manifest_path = Path(str(paths["manifest_path"]))
     if _use_operator_dataset_pipeline(config, output_path=output_path, manifest_path=manifest_path):
         from src.data.operator_dataset_builder import build_operator_training_dataset_from_config
 
         return build_operator_training_dataset_from_config(config, force=force)
-    split_sizes = _split_sizes(data_config)
+    split_sizes = _split_sizes(candidate_config)
     total = sum(split_sizes.values())
     if total <= 0:
-        total = int(data_config.get("target_total_examples", 60_000))
+        total = int(totals.get("total_examples", 60_000) or 60_000)
         split_sizes = {"train": 50_000, "val": 5_000, "test": 5_000} if total == 60_000 else _ratio_split(total)
     requested_total = total
     requested_split_sizes = dict(split_sizes)
@@ -1005,9 +1013,10 @@ def _effective_active_rule_ids(
 
 
 def _split_sizes(data_config: dict[str, Any]) -> dict[str, int]:
+    totals = dict(data_config.get("totals", {}) or {})
     keys = {"train": "train_examples", "val": "val_examples", "test": "test_examples"}
-    if any(key in data_config for key in keys.values()):
-        return {split: int(data_config.get(key, 0)) for split, key in keys.items()}
+    if any(key in totals or key in data_config for key in keys.values()):
+        return {split: int(totals.get(key, data_config.get(key, 0)) or 0) for split, key in keys.items()}
     raw = data_config.get("exact_split_sizes")
     if isinstance(raw, dict):
         return {split: int(raw.get(split, 0)) for split in ("train", "val", "test")}

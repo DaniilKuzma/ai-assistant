@@ -11,6 +11,17 @@ from typing import Any, Iterable
 import pandas as pd
 
 from src.candidates.candidate_generator import CandidateGenerator
+from src.config.candidate_dataset_config import (
+    candidate_dataset_audit,
+    candidate_dataset_composition,
+    candidate_dataset_paths,
+    candidate_dataset_rule_quota,
+    candidate_dataset_totals,
+    candidate_dataset_value,
+    get_candidate_dataset_config,
+    legacy_split_source_type_targets,
+    legacy_source_type_targets,
+)
 from src.data._training_dataset_builder import build_training_dataset_core_from_config
 from src.data.dataset_contract import (
     CLEAN_IDENTITY_OPEN,
@@ -587,94 +598,35 @@ def _count_csv_rows(path: Path) -> int:
 def _as_core_compatible_config(config: dict[str, Any]) -> dict[str, Any]:
     cloned = copy.deepcopy(config)
     data = cloned.setdefault("data", {})
-    canonical = copy.deepcopy(data.get("training_dataset", {}) or {})
-    active_rows = resolve_active_target_rules(cloned)
-    included_rows = [row for row in active_rows if row["include_in_dataset"]]
-    real_pair_count = _count_csv_rows(Path(str(data.get("real_error_pairs_validated_path") or "data/processed/real_error_pairs_validated.csv.gz")))
-    targets = compute_broad_dataset_targets(active_rows, real_pair_count=real_pair_count)
-    configured_targets = dict(canonical.get("source_type_targets", {}) or {})
-    configured_total = int(data.get("target_total_examples") or data.get("total_examples") or 0)
-    if configured_targets and configured_total >= 200_000 and sum(int(value) for value in configured_targets.values()) == configured_total:
-        configured_splits = dict(data.get("exact_split_sizes", {}) or {})
-        if sum(int(value) for value in configured_splits.values()) != configured_total:
-            configured_splits = _exact_80_10_10(configured_total)
-        configured_split_targets = copy.deepcopy(canonical.get("split_source_type_targets", {}) or {})
-        if set(configured_split_targets) != {"train", "val", "test"}:
-            configured_split_targets = _split_source_targets(configured_targets, configured_splits)
-        targets.update(
-            {
-                "total_target": configured_total,
-                "split_sizes": {split: int(count) for split, count in configured_splits.items()},
-                "source_type_targets": {source_type: int(count) for source_type, count in configured_targets.items()},
-                "split_source_type_targets": configured_split_targets,
-                "multi_error_stress_target": int(canonical.get("multi_error_stress_target", targets["multi_error_stress_target"]) or 0),
-            }
-        )
-    split_sizes = targets["split_sizes"]
-    data["target_total_examples"] = targets["total_target"]
-    data["total_examples"] = targets["total_target"]
-    data["train_examples"] = split_sizes["train"]
-    data["val_examples"] = split_sizes["val"]
-    data["test_examples"] = split_sizes["test"]
-    data["exact_split_sizes"] = dict(split_sizes)
-    rule_quotas = {
-        row["rule_id"]: {
-            "min_total": int(row["target_min_examples"]),
-            "preferred_total": int(row["target_preferred_examples"]),
-            "max_total": max(int(row["target_preferred_examples"]) + 750, int(row["target_min_examples"])),
-        }
-        for row in included_rows
-    }
-    core = copy.deepcopy(canonical)
-    core["enabled"] = True
-    core["requested_total"] = targets["total_target"]
-    core["expected_total"] = targets["total_target"]
-    core["source_type_targets"] = dict(targets["source_type_targets"])
-    core["split_source_type_targets"] = copy.deepcopy(targets["split_source_type_targets"])
-    core["multi_error_stress_target"] = int(targets["multi_error_stress_target"])
-    core["min_cached_real_pairs"] = 5000
-    core["preferred_cached_real_pairs"] = 30000
-    core["reuse_clean_sentence_pool_cache"] = True
-    core["min_clean_pool_for_ready"] = 300000
-    core["min_clean_pool_hard_min"] = 150000
-    quota = dict(core.get("active_rule_quota", {}) or {})
-    quota.update(
-        {
-            "enabled": True,
-            "rule_ids": [row["rule_id"] for row in included_rows],
-            "rule_quotas": rule_quotas,
-            "min_total_per_active_rule": min((int(row["target_min_examples"]) for row in included_rows), default=1),
-            "preferred_total_per_active_rule": max((int(row["target_preferred_examples"]) for row in included_rows), default=1),
-            "split_minimums": {},
-        }
-    )
-    core["active_rule_quota"] = quota
-    rule_caps = dict(core.get("rule_caps", {}) or {})
-    rule_caps["rule_max_totals"] = {rule_id: quota["max_total"] for rule_id, quota in rule_quotas.items()}
-    rule_caps["max_total_per_rule_id"] = max((quota["max_total"] for quota in rule_quotas.values()), default=2500)
-    rule_caps["max_train_per_rule_id"] = max((quota["max_total"] for quota in rule_quotas.values()), default=2500)
-    rule_caps["max_rule_share_train"] = 0.08
-    core["rule_caps"] = rule_caps
-    audit = dict(core.get("audit", {}) or {})
-    audit.update(
-        {
-            "candidate_recall_min": 0.95,
-            "gap_coverage_min": 0.85,
-            "synthetic_min": int(targets["targeted_synthetic_base"]),
-            "min_active_rule_count": 1000,
-            "min_clean_identity_eval_split": 500,
-            "min_hard_negative_eval_split": 500,
-            "require_all_source_types": True,
-        }
-    )
-    core["audit"] = audit
-    data["training_dataset_core"] = core
-    data["config_path"] = data.get("config_path") or "configs/config.yaml"
+    candidate = get_candidate_dataset_config(cloned)
+    data["candidate_opportunity"] = candidate
+    for key in (
+        "dataset_contract",
+        "target_total_examples",
+        "total_examples",
+        "train_examples",
+        "val_examples",
+        "test_examples",
+        "exact_split_sizes",
+        "training_dataset",
+        "training_dataset_core",
+        "rule_quota",
+        "rule_activation",
+        "composition",
+        "audit",
+        "clean_pool",
+        "stress",
+        "rule_data_compiler",
+        "rule_lab",
+    ):
+        data.pop(key, None)
+    split_sizes = candidate_dataset_totals(cloned)
+    data["config_path"] = str(candidate_dataset_value(cloned, "config_path", "configs/config.yaml"))
     training = cloned.setdefault("training", {})
-    training["max_train_examples"] = split_sizes["train"]
-    training["max_val_examples"] = split_sizes["val"]
-    training["max_test_examples"] = split_sizes["test"]
-    if str(data.get("processed_train_path")) == "data/processed/correction_dataset.csv.gz":
+    training["max_train_examples"] = split_sizes["train_examples"]
+    training["max_val_examples"] = split_sizes["val_examples"]
+    training["max_test_examples"] = split_sizes["test_examples"]
+    if str(candidate_dataset_paths(cloned)["correction_dataset_path"]) == "data/processed/correction_dataset.csv.gz":
         cloned.setdefault("paths", {})["reports_dir"] = "reports/dataset_build"
     return cloned
 
@@ -811,7 +763,7 @@ def _upgrade_manifest_to_canonical(
     underfilled: list[str],
 ) -> dict[str, Any]:
     data = config.get("data", {})
-    canonical = data.get("training_dataset", {}) or {}
+    totals = candidate_dataset_totals(config)
     included_rows = [row for row in active_rows if row["include_in_dataset"]]
     excluded_rows = [row for row in active_rows if not row["include_in_dataset"]]
     active_rule_ids = sorted(row["rule_id"] for row in included_rows)
@@ -834,9 +786,13 @@ def _upgrade_manifest_to_canonical(
             "dataset_hash": dataset_hash,
             "config_hash": str(manifest.get("config_hash") or _config_hash(config)),
             "generated_at": str(manifest.get("generated_at") or datetime.now(timezone.utc).isoformat()),
-            "requested_total": int(data.get("target_total_examples", canonical.get("requested_total", manifest.get("requested_total", 0))) or 0),
+            "requested_total": int(totals.get("total_examples", manifest.get("requested_total", 0)) or 0),
             "actual_total": int(result.get("total", manifest.get("total", 0)) or 0),
-            "requested_split_sizes": dict(data.get("exact_split_sizes", {}) or {}),
+            "requested_split_sizes": {
+                "train": totals.get("train_examples", 0),
+                "val": totals.get("val_examples", 0),
+                "test": totals.get("test_examples", 0),
+            },
             "actual_split_sizes": manifest.get("split_sizes", result.get("splits", {})),
             "composition": composition,
             "fallback_used": False,
@@ -993,9 +949,7 @@ def _apply_quality_audit_to_manifest(manifest: dict[str, Any], audit: dict[str, 
     )
 
 def _canonical_audit_errors(manifest: dict[str, Any], *, config: dict[str, Any]) -> list[str]:
-    data = config.get("data", {})
-    canonical = data.get("training_dataset", {}) or {}
-    audit = dict(canonical.get("audit", {}) or {})
+    audit = candidate_dataset_audit(config)
     errors = [
         str(error)
         for error in manifest.get("audit_errors", [])
@@ -1099,8 +1053,9 @@ def _canonical_audit_errors(manifest: dict[str, Any], *, config: dict[str, Any])
 
 def _dominance_errors(manifest: dict[str, Any], *, config: dict[str, Any]) -> list[str]:
     errors: list[str] = []
-    rule_share_limit = float((config.get("data", {}).get("training_dataset", {}) or {}).get("rule_caps", {}).get("max_rule_share_train", 0.10))
-    error_share_limit = float((config.get("data", {}).get("training_dataset", {}) or {}).get("rule_caps", {}).get("max_error_type_share_train", 0.35))
+    quota = candidate_dataset_rule_quota(config)
+    rule_share_limit = float(quota.get("max_rule_share_train", 0.10))
+    error_share_limit = float(quota.get("max_error_type_share_train", 0.35))
     train_size = int(dict(manifest.get("split_sizes", {}) or {}).get("train", 0))
     if train_size <= 0:
         return errors
@@ -1280,8 +1235,7 @@ def _write_candidate_gate_report(
     config: dict[str, Any],
     gap_active_rule_ids: set[str],
 ) -> None:
-    canonical = config.get("data", {}).get("training_dataset", {}) or {}
-    audit = dict(canonical.get("audit", {}) or {})
+    audit = candidate_dataset_audit(config)
     candidate_threshold = float(audit.get("candidate_recall_min", 0.95))
     by_rule = {row["rule_id"]: row for row in active_rows}
     rows: list[dict[str, Any]] = []
@@ -1395,10 +1349,10 @@ def _write_generation_report(path: Path, manifest: dict[str, Any]) -> None:
 
 
 def _source_constraints(config: dict[str, Any], manifest: dict[str, Any]) -> dict[str, Any]:
-    canonical = config.get("data", {}).get("training_dataset", {}) or {}
+    totals = candidate_dataset_totals(config)
     return {
-        "requested_total": canonical.get("requested_total", config.get("data", {}).get("target_total_examples")),
-        "smoke_total": (canonical.get("smoke", {}) or {}).get("requested_total"),
+        "requested_total": totals.get("total_examples", 0),
+        "smoke_total": candidate_dataset_value(config, "smoke.requested_total"),
         "real_pair_shortage_reason": manifest.get("real_pair_shortage_reason", ""),
         "missing_external_sources": manifest.get("missing_external_sources", []),
     }
@@ -1430,7 +1384,7 @@ def _upgrade_result(result: dict[str, Any], manifest: dict[str, Any] | None) -> 
 
 
 def _is_smoke_config(config: dict[str, Any]) -> bool:
-    smoke = ((config.get("data", {}).get("training_dataset", {}) or {}).get("smoke", {}) or {})
+    smoke = candidate_dataset_value(config, "smoke", {})
     return bool(smoke.get("enabled", False))
 
 

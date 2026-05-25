@@ -109,385 +109,117 @@ evaluation:
   write_score_distribution_during_training: false
   write_rule_worse_examples_during_training: false
 data:
-  dataset_contract: candidate_opportunity
-  dataset_build_workers: 8
-  rule_activation:
-    mode: expanded_safe
-    include_decisions:
-    - INCLUDE_NOW
-    - INCLUDE_AFTER_THRESHOLD_CALIBRATION
-    - INCLUDE_AFTER_TRAINING
-    include_after_validator_when_runtime_supported: true
-    require_candidate_path: true
-    require_synthetic_support: true
-    require_hard_negative_support: true
-    require_validator_support_or_empirical_pass: true
-    exclude_blocked: true
-    exclude_ner_required_without_ner: true
-    min_empirical_validator_passes: 3
-    max_empirical_validator_examples: 10
-    expected_min_production_ready_rule_count: 12
-    expected_min_training_candidate_rule_count: 76
-    target_training_candidate_rule_count: 76
-    fail_below_min_training_candidate_rule_count: true
-    warn_below_target_training_candidate_rule_count: true
-    fail_below_final_active_rule_count: true
-    expected_min_final_active_rule_count: 25
-    target_final_active_rule_count: 76
-    warn_below_target_final_active_rule_count: true
-  synthetic_seed: 13
-  processed_train_path: data/processed/correction_dataset.csv.gz
-  manifest_path: data/processed/dataset_manifest.json
-  target_total_examples: 240000
-  total_examples: 240000
-  train_examples: 192000
-  val_examples: 24000
-  test_examples: 24000
-  composition:
-    atomic_positive_ratio: 0.475
-    atomic_hard_negative_ratio: 0.25
-    clean_identity_ratio: 0.20
-    stress_multi_error_ratio: 0.05
-    real_atomic_train_ratio: 0.025
-    allow_layer_target_adjustment: true
-    fail_on_unadjusted_layer_deficit: true
-  clean_pool:
-    reject_mixed_script_tokens: true
-    reject_latin_confusable_inside_cyrillic_word: true
-    reject_if_candidate_generator_finds_high_confidence_fix: true
-    high_confidence_candidate_threshold: 0.95
-  synthetic:
-    require_atomic_positive: true
-    max_gold_edits_for_atomic: 1
-    require_candidate_coverage: true
-    require_strict_validator_acceptance: true
-  real_pairs:
-    train_policy: atomize_single_edit_known_rule_only
-    unknown_rule_policy: mining_only
-    multi_edit_policy: stress_or_eval_only
-  stress:
-    enabled: true
-    count_toward_rule_quota: false
-    loss_weight: 0.4
-    min_ratio: 0.03
-    max_ratio: 0.05
-    fail_on_under_target: false
-  rule_quota:
-    min_atomic_positives_per_active_rule: 500
-    preferred_atomic_positives_per_active_rule: 1500
-    max_total_per_rule_id: 1500
-    min_hard_negatives_per_active_rule: 200
-    disable_rule_if_quota_not_met: true
-  rule_data_compiler:
-    enabled: true
-    source_priority:
+  candidate_opportunity:
+    contract: candidate_opportunity
+    dataset_build_workers: 8
+    synthetic_seed: 13
+    totals:
+      total_examples: 240000
+      train_examples: 192000
+      val_examples: 24000
+      test_examples: 24000
+    paths:
+      processed_dir: data/processed
+      reports_dir: reports/dataset_build
+      clean_pool_path: data/processed/clean_sentence_pool.csv.gz
+      correction_dataset_path: data/processed/correction_dataset.csv.gz
+      manifest_path: data/processed/dataset_manifest.json
+      open_corpora_sources_config: configs/open_corpora_sources.yaml
+      real_error_sources_config: configs/real_error_sources.yaml
+      rule_lab_recipes_config: configs/rule_lab_recipes.yaml
+    rule_activation:
+      mode: expanded_safe
+      include_decisions:
+      - INCLUDE_NOW
+      - INCLUDE_AFTER_THRESHOLD_CALIBRATION
+      - INCLUDE_AFTER_TRAINING
+      include_after_validator_when_runtime_supported: true
+      require_candidate_path: true
+      require_synthetic_support: true
+      require_hard_negative_support: true
+      require_validator_support_or_empirical_pass: true
+      exclude_blocked: true
+      exclude_ner_required_without_ner: true
+      min_empirical_validator_passes: 3
+      max_empirical_validator_examples: 10
+      expected_min_production_ready_rule_count: 12
+      expected_min_training_candidate_rule_count: 76
+      target_training_candidate_rule_count: 76
+      fail_below_min_training_candidate_rule_count: true
+      warn_below_target_training_candidate_rule_count: true
+      fail_below_final_active_rule_count: true
+      expected_min_final_active_rule_count: 25
+      target_final_active_rule_count: 76
+      warn_below_target_final_active_rule_count: true
+    composition:
+      atomic_positive_ratio: 0.475
+      atomic_hard_negative_ratio: 0.25
+      clean_identity_ratio: 0.195
+      stress_multi_error_ratio: 0.05
+      real_atomic_train_ratio: 0.03
+      allow_layer_target_adjustment: true
+      fail_on_unadjusted_layer_deficit: true
+    clean_pool:
+      reject_mixed_script_tokens: true
+      reject_latin_confusable_inside_cyrillic_word: true
+      reject_if_candidate_generator_finds_high_confidence_fix: true
+      high_confidence_candidate_threshold: 0.95
+    synthetic:
+      require_atomic_positive: true
+      max_gold_edits_for_atomic: 1
+      require_candidate_coverage: true
+      require_strict_validator_acceptance: true
+    real_pairs:
+      train_policy: atomize_single_edit_known_rule_only
+      unknown_rule_policy: mining_only
+      multi_edit_policy: stress_or_eval_only
+    stress:
+      enabled: true
+      count_toward_rule_quota: false
+      loss_weight: 0.4
+      min_ratio: 0.03
+      max_ratio: 0.05
+      fail_on_under_target: false
+    rule_quota:
+      min_atomic_positives_per_active_rule: 500
+      preferred_atomic_positives_per_active_rule: 1500
+      max_total_per_rule_id: 1500
+      min_hard_negatives_per_active_rule: 200
+      disable_rule_if_quota_not_met: true
+    rule_data_compiler:
+      enabled: true
+      source_priority:
       - corpus_mined
       - syntax_mined
       - morphology_mined
       - real_pattern_replay
       - rule_lab
-    max_rule_lab_share_per_rule: 0.30
-    fail_on_high_rule_lab_share: false
-    min_unique_sentence_patterns_per_rule: 20
-    min_unique_left_contexts_per_rule: 100
-    min_unique_right_contexts_per_rule: 100
-    max_near_duplicate_share: 0.02
-    fail_on_low_structural_diversity: false
-  audit:
-    fail_on_extra_edits_in_atomic: true
-    fail_on_unknown_rule_in_train: true
-    fail_on_stale_reports: true
-    fail_on_corpus_opportunity_share_below_threshold: false
-    destructive_diversity_pruning_enabled: false
-    min_candidate_recall_for_active_rule: 0.95
-  clean_identity_ratio: 0.1
-  punctuation_hard_negative_clean_ratio: 0.25
-  val_ratio: 0.1
-  test_ratio: 0.1
-  domain: training_dataset
-  use_external_sources: true
-  external_local_files_only: true
-  max_external_examples: 10000
-  external_sources:
-  - name: rus_spell_gold
-    type: hf_jsonl
-    repo: RussianNLP/RuSpellGold
-    files:
-    - data/complete_test/test.json
-    max_examples: 2000
-  - name: ai_forever_spellcheck_punctuation
-    type: hf_jsonl
-    repo: ai-forever/spellcheck_punctuation_benchmark
-    files:
-    - data/RUSpellRU/train.json
-    - data/RUSpellRU/test.json
-    - data/MultidomainGold/train.json
-    - data/MultidomainGold/test.json
-    max_examples: 6000
-  - name: lorugec_val
-    type: m2
-    path: data/raw/external/LORuGEC.val.m2
-    url: https://raw.githubusercontent.com/ReginaNasyrova/LORuGEC/main/LORuGEC.val.m2
-    max_examples: 1000
-  - name: lorugec_test
-    type: m2
-    path: data/raw/external/LORuGEC.test.m2
-    url: https://raw.githubusercontent.com/ReginaNasyrova/LORuGEC/main/LORuGEC.test.m2
-    max_examples: 1000
-  - name: github_typo_corpus_ru
-    type: github_typo_jsonl_gz
-    path: data/raw/external/github-typo-corpus.v1.0.0.jsonl.gz
-    url: https://github-typo-corpus.s3.amazonaws.com/data/github-typo-corpus.v1.0.0.jsonl.gz
-    max_examples: 500
-  - name: mendeley_russian_spelling_test
-    type: csv
-    path: data/raw/external/test_pairs.csv
-    url: https://data.mendeley.com/public-files/datasets/mpwdrr6y3v/files/1ca956a8-3bf7-46e6-8478-04f29856f4e8/file_downloaded
-    trusted_word_pairs: true
-    max_examples: 5000
-  - name: mendeley_russian_spelling_train
-    type: csv
-    path: data/raw/external/train_pairs.csv
-    url: https://data.mendeley.com/public-files/datasets/mpwdrr6y3v/files/d7763910-8ea7-459b-8ec1-946c39e03ef9/file_downloaded
-    trusted_word_pairs: true
-    max_examples: 5000
-  clean_corpus:
-    enabled: true
-    cache_path: data/raw/clean_corpus_sentences.txt.gz
-    rebuild_cache: false
-    min_cached_sentences: 10000
-    max_source_sentences: 1200000
-    sources:
-    - name: leipzig_news
-      type: leipzig
-      corpus_ids:
-      - rus_news_2022_1M
-      - rus_news_2021_1M
-      - rus_news_2020_1M
-      max_sentences: 180000
-    - name: leipzig_wikipedia
-      type: leipzig
-      corpus_ids:
-      - rus_wikipedia_2021_1M
-      - rus_wikipedia_2016_1M
-      max_sentences: 90000
-    - name: taiga_rest
-      type: hf_dataset
-      repo: cointegrated/taiga_stripped_rest
-      splits:
-      - Interfax
-      - Lenta
-      - NPlus1
-      - Fontanka
-      - Arzamas
-      - KP
-      text_fields:
-      - text
-      max_sentences: 90000
-    - name: taiga_proza_filtered
-      type: hf_dataset
-      repo: cointegrated/taiga_stripped_proza
-      splits:
-      - train
-      text_fields:
-      - text
-      max_sentences: 15000
-      strict_formal_filter: true
-    - name: ud_russian_taiga
-      type: ud_conllu
-      urls:
-      - https://raw.githubusercontent.com/UniversalDependencies/UD_Russian-Taiga/master/ru_taiga-ud-train.conllu
-      - https://raw.githubusercontent.com/UniversalDependencies/UD_Russian-Taiga/master/ru_taiga-ud-dev.conllu
-      - https://raw.githubusercontent.com/UniversalDependencies/UD_Russian-Taiga/master/ru_taiga-ud-test.conllu
-      max_sentences: 25000
-    - name: opencorpora
-      type: opencorpora_xml_zip
-      url: https://opencorpora.org/files/export/annot/annot.opcorpora.xml.zip
-      max_sentences: 40000
-    - name: tatoeba_russian
-      type: tatoeba_tsv
-      url: https://downloads.tatoeba.org/exports/sentences.tar.bz2
-      max_sentences: 30000
-  debug_clean_texts:
-  - Я не знаю, что делать.
-  - Во-первых, это важно.
-  - Чистый текст.
-  config_path: configs/config.yaml
-  exact_split_sizes:
-    train: 192000
-    val: 24000
-    test: 24000
-  training_dataset:
-    enabled: true
-    legacy_builder: false
-    requested_total: 240000
-    expected_total: 240000
-    smoke:
-      enabled: false
-      requested_total: 60000
-      split_sizes:
-        train: 50000
-        val: 5000
-        test: 5000
-      verdict: READY_FOR_SMOKE_ONLY
-    min_clean_pool_for_ready: 300000
-    min_clean_pool_hard_min: 150000
-    open_corpora_sources_path: configs/open_corpora_sources.yaml
-    real_error_sources_path: configs/real_error_sources.yaml
-    source_type_targets:
-      synthetic_augmented_from_open_clean: 126000
-      real_error_pair: 6000
-      clean_identity_from_open_clean: 48000
-      hard_negative_from_open_clean: 60000
-    split_source_type_targets: &id001
-      train:
-        synthetic_augmented_from_open_clean: 100800
-        real_error_pair: 600
-        clean_identity_from_open_clean: 38400
-        hard_negative_from_open_clean: 48000
-      val:
-        synthetic_augmented_from_open_clean: 12600
-        real_error_pair: 600
-        clean_identity_from_open_clean: 4800
-        hard_negative_from_open_clean: 6000
-      test:
-        synthetic_augmented_from_open_clean: 12600
-        real_error_pair: 600
-        clean_identity_from_open_clean: 4800
-        hard_negative_from_open_clean: 6000
-    active_rule_quota:
+      max_rule_lab_share_per_rule: 0.30
+      fail_on_high_rule_lab_share: false
+      min_unique_sentence_patterns_per_rule: 20
+      min_unique_left_contexts_per_rule: 100
+      min_unique_right_contexts_per_rule: 100
+      max_near_duplicate_share: 0.02
+      fail_on_low_structural_diversity: false
+    rule_lab:
       enabled: true
-      strategy: broad_canonical
-      min_total_per_active_rule: 500
-      preferred_total_per_active_rule: 1500
-      corpus_opportunity_scan_limit: 60000
-      corpus_opportunity_specific_scan_limit: 60000
-      split_minimums: {}
-      tiers:
-        stable_core:
-          min_total_per_rule: 300
-          preferred_total_per_rule: 700
-          max_total_per_rule: 2500
-        activation:
-          min_total_per_rule: 500
-          preferred_total_per_rule: 1000
-          max_total_per_rule: 2500
-        bounded_activation:
-          min_total_per_rule: 200
-          preferred_total_per_rule: 500
-          max_total_per_rule: 1500
-      risky_lexical:
-        rule_ids:
-        - dictionary_fuzzy
-        - swapped_letters_candidate
-        - double_consonant_candidate
-        - missing_letter_candidate
-        - extra_letter_candidate
-        - keyboard_typo_candidate
-        min_total_per_rule: 200
-        preferred_total_per_rule: 500
-        max_total_per_rule: 1200
-    rule_caps:
-      max_total_per_rule_id: 1500
-      max_train_per_rule_id: 1200
-      max_rule_share_train: 0.1
-      max_error_type_share_train: 0.35
-      targeted_duplicate_cap: 2
-      stress_generation_rule_cap: 5000
-    pool:
-      min_clean_sentences: 150000
-      max_source_share: 0.6
-      max_subcorpus_share: 0.7
+      fill_underfilled_rules: true
+      max_generated_per_rule: 1500
+      max_hard_negatives_per_rule: 500
+      prefer_rule_lab_for_underfilled: true
+      max_rule_lab_share_per_rule: 0.30
+      fail_on_high_rule_lab_share: false
+      fail_on_low_diversity: true
+      max_per_template_share: 0.25
+      max_per_slot_value_share: 0.35
+      context_injection_max_share: 0.50
     audit:
-      candidate_recall_min: 0.95
-      gap_coverage_min: 0.85
-      synthetic_min: 114000
-      min_active_rule_count: 25
-      min_clean_identity_eval_split: 500
-      min_hard_negative_eval_split: 500
-      min_rows_for_template_gates: 1000
-      min_rows_for_candidate_gates: 1000
-      min_rows_for_eval_source_split_gates: 1000
-      require_all_source_types: true
-    multi_error_stress_target: 12000
-  training_dataset_core:
-    enabled: true
-    legacy_builder: false
-    requested_total: 320000
-    expected_total: 320000
-    smoke:
-      enabled: false
-      requested_total: 60000
-      split_sizes:
-        train: 50000
-        val: 5000
-        test: 5000
-      verdict: READY_FOR_SMOKE_ONLY
-    min_clean_pool_for_ready: 300000
-    min_clean_pool_hard_min: 150000
-    open_corpora_sources_path: configs/open_corpora_sources.yaml
-    real_error_sources_path: configs/real_error_sources.yaml
-    source_type_targets:
-      synthetic_augmented_from_open_clean: 206000
-      real_error_pair: 6000
-      clean_identity_from_open_clean: 32000
-      hard_negative_from_open_clean: 76000
-    split_source_type_targets: *id001
-    active_rule_quota:
-      enabled: true
-      strategy: broad_canonical
-      min_total_per_active_rule: 500
-      preferred_total_per_active_rule: 1500
-      corpus_opportunity_scan_limit: 60000
-      corpus_opportunity_specific_scan_limit: 60000
-      split_minimums: {}
-      tiers:
-        stable_core:
-          min_total_per_rule: 300
-          preferred_total_per_rule: 700
-          max_total_per_rule: 2500
-        activation:
-          min_total_per_rule: 500
-          preferred_total_per_rule: 1000
-          max_total_per_rule: 2500
-        bounded_activation:
-          min_total_per_rule: 200
-          preferred_total_per_rule: 500
-          max_total_per_rule: 1500
-      risky_lexical:
-        rule_ids:
-        - dictionary_fuzzy
-        - swapped_letters_candidate
-        - double_consonant_candidate
-        - missing_letter_candidate
-        - extra_letter_candidate
-        - keyboard_typo_candidate
-        min_total_per_rule: 200
-        preferred_total_per_rule: 500
-        max_total_per_rule: 1200
-    rule_caps:
-      max_total_per_rule_id: 1500
-      max_train_per_rule_id: 1200
-      max_rule_share_train: 0.1
-      max_error_type_share_train: 0.35
-      targeted_duplicate_cap: 2
-      stress_generation_rule_cap: 5000
-    pool:
-      min_clean_sentences: 150000
-      max_source_share: 0.6
-      max_subcorpus_share: 0.7
-    audit:
-      candidate_recall_min: 0.95
-      gap_coverage_min: 0.85
-      synthetic_min: 190000
-      min_active_rule_count: 25
-      min_clean_identity_eval_split: 500
-      min_hard_negative_eval_split: 500
-      min_rows_for_template_gates: 1000
-      min_rows_for_candidate_gates: 1000
-      min_rows_for_eval_source_split_gates: 1000
-      require_all_source_types: true
-    multi_error_stress_target: 16000
+      fail_on_extra_edits_in_atomic: true
+      fail_on_unknown_rule_in_train: true
+      fail_on_stale_reports: true
+      min_candidate_recall_for_active_rule: 0.95
+      fail_on_corpus_opportunity_share_below_threshold: false
+      destructive_diversity_pruning_enabled: false
 thresholds:
   mode: calibrated_guarded
   conservative:
