@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Any
 
+from src.config.load_config import load_config
 from src.grammar_gen.builders import GrammarBuilder
 from src.grammar_gen.lexicon import Lexicon
 from src.grammar_gen.morphology import MorphologyEngine
@@ -12,6 +14,9 @@ from src.grammar_gen.rules.base import GenerationMode, RuleProgram
 from src.grammar_gen.rules.registry import RuleRegistry
 from src.grammar_gen.safety import validate_generated_pair
 from src.schema import GeneratedExample
+
+
+DEFAULT_CONFIG_PATH = Path(__file__).resolve().parents[2] / "configs" / "config.yaml"
 
 
 class GenerationError(RuntimeError):
@@ -24,23 +29,66 @@ class OnlineExampleGenerator:
         registry: RuleRegistry,
         lexicon: Lexicon,
         morphology: MorphologyEngine,
-        config: Mapping[str, Any] | None,
+        config: Mapping[str, Any] | None = None,
         seed: int | None = None,
     ) -> None:
         self.registry = registry
         self.lexicon = lexicon
         self.morphology = morphology
-        self.config = config or {}
-        self.rng = RandomSource(seed=seed)
+        self.config = config or load_config(DEFAULT_CONFIG_PATH)
+        self.base_seed = _resolve_seed(self.config, seed)
+        self.rng = RandomSource(seed=self.base_seed)
         self.builder = GrammarBuilder(lexicon, morphology, self.rng)
         self.realizer = Realizer(lexicon, morphology)
 
     def sample(
         self,
-        mode: GenerationMode | None = None,
+        mode: GenerationMode | str | None = None,
         rule_id: str | None = None,
     ) -> GeneratedExample:
         requested_mode = _coerce_mode(mode) if mode is not None else None
+        return self._sample_with_rng(
+            rng=self.rng,
+            builder=self.builder,
+            requested_mode=requested_mode,
+            rule_id=rule_id,
+            generation_index=None,
+            generation_seed=None,
+        )
+
+    def sample_batch(self, size: int) -> list[GeneratedExample]:
+        if size < 0:
+            raise ValueError("size must be non-negative.")
+        return [self.sample() for _ in range(size)]
+
+    def sample_by_index(self, index: int) -> GeneratedExample:
+        if not isinstance(index, int):
+            raise TypeError("index must be an integer.")
+        if index < 0:
+            raise ValueError("index must be non-negative.")
+
+        generation_seed = self.base_seed + index
+        rng = RandomSource(seed=generation_seed)
+        builder = GrammarBuilder(self.lexicon, self.morphology, rng)
+        return self._sample_with_rng(
+            rng=rng,
+            builder=builder,
+            requested_mode=None,
+            rule_id=None,
+            generation_index=index,
+            generation_seed=generation_seed,
+        )
+
+    def _sample_with_rng(
+        self,
+        *,
+        rng: RandomSource,
+        builder: GrammarBuilder,
+        requested_mode: GenerationMode | None,
+        rule_id: str | None,
+        generation_index: int | None,
+        generation_seed: int | None,
+    ) -> GeneratedExample:
         retries = self._max_generation_retries()
         failures: list[str] = []
 
@@ -49,9 +97,14 @@ class OnlineExampleGenerator:
 
         for attempt in range(1, retries + 1):
             try:
-                rule, selected_mode = self._select_rule_and_mode(requested_mode, rule_id)
-                example = rule.generate(self.builder, self.realizer, self.rng, selected_mode)
-                return self._validate_example(example, rule, selected_mode)
+                rule, selected_mode = self._select_rule_and_mode(requested_mode, rule_id, rng)
+                example = rule.generate(builder, self.realizer, rng, selected_mode)
+                validated = self._validate_example(example, rule, selected_mode)
+                return _with_generation_metadata(
+                    validated,
+                    generation_index=generation_index,
+                    generation_seed=generation_seed,
+                )
             except Exception as exc:
                 failures.append(f"attempt {attempt}: {type(exc).__name__}: {exc}")
 
@@ -64,41 +117,37 @@ class OnlineExampleGenerator:
             f"Recent failures: {details}"
         )
 
-    def sample_batch(self, size: int) -> list[GeneratedExample]:
-        if size < 0:
-            raise ValueError("size must be non-negative.")
-        return [self.sample() for _ in range(size)]
-
     def _select_rule_and_mode(
         self,
         requested_mode: GenerationMode | None,
         rule_id: str | None,
-    ) -> tuple[RuleProgram, GenerationMode]:
-        if requested_mode is not None:
-            return self._select_rule_for_mode(requested_mode, rule_id, family=None)
-
-        mode, family = self._sample_mode_from_mix()
-        return self._select_rule_for_mode(mode, rule_id, family=family)
-
-    def _select_rule_for_mode(
-        self,
-        mode: GenerationMode,
-        rule_id: str | None,
-        *,
-        family: str | None,
+        rng: RandomSource,
     ) -> tuple[RuleProgram, GenerationMode]:
         if rule_id is not None:
             rule = self.registry.get_rule(rule_id)
             if rule is None:
                 raise GenerationError(f"Rule {rule_id!r} is not registered.")
-            if not rule.can_generate(mode):
-                raise GenerationError(f"Rule {rule_id!r} does not support mode {mode.value!r}.")
-            if family is not None and rule.info.family != family:
-                raise GenerationError(
-                    f"Rule {rule_id!r} is in family {rule.info.family!r}, not sampled family {family!r}."
-                )
-            return rule, mode
+            if requested_mode is not None:
+                if not rule.can_generate(requested_mode):
+                    raise GenerationError(
+                        f"Rule {rule_id!r} does not support mode {requested_mode.value!r}."
+                    )
+                return rule, requested_mode
+            return rule, self._sample_mode_for_rule(rule, rng)
 
+        if requested_mode is not None:
+            return self._select_rule_for_mode(requested_mode, family=None, rng=rng)
+
+        mode, family = self._sample_mode_from_mix(rng)
+        return self._select_rule_for_mode(mode, family=family, rng=rng)
+
+    def _select_rule_for_mode(
+        self,
+        mode: GenerationMode,
+        *,
+        family: str | None,
+        rng: RandomSource,
+    ) -> tuple[RuleProgram, GenerationMode]:
         rules = [
             rule
             for rule in self.registry.enabled_rules(self.config)
@@ -108,12 +157,22 @@ class OnlineExampleGenerator:
             family_detail = f" and family {family!r}" if family is not None else ""
             raise GenerationError(f"No enabled rules support mode {mode.value!r}{family_detail}.")
 
-        return self.rng.weighted_choice(tuple((rule, rule.info.weight) for rule in rules)), mode
+        return rng.weighted_choice(tuple((rule, rule.info.weight) for rule in rules)), mode
 
-    def _sample_mode_from_mix(self) -> tuple[GenerationMode, str | None]:
-        mix = _generation_mix(self.config)
-        key = self.rng.weighted_choice(tuple(mix.items()))
+    def _sample_mode_from_mix(self, rng: RandomSource) -> tuple[GenerationMode, str | None]:
+        key = rng.weighted_choice(tuple(_generation_mix(self.config).items()))
         return _mode_and_family_from_mix_key(key)
+
+    def _sample_mode_for_rule(self, rule: RuleProgram, rng: RandomSource) -> GenerationMode:
+        mode_weights: dict[GenerationMode, float] = {}
+        for key, weight in _generation_mix(self.config).items():
+            mode, _family = _mode_and_family_from_mix_key(key)
+            if rule.can_generate(mode):
+                mode_weights[mode] = mode_weights.get(mode, 0.0) + weight
+
+        if not mode_weights:
+            raise GenerationError(f"Rule {rule.info.rule_id!r} has no supported generation mode in generation.mix.")
+        return rng.weighted_choice(tuple(mode_weights.items()))
 
     def _validate_example(
         self,
@@ -162,33 +221,86 @@ def _coerce_mode(mode: GenerationMode | str) -> GenerationMode:
     return GenerationMode(str(mode))
 
 
+def _resolve_seed(config: Mapping[str, Any], seed: int | None) -> int:
+    if seed is not None:
+        return int(seed)
+    generation = config.get("generation", {}) if isinstance(config, Mapping) else {}
+    raw_seed = generation.get("seed", 0) if isinstance(generation, Mapping) else 0
+    try:
+        return int(raw_seed)
+    except (TypeError, ValueError):
+        return 0
+
+
 def _generation_mix(config: Mapping[str, Any]) -> dict[str, float]:
     generation = config.get("generation", {}) if isinstance(config, Mapping) else {}
     raw_mix = generation.get("mix", {}) if isinstance(generation, Mapping) else {}
     if not isinstance(raw_mix, Mapping) or not raw_mix:
-        return {"positive": 1.0}
+        return {
+            "orthography_contextual": 0.35,
+            "punctuation": 0.40,
+            "clean_identity": 0.15,
+            "hard_negative": 0.10,
+        }
 
     mix: dict[str, float] = {}
     for key, raw_weight in raw_mix.items():
+        normalized_key = _normalize_mix_key(str(key))
         weight = float(raw_weight)
         if weight < 0:
             raise ValueError(f"Generation mix weight must be non-negative for {key!r}.")
         if weight > 0:
-            mix[str(key)] = weight
+            mix[normalized_key] = mix.get(normalized_key, 0.0) + weight
     if not mix:
         raise ValueError("At least one generation mix weight must be positive.")
     return mix
 
 
-def _mode_and_family_from_mix_key(key: str) -> tuple[GenerationMode, str | None]:
+def _normalize_mix_key(key: str) -> str:
     normalized = key.strip().lower()
+    aliases = {
+        "contextual_orthography": "orthography_contextual",
+    }
+    normalized = aliases.get(normalized, normalized)
+    allowed = {
+        "orthography_contextual",
+        "punctuation",
+        "clean_identity",
+        "hard_negative",
+    }
+    if normalized not in allowed:
+        raise ValueError(f"Unsupported generation mix group: {key!r}.")
+    return normalized
+
+
+def _mode_and_family_from_mix_key(key: str) -> tuple[GenerationMode, str | None]:
+    normalized = _normalize_mix_key(key)
+    if normalized == "orthography_contextual":
+        return GenerationMode.POSITIVE, "orthography_contextual"
+    if normalized == "punctuation":
+        return GenerationMode.POSITIVE, "punctuation"
     if normalized == "clean_identity":
         return GenerationMode.CLEAN_IDENTITY, None
     if normalized == "hard_negative":
         return GenerationMode.HARD_NEGATIVE, None
-    if normalized == "positive":
-        return GenerationMode.POSITIVE, None
-    return GenerationMode.POSITIVE, key
+    raise ValueError(f"Unsupported generation mix group: {key!r}.")
+
+
+def _with_generation_metadata(
+    example: GeneratedExample,
+    *,
+    generation_index: int | None,
+    generation_seed: int | None,
+) -> GeneratedExample:
+    if generation_index is None and generation_seed is None:
+        return example
+
+    example.metadata = dict(example.metadata)
+    if generation_index is not None:
+        example.metadata["generation_index"] = generation_index
+    if generation_seed is not None:
+        example.metadata["generation_seed"] = generation_seed
+    return GeneratedExample.from_dict(example.to_dict())
 
 
 __all__ = ["GenerationError", "OnlineExampleGenerator"]
