@@ -20,6 +20,7 @@ from src.evaluation.direct_metrics import (
 from src.progress import ProgressReporter
 from src.runtime.corrector import Corrector
 from src.runtime.edit_realizer import apply_gap_labels, apply_token_edit_labels
+from src.runtime.orthographic_lexicon import OrthographicCorrectionLexicon
 from src.schema import GeneratedExample, RuntimeEdit
 from src.schema.serialization import read_jsonl_examples
 
@@ -45,6 +46,7 @@ def evaluate_corrector(
         flush=True,
     )
     corrector = Corrector.from_config(config, strict_neural=True, allow_fallback=allow_fallback)
+    orthographic_lexicon = OrthographicCorrectionLexicon.from_config(config)
     backend_metadata = _corrector_backend_metadata(corrector)
     if _neural_runtime_enabled(config) and backend_metadata["backend_kind"] != "direct_neural" and not allow_fallback:
         raise RuntimeError(
@@ -79,7 +81,7 @@ def evaluate_corrector(
             )
 
         predicted_text = result.corrected_text
-        gold_edits = _gold_runtime_edits(example)
+        gold_edits = gold_runtime_edits(example, orthographic_lexicon)
         predicted_edits = list(result.edits)
         rows.append(
             {
@@ -194,15 +196,29 @@ def _summary_metrics(
     }
 
 
-def _gold_runtime_edits(example: GeneratedExample) -> list[RuntimeEdit]:
+def gold_runtime_edits(
+    example: GeneratedExample,
+    orthographic_lexicon: OrthographicCorrectionLexicon,
+) -> list[RuntimeEdit]:
     confidences = [1.0] * len(example.source_tokens)
+    token_labels = [
+        "KEEP" if str(label) == "DICT_REPLACE" else str(label)
+        for label in example.token_edit_labels
+    ]
     _token_text, token_edits = apply_token_edit_labels(
         example.source_text,
         example.source_tokens,
-        example.token_edit_labels,
+        token_labels,
         confidences,
         threshold=0.0,
         rule_ids=example.rule_ids,
+    )
+    token_edits.extend(
+        edit
+        for index, label in enumerate(example.token_edit_labels)
+        if str(label) == "DICT_REPLACE"
+        for edit in [_gold_dict_replace_edit(example, index, orthographic_lexicon)]
+        if edit is not None
     )
     _gap_text, gap_edits = apply_gap_labels(
         example.source_text,
@@ -213,6 +229,58 @@ def _gold_runtime_edits(example: GeneratedExample) -> list[RuntimeEdit]:
         rule_ids=example.rule_ids,
     )
     return [*token_edits, *gap_edits]
+
+
+def _gold_dict_replace_edit(
+    example: GeneratedExample,
+    index: int,
+    orthographic_lexicon: OrthographicCorrectionLexicon,
+) -> RuntimeEdit | None:
+    if index >= len(example.source_tokens):
+        return None
+    token = example.source_tokens[index]
+    source = example.source_text[token.start : token.end]
+    rule_id = _gold_rule_id(example, index)
+    replacement = _metadata_replacement(example.metadata, source)
+    if replacement is None:
+        entries = orthographic_lexicon.lookup(source, rule_id=rule_id)
+        if len(entries) != 1:
+            return None
+        replacement = _match_case(source, entries[0].target)
+    if not replacement or replacement == source:
+        return None
+    return RuntimeEdit(
+        start=token.start,
+        end=token.end,
+        source=source,
+        replacement=replacement,
+        edit_type="spelling",
+        rule_id=rule_id,
+        confidence=1.0,
+    )
+
+
+def _metadata_replacement(metadata: Mapping[str, Any], source: str) -> str | None:
+    raw = metadata.get("replacement")
+    if not isinstance(raw, Mapping):
+        return None
+    replacement_source = str(raw.get("source") or "")
+    replacement_target = str(raw.get("target") or "")
+    if replacement_source != source or not replacement_target:
+        return None
+    return _match_case(source, replacement_target)
+
+
+def _gold_rule_id(example: GeneratedExample, index: int) -> str:
+    if index < len(example.rule_ids) and example.rule_ids[index] not in {"", "none"}:
+        return str(example.rule_ids[index])
+    return str(example.primary_rule_id or "none")
+
+
+def _match_case(source: str, replacement: str) -> str:
+    if source[:1].isupper():
+        return replacement[:1].upper() + replacement[1:]
+    return replacement
 
 
 def _write_outputs(
@@ -436,4 +504,4 @@ if __name__ == "__main__":
     raise SystemExit(main())
 
 
-__all__ = ["evaluate_corrector"]
+__all__ = ["evaluate_corrector", "gold_runtime_edits"]

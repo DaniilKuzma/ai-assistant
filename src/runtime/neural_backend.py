@@ -57,6 +57,7 @@ class DirectNeuralBackend:
         if not heads_path.exists():
             raise FileNotFoundError(f"Direct edit heads artifact is missing: {heads_path}")
         _validate_architecture_marker(heads_dir, config)
+        _validate_label_maps(heads_dir)
 
         model_config = config.get("model", {}) if isinstance(config, Mapping) else {}
         lora = model_config.get("lora", {}) if isinstance(model_config, Mapping) else {}
@@ -201,6 +202,33 @@ def _validate_architecture_marker(heads_dir: Path, config: Mapping[str, Any]) ->
     allow_debug_model = bool(runtime.get("allow_debug_model", False)) if isinstance(runtime, Mapping) else False
     if bool(marker.get("debug_model", False)) and not allow_debug_model:
         raise RuntimeError("Refusing to load debug_model direct edit heads without allow_debug_model=true.")
+
+
+def _validate_label_maps(heads_dir: Path) -> None:
+    labels_path = heads_dir / "labels.json"
+    if not labels_path.exists():
+        raise RuntimeError(f"Direct edit label schema marker is missing: {labels_path}")
+    try:
+        labels = json.loads(labels_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"Direct edit label schema marker is invalid: {labels_path}") from exc
+
+    expected = {
+        "token_id_to_label": list(TOKEN_ID_TO_LABEL),
+        "gap_id_to_label": list(GAP_ID_TO_LABEL),
+        "rule_id_to_label": list(RULE_ID_TO_LABEL),
+    }
+    mismatches = [
+        name
+        for name, expected_labels in expected.items()
+        if labels.get(name) != expected_labels
+    ]
+    if mismatches:
+        detail = ", ".join(mismatches)
+        raise RuntimeError(
+            f"Direct edit label schema mismatch in {labels_path}: {detail}. "
+            "Re-train direct heads with the current label schema before loading."
+        )
 
 
 def _selected_epoch(heads_dir: Path) -> int | None:

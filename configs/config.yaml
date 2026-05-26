@@ -15,7 +15,7 @@ model:
 generation:
   mode: online_ast
   seed: 13
-  samples_per_epoch: 200000
+  samples_per_epoch: 50000
   frozen_eval:
     val_examples: 5000
     test_examples: 5000
@@ -50,7 +50,7 @@ training:
   mode: online
   batch_size: 32
   eval_batch_size: 64
-  epochs: 3
+  epochs: 2
   learning_rate: 5.0e-5
   weight_decay: 0.01
   warmup_ratio: 0.06

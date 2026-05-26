@@ -1,0 +1,34 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+from src.config.load_config import load_config
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_training_config_uses_50k_online_ast_morphemic_generation() -> None:
+    config = load_config(ROOT / "configs" / "config.yaml")
+    generation = config["generation"]
+    training = config["training"]
+
+    assert generation["samples_per_epoch"] == 50_000
+    assert training["epochs"] == 3
+    assert training["batch_size"] == 32
+    assert generation["samples_per_epoch"] * training["epochs"] == 150_000
+    assert generation["mode"] == "online_ast"
+    assert "orthography_morphemic" in generation["enabled_rule_groups"]
+    assert generation["orthography_morphemic"]["enabled"] is True
+
+
+def test_config_does_not_reference_legacy_candidate_dataset_pipeline() -> None:
+    raw_config = (ROOT / "configs" / "config.yaml").read_text(encoding="utf-8")
+
+    for legacy_key in (
+        "clean_sentence_pool",
+        "correction_dataset",
+        "candidate_opportunity",
+        "rule_lab",
+    ):
+        assert legacy_key not in raw_config

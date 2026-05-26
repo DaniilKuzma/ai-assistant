@@ -6,7 +6,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-from src.evaluation.evaluate import evaluate_corrector
+from src.evaluation.evaluate import evaluate_corrector, gold_runtime_edits
+from src.runtime.orthographic_lexicon import OrthographicCorrectionLexicon
 from src.schema import CorrectionResult, GeneratedExample, RuntimeEdit, WordToken
 from src.schema.serialization import write_jsonl_examples
 
@@ -146,6 +147,29 @@ def test_direct_evaluation_allows_fallback_only_when_explicit(monkeypatch, tmp_p
 
     assert summary["backend_kind"] == "deterministic_fallback"
     assert summary_from_disk["backend_kind"] == "deterministic_fallback"
+
+
+def test_gold_runtime_edits_uses_orthographic_lexicon_for_dict_replace() -> None:
+    source = "\u0412 \u0441\u043b\u043e\u0432\u0430\u0440\u0435 \u0443\u043a\u0430\u0437\u0430\u043d\u043e \u0441\u043b\u043e\u0432\u043e \u00ab\u043a\u043e\u0436\u0435\u043d\u043d\u044b\u0439\u00bb."
+    target = "\u0412 \u0441\u043b\u043e\u0432\u0430\u0440\u0435 \u0443\u043a\u0430\u0437\u0430\u043d\u043e \u0441\u043b\u043e\u0432\u043e \u00ab\u043a\u043e\u0436\u0430\u043d\u044b\u0439\u00bb."
+    example = GeneratedExample(
+        source_text=source,
+        target_text=target,
+        source_tokens=_tokens(source),
+        token_edit_labels=["KEEP", "KEEP", "KEEP", "KEEP", "DICT_REPLACE"],
+        gap_labels=["NONE", "NONE", "NONE", "NONE", "NONE"],
+        rule_ids=["none", "none", "none", "none", "suffix_enn_yan"],
+        primary_rule_id="suffix_enn_yan",
+        mode="positive",
+        explanation_ids=["suffix_enn_yan"],
+        metadata={},
+    )
+
+    edits = gold_runtime_edits(example, OrthographicCorrectionLexicon.default())
+
+    assert [(edit.source, edit.replacement, edit.rule_id) for edit in edits] == [
+        ("\u043a\u043e\u0436\u0435\u043d\u043d\u044b\u0439", "\u043a\u043e\u0436\u0430\u043d\u044b\u0439", "suffix_enn_yan")
+    ]
 
 
 def test_manual_pair_dataset_evaluator_writes_tag_metrics(monkeypatch, tmp_path: Path) -> None:

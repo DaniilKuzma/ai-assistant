@@ -312,16 +312,7 @@ def test_comma_homogeneous_uses_distinct_object_lemmas() -> None:
     ]
     duplicate_objects = []
     for example in examples:
-        verb_index = next(
-            index
-            for index, token in enumerate(example.source_tokens)
-            if token.lemma in {"проверить", "прочитать", "подписать", "открыть"}
-        )
-        object_lemmas = [
-            token.lemma
-            for token in example.source_tokens[verb_index + 1 :]
-            if token.pos == "NOUN"
-        ]
+        object_lemmas = list(example.metadata["homogeneous_object_lemmas"])
         if len(object_lemmas) != len(set(object_lemmas)):
             duplicate_objects.append((example.source_text, object_lemmas))
 
