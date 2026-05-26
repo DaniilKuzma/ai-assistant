@@ -194,10 +194,11 @@ class Corrector:
             )
             if candidate_edits and all(self.scope_guard.validate_edit(text, edit) for edit in candidate_edits):
                 accepted[index] = label
-                consumed.add(index)
-                if _label_consumes_next(label) and index + 1 < len(tokens):
-                    accepted[index + 1] = "SKIP_MERGED"
-                    consumed.add(index + 1)
+                edit_consumed = _accepted_consumed_indexes(tokens, index, label, candidate_edits)
+                consumed.update(edit_consumed)
+                for consumed_index in edit_consumed:
+                    if consumed_index != index and consumed_index < len(accepted):
+                        accepted[consumed_index] = "SKIP_MERGED"
         return accepted
 
     def _gate_gap_labels(
@@ -263,6 +264,25 @@ def _label_consumes_next(label: str) -> bool:
         "HYPHENATE_KOE",
         "HYPHENATE_PO_ADVERB",
     }
+
+
+def _accepted_consumed_indexes(
+    tokens: Sequence[Any],
+    index: int,
+    label: str,
+    edits: Sequence[RuntimeEdit],
+) -> set[int]:
+    if label == "SPAN_REPLACE_BY_LEXICON" and edits:
+        edit = edits[0]
+        return {
+            position
+            for position in range(index, len(tokens))
+            if getattr(tokens[position], "start", -1) >= getattr(tokens[index], "start", -1)
+            and getattr(tokens[position], "end", -1) <= edit.end
+        }
+    if _label_consumes_next(label) and index + 1 < len(tokens):
+        return {index, index + 1}
+    return {index}
 
 
 __all__ = ["CorrectionResult", "Corrector", "RuntimeEdit"]

@@ -46,6 +46,7 @@ def test_debug_model_smoke_training_saves_heads_and_summary(monkeypatch, tmp_pat
     }
     config["paths"] = {
         **config.get("paths", {}),
+        "checkpoint_output_dir": str(tmp_path / "models" / "checkpoints"),
         "adapter_output_dir": str(tmp_path / "models" / "adapters"),
         "heads_output_dir": str(tmp_path / "models" / "heads"),
         "generated_eval_dir": str(tmp_path / "generated_eval"),

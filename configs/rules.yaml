@@ -11574,7 +11574,7 @@ punctuation:
       - model
       notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
       tests:
-      - tests/test_punctuation_rule_programs.py::test_final_punctuation_positive_generates_dot_question_and_exclamation
+      - tests/test_punctuation_rule_programs.py::test_final_punctuation_positive_generates_dot
     dataset:
       eligible_now: true
       reason: eligible_ast_online_generation

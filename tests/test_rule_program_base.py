@@ -43,7 +43,14 @@ class DummyRule(RuleProgram):
             primary_rule_id=self.info.rule_id,
             mode=mode.value,
             explanation_ids=["dummy_explanation"],
-            metadata={"rule": self.info.rule_id},
+            metadata={
+                "rule": self.info.rule_id,
+                "uses_construction_bank": True,
+                "construction_id": "simple_ne_verb_check_document",
+                "construction_family": "simple_transitive",
+                "uses_safety_clauses": False,
+                "safety_clauses": [],
+            },
         )
 
 

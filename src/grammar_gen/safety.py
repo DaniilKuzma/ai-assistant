@@ -134,6 +134,7 @@ SINGLE_TOKEN_EDIT_LABELS = frozenset(
         "FIX_TSYA_TO_TTSYA",
         "FIX_TTSYA_TO_TSYA",
         "DICT_REPLACE",
+        "SPAN_REPLACE_BY_LEXICON",
     }
 )
 

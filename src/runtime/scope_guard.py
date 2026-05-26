@@ -10,6 +10,7 @@ from src.schema import RuntimeEdit
 
 RUSSIAN_WORD_RE = re.compile(r"[А-Яа-яЁё]+", re.UNICODE)
 ALLOWED_EDIT_TYPES = frozenset({"spelling", "split_join", "hyphen", "punctuation", "casing"})
+MAX_LOCAL_SPELLING_WORDS = 4
 
 
 @dataclass(frozen=True)
@@ -40,7 +41,7 @@ class ScopeGuard:
         if edit.edit_type == "punctuation":
             return not _adds_word(edit)
         if edit.edit_type == "spelling":
-            return bool(edit.source) and bool(edit.replacement)
+            return _local_spelling_replacement_is_safe(edit)
         return True
 
     def validate_result(
@@ -80,11 +81,27 @@ def _adds_word(edit: RuntimeEdit) -> bool:
 
 
 def _letters_only(value: str) -> str:
-    return "".join(RUSSIAN_WORD_RE.findall(value.lower()))
+    return _normalize_yo("".join(RUSSIAN_WORD_RE.findall(value.lower())))
 
 
 def _word_sequence(value: str) -> list[str]:
     return RUSSIAN_WORD_RE.findall(value.lower())
+
+
+def _normalize_yo(value: str) -> str:
+    return value.replace("ё", "е")
+
+
+def _local_spelling_replacement_is_safe(edit: RuntimeEdit) -> bool:
+    if not edit.source or not edit.replacement:
+        return False
+    if len(_word_sequence(edit.source)) > MAX_LOCAL_SPELLING_WORDS:
+        return False
+    if len(_word_sequence(edit.replacement)) > MAX_LOCAL_SPELLING_WORDS:
+        return False
+    if len(edit.replacement) > max(len(edit.source) + 16, int(len(edit.source) * 1.75)):
+        return False
+    return True
 
 
 def _semantic_word_delta_too_large(source_text: str, corrected_text: str, edits: Sequence[RuntimeEdit]) -> bool:

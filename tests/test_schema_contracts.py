@@ -42,11 +42,15 @@ def test_vocab_ids_are_stable() -> None:
     assert token_id_to_label(0) == "KEEP"
     assert token_label_to_id("DICT_REPLACE") == 19
     assert token_id_to_label(19) == "DICT_REPLACE"
+    assert token_label_to_id("SPAN_REPLACE_BY_LEXICON") == 20
+    assert token_id_to_label(20) == "SPAN_REPLACE_BY_LEXICON"
 
     assert gap_label_to_id("NONE") == 0
     assert gap_id_to_label(0) == "NONE"
     assert gap_label_to_id("ELLIPSIS") == 8
     assert gap_id_to_label(8) == "ELLIPSIS"
+    assert gap_label_to_id("DELETE_PUNCTUATION") == 9
+    assert gap_id_to_label(9) == "DELETE_PUNCTUATION"
 
     assert rule_tag_to_id("none") == 0
     assert rule_id_to_label(0) == "none"

@@ -37,6 +37,20 @@ def _write_legacy_rule_prefix_label_maps(path: Path) -> None:
     )
 
 
+def _write_legacy_token_gap_prefix_label_maps(path: Path) -> None:
+    path.write_text(
+        __import__("json").dumps(
+            {
+                "token_id_to_label": list(TOKEN_ID_TO_LABEL[:-1]),
+                "gap_id_to_label": list(GAP_ID_TO_LABEL[:-1]),
+                "rule_id_to_label": list(RULE_ID_TO_LABEL),
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+
 def test_ensure_pytorch_transformers_backend_disables_tf_and_flax(monkeypatch):
     from src.model.encoder import ensure_pytorch_transformers_backend
 
@@ -253,7 +267,7 @@ def test_direct_neural_backend_loads_selected_checkpoint_inside_heads_latest(mon
     assert backend.selected_epoch == 2
 
 
-def test_direct_neural_backend_skips_legacy_rule_head_when_rule_labels_were_extended(monkeypatch, tmp_path):
+def test_direct_neural_backend_skips_legacy_rule_head_when_saved_rule_ids_were_extended(monkeypatch, tmp_path):
     from src.runtime import neural_backend
 
     heads_dir = tmp_path / "heads"
@@ -316,6 +330,98 @@ def test_direct_neural_backend_skips_legacy_rule_head_when_rule_labels_were_exte
     assert loaded_state["strict"] is False
     assert "rule.weight" not in loaded_state["state"]
     assert "rule.bias" not in loaded_state["state"]
+
+
+def test_direct_neural_backend_partially_loads_legacy_token_and_gap_heads(monkeypatch, tmp_path):
+    from src.runtime import neural_backend
+
+    heads_dir = tmp_path / "heads"
+    adapter_dir = tmp_path / "adapter"
+    heads_dir.mkdir()
+    adapter_dir.mkdir()
+    (heads_dir / "heads.pt").write_bytes(b"fake-heads")
+    _write_legacy_token_gap_prefix_label_maps(heads_dir / "labels.json")
+    (heads_dir / "architecture.json").write_text(
+        '{"architecture": "direct_edit_tagger_v1", "debug_model": false}\n',
+        encoding="utf-8",
+    )
+
+    import torch
+
+    token_count = len(TOKEN_ID_TO_LABEL)
+    gap_count = len(GAP_ID_TO_LABEL)
+    rule_count = len(RULE_ID_TO_LABEL)
+    hidden_size = 3
+    gap_hidden_size = 5
+    loaded_state = {}
+
+    class FakeHeads:
+        def state_dict(self):
+            return {
+                "token_edit.weight": torch.zeros(token_count, hidden_size),
+                "token_edit.bias": torch.zeros(token_count),
+                "gap_punctuation.weight": torch.zeros(gap_count, gap_hidden_size),
+                "gap_punctuation.bias": torch.zeros(gap_count),
+                "rule.weight": torch.zeros(rule_count, hidden_size),
+                "rule.bias": torch.zeros(rule_count),
+                "token_confidence.weight": torch.zeros(1, hidden_size),
+                "token_confidence.bias": torch.zeros(1),
+                "gap_confidence.weight": torch.zeros(1, gap_hidden_size),
+                "gap_confidence.bias": torch.zeros(1),
+            }
+
+        def load_state_dict(self, state, strict=True):
+            loaded_state["state"] = state
+            loaded_state["strict"] = strict
+
+    class FakeModule:
+        def __init__(self) -> None:
+            self.encoder = "plain-encoder"
+            self.heads = FakeHeads()
+
+        def eval(self) -> None:
+            pass
+
+    class FakeDirectEditTaggerModel:
+        def __init__(self, config) -> None:
+            self.module = FakeModule()
+
+    legacy_state = {
+        "token_edit.weight": torch.ones(token_count - 1, hidden_size),
+        "token_edit.bias": torch.ones(token_count - 1),
+        "gap_punctuation.weight": torch.full((gap_count - 1, gap_hidden_size), 2.0),
+        "gap_punctuation.bias": torch.full((gap_count - 1,), 2.0),
+        "rule.weight": torch.full((rule_count, hidden_size), 3.0),
+        "rule.bias": torch.full((rule_count,), 3.0),
+        "token_confidence.weight": torch.full((1, hidden_size), 4.0),
+        "token_confidence.bias": torch.full((1,), 4.0),
+        "gap_confidence.weight": torch.full((1, gap_hidden_size), 5.0),
+        "gap_confidence.bias": torch.full((1,), 5.0),
+    }
+
+    monkeypatch.setattr(neural_backend, "load_tokenizer", lambda config: "tokenizer")
+    monkeypatch.setattr(neural_backend, "DirectEditTaggerModel", FakeDirectEditTaggerModel)
+    monkeypatch.setattr(neural_backend, "_load_peft_adapter", lambda encoder, path, **kwargs: encoder)
+    monkeypatch.setattr(torch, "load", lambda path, map_location=None: legacy_state)
+
+    backend = neural_backend.DirectNeuralBackend.from_config(
+        {
+            "model": {"encoder": "fake", "lora": {"enabled": True}},
+            "paths": {
+                "adapter_output_dir": str(adapter_dir),
+                "heads_output_dir": str(heads_dir),
+            },
+        }
+    )
+
+    state = loaded_state["state"]
+    assert backend.rule_head_loaded is True
+    assert loaded_state["strict"] is False
+    assert torch.equal(state["token_edit.weight"][:-1], legacy_state["token_edit.weight"])
+    assert torch.equal(state["gap_punctuation.weight"][:-1], legacy_state["gap_punctuation.weight"])
+    assert torch.equal(state["rule.weight"], legacy_state["rule.weight"])
+    assert state["token_edit.bias"][-1].item() <= -1000.0
+    assert state["gap_punctuation.bias"][-1].item() <= -1000.0
 
 
 def test_direct_neural_backend_moves_runtime_model_to_cuda_when_available(monkeypatch, tmp_path):

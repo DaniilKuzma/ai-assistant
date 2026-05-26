@@ -254,14 +254,19 @@ def _validate_label_maps(heads_dir: Path) -> dict[str, bool]:
         "gap_id_to_label": list(GAP_ID_TO_LABEL),
         "rule_id_to_label": list(RULE_ID_TO_LABEL),
     }
-    mismatches = [
-        name
-        for name, expected_labels in expected.items()
-        if name != "rule_id_to_label" and labels.get(name) != expected_labels
-    ]
-    rule_labels = labels.get("rule_id_to_label")
-    rule_head_compatible = rule_labels == expected["rule_id_to_label"]
-    if not rule_head_compatible and not _is_compatible_rule_label_prefix(rule_labels, expected["rule_id_to_label"]):
+    saved_token_ids = labels.get("token_id_to_label")
+    token_head_compatible = saved_token_ids == expected["token_id_to_label"]
+    saved_gap_ids = labels.get("gap_id_to_label")
+    gap_head_compatible = saved_gap_ids == expected["gap_id_to_label"]
+    saved_rule_ids = labels.get("rule_id_to_label")
+    rule_head_compatible = saved_rule_ids == expected["rule_id_to_label"]
+
+    mismatches = []
+    if not token_head_compatible and not _has_compatible_saved_label_prefix(saved_token_ids, expected["token_id_to_label"]):
+        mismatches.append("token_id_to_label")
+    if not gap_head_compatible and not _has_compatible_saved_label_prefix(saved_gap_ids, expected["gap_id_to_label"]):
+        mismatches.append("gap_id_to_label")
+    if not rule_head_compatible and not _has_compatible_saved_label_prefix(saved_rule_ids, expected["rule_id_to_label"]):
         mismatches.append("rule_id_to_label")
     if mismatches:
         detail = ", ".join(mismatches)
@@ -269,25 +274,102 @@ def _validate_label_maps(heads_dir: Path) -> dict[str, bool]:
             f"Direct edit label schema mismatch in {labels_path}: {detail}. "
             "Re-train direct heads with the current label schema before loading."
         )
-    return {"rule_head_compatible": rule_head_compatible}
+    return {
+        "token_head_compatible": token_head_compatible,
+        "token_saved_label_count": len(saved_token_ids) if isinstance(saved_token_ids, list) else 0,
+        "gap_head_compatible": gap_head_compatible,
+        "gap_saved_label_count": len(saved_gap_ids) if isinstance(saved_gap_ids, list) else 0,
+        "rule_head_compatible": rule_head_compatible,
+    }
 
 
-def _is_compatible_rule_label_prefix(saved: Any, expected: list[str]) -> bool:
+def _has_compatible_saved_label_prefix(saved: Any, expected: list[str]) -> bool:
     return isinstance(saved, list) and len(saved) < len(expected) and saved == expected[: len(saved)]
 
 
 def _load_heads_state(heads: Any, state: Mapping[str, Any], label_compatibility: Mapping[str, bool]) -> bool:
-    if bool(label_compatibility.get("rule_head_compatible", True)):
+    token_compatible = bool(label_compatibility.get("token_head_compatible", True))
+    gap_compatible = bool(label_compatibility.get("gap_head_compatible", True))
+    rule_compatible = bool(label_compatibility.get("rule_head_compatible", True))
+    if token_compatible and gap_compatible and rule_compatible:
         heads.load_state_dict(state)
         return True
 
-    compatible_state = {
-        key: value
-        for key, value in state.items()
-        if not str(key).startswith("rule.")
-    }
+    compatible_state = dict(state)
+    if not token_compatible or not gap_compatible:
+        compatible_state = _partial_label_head_state(heads, compatible_state, label_compatibility)
+    if not rule_compatible:
+        compatible_state = {
+            key: value
+            for key, value in compatible_state.items()
+            if not str(key).startswith("rule.")
+        }
     heads.load_state_dict(compatible_state, strict=False)
-    return False
+    return rule_compatible
+
+
+def _partial_label_head_state(
+    heads: Any,
+    state: Mapping[str, Any],
+    label_compatibility: Mapping[str, Any],
+) -> dict[str, Any]:
+    if not hasattr(heads, "state_dict"):
+        return dict(state)
+    current = heads.state_dict()
+    result = dict(state)
+    if not bool(label_compatibility.get("token_head_compatible", True)):
+        _copy_prefix_head_rows(
+            result,
+            current,
+            "token_edit",
+            int(label_compatibility.get("token_saved_label_count", 0) or 0),
+        )
+    if not bool(label_compatibility.get("gap_head_compatible", True)):
+        _copy_prefix_head_rows(
+            result,
+            current,
+            "gap_punctuation",
+            int(label_compatibility.get("gap_saved_label_count", 0) or 0),
+        )
+    return result
+
+
+def _copy_prefix_head_rows(
+    result: dict[str, Any],
+    current: Mapping[str, Any],
+    prefix: str,
+    saved_count: int,
+) -> None:
+    weight_key = f"{prefix}.weight"
+    bias_key = f"{prefix}.bias"
+    current_weight = current.get(weight_key)
+    saved_weight = result.get(weight_key)
+    current_bias = current.get(bias_key)
+    saved_bias = result.get(bias_key)
+
+    if current_weight is not None and saved_weight is not None and hasattr(current_weight, "clone"):
+        updated_weight = current_weight.clone()
+        rows = _compatible_row_count(saved_weight, updated_weight, saved_count)
+        if rows > 0 and tuple(saved_weight.shape[1:]) == tuple(updated_weight.shape[1:]):
+            updated_weight[:rows] = saved_weight[:rows]
+            if rows < updated_weight.shape[0]:
+                updated_weight[rows:] = 0
+            result[weight_key] = updated_weight
+
+    if current_bias is not None and saved_bias is not None and hasattr(current_bias, "clone"):
+        updated_bias = current_bias.clone()
+        rows = _compatible_row_count(saved_bias, updated_bias, saved_count)
+        if rows > 0:
+            updated_bias[:rows] = saved_bias[:rows]
+            if rows < updated_bias.shape[0]:
+                updated_bias[rows:] = -10000.0
+            result[bias_key] = updated_bias
+
+
+def _compatible_row_count(saved: Any, current: Any, saved_count: int) -> int:
+    if not hasattr(saved, "shape") or not hasattr(current, "shape"):
+        return 0
+    return max(0, min(int(saved.shape[0]), int(current.shape[0]), saved_count))
 
 
 def _selected_epoch(heads_dir: Path) -> int | None:

@@ -5,6 +5,8 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+import yaml
+
 from src.orthography_gen.lexeme_cards import LexemeCard, load_lexeme_cards
 from src.orthography_gen.rule_specs import DEFAULT_ORTHOGRAPHY_DIR
 
@@ -17,9 +19,12 @@ class CorrectionEntry:
     source: str
     target: str
     rule_id: str
-    explanation_id: str
-    context_class: str
-    ambiguity_level: str
+    explanation_id: str = ""
+    context_class: str = ""
+    ambiguity_level: str = "unambiguous"
+    operation: str = "dict_replace"
+    sub_rule_id: str = ""
+    confidence: float = 1.0
 
 
 class OrthographicCorrectionLexicon:
@@ -42,7 +47,17 @@ class OrthographicCorrectionLexicon:
         base = Path(str(lexicon_dir))
         if not base.is_absolute():
             base = PROJECT_ROOT / base
-        return cls.from_dir(base / "orthography")
+        return cls.from_root(base)
+
+    @classmethod
+    def from_root(cls, path: str | Path) -> "OrthographicCorrectionLexicon":
+        base = Path(path)
+        entries: list[CorrectionEntry] = []
+        orthography_dir = base / "orthography"
+        if orthography_dir.exists():
+            entries.extend(_entries_from_cards(load_lexeme_cards(orthography_dir)))
+        entries.extend(_entries_from_layer_corrections(base / "layers"))
+        return cls(entries)
 
     @classmethod
     def from_dir(cls, path: str | Path) -> "OrthographicCorrectionLexicon":
@@ -57,12 +72,18 @@ class OrthographicCorrectionLexicon:
         *,
         rule_id: str | None = None,
         context_class: str | None = None,
+        operation: str | None = None,
+        sub_rule_id: str | None = None,
     ) -> list[CorrectionEntry]:
         entries = list(self._mapping.get(source.lower(), ()))
         if rule_id and rule_id != "none":
             entries = [entry for entry in entries if entry.rule_id == rule_id]
         if context_class:
             entries = [entry for entry in entries if entry.context_class == context_class]
+        if operation:
+            entries = [entry for entry in entries if entry.operation == operation]
+        if sub_rule_id:
+            entries = [entry for entry in entries if entry.sub_rule_id == sub_rule_id]
         ambiguity = "ambiguous" if len({entry.target for entry in entries}) > 1 else "unambiguous"
         return [replace(entry, ambiguity_level=ambiguity) for entry in entries]
 
@@ -91,9 +112,70 @@ def _entries_from_cards(cards: Iterable[LexemeCard]) -> list[CorrectionEntry]:
                         explanation_id=card.explanation_id,
                         context_class=str(context.get("context_class") or "") if isinstance(context, Mapping) else "",
                         ambiguity_level="unambiguous",
+                        operation="dict_replace",
+                        sub_rule_id="",
+                        confidence=1.0,
                     )
                 )
     return entries
+
+
+def _entries_from_layer_corrections(path: str | Path) -> list[CorrectionEntry]:
+    base = Path(path)
+    if not base.exists():
+        return []
+
+    entries: list[CorrectionEntry] = []
+    for yaml_path in sorted(base.rglob("corrections.yaml")):
+        with yaml_path.open("r", encoding="utf-8") as handle:
+            raw = yaml.safe_load(handle) or {}
+        raw_entries = raw.get("corrections", []) if isinstance(raw, Mapping) else []
+        if raw_entries is None:
+            continue
+        if not isinstance(raw_entries, list):
+            raise ValueError(f"corrections must be a list: {yaml_path}")
+        entries.extend(_entry_from_layer_mapping(item, yaml_path) for item in raw_entries)
+    return entries
+
+
+def _entry_from_layer_mapping(data: Any, path: Path) -> CorrectionEntry:
+    if not isinstance(data, Mapping):
+        raise ValueError(f"Layer correction entry must be a mapping: {path}")
+    source = _required_layer_str(data, "source", path)
+    target = _required_layer_str(data, "target", path)
+    rule_id = _required_layer_str(data, "rule_id", path)
+    operation = _required_layer_str(data, "operation", path)
+    return CorrectionEntry(
+        source=source,
+        target=target,
+        rule_id=rule_id,
+        operation=operation,
+        explanation_id=str(data.get("explanation_id") or rule_id),
+        sub_rule_id=str(data.get("sub_rule_id") or ""),
+        context_class=str(data.get("context_class") or ""),
+        confidence=_confidence(data.get("confidence")),
+    )
+
+
+def _required_layer_str(data: Mapping[str, Any], key: str, path: Path) -> str:
+    value = str(data.get(key) or "")
+    if not value.strip():
+        raise ValueError(f"Layer correction entry is missing {key!r}: {path}")
+    return value
+
+
+def _confidence(value: Any) -> float:
+    if value is None:
+        return 1.0
+    try:
+        confidence = float(value)
+    except (TypeError, ValueError):
+        return 1.0
+    if confidence < 0.0:
+        return 0.0
+    if confidence > 1.0:
+        return 1.0
+    return confidence
 
 
 __all__ = ["CorrectionEntry", "OrthographicCorrectionLexicon"]

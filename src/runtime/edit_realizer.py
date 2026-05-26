@@ -18,7 +18,9 @@ PUNCTUATION_BY_LABEL = {
     "EXCLAMATION": "!",
     "ELLIPSIS": "…",
 }
-PUNCTUATION_CHARS = set(",.!?:;—…")
+PUNCTUATION_CHARS = set(",;:\u2014-.!?\u2026")
+DELETE_PUNCTUATION_CHARS = PUNCTUATION_CHARS
+MAX_LEXICON_SPAN_TOKENS = 4
 
 TSYA_TO_TTSYA_REPLACEMENTS = {
     "\u043e\u0448\u0438\u0431\u0430\u0435\u0442\u0441\u044f": "\u043e\u0448\u0438\u0431\u0430\u0442\u044c\u0441\u044f",
@@ -84,7 +86,7 @@ def apply_token_edit_labels(
         if edit is None:
             continue
         edits.append(edit)
-        consumed.update(_consumed_indexes(tokens, index, label))
+        consumed.update(_consumed_indexes(tokens, index, label, edit))
 
     return apply_runtime_edits(text, edits), edits
 
@@ -106,6 +108,16 @@ def apply_gap_labels(
             continue
         confidence = float(confidences[index])
         if confidence < threshold:
+            continue
+        if label == "DELETE_PUNCTUATION":
+            edit = _delete_punctuation_edit(
+                text,
+                tokens[index],
+                confidence,
+                _gap_rule_id_for(index, rule_ids, label),
+            )
+            if edit is not None:
+                edits.append(edit)
             continue
         punctuation = PUNCTUATION_BY_LABEL.get(label)
         if punctuation is None:
@@ -199,11 +211,20 @@ def _token_edit_for_label(
     elif label == "DICT_REPLACE":
         if orthographic_lexicon is None:
             return None
-        entries = orthographic_lexicon.lookup(source, rule_id=rule_id)
+        entries = orthographic_lexicon.lookup(source, rule_id=rule_id, operation="dict_replace")
         targets = {entry.target for entry in entries}
         if len(targets) != 1:
             return None
         replacement = _match_case(source, next(iter(targets)))
+    elif label == "SPAN_REPLACE_BY_LEXICON":
+        return _span_replace_by_lexicon_edit(
+            text,
+            tokens,
+            index,
+            confidence,
+            rule_id,
+            orthographic_lexicon,
+        )
 
     if replacement is None or replacement == source:
         return None
@@ -217,6 +238,48 @@ def _token_edit_for_label(
         rule_id=rule_id,
         confidence=confidence,
     )
+
+
+def _span_replace_by_lexicon_edit(
+    text: str,
+    tokens: Sequence[WordToken],
+    index: int,
+    confidence: float,
+    rule_id: str,
+    orthographic_lexicon: OrthographicCorrectionLexicon | None,
+) -> RuntimeEdit | None:
+    if orthographic_lexicon is None or index >= len(tokens):
+        return None
+
+    max_stop = min(len(tokens), index + MAX_LEXICON_SPAN_TOKENS)
+    for stop in range(max_stop, index, -1):
+        start = tokens[index].start
+        end = tokens[stop - 1].end
+        source = text[start:end]
+        entries = [
+            entry
+            for entry in orthographic_lexicon.lookup(source, rule_id=rule_id)
+            if entry.operation != "dict_replace"
+        ]
+        if not entries:
+            continue
+        targets = {entry.target for entry in entries}
+        if len(targets) != 1:
+            return None
+        entry = entries[0]
+        replacement = _match_case(source, entry.target)
+        if not replacement or replacement == source:
+            return None
+        return RuntimeEdit(
+            start=start,
+            end=end,
+            source=source,
+            replacement=replacement,
+            edit_type=_edit_type_for_lexicon_operation(entry.operation),
+            rule_id=rule_id,
+            confidence=confidence,
+        )
+    return None
 
 
 def _gap_edit_for_label(
@@ -240,6 +303,20 @@ def _gap_edit_for_label(
     return RuntimeEdit(token.end, token.end, "", replacement, "punctuation", rule_id, confidence)
 
 
+def _delete_punctuation_edit(
+    text: str,
+    token: WordToken,
+    confidence: float,
+    rule_id: str,
+) -> RuntimeEdit | None:
+    scan = token.end
+    while scan < len(text) and text[scan].isspace():
+        scan += 1
+    if scan >= len(text) or text[scan] not in DELETE_PUNCTUATION_CHARS:
+        return None
+    return RuntimeEdit(scan, scan + 1, text[scan], "", "punctuation", rule_id, confidence)
+
+
 def _rule_id_for(index: int, rule_ids: Sequence[str] | None, label: str) -> str:
     if rule_ids is not None and index < len(rule_ids) and rule_ids[index] not in {"", "none"}:
         return str(rule_ids[index])
@@ -258,7 +335,13 @@ def _gap_rule_id_for(index: int, rule_ids: Sequence[str] | None, label: str) -> 
     return "punctuation"
 
 
-def _consumed_indexes(tokens: Sequence[WordToken], index: int, label: str) -> set[int]:
+def _consumed_indexes(tokens: Sequence[WordToken], index: int, label: str, edit: RuntimeEdit) -> set[int]:
+    if label == "SPAN_REPLACE_BY_LEXICON":
+        return {
+            position
+            for position in range(index, len(tokens))
+            if tokens[position].start >= tokens[index].start and tokens[position].end <= edit.end
+        }
     if label in {
         "MERGE_TAK_ZHE_TO_TAKZHE",
         "MERGE_TO_ZHE_TO_TOZHE",
@@ -299,6 +382,14 @@ def _match_case(source: str, replacement: str) -> str:
     if source[:1].isupper():
         return replacement[:1].upper() + replacement[1:]
     return replacement
+
+
+def _edit_type_for_lexicon_operation(operation: str) -> str:
+    if operation in {"split_join", "split", "merge", "join"}:
+        return "split_join"
+    if operation in {"hyphen", "unhyphen", "dehyphen"}:
+        return "hyphen"
+    return "spelling"
 
 
 def _mapped_replacement(source: str, replacements: dict[str, str]) -> str | None:

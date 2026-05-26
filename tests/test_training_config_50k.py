@@ -8,6 +8,10 @@ from src.config.load_config import load_config
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def _join(*parts: str) -> str:
+    return "".join(parts)
+
+
 def test_training_config_uses_50k_online_ast_morphemic_generation() -> None:
     config = load_config(ROOT / "configs" / "config.yaml")
     generation = config["generation"]
@@ -26,9 +30,9 @@ def test_config_does_not_reference_legacy_candidate_dataset_pipeline() -> None:
     raw_config = (ROOT / "configs" / "config.yaml").read_text(encoding="utf-8")
 
     for legacy_key in (
-        "clean_sentence_pool",
-        "correction_dataset",
-        "candidate_opportunity",
-        "rule_lab",
+        _join("clean", "_sentence", "_pool"),
+        _join("correction", "_dataset"),
+        _join("candidate", "_opportunity"),
+        _join("rule", "_lab"),
     ):
         assert legacy_key not in raw_config

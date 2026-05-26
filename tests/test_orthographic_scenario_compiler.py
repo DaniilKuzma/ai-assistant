@@ -15,6 +15,65 @@ from src.runtime.orthographic_lexicon import OrthographicCorrectionLexicon
 from src.schema import GeneratedExample
 
 
+def test_runtime_orthographic_lexicon_loads_layer_corrections(tmp_path: Path) -> None:
+    root = tmp_path / "lexicon"
+    layer_dir = root / "layers" / "spans"
+    layer_dir.mkdir(parents=True)
+    (layer_dir / "corrections.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "corrections": [
+                    {
+                        "source": "\u043d\u0430 \u0441\u0447\u0435\u0442",
+                        "target": "\u043d\u0430\u0441\u0447\u0451\u0442",
+                        "rule_id": "test_span",
+                        "operation": "split_join",
+                        "sub_rule_id": "naschyot_merge",
+                        "context_class": "finance",
+                        "confidence": 0.98,
+                    },
+                    {
+                        "source": "\u043d\u0430\u0441\u0447\u0435\u0442",
+                        "target": "\u043d\u0430 \u0441\u0447\u0451\u0442",
+                        "rule_id": "test_span",
+                        "operation": "split_join",
+                    },
+                    {
+                        "source": "\u043d\u0430\u0441\u0447\u0435\u0442",
+                        "target": "\u043d\u0430\u0441\u0447\u0451\u0442",
+                        "rule_id": "test_span",
+                        "operation": "split_join",
+                    },
+                ]
+            },
+            allow_unicode=True,
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    lexicon = OrthographicCorrectionLexicon.from_config({"paths": {"lexicon_dir": str(root)}})
+
+    entries = lexicon.lookup(
+        "\u043d\u0430 \u0441\u0447\u0435\u0442",
+        rule_id="test_span",
+        operation="split_join",
+    )
+    assert len(entries) == 1
+    assert entries[0].target == "\u043d\u0430\u0441\u0447\u0451\u0442"
+    assert entries[0].sub_rule_id == "naschyot_merge"
+    assert entries[0].context_class == "finance"
+    assert entries[0].confidence == 0.98
+
+    ambiguous = lexicon.lookup(
+        "\u043d\u0430\u0441\u0447\u0435\u0442",
+        rule_id="test_span",
+        operation="split_join",
+    )
+    assert len(ambiguous) == 2
+    assert {entry.ambiguity_level for entry in ambiguous} == {"ambiguous"}
+
+
 NUMBERED_EXAMPLE_SHELL_RE = re.compile(r"^В примере \d+ сказано:")
 STALE_ORTHOGRAPHY_CONTEXTS = (
     "В словаре указано слово",

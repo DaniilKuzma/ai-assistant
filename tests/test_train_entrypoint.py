@@ -43,6 +43,7 @@ def _debug_training_config(tmp_path: Path) -> Path:
     }
     config["paths"] = {
         **config.get("paths", {}),
+        "checkpoint_output_dir": str(tmp_path / "models" / "checkpoints"),
         "adapter_output_dir": str(tmp_path / "models" / "adapters"),
         "heads_output_dir": str(tmp_path / "models" / "heads"),
         "generated_eval_dir": str(tmp_path / "generated_eval"),

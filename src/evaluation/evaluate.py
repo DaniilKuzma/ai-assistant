@@ -212,6 +212,7 @@ def gold_runtime_edits(
         confidences,
         threshold=0.0,
         rule_ids=example.rule_ids,
+        orthographic_lexicon=orthographic_lexicon,
     )
     token_edits.extend(
         edit

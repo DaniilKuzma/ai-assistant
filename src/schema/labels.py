@@ -26,6 +26,7 @@ class TokenEditLabel(str, Enum):
     FIX_TSYA_TO_TTSYA = "FIX_TSYA_TO_TTSYA"
     FIX_TTSYA_TO_TSYA = "FIX_TTSYA_TO_TSYA"
     DICT_REPLACE = "DICT_REPLACE"
+    SPAN_REPLACE_BY_LEXICON = "SPAN_REPLACE_BY_LEXICON"
 
 
 class GapPunctuationLabel(str, Enum):
@@ -38,6 +39,7 @@ class GapPunctuationLabel(str, Enum):
     QUESTION = "QUESTION"
     EXCLAMATION = "EXCLAMATION"
     ELLIPSIS = "ELLIPSIS"
+    DELETE_PUNCTUATION = "DELETE_PUNCTUATION"
 
 
 class RuleLabel(str, Enum):
@@ -83,6 +85,7 @@ TOKEN_EDIT_LABELS: tuple[str, ...] = (
     "FIX_TSYA_TO_TTSYA",
     "FIX_TTSYA_TO_TSYA",
     "DICT_REPLACE",
+    "SPAN_REPLACE_BY_LEXICON",
 )
 
 GAP_PUNCTUATION_LABELS: tuple[str, ...] = (
@@ -95,6 +98,7 @@ GAP_PUNCTUATION_LABELS: tuple[str, ...] = (
     "QUESTION",
     "EXCLAMATION",
     "ELLIPSIS",
+    "DELETE_PUNCTUATION",
 )
 
 RULE_LABELS: tuple[str, ...] = (
