@@ -17,6 +17,9 @@ patterns:
       - subordinate_decide
       - subordinate_write
       - subordinate_indicate
+      - subordinate_clarify
+      - subordinate_explain
+      - subordinate_observe
     allowed_frame_families: [subordinate_complement]
     metadata:
       render_type: subordinate_that
@@ -31,6 +34,8 @@ patterns:
         - request_contains
         - data_indicates
         - include_requirement
+        - request_contains
+        - message_contains
 
   - id: subordinate_that_check_showed_content
     family: subordinate_that
@@ -56,6 +61,35 @@ patterns:
         - report_shows
         - data_indicates
         - include_requirement
+
+  - id: subordinate_that_technical_observation
+    family: subordinate_that
+    surface: "{person_or_system} уточнил, что {content_source} содержит {content_object}."
+    roles:
+      person_or_system:
+        semantic_classes: [person, organization, software_agent]
+      content_source:
+        semantic_classes: [document, report, text, message, data, request, law, book, plan, file]
+      content_object:
+        semantic_classes: [information, error, requirement, fact, result, task, process, decision, problem, request]
+        case: accs
+    allowed_rule_ids: [comma_subordinate]
+    allowed_frame_ids:
+      - subordinate_clarify
+      - subordinate_explain
+      - subordinate_observe
+      - subordinate_confirm
+    allowed_frame_families: [subordinate_complement]
+    metadata:
+      render_type: subordinate_that
+      subordinate_frame_ids:
+        - contain_info
+        - document_describes
+        - report_shows
+        - data_indicates
+        - include_requirement
+        - message_contains
+        - request_contains
 
   - id: comma_subordinate_chto_pronoun_trap
     family: subordinate_that

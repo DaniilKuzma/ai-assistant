@@ -3,7 +3,7 @@
 generation:
   enabled: true
   seed: 13
-  max_per_word: 2
+  max_per_word: 3
   min_word_length: 4
   max_edit_distance: 1
   rules:
@@ -13,14 +13,14 @@ generation:
         - dictionary_borrowed_words
         - dictionary_domain_terms
       operations: [delete, insert, replace, transpose, duplicate]
-      max_per_word: 2
+      max_per_word: 3
     - rule_id: typo_keyboard_neighbor
       include_rule_ids:
         - dictionary_normative_words
         - dictionary_borrowed_words
         - dictionary_domain_terms
       operations: [keyboard_neighbor]
-      max_per_word: 1
+      max_per_word: 2
     - rule_id: typo_space_noise
       include_rule_ids:
         - dictionary_normative_words

@@ -14,6 +14,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from src.config.load_config import load_config
 from src.grammar_gen.audit import audit_batch
+from src.grammar_gen.diversity import diversity_report
 from src.grammar_gen.factory import online_generator_from_config
 from src.schema import GeneratedExample
 from src.schema.serialization import read_jsonl_examples, write_jsonl_examples
@@ -89,6 +90,7 @@ def build_frozen_eval(
     split_seed_range_end = effective_seed + scan_count - 1 if scan_count > 0 else effective_seed - 1
     overlaps_train = _ranges_overlap(split_seed_range_start, split_seed_range_end, train_start, train_end)
     audit = audit_batch(examples)
+    diversity = diversity_report(examples)
 
     manifest = {
         "output_path": str(output_path),
@@ -110,6 +112,17 @@ def build_frozen_eval(
         "dedupe_indexed_existing_split_paths": dedupe_index["existing_split_paths"],
         "rule_distribution": audit["rule_distribution"],
         "mode_distribution": audit["mode_distribution"],
+        "duplicate_source_rate": diversity["duplicate_source_rate"],
+        "duplicate_target_rate": diversity["duplicate_target_rate"],
+        "duplicate_pair_rate": diversity["duplicate_pair_rate"],
+        "unique_source_target_pairs": diversity["unique_source_target_pairs"],
+        "top_duplicate_pairs": diversity["top_duplicate_pairs"],
+        "duplicate_rate_by_rule_id": diversity["duplicate_rate_by_rule_id"],
+        "duplicate_rate_by_sub_rule_id": diversity["duplicate_rate_by_sub_rule_id"],
+        "average_token_count": diversity["average_token_count"],
+        "token_edit_count_distribution": diversity["token_edit_count_distribution"],
+        "gap_edit_count_distribution": diversity["gap_edit_count_distribution"],
+        "template_distribution": diversity["template_distribution"],
         "audit_failures_count": audit["failed_examples_count"],
         "audit_failure_reasons": audit["failure_reasons"],
         "first_failed_examples": audit["first_failed_examples"],

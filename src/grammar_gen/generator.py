@@ -77,7 +77,14 @@ class OnlineExampleGenerator:
     def sample_batch(self, size: int) -> list[GeneratedExample]:
         if size < 0:
             raise ValueError("size must be non-negative.")
-        return [self.sample() for _ in range(size)]
+        from src.grammar_gen.diversity import sample_diverse_examples
+
+        return sample_diverse_examples(
+            self,
+            count=size,
+            stream_name="sample-batch",
+            max_attempts=self._max_generation_retries(),
+        )
 
     def sample_by_index(self, index: int) -> GeneratedExample:
         if not isinstance(index, int):

@@ -179,3 +179,147 @@ entries:
       - "Учитель поставил полу перед словом как пример."
     clean_templates:
       - "Команда вышла в полуфинал турнира."
+
+  - rule_id: compound_nouns_adjectives
+    sub_rule_id: hyphen_appositions_technical
+    operation: hyphenate
+    correct: инженер-тестировщик
+    wrong_variants: [инженер тестировщик]
+    semantic_hint: appositional compound for a technical profession.
+    forbidden_contexts: ["инженер и тестировщик", "инженер стал тестировщиком", "инженер у тестировщика"]
+    positive_templates:
+      - "Отчёт проверил {wrong}."
+      - "На совещании выступил {wrong} из отдела."
+      - "Новый {wrong} подготовил журнал ошибок."
+    hard_negative_templates:
+      - "В проекте работали инженер и тестировщик."
+      - "Опытный инженер стал тестировщиком."
+      - "Куратор спросил инженера у тестировщика."
+    clean_templates:
+      - "Отчёт проверил инженер-тестировщик."
+
+  - rule_id: compound_nouns_adjectives
+    sub_rule_id: compound_first_parts_tech
+    operation: hyphenate
+    correct: веб-интерфейс
+    wrong_variants: [веб интерфейс]
+    semantic_hint: noun with an indeclinable technical first part.
+    forbidden_contexts: ["веб интерфейсный", "веб отдельно", "веб и интерфейс"]
+    positive_templates:
+      - "Пользователь открыл {wrong}."
+      - "Система обновила {wrong} сегодня."
+      - "Тестировщик проверил {wrong} в браузере."
+    hard_negative_templates:
+      - "Редактор исправил веб интерфейсный термин."
+      - "Методист написал слово веб отдельно."
+      - "Разработчик сравнил веб и интерфейс как понятия."
+    clean_templates:
+      - "Пользователь открыл веб-интерфейс."
+
+  - rule_id: compound_nouns_adjectives
+    sub_rule_id: compound_adjectives_education
+    operation: hyphenate
+    correct: учебно-методический
+    wrong_variants: [учебно методический]
+    semantic_hint: compound adjective with coordinate educational relation.
+    forbidden_contexts: ["учебно полезный", "методический текст", "учебно проводить"]
+    positive_templates:
+      - "Куратор подготовил {wrong} материал."
+      - "В папке лежал {wrong} план."
+      - "Комиссия проверила {wrong} комплект документов."
+    hard_negative_templates:
+      - "Этот курс учебно полезный для группы."
+      - "Методист проверил методический текст."
+      - "Учитель решил учебно проводить семинар."
+    clean_templates:
+      - "Куратор подготовил учебно-методический материал."
+
+  - rule_id: compound_nouns_adjectives
+    sub_rule_id: compound_adjectives_technical
+    operation: hyphenate
+    correct: научно-технический
+    wrong_variants: [научно технический]
+    semantic_hint: compound adjective with coordinate technical relation.
+    forbidden_contexts: ["научно важный", "технический файл", "научно объяснил"]
+    positive_templates:
+      - "Институт опубликовал {wrong} отчёт."
+      - "Редактор открыл {wrong} журнал."
+      - "Комиссия изучила {wrong} регламент."
+    hard_negative_templates:
+      - "Доклад был научно важный."
+      - "Разработчик проверил технический файл."
+      - "Профессор научно объяснил правило."
+    clean_templates:
+      - "Институт опубликовал научно-технический отчёт."
+
+  - rule_id: compound_pol_polu
+    sub_rule_id: pol_before_vowel_document
+    operation: hyphenate
+    correct: пол-акта
+    wrong_variants: [пол акта]
+    semantic_hint: пол- before a vowel is hyphenated in document context.
+    forbidden_contexts: ["пол архивной папки", "пол актуального отчёта", "получил акт"]
+    positive_templates:
+      - "Секретарь прочитал {wrong} перед совещанием."
+      - "В архиве не хватало {wrong}."
+      - "Куратор сверил {wrong} с журналом."
+    hard_negative_templates:
+      - "Секретарь проверил пол архивной папки."
+      - "Редактор прочитал пол актуального отчёта."
+      - "Сотрудник получил акт утром."
+    clean_templates:
+      - "Секретарь прочитал пол-акта перед совещанием."
+
+  - rule_id: compound_pol_polu
+    sub_rule_id: pol_before_l_education
+    operation: hyphenate
+    correct: пол-лекции
+    wrong_variants: [пол лекции]
+    semantic_hint: пол- before л is hyphenated in education context.
+    forbidden_contexts: ["пол листа", "пол лекционного курса", "получил лекцию"]
+    positive_templates:
+      - "Студент записал {wrong} в конспект."
+      - "Преподаватель объяснял тему {wrong}."
+      - "После перерыва осталось {wrong}."
+    hard_negative_templates:
+      - "Студент исписал пол листа."
+      - "Методист проверил пол лекционного курса."
+      - "Куратор получил лекцию заранее."
+    clean_templates:
+      - "Студент записал пол-лекции в конспект."
+
+  - rule_id: compound_pol_polu
+    sub_rule_id: pol_before_capital_region
+    operation: hyphenate
+    correct: пол-Урала
+    wrong_variants: [пол Урала]
+    semantic_hint: пол- before a proper name is hyphenated.
+    forbidden_contexts: ["пол уральского региона", "половина Урала", "пол карты"]
+    positive_templates:
+      - "Географ описал {wrong} в докладе."
+      - "Новость обсудили на {wrong}."
+      - "Экспедиция прошла {wrong} за месяц."
+    hard_negative_templates:
+      - "Комиссия изучала пол уральского региона."
+      - "Половина Урала ждала снег."
+      - "Редактор закрасил пол карты."
+    clean_templates:
+      - "Географ описал пол-Урала в докладе."
+
+  - rule_id: compound_pol_polu
+    sub_rule_id: polu_compounds_time
+    operation: merge
+    correct: полугодие
+    wrong_variants: [полу годие]
+    semantic_hint: полу- compounds are written solid.
+    forbidden_contexts: ["полу годовой", "полу и годие", "полу перед датой"]
+    positive_templates:
+      - "Отдел подвёл итоги за {wrong}."
+      - "Университет обновил план на {wrong}."
+      - "В отчёте описали первое {wrong}."
+    hard_negative_templates:
+      - "Редактор отметил полу годовой срок как ошибку."
+      - "Учитель написал полу и годие на доске."
+      - "Секретарь поставил полу перед датой."
+    clean_templates:
+      - "Отдел подвёл итоги за полугодие."

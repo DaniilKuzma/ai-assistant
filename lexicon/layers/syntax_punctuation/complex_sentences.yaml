@@ -2,8 +2,8 @@ rules:
   - rule_id: punct_complex_sentences
     description: Controlled punctuation in compound and subordinate sentences.
     slots:
-      actor: [Редактор, Студент, Учитель, Секретарь]
-      object: [отчёт, текст, файл, план]
+      actor: [Редактор, Студент, Учитель, Секретарь, Аналитик, Куратор, Оператор, Методист]
+      object: [отчёт, текст, файл, план, регламент, журнал, шаблон, конспект, интерфейс, статус]
     cases:
       positive:
         - sub_rule_id: ssp_i
@@ -54,6 +54,22 @@ rules:
               source_pattern: "потому"
           metadata:
             subtype: complex_conjunction_split
+        - sub_rule_id: ssp_a
+          source_template: "{actor} загрузил {object} а система сохранила запись."
+          target_template: "{actor} загрузил {object}, а система сохранила запись."
+          gap_operations:
+            - label: COMMA
+              source_pattern: "{object}"
+          metadata:
+            subtype: compound_a
+        - sub_rule_id: spp_kogda
+          source_template: "Когда {object} открылся {actor} проверил журнал."
+          target_template: "Когда {object} открылся, {actor} проверил журнал."
+          gap_operations:
+            - label: COMMA
+              source_pattern: "открылся"
+          metadata:
+            subtype: subordinate_kogda
       hard_negative:
         - sub_rule_id: common_secondary_member_guard
           source_template: "Утром {actor} проверил {object} и отправил письмо."
@@ -71,6 +87,11 @@ rules:
           target_template: "{actor} сказал, что {object} готов."
           metadata:
             subtype: clean_subordinate
+        - sub_rule_id: clean_ssp_i
+          source_template: "{actor} проверил {object}, и система сохранила запись."
+          target_template: "{actor} проверил {object}, и система сохранила запись."
+          metadata:
+            subtype: clean_compound
 
   - rule_id: punct_bsp
     description: Controlled punctuation in asyndetic complex sentences.
@@ -108,6 +129,30 @@ rules:
               source_pattern: "готов"
           metadata:
             subtype: bsp_semicolon
+        - sub_rule_id: bsp_colon_document
+          source: "Куратор понял журнал обновлён."
+          target: "Куратор понял: журнал обновлён."
+          gap_operations:
+            - label: COLON
+              source_pattern: "понял"
+          metadata:
+            subtype: bsp_colon_explanation
+        - sub_rule_id: bsp_dash_result
+          source: "Сервер ответил форма открылась."
+          target: "Сервер ответил — форма открылась."
+          gap_operations:
+            - label: DASH
+              source_pattern: "ответил"
+          metadata:
+            subtype: bsp_dash_consequence
+        - sub_rule_id: bsp_comma_sequence
+          source: "Прозвенел звонок лекция началась."
+          target: "Прозвенел звонок, лекция началась."
+          gap_operations:
+            - label: COMMA
+              source_pattern: "звонок"
+          metadata:
+            subtype: bsp_comma
       hard_negative:
         - sub_rule_id: simple_sentence_guard
           source: "Редактор проверил отчёт."
@@ -123,5 +168,10 @@ rules:
         - sub_rule_id: clean_bsp_colon
           source: "Я понял: отчёт готов."
           target: "Я понял: отчёт готов."
+          metadata:
+            subtype: clean_bsp
+        - sub_rule_id: clean_bsp_dash
+          source: "Файл открылся — работа началась."
+          target: "Файл открылся — работа началась."
           metadata:
             subtype: clean_bsp

@@ -45,6 +45,7 @@ ADVERB_FRIENDLY_FRAME_FAMILIES = frozenset(
         "correction",
         "data",
         "document_work",
+        "education",
         "event_work",
         "file_action",
         "meeting_work",

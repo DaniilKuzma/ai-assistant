@@ -226,6 +226,7 @@ def _render_simple_transitive(
         allow_adverbs=False,
         allow_adverbials=bool(pattern.metadata.get("allow_adverbials", False)),
     )
+    clause, combinator_metadata = _apply_clause_combinators(pattern, clause, builder, rng)
     adverbs = tuple(_string_list(pattern.metadata.get("adverbs")))
     if not adverbs and pattern.metadata.get("adverb"):
         adverbs = (str(pattern.metadata["adverb"]),)
@@ -237,16 +238,17 @@ def _render_simple_transitive(
                 adverbs=adverbs,
                 negated=bool(pattern.metadata.get("negated", clause.predicate.negated)),
             ),
-        )
+    )
     sentence = SimpleSentence(clause=clause, final_punctuation=".")
     text = realizer.render_sentence(sentence)
+    text, text_metadata = _apply_text_combinators(pattern, text, rng)
     return _rendered(
         pattern,
         text,
         sentence,
         realizer,
         safety_clauses=_safety_for_ast(sentence, builder),
-        extra_metadata={"frame_id": frame.frame_id},
+        extra_metadata={"frame_id": frame.frame_id, **combinator_metadata, **text_metadata},
     )
 
 
@@ -445,10 +447,22 @@ def _render_tsya_ttsya(
     subject_surface = _capitalize_first(realizer.render_np(subject))
     direction = rng.choice(("infinitive", "finite"))
     if direction == "infinitive":
-        want = realizer.morphology.inflect_verb_past("хотеть", subject.gender, subject.number)
-        text = f"{subject_surface} {want} {infinitive}."
+        modal = _optional_tsya_modal(pattern, subject, rng)
+        if modal:
+            governor = modal
+            governor_form = modal
+        else:
+            governors = tuple(_string_list(pattern.metadata.get("infinitive_governors")) or ["хотеть"])
+            governor = rng.choice(governors)
+            governor_form = realizer.morphology.inflect_verb_past(governor, subject.gender, subject.number)
+        tails = tuple(_string_list(pattern.metadata.get("infinitive_tails")) or [""])
+        tail = rng.choice(tails).strip()
+        text = f"{subject_surface} {governor_form} {infinitive}{(' ' + tail) if tail else ''}."
     else:
-        text = f"{subject_surface} {finite} утром."
+        tails = tuple(_string_list(pattern.metadata.get("finite_tails")) or ["утром"])
+        tail = rng.choice(tails).strip()
+        governor = ""
+        text = f"{subject_surface} {finite}{(' ' + tail) if tail else ''}."
     return _rendered(
         pattern,
         text,
@@ -459,8 +473,28 @@ def _render_tsya_ttsya(
             "tsya_direction": direction,
             "tsya_infinitive": infinitive,
             "tsya_finite": finite,
+            "tsya_governor": governor,
+            "tsya_tail": tail,
         },
     )
+
+
+def _optional_tsya_modal(pattern: ConstructionPattern, subject: NounPhrase, rng: RandomSource) -> str:
+    raw_modals = pattern.metadata.get("infinitive_modals")
+    if not isinstance(raw_modals, list) or not raw_modals:
+        return ""
+    raw_modal = rng.choice(tuple(raw_modals))
+    if not isinstance(raw_modal, dict):
+        return ""
+    if subject.number == "plur":
+        key = "plur"
+    elif subject.gender == "fem":
+        key = "fem"
+    elif subject.gender == "neut":
+        key = "neut"
+    else:
+        key = "masc"
+    return str(raw_modal.get(key) or raw_modal.get("masc") or "").strip()
 
 
 def _render_hyphen_particle(
@@ -663,6 +697,146 @@ def _choose_frame(pattern: ConstructionPattern, builder: GrammarBuilder, rng: Ra
     if not frame_ids:
         raise ValueError(f"Construction pattern {pattern.id!r} must define frame ids.")
     return builder._frame_by_id(rng.choice(tuple(frame_ids)))
+
+
+def _apply_clause_combinators(
+    pattern: ConstructionPattern,
+    clause: Clause,
+    builder: GrammarBuilder,
+    rng: RandomSource,
+) -> tuple[Clause, dict[str, Any]]:
+    metadata: dict[str, Any] = {}
+    predicate = clause.predicate
+    adverbs = list(predicate.adverbs)
+
+    adverb = _optional_choice(pattern, rng, "optional_adverbs", "optional_adverb_chance")
+    if adverb is not None:
+        adverbs.append(adverb)
+        metadata["optional_adverb"] = adverb
+
+    object_np = predicate.object_np
+    if object_np is not None and _metadata_chance(pattern, rng, "optional_object_attribute_chance"):
+        try:
+            noun = builder._noun_by_lemma(object_np.noun_lemma)
+            adjective = builder.lexicon.random_adjective_for_noun(noun, rng).lemma
+        except ValueError:
+            adjective = ""
+        if adjective:
+            object_np = replace(object_np, adjective_lemmas=(adjective, *object_np.adjective_lemmas))
+            metadata["optional_object_attribute"] = adjective
+
+    if adverbs or object_np is not predicate.object_np:
+        predicate = replace(predicate, adverbs=tuple(adverbs), object_np=object_np)
+
+    left_adverbials = list(clause.left_adverbials)
+    right_adverbials = list(clause.right_adverbials)
+
+    time_phrase = _optional_choice(pattern, rng, "optional_time_phrases", "optional_time_phrase_chance")
+    if time_phrase is not None:
+        if rng.chance(0.45):
+            left_adverbials.append(time_phrase)
+        else:
+            right_adverbials.append(time_phrase)
+        metadata["optional_time_phrase"] = time_phrase
+
+    place_phrase = _optional_choice(pattern, rng, "optional_place_phrases", "optional_place_phrase_chance")
+    if place_phrase is not None:
+        right_adverbials.append(place_phrase)
+        metadata["optional_place_phrase"] = place_phrase
+
+    clause = replace(
+        clause,
+        predicate=predicate,
+        left_adverbials=tuple(left_adverbials),
+        right_adverbials=tuple(right_adverbials),
+    )
+    return clause, metadata
+
+
+def _apply_text_combinators(
+    pattern: ConstructionPattern,
+    text: str,
+    rng: RandomSource,
+) -> tuple[str, dict[str, Any]]:
+    metadata: dict[str, Any] = {}
+    body, punctuation = _split_final_punctuation(text)
+
+    document_phrase = _optional_choice(
+        pattern,
+        rng,
+        "optional_document_phrases",
+        "optional_document_phrase_chance",
+    )
+    if document_phrase is not None:
+        body = f"{body} {document_phrase}"
+        metadata["optional_document_phrase"] = document_phrase
+
+    second_clause = _optional_choice(
+        pattern,
+        rng,
+        "optional_second_clauses",
+        "optional_second_clause_chance",
+    )
+    if second_clause is not None:
+        conjunction = str(pattern.metadata.get("optional_second_clause_conjunction") or "а")
+        body = f"{body}, {conjunction} {second_clause}"
+        metadata["optional_second_clause"] = second_clause
+        metadata["optional_second_clause_conjunction"] = conjunction
+
+    intro = _optional_choice(pattern, rng, "optional_introductory_phrases", "optional_introductory_phrase_chance")
+    if intro is not None:
+        body = f"{intro}, {body}"
+        metadata["optional_introductory_phrase"] = intro
+
+    return _capitalize_first(f"{body}{punctuation}"), metadata
+
+
+def _optional_choice(
+    pattern: ConstructionPattern,
+    rng: RandomSource,
+    values_key: str,
+    chance_key: str,
+) -> str | None:
+    values = tuple(_string_list(pattern.metadata.get(values_key)))
+    if not values:
+        return None
+    if not _metadata_chance(pattern, rng, chance_key):
+        return None
+    candidates = tuple(value for value in values if not _contains_protected_anchor(pattern, value))
+    if not candidates:
+        return None
+    return rng.choice(candidates)
+
+
+def _metadata_chance(pattern: ConstructionPattern, rng: RandomSource, key: str) -> bool:
+    raw = pattern.metadata.get(key)
+    if raw is None:
+        return False
+    try:
+        chance = float(raw)
+    except (TypeError, ValueError):
+        chance = 1.0 if bool(raw) else 0.0
+    if chance <= 0:
+        return False
+    if chance >= 1:
+        return True
+    return rng.chance(chance)
+
+
+def _contains_protected_anchor(pattern: ConstructionPattern, piece: str) -> bool:
+    lowered = piece.lower()
+    anchors = tuple(_string_list(pattern.metadata.get("protected_anchors")))
+    return any(anchor.lower() in lowered for anchor in anchors)
+
+
+def _split_final_punctuation(text: str) -> tuple[str, str]:
+    stripped = text.rstrip()
+    if stripped.endswith(("...", "…")):
+        punctuation = "..." if stripped.endswith("...") else "…"
+        return stripped[: -len(punctuation)].rstrip(), punctuation
+    if stripped and stripped[-1] in ".!?":
+        return stripped[:-1].rstrip(), stripped[-1]
+    return stripped, "."
 
 
 def _role_np(

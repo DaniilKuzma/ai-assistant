@@ -2,8 +2,8 @@ rules:
   - rule_id: punct_detached_definitions
     description: Detached definitions and appositions.
     slots:
-      noun: [Отчёт, Документ, Протокол, План]
-      place: [архиве, кабинете, классе, офисе]
+      noun: [Отчёт, Документ, Протокол, План, Регламент, Журнал, Конспект, Шаблон]
+      place: [архиве, кабинете, классе, офисе, отделе, аудитории, библиотеке]
     cases:
       positive:
         - sub_rule_id: participial_after_noun
@@ -47,6 +47,17 @@ rules:
           expected_gap_edit_count: 2
           metadata:
             subtype: apposition
+        - sub_rule_id: apposition_document_role
+          source: "Регламент основной документ отдела обновили вчера."
+          target: "Регламент, основной документ отдела, обновили вчера."
+          gap_operations:
+            - label: COMMA
+              source_pattern: "Регламент"
+            - label: COMMA
+              source_pattern: "отдела"
+          expected_gap_edit_count: 2
+          metadata:
+            subtype: apposition
       hard_negative:
         - sub_rule_id: before_noun_no_cause_guard
           source_template: "Подготовленный студентом {noun} лежал в {place}."
@@ -68,8 +79,8 @@ rules:
   - rule_id: punct_detached_adverbials
     description: Detached adverbials and clarifying circumstances.
     slots:
-      actor: [Редактор, Студент, Учитель, Секретарь]
-      object: [отчёт, текст, файл, план]
+      actor: [Редактор, Студент, Учитель, Секретарь, Куратор, Методист, Оператор, Аналитик]
+      object: [отчёт, текст, файл, план, журнал, шаблон, конспект, вопрос]
     cases:
       positive:
         - sub_rule_id: gerund_phrase
@@ -102,6 +113,25 @@ rules:
           expected_gap_edit_count: 2
           metadata:
             subtype: clarifying_time
+        - sub_rule_id: gerund_phrase_technical
+          source_template: "{actor} загрузил {object} не закрывая форму."
+          target_template: "{actor} загрузил {object}, не закрывая форму."
+          gap_operations:
+            - label: COMMA
+              source_pattern: "{object}"
+          metadata:
+            subtype: gerund_phrase
+        - sub_rule_id: clarifying_place
+          source: "В архиве на верхней полке лежал журнал."
+          target: "В архиве, на верхней полке, лежал журнал."
+          gap_operations:
+            - label: COMMA
+              source_pattern: "архиве"
+            - label: COMMA
+              source_pattern: "полке"
+          expected_gap_edit_count: 2
+          metadata:
+            subtype: clarifying_place
       hard_negative:
         - sub_rule_id: fixed_expression_spustya_rukava_guard
           source: "Студент работал спустя рукава."

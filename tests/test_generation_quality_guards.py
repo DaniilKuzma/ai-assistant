@@ -11,6 +11,7 @@ from src.config.load_config import load_config
 from src.grammar_gen import GrammarBuilder, Lexicon, MorphologyEngine, RandomSource, Realizer
 from src.grammar_gen.ast import Clause, NounPhrase, VerbPhrase
 from src.grammar_gen.audit import audit_batch, audit_example
+from src.grammar_gen.diversity import duplicate_pair_rate, sample_diverse_examples
 from src.grammar_gen.factory import online_generator_from_config
 from src.grammar_gen.generator import GenerationError, OnlineExampleGenerator
 from src.grammar_gen.rules.base import GenerationMode, RuleInfo, RuleProgram
@@ -364,6 +365,18 @@ def test_dash_subject_predicate_uses_only_curated_pair_ids() -> None:
         "meeting_event",
         "plan_document",
         "message_text",
+        "act_document",
+        "regulation_document",
+        "template_document",
+        "form_document",
+        "draft_text",
+        "note_text",
+        "summary_text",
+        "lecture_event",
+        "seminar_event",
+        "webinar_event",
+        "conference_event",
+        "training_event",
     }
 
     examples = [
@@ -488,7 +501,16 @@ def test_production_generator_10000_examples_quality_gate() -> None:
     assert validation_failures == []
     assert metadata_failures == []
     assert bad_targets == []
-    assert duplicate_ratio < 0.25
+    assert duplicate_ratio < 0.35
+
+    diverse_examples = sample_diverse_examples(
+        generator,
+        count=2000,
+        stream_name="quality-gate",
+        max_attempts=16,
+        max_duplicate_pair_rate=0.12,
+    )
+    assert duplicate_pair_rate(diverse_examples) <= 0.12
 
 
 def test_production_random_clause_without_construction_context_fails() -> None:

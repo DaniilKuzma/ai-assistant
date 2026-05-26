@@ -193,9 +193,17 @@ def _operation_span(
     if not pattern:
         raise ValueError(f"source_pattern does not contain source tokens: {operation.source_pattern!r}.")
     source = tuple(token.text.casefold() for token in tokens)
+    matches: list[tuple[int, int]] = []
     for start in range(0, len(source) - len(pattern) + 1):
         if source[start : start + len(pattern)] == pattern:
-            return start, start + len(pattern)
+            matches.append((start, start + len(pattern)))
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) > 1:
+        raise ValueError(
+            "Layer operation ambiguous source_pattern without explicit token indexes: "
+            f"{operation.source_pattern!r}."
+        )
     raise ValueError(f"Layer operation source_pattern not found in source tokens: {operation.source_pattern!r}.")
 
 
@@ -237,6 +245,9 @@ def _metadata(
             "source_pattern": _first_non_empty(source_patterns),
             "target_pattern": _first_non_empty(target_patterns),
             "production": False,
+            "uses_construction_bank": True,
+            "construction_id": str(metadata.get("construction_id") or case.sub_rule_id or case.rule_id),
+            "construction_family": str(metadata.get("construction_family") or layer),
             "uses_safety_clauses": False,
             "safety_clauses": [],
         }

@@ -23,6 +23,7 @@ from src.schema import GeneratedExample
 
 
 LATIN_RE = re.compile(r"[A-Za-z]")
+CONTENT_WORD_RE = re.compile(r"[А-Яа-яЁё-]+")
 REPEATED_PUNCTUATION_RE = re.compile(r"([,!?;:])\1+|\.{2}(?!\.)|\.{4,}")
 BROKEN_PUNCTUATION_SPACING_RE = re.compile(r"\s+[,.!?;:]|[,;:](?=\S)|[.!?](?=[А-Яа-яЁё])")
 FINAL_PUNCTUATION_RE = re.compile(r"(\.\.\.|[.!?\u2026])$")
@@ -33,6 +34,41 @@ FINAL_PUNCTUATION_LABELS = {
     "...": "ELLIPSIS",
     "\u2026": "ELLIPSIS",
 }
+CONTENT_WORD_STOPLIST = frozenset(
+    {
+        "без",
+        "был",
+        "была",
+        "были",
+        "было",
+        "весь",
+        "для",
+        "его",
+        "если",
+        "или",
+        "как",
+        "кое",
+        "кто",
+        "над",
+        "нас",
+        "наш",
+        "него",
+        "нее",
+        "них",
+        "она",
+        "они",
+        "оно",
+        "при",
+        "про",
+        "сам",
+        "так",
+        "там",
+        "тот",
+        "уже",
+        "что",
+        "это",
+    }
+)
 VO_RE = re.compile(r"(^|\s)во\s+", re.IGNORECASE)
 BAD_PAIR_REASONS = (
     ("bad_pair_devochka_poshel", re.compile(r"\bдевочка\s+пош[её]л\b", re.IGNORECASE)),
@@ -185,6 +221,9 @@ def validate_generated_pair(example: GeneratedExample) -> list[str]:
     reasons.extend(_validate_construction_metadata(example))
     reasons.extend(_validate_token_edit_counts(example))
     reasons.extend(_validate_safety_clause_metadata(example))
+    if not bool(example.metadata.get("allow_repeated_content_words", False)):
+        reasons.extend(f"source_{reason}" for reason in _repeated_content_word_reasons(example.source_text))
+        reasons.extend(f"target_{reason}" for reason in _repeated_content_word_reasons(example.target_text))
     return _dedupe(reasons)
 
 
@@ -192,6 +231,21 @@ def assert_json_safe_metadata(value: Any) -> None:
     if _json_safety_reason(value, "$") is not None:
         reason = _json_safety_reason(value, "$")
         raise ValueError(reason or "metadata is not JSON-safe")
+
+
+def _repeated_content_word_reasons(text: str) -> list[str]:
+    words = [word.lower().replace("ё", "е") for word in CONTENT_WORD_RE.findall(text)]
+    if len(words) > 14:
+        return []
+    seen: set[str] = set()
+    repeated: list[str] = []
+    for word in words:
+        if len(word) < 4 or word in CONTENT_WORD_STOPLIST:
+            continue
+        if word in seen and word not in repeated:
+            repeated.append(word)
+        seen.add(word)
+    return [f"repeated_content_word:{word}" for word in repeated]
 
 
 def count_logical_token_edits(token_labels: list[str] | tuple[str, ...]) -> int:

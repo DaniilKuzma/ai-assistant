@@ -6,6 +6,7 @@ import re
 from typing import Any
 
 from src.grammar_gen.rules.base import GenerationMode
+from src.grammar_gen.diversity import diversity_report
 from src.grammar_gen.safety import allowed_source_surface_failures, validate_generated_pair, validate_surface
 from src.schema import GeneratedExample
 from src.schema.labels import gap_label_to_id, rule_tag_to_id, token_label_to_id
@@ -95,6 +96,7 @@ def audit_batch(examples: Iterable[GeneratedExample]) -> dict[str, Any]:
         "failure_reasons": dict(sorted(failure_reasons.items())),
         "rule_distribution": dict(sorted(Counter(example.primary_rule_id for example in example_list).items())),
         "mode_distribution": dict(sorted(Counter(example.mode for example in example_list).items())),
+        "diversity": diversity_report(example_list),
         "first_failed_examples": first_failed_examples,
     }
 

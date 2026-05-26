@@ -183,6 +183,7 @@ def _requires_agentive_subject(frame: VerbFrame) -> bool:
         "correction",
         "data",
         "document_work",
+        "education",
         "event_work",
         "file_action",
         "meeting_work",

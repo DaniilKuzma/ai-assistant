@@ -51,6 +51,10 @@ def test_build_frozen_eval_writes_valid_val_jsonl_and_manifest(tmp_path: Path) -
     assert len(examples) == 50
     assert manifest["count"] == 50
     assert manifest["audit_failures_count"] == 0
+    assert manifest["duplicate_pair_rate"] <= 0.12
+    assert "duplicate_rate_by_rule_id" in manifest
+    assert "duplicate_rate_by_sub_rule_id" in manifest
+    assert "top_duplicate_pairs" in manifest
     assert audit_batch(examples)["failed_examples_count"] == 0
 
 

@@ -14,3 +14,38 @@ patterns:
         - {infinitive: трудиться, finite: трудится}
         - {infinitive: ошибаться, finite: ошибается}
         - {infinitive: возвращаться, finite: возвращается}
+        - {infinitive: заниматься, finite: занимается}
+        - {infinitive: стараться, finite: старается}
+        - {infinitive: тренироваться, finite: тренируется}
+        - {infinitive: встречаться, finite: встречается}
+        - {infinitive: сомневаться, finite: сомневается}
+        - {infinitive: интересоваться, finite: интересуется}
+        - {infinitive: советоваться, finite: советуется}
+      infinitive_governors: [хотеть, решить, планировать]
+      infinitive_tails: ["", "после урока", "перед экзаменом", "в аудитории", "заранее"]
+      finite_tails: [утром, сегодня, "после лекции", "в кабинете", "на семинаре", "без ошибок"]
+
+  - id: tsya_ttsya_controlled_document
+    family: tsya_ttsya
+    surface: "{subject} должен проверяться."
+    roles:
+      subject:
+        semantic_classes: [document, report, text, file, service, process, object]
+        allow_adjectives: true
+    allowed_rule_ids: [tsya_ttsya]
+    metadata:
+      render_type: tsya_ttsya
+      verbs:
+        - {infinitive: проверяться, finite: проверяется}
+        - {infinitive: загружаться, finite: загружается}
+        - {infinitive: сохраняться, finite: сохраняется}
+        - {infinitive: обновляться, finite: обновляется}
+        - {infinitive: открываться, finite: открывается}
+        - {infinitive: описываться, finite: описывается}
+        - {infinitive: сравниваться, finite: сравнивается}
+        - {infinitive: отображаться, finite: отображается}
+      infinitive_modals:
+        - {masc: должен, fem: должна, neut: должно, plur: должны}
+        - {masc: может, fem: может, neut: может, plur: могут}
+      infinitive_tails: ["", "в системе", "после загрузки", "по регламенту"]
+      finite_tails: [сегодня, "в системе", "на экране", "по расписанию", "после проверки"]

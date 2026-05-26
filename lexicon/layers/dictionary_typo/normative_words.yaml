@@ -20,3 +20,13 @@ entries:
   - {rule_id: dictionary_normative_words, sub_rule_id: vperemeshku, correct: вперемешку, wrong_variants: [вперемежку], typo_ops: [delete, insert, replace, transpose, duplicate]}
   - {rule_id: dictionary_normative_words, sub_rule_id: naperekor, correct: наперекор, wrong_variants: [наперикор], typo_ops: [delete, insert, replace, transpose, duplicate]}
   - {rule_id: dictionary_normative_words, sub_rule_id: poodinochke, correct: поодиночке, wrong_variants: [по одиночке], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_normative_words, sub_rule_id: aktualnyj, correct: актуальный, wrong_variants: [актуалный], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_normative_words, sub_rule_id: podrobnyj, correct: подробный, wrong_variants: [подробнный], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_normative_words, sub_rule_id: kompetenciya, correct: компетенция, wrong_variants: [компитенция], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_normative_words, sub_rule_id: kvalifikaciya, correct: квалификация, wrong_variants: [квалификацыя], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_normative_words, sub_rule_id: profession, correct: профессия, wrong_variants: [професия], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_normative_words, sub_rule_id: programma, correct: программа, wrong_variants: [програма], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_normative_words, sub_rule_id: korrektnyj, correct: корректный, wrong_variants: [коректный], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_normative_words, sub_rule_id: parallelnyj, correct: параллельный, wrong_variants: [паралельный], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_normative_words, sub_rule_id: kommentarij, correct: комментарий, wrong_variants: [коментарий], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_normative_words, sub_rule_id: resurs, correct: ресурс, wrong_variants: [ресуср], typo_ops: [delete, insert, replace, transpose, duplicate]}

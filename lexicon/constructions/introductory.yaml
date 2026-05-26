@@ -14,9 +14,37 @@ patterns:
       - process_data
       - notice_error
       - approve_decision
+      - check_file_repeat
+      - analyze_report_detail
+      - edit_text
+      - track_status
+      - clarify_question
+      - form_report
     metadata:
       render_type: introductory
-      introductory_words: [конечно]
+      introductory_words: [конечно, вероятно, кстати, по-видимому, безусловно]
+      positions: [initial, medial]
+
+  - id: introductory_document_review
+    family: introductory
+    surface: "Вероятно, {subject} уточнил {object}."
+    roles:
+      subject:
+        semantic_classes: [person, organization, software_agent]
+      object:
+        semantic_classes: [document, report, text, message, file, request, question, rule]
+        case: accs
+    allowed_rule_ids: [comma_introductory]
+    allowed_frame_ids:
+      - clarify_question
+      - explain_rule_detail
+      - review_report
+      - form_report
+      - forward_message
+      - describe_issue
+    metadata:
+      render_type: introductory
+      introductory_words: [вероятно, кстати, по-видимому, безусловно, разумеется]
       positions: [initial, medial]
 
   - id: introductory_normal_adverb_trap

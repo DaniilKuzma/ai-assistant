@@ -1,10 +1,10 @@
 rule_id: punct_homogeneous_extended
 description: Extended homogeneous member punctuation examples.
 slots:
-  actor: [Редактор, Студент, Учитель, Секретарь]
-  first: [отчёт, текст, файл, план]
-  second: [письмо, протокол, таблицу, заявку]
-  third: [договор, доклад, справку, инструкцию]
+  actor: [Редактор, Студент, Учитель, Секретарь, Куратор, Аналитик, Оператор, Методист]
+  first: [отчёт, текст, файл, план, журнал, шаблон, конспект, регламент]
+  second: [письмо, протокол, таблицу, заявку, ведомость, форму, схему, заметку]
+  third: [договор, доклад, справку, инструкцию, акт, макет, упражнение, вопрос]
 cases:
   positive:
     - sub_rule_id: no_conjunction_series
@@ -66,6 +66,25 @@ cases:
           source_pattern: "Короткий"
       metadata:
         subtype: homogeneous_definitions
+    - sub_rule_id: repeated_conjunction_technical
+      source_template: "{actor} открыл и {first} и {second}."
+      target_template: "{actor} открыл и {first}, и {second}."
+      gap_operations:
+        - label: COMMA
+          source_pattern: "{first}"
+      metadata:
+        subtype: repeated_conjunction
+    - sub_rule_id: general_word_colon_education
+      source: "На столе лежали материалы конспекты упражнения."
+      target: "На столе лежали материалы: конспекты, упражнения."
+      gap_operations:
+        - label: COLON
+          source_pattern: "материалы"
+        - label: COMMA
+          source_pattern: "конспекты"
+      expected_gap_edit_count: 2
+      metadata:
+        subtype: generalizing_word_before_series
   hard_negative:
     - sub_rule_id: single_i_guard
       source_template: "{actor} проверил {first} и {second}."

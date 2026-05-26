@@ -24,6 +24,18 @@ patterns:
         - {id: meeting_event, subject: собрание, predicate: событие}
         - {id: plan_document, subject: план, predicate: документ}
         - {id: message_text, subject: сообщение, predicate: текст}
+        - {id: act_document, subject: акт, predicate: документ}
+        - {id: regulation_document, subject: регламент, predicate: документ}
+        - {id: template_document, subject: шаблон, predicate: документ}
+        - {id: form_document, subject: форма, predicate: документ}
+        - {id: draft_text, subject: черновик, predicate: текст}
+        - {id: note_text, subject: заметка, predicate: текст}
+        - {id: summary_text, subject: конспект, predicate: текст}
+        - {id: lecture_event, subject: лекция, predicate: событие}
+        - {id: seminar_event, subject: семинар, predicate: событие}
+        - {id: webinar_event, subject: вебинар, predicate: событие}
+        - {id: conference_event, subject: конференция, predicate: событие}
+        - {id: training_event, subject: тренинг, predicate: событие}
 
   - id: dash_nominal_verbal_predicate_trap
     family: dash_nominal

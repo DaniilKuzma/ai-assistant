@@ -20,9 +20,29 @@ patterns:
       - analyze_data
       - show_result
       - open_file
+      - check_file_repeat
+      - analyze_report_detail
+      - edit_text
+      - upload_file
+      - forward_message
+      - describe_issue
+      - test_service
+      - form_report
+      - clarify_question
     metadata:
       render_type: simple_transitive
       allow_adverbials: false
+      optional_adverbs: [внимательно, подробно, последовательно, корректно]
+      optional_adverb_chance: 0.35
+      optional_time_phrases: [сегодня, утром, недавно, заранее]
+      optional_time_phrase_chance: 0.25
+      optional_place_phrases: [в кабинете, в аудитории, на сервере]
+      optional_place_phrase_chance: 0.16
+      optional_object_attribute_chance: 0.22
+      optional_document_phrases: [по журналу, по заявке, по инструкции]
+      optional_document_phrase_chance: 0.12
+      optional_second_clauses: [система сохранила результат, редактор уточнил вывод, файл остался в архиве]
+      optional_second_clause_chance: 0.10
 
   - id: simple_ne_verb_check_document
     family: simple_transitive
@@ -34,11 +54,26 @@ patterns:
         semantic_classes: [document, report, text, calculation, task]
         case: accs
     allowed_rule_ids: [ne_verb]
-    allowed_frame_ids: [check_document]
+    allowed_frame_ids:
+      - check_document
+      - check_file_repeat
+      - analyze_report_detail
+      - edit_text
+      - upload_file
+      - form_report
+      - test_service
     metadata:
       render_type: simple_transitive
       negated: true
       phenomenon: ne_verb
+      optional_adverbs: [сразу, заранее, корректно, вручную]
+      optional_adverb_chance: 0.30
+      optional_time_phrases: [сегодня, вчера, недавно]
+      optional_time_phrase_chance: 0.20
+      optional_place_phrases: [в кабинете, в системе, на сервере]
+      optional_place_phrase_chance: 0.15
+      optional_object_attribute_chance: 0.20
+      protected_anchors: [не]
 
   - id: simple_takzhe_check_document
     family: simple_transitive
@@ -50,10 +85,22 @@ patterns:
         semantic_classes: [document, report, text, calculation, task]
         case: accs
     allowed_rule_ids: [takzhe_tak_zhe]
-    allowed_frame_ids: [check_document]
+    allowed_frame_ids:
+      - check_document
+      - review_report
+      - compare_result
+      - analyze_report_detail
+      - forward_message
+      - form_report
     metadata:
       render_type: simple_transitive
       adverb: также
+      optional_time_phrases: [сегодня, вчера, утром]
+      optional_time_phrase_chance: 0.25
+      optional_place_phrases: [в отделе, в системе]
+      optional_place_phrase_chance: 0.15
+      optional_object_attribute_chance: 0.20
+      protected_anchors: [также]
 
   - id: simple_tozhe_check_document
     family: simple_transitive
@@ -65,7 +112,154 @@ patterns:
         semantic_classes: [document, report, text, calculation, task]
         case: accs
     allowed_rule_ids: [tozhe_to_zhe]
-    allowed_frame_ids: [check_document]
+    allowed_frame_ids:
+      - check_document
+      - review_report
+      - compare_result
+      - analyze_report_detail
+      - upload_file
+      - describe_issue
     metadata:
       render_type: simple_transitive
       adverb: тоже
+      optional_time_phrases: [сегодня, утром, недавно]
+      optional_time_phrase_chance: 0.25
+      optional_place_phrases: [в отделе, в интерфейсе]
+      optional_place_phrase_chance: 0.15
+      optional_object_attribute_chance: 0.20
+      protected_anchors: [тоже]
+
+  - id: simple_final_technical_context
+    family: simple_transitive
+    surface: "{subject} {predicate} {technical_object} в интерфейсе."
+    roles:
+      subject:
+        semantic_classes: [person, organization, software_agent]
+      technical_object:
+        semantic_classes: [file, data, object, service]
+        case: accs
+    allowed_rule_ids: [final_punctuation]
+    allowed_frame_ids:
+      - upload_file
+      - export_data
+      - attach_document
+      - test_service
+      - track_status
+      - open_file
+      - close_file
+    metadata:
+      render_type: simple_transitive
+      allow_adverbials: false
+      optional_adverbs: [автоматически, вручную, локально, корректно]
+      optional_adverb_chance: 0.45
+      optional_place_phrases: [в интерфейсе, на сервере, в панели]
+      optional_place_phrase_chance: 0.40
+      optional_time_phrases: [сегодня, недавно, повторно]
+      optional_time_phrase_chance: 0.30
+      optional_object_attribute_chance: 0.35
+
+  - id: simple_final_document_context
+    family: simple_transitive
+    surface: "{subject} {predicate} {document} по источнику."
+    roles:
+      subject:
+        semantic_classes: [person, organization, software_agent]
+      document:
+        semantic_classes: [document, report, text, message, file, request, plan]
+        case: accs
+    allowed_rule_ids: [final_punctuation]
+    allowed_frame_ids:
+      - check_document
+      - review_report
+      - edit_document_done
+      - sign_document
+      - publish_report
+      - forward_message
+      - form_report
+    metadata:
+      render_type: simple_transitive
+      allow_adverbials: false
+      optional_adverbs: [подробно, аккуратно, последовательно]
+      optional_adverb_chance: 0.40
+      optional_document_phrases: [по журналу, по регламенту, по шаблону, из архива]
+      optional_document_phrase_chance: 0.45
+      optional_object_attribute_chance: 0.30
+      optional_second_clauses: [заявка осталась открытой, система добавила запись, куратор проверил статус]
+      optional_second_clause_chance: 0.18
+
+  - id: simple_final_user_interface_context
+    family: simple_transitive
+    surface: "{subject} {predicate} {interface_object}."
+    roles:
+      subject:
+        semantic_classes: [person, organization, software_agent]
+      interface_object:
+        semantic_classes: [object, file, message, request, service]
+        case: accs
+    allowed_rule_ids: [final_punctuation]
+    allowed_frame_ids:
+      - test_service
+      - track_status
+      - upload_file
+      - attach_document
+      - send_message
+      - receive_message
+      - open_file
+    metadata:
+      render_type: simple_transitive
+      optional_adverbs: [автоматически, вручную, быстро, корректно]
+      optional_adverb_chance: 0.45
+      optional_place_phrases: [в интерфейсе, в панели, на экране]
+      optional_place_phrase_chance: 0.45
+      optional_time_phrases: [сейчас, сегодня, повторно]
+      optional_time_phrase_chance: 0.20
+      optional_object_attribute_chance: 0.35
+
+  - id: simple_final_education_context
+    family: simple_transitive
+    surface: "{subject} {predicate} {education_object}."
+    roles:
+      subject:
+        semantic_classes: [person, organization]
+      education_object:
+        semantic_classes: [task, text, book, question, rule, person]
+        case: accs
+    allowed_rule_ids: [final_punctuation]
+    allowed_frame_ids:
+      - teach_person
+      - train_person
+      - explain_rule_detail
+      - clarify_question
+      - read_text
+      - solve_task
+      - check_file_repeat
+    metadata:
+      render_type: simple_transitive
+      optional_adverbs: [подробно, наглядно, последовательно, внимательно]
+      optional_adverb_chance: 0.45
+      optional_time_phrases: [на уроке, после лекции, утром]
+      optional_time_phrase_chance: 0.35
+      optional_place_phrases: [в аудитории, в классе, в библиотеке]
+      optional_place_phrase_chance: 0.30
+      optional_object_attribute_chance: 0.30
+
+  - id: simple_final_intransitive_context
+    family: simple_transitive
+    surface: "{subject} {predicate}."
+    roles:
+      subject:
+        semantic_classes: [event, meeting, process, object, document, file]
+    allowed_rule_ids: [final_punctuation]
+    allowed_frame_ids:
+      - happen_event
+      - be_located
+      - lie_place
+      - stand_place
+      - stand_surface
+    metadata:
+      render_type: simple_transitive
+      allow_adverbials: true
+      optional_time_phrases: [сегодня, недавно, утром]
+      optional_time_phrase_chance: 0.35
+      optional_place_phrases: [в архиве, в кабинете, на странице, в аудитории]
+      optional_place_phrase_chance: 0.35

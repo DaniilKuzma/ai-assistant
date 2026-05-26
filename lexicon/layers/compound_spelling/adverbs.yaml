@@ -71,3 +71,75 @@ entries:
       - "Во первых главах книги описан архив."
     clean_templates:
       - "Во-первых, отчёт был точным."
+
+  - rule_id: compound_adverbs
+    sub_rule_id: po_adverb_emu
+    operation: hyphenate
+    correct: по-прежнему
+    wrong_variants: [по прежнему]
+    semantic_hint: adverb with по-...-ему.
+    forbidden_contexts: ["по прежнему адресу", "по прежнему плану", "по прежнему правилу"]
+    positive_templates:
+      - "Сервис {wrong} работал стабильно."
+      - "Редактор {wrong} проверял журнал."
+      - "Файл {wrong} лежал в архиве."
+    hard_negative_templates:
+      - "Секретарь отправил письмо по прежнему адресу."
+      - "Комиссия работала по прежнему плану."
+      - "Куратор сверил текст по прежнему правилу."
+    clean_templates:
+      - "Сервис по-прежнему работал стабильно."
+
+  - rule_id: compound_adverbs
+    sub_rule_id: po_adverb_tski
+    operation: hyphenate
+    correct: по-технически
+    wrong_variants: [по технически]
+    semantic_hint: adverb with по-...-ски in technical context.
+    forbidden_contexts: ["по технической инструкции", "по техническому заданию", "по техническим причинам"]
+    positive_templates:
+      - "Разработчик объяснил сбой {wrong}."
+      - "Тестировщик описал ошибку {wrong}."
+      - "Администратор настроил сервис {wrong}."
+    hard_negative_templates:
+      - "Разработчик работал по технической инструкции."
+      - "Отдел проверил форму по техническому заданию."
+      - "Сервис остановили по техническим причинам."
+    clean_templates:
+      - "Разработчик объяснил сбой по-технически."
+
+  - rule_id: compound_adverbs
+    sub_rule_id: repeated_adverbs_process
+    operation: hyphenate
+    correct: быстро-быстро
+    wrong_variants: [быстро быстро]
+    semantic_hint: repeated adverb.
+    forbidden_contexts: ["быстро и точно", "быстро потом", "быстро рядом"]
+    positive_templates:
+      - "Оператор {wrong} загрузил файл."
+      - "Секретарь {wrong} открыл форму."
+      - "Система {wrong} обновила статус."
+    hard_negative_templates:
+      - "Оператор работал быстро и точно."
+      - "Система сначала работала быстро потом медленно."
+      - "Файл появился быстро рядом с отчётом."
+    clean_templates:
+      - "Оператор быстро-быстро загрузил файл."
+
+  - rule_id: compound_adverbs
+    sub_rule_id: ordinal_adverbs_second
+    operation: hyphenate
+    correct: во-вторых
+    wrong_variants: [во вторых]
+    semantic_hint: ordinal introductory adverb.
+    forbidden_contexts: ["во вторых строках", "во вторых классах", "во вторых главах"]
+    positive_templates:
+      - "{Wrong}, файл был загружен."
+      - "{Wrong}, куратор уточнил вопрос."
+      - "{Wrong}, система сохранила запись."
+    hard_negative_templates:
+      - "Во вторых строках письма была ошибка."
+      - "Во вторых классах прошёл урок."
+      - "Во вторых главах учебника есть правило."
+    clean_templates:
+      - "Во-вторых, файл был загружен."

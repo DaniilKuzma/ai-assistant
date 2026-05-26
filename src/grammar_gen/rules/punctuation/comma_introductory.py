@@ -16,6 +16,14 @@ from src.schema import GeneratedExample
 
 
 ACTIVE_GAPS = frozenset({"COMMA"})
+INTRODUCTORY_WORDS = (
+    "конечно",
+    "вероятно",
+    "кстати",
+    "по-видимому",
+    "безусловно",
+    "разумеется",
+)
 
 
 class CommaIntroductoryRule(RuleProgram):
@@ -82,9 +90,14 @@ class CommaIntroductoryRule(RuleProgram):
 
 
 def _remove_introductory_commas(target: str) -> str:
-    if target.startswith("Конечно, "):
-        return replace_once_checked(target, "Конечно, ", "Конечно ")
-    return replace_once_checked(target, ", конечно,", " конечно")
+    for word in INTRODUCTORY_WORDS:
+        initial = f"{word.capitalize()}, "
+        if target.startswith(initial):
+            return replace_once_checked(target, initial, f"{word.capitalize()} ")
+        medial = f", {word},"
+        if medial in target:
+            return replace_once_checked(target, medial, f" {word}")
+    raise ValueError("Target sentence does not contain a supported introductory comma pattern.")
 
 
 def _example(

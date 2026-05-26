@@ -1,8 +1,8 @@
 rule_id: punct_address_interjection
 description: Address, interjection, and particle punctuation.
 slots:
-  address: [Редактор, Учитель, Студент, Секретарь]
-  object: [отчёт, текст, файл, план]
+  address: [Редактор, Учитель, Студент, Секретарь, Куратор, Методист, Оператор, Аналитик]
+  object: [отчёт, текст, файл, план, журнал, шаблон, конспект, вопрос]
 cases:
   positive:
     - sub_rule_id: address_initial
@@ -51,6 +51,26 @@ cases:
           source_pattern: "Да"
       metadata:
         subtype: affirmative_particle
+    - sub_rule_id: interjection_medial
+      source: "Файл ох не открылся."
+      target: "Файл, ох, не открылся."
+      gap_operations:
+        - label: COMMA
+          source_pattern: "Файл"
+        - label: COMMA
+          source_pattern: "ох"
+      expected_gap_edit_count: 2
+      metadata:
+        subtype: interjection
+        position: medial
+    - sub_rule_id: negative_particle
+      source: "Нет журнал не обновлён."
+      target: "Нет, журнал не обновлён."
+      gap_operations:
+        - label: COMMA
+          source_pattern: "Нет"
+      metadata:
+        subtype: negative_particle
   hard_negative:
     - sub_rule_id: subject_not_address_guard
       source_template: "{address} проверил {object}."

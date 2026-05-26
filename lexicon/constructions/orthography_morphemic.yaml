@@ -34,3 +34,87 @@ patterns:
       render_type: fixed_text
       texts:
         - "Редактор заметил новый пример."
+
+  - id: orthography_business_quote
+    family: orthography_morphemic
+    surface: "В протоколе указано слово «{word}»."
+    roles:
+      context:
+        semantic_classes: [text]
+    allowed_rule_ids: [suffix_its_ets, suffix_enn_yan, n_nn_basic, morpheme_hissing_vowels, morpheme_soft_hard_signs, morpheme_root_vowels, morpheme_prefixes, morpheme_suffixes, morpheme_n_nn, morpheme_consonants, morpheme_endings]
+    metadata:
+      render_type: fixed_text
+      texts:
+        - "В протоколе указано слово «пример»."
+
+  - id: orthography_education_quote
+    family: orthography_morphemic
+    surface: "В учебном задании встретилось слово «{word}»."
+    roles:
+      context:
+        semantic_classes: [text]
+    allowed_rule_ids: [suffix_its_ets, suffix_enn_yan, n_nn_basic, morpheme_hissing_vowels, morpheme_soft_hard_signs, morpheme_root_vowels, morpheme_prefixes, morpheme_suffixes, morpheme_n_nn, morpheme_consonants, morpheme_endings]
+    metadata:
+      render_type: fixed_text
+      texts:
+        - "В учебном задании встретилось слово «пример»."
+
+  - id: orthography_everyday_quote
+    family: orthography_morphemic
+    surface: "В заметке встретилась форма «{word}»."
+    roles:
+      context:
+        semantic_classes: [text]
+    allowed_rule_ids: [suffix_its_ets, suffix_enn_yan, n_nn_basic, morpheme_hissing_vowels, morpheme_soft_hard_signs, morpheme_root_vowels, morpheme_prefixes, morpheme_suffixes, morpheme_n_nn, morpheme_consonants, morpheme_endings]
+    metadata:
+      render_type: fixed_text
+      texts:
+        - "В заметке встретилась форма «пример»."
+
+  - id: orthography_technical_quote
+    family: orthography_morphemic
+    surface: "В техническом документе указали параметр «{word}»."
+    roles:
+      context:
+        semantic_classes: [text]
+    allowed_rule_ids: [suffix_its_ets, suffix_enn_yan, n_nn_basic, morpheme_hissing_vowels, morpheme_soft_hard_signs, morpheme_root_vowels, morpheme_prefixes, morpheme_suffixes, morpheme_n_nn, morpheme_consonants, morpheme_endings]
+    metadata:
+      render_type: fixed_text
+      texts:
+        - "В техническом документе указали параметр «пример»."
+
+  - id: orthography_action_quote
+    family: orthography_morphemic
+    surface: "Редактор исправил слово «{word}»."
+    roles:
+      context:
+        semantic_classes: [text]
+    allowed_rule_ids: [suffix_its_ets, suffix_enn_yan, n_nn_basic, morpheme_hissing_vowels, morpheme_soft_hard_signs, morpheme_root_vowels, morpheme_prefixes, morpheme_suffixes, morpheme_n_nn, morpheme_consonants, morpheme_endings]
+    metadata:
+      render_type: fixed_text
+      texts:
+        - "Редактор исправил слово «пример»."
+
+  - id: orthography_introductory_quote
+    family: orthography_morphemic
+    surface: "Кстати, в тексте встретилось слово «{word}»."
+    roles:
+      context:
+        semantic_classes: [text]
+    allowed_rule_ids: [suffix_its_ets, suffix_enn_yan, n_nn_basic, morpheme_hissing_vowels, morpheme_soft_hard_signs, morpheme_root_vowels, morpheme_prefixes, morpheme_suffixes, morpheme_n_nn, morpheme_consonants, morpheme_endings]
+    metadata:
+      render_type: fixed_text
+      texts:
+        - "Кстати, в тексте встретилось слово «пример»."
+
+  - id: orthography_time_place_quote
+    family: orthography_morphemic
+    surface: "Утром в кабинете сверили слово «{word}»."
+    roles:
+      context:
+        semantic_classes: [text]
+    allowed_rule_ids: [suffix_its_ets, suffix_enn_yan, n_nn_basic, morpheme_hissing_vowels, morpheme_soft_hard_signs, morpheme_root_vowels, morpheme_prefixes, morpheme_suffixes, morpheme_n_nn, morpheme_consonants, morpheme_endings]
+    metadata:
+      render_type: fixed_text
+      texts:
+        - "Утром в кабинете сверили слово «пример»."

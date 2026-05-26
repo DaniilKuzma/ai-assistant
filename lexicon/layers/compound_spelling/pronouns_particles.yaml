@@ -107,3 +107,57 @@ entries:
       - "Всё так спокойно прошло на встрече."
     clean_templates:
       - "Редактор всё-таки исправил ошибку."
+
+  - rule_id: compound_pronouns_particles
+    sub_rule_id: koe_pronouns
+    operation: hyphenate
+    correct: кое-что
+    wrong_variants: [кое что]
+    semantic_hint: indefinite pronoun with кое-.
+    forbidden_contexts: ["кое о чём", "кое для чего", "кое с чем"]
+    positive_templates:
+      - "Редактор {wrong} уточнил в отчёте."
+      - "Методист {wrong} добавил в конспект."
+      - "Система {wrong} сохранила в журнале."
+    hard_negative_templates:
+      - "Редактор кое о чём спросил автора."
+      - "Методист кое для чего оставил место."
+      - "Инженер кое с чем разобрался утром."
+    clean_templates:
+      - "Редактор кое-что уточнил в отчёте."
+
+  - rule_id: compound_pronouns_particles
+    sub_rule_id: postfix_to_libo_nibud
+    operation: hyphenate
+    correct: что-нибудь
+    wrong_variants: [что нибудь]
+    semantic_hint: indefinite pronoun with -нибудь.
+    forbidden_contexts: ["что нибудь значит", "нибудь отдельно", "что-либо"]
+    positive_templates:
+      - "Куратор попросил {wrong} исправить."
+      - "Редактор хотел {wrong} добавить в файл."
+      - "Пользователь спросил, можно ли {wrong} изменить."
+    hard_negative_templates:
+      - "Редактор спросил, что нибудь значит в протоколе."
+      - "Учитель написал нибудь отдельно как ошибку."
+      - "Методист уже объяснил слово что-либо."
+    clean_templates:
+      - "Куратор попросил что-нибудь исправить."
+
+  - rule_id: compound_pronouns_particles
+    sub_rule_id: postfix_to_libo_nibud
+    operation: hyphenate
+    correct: какой-либо
+    wrong_variants: [какой либо]
+    semantic_hint: indefinite pronoun with -либо.
+    forbidden_contexts: ["либо новый, либо старый", "какой либо был", "какой документ либо"]
+    positive_templates:
+      - "Редактор искал {wrong} документ в архиве."
+      - "Комиссия ждала {wrong} ответ от отдела."
+      - "Пользователь открыл {wrong} файл из списка."
+    hard_negative_templates:
+      - "Отчёт был либо новый, либо старый."
+      - "Секретарь спросил, какой либо был номер."
+      - "Редактор уточнил, какой документ либо файл нужен."
+    clean_templates:
+      - "Редактор искал какой-либо документ в архиве."

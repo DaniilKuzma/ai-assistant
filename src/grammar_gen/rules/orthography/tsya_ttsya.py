@@ -5,24 +5,13 @@ from src.grammar_gen.randomness import RandomSource
 from src.grammar_gen.realizer import Realizer
 from src.grammar_gen.rules.base import GenerationMode, RuleInfo, RuleProgram
 from src.grammar_gen.rules.common import (
-    capitalize_first,
     gap_labels_from_text,
     make_clean_identity_example,
     metadata_from_construction,
-    render_construction_by_id,
+    render_construction_for_rule,
     token_labels_all_keep,
-    varied_np,
 )
 from src.schema import GeneratedExample
-
-
-CONTROLLED_VERBS = (
-    ("учиться", "учится"),
-    ("готовиться", "готовится"),
-    ("трудиться", "трудится"),
-    ("ошибаться", "ошибается"),
-    ("возвращаться", "возвращается"),
-)
 
 
 class TsyaTtsyaRule(RuleProgram):
@@ -48,7 +37,7 @@ class TsyaTtsyaRule(RuleProgram):
         mode: GenerationMode,
     ) -> GeneratedExample:
         if mode is GenerationMode.POSITIVE:
-            rendered = render_construction_by_id(builder, realizer, rng, "tsya_ttsya_controlled_person")
+            rendered = render_construction_for_rule(builder, realizer, rng, self.info.rule_id, "tsya_ttsya")
             infinitive = str(rendered.metadata["tsya_infinitive"])
             finite = str(rendered.metadata["tsya_finite"])
             if rendered.metadata["tsya_direction"] == "infinitive":
@@ -73,7 +62,7 @@ class TsyaTtsyaRule(RuleProgram):
                 metadata=metadata_from_construction(rendered),
             )
         if mode is GenerationMode.HARD_NEGATIVE:
-            rendered = render_construction_by_id(builder, realizer, rng, "tsya_ttsya_controlled_person")
+            rendered = render_construction_for_rule(builder, realizer, rng, self.info.rule_id, "tsya_ttsya")
             return _identity_example(
                 rendered.text,
                 realizer,
@@ -82,7 +71,7 @@ class TsyaTtsyaRule(RuleProgram):
                 metadata_from_construction(rendered),
             )
         if mode is GenerationMode.CLEAN_IDENTITY:
-            rendered = render_construction_by_id(builder, realizer, rng, "tsya_ttsya_controlled_person")
+            rendered = render_construction_for_rule(builder, realizer, rng, self.info.rule_id, "tsya_ttsya")
             text = rendered.text
             tokens = realizer.tokenize_words_with_offsets(text)
             return make_clean_identity_example(

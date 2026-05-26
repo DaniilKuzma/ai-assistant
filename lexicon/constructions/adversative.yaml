@@ -14,8 +14,8 @@ patterns:
     allowed_rule_ids: [comma_adversative]
     metadata:
       render_type: adversative
-      main_frame_ids: [check_document, review_report]
-      second_frame_ids: [correct_error, fix_problem]
+      main_frame_ids: [check_document, review_report, analyze_report_detail, test_service]
+      second_frame_ids: [correct_error, fix_problem, edit_text, attach_document]
       negated_second: true
 
   - id: zato_document_correction
@@ -34,9 +34,47 @@ patterns:
     metadata:
       render_type: adversative
       conjunction: зато
-      main_frame_ids: [check_document, review_report]
-      second_frame_ids: [correct_error, fix_problem]
+      main_frame_ids: [check_document, review_report, compare_result, analyze_report_detail]
+      second_frame_ids: [correct_error, fix_problem, edit_text, form_report]
       negated_second: false
+
+  - id: adversative_technical_interface
+    family: adversative
+    surface: "{subject} загрузил {object}, но не проверил {problem}."
+    roles:
+      subject:
+        semantic_classes: [person, organization, software_agent]
+      object:
+        semantic_classes: [file, data, document]
+        case: accs
+      problem:
+        semantic_classes: [file, data, service, object]
+        case: accs
+    allowed_rule_ids: [comma_adversative]
+    metadata:
+      render_type: adversative
+      main_frame_ids: [upload_file, export_data, attach_document, forward_message]
+      second_frame_ids: [check_file_repeat, test_service, track_status]
+      negated_second: true
+
+  - id: adversative_education_context
+    family: adversative
+    surface: "{subject} объяснил {object}, но не уточнил {problem}."
+    roles:
+      subject:
+        semantic_classes: [person, organization]
+      object:
+        semantic_classes: [rule, question, task, text]
+        case: accs
+      problem:
+        semantic_classes: [question, requirement, task, rule]
+        case: accs
+    allowed_rule_ids: [comma_adversative]
+    metadata:
+      render_type: adversative
+      main_frame_ids: [explain_rule_detail, teach_person, clarify_question_repeat]
+      second_frame_ids: [clarify_question, explain_rule_repeat, check_file_repeat]
+      negated_second: true
 
   - id: adversative_a_takzhe_trap
     family: adversative

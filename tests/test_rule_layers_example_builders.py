@@ -129,5 +129,29 @@ def test_builder_rejects_unmatched_span_without_silent_label_mismatch() -> None:
         build_token_span_replacement_example(case, _realizer(), layer="compound_spelling")
 
 
+def test_builder_rejects_ambiguous_source_pattern_without_explicit_span() -> None:
+    case = LayerDirectCase(
+        rule_id="dictionary_normative_words",
+        family="dictionary_typo",
+        sub_rule_id="ambiguous_span",
+        mode="positive",
+        source_text="Отчёт отчёт готов.",
+        target_text="Отчёт отчёт готов.",
+        token_operations=(
+            LayerOperation(
+                kind="token",
+                label="DICT_REPLACE",
+                source_pattern="отчёт",
+                target_pattern="отчёт",
+            ),
+        ),
+        expected_token_edit_count=1,
+        expected_gap_edit_count=0,
+    )
+
+    with pytest.raises(ValueError, match="ambiguous source_pattern"):
+        build_token_span_replacement_example(case, _realizer(), layer="dictionary_typo")
+
+
 def _realizer() -> Realizer:
     return Realizer(Lexicon.default(), MorphologyEngine(use_pymorphy=False))

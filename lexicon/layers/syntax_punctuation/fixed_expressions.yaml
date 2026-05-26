@@ -1,7 +1,7 @@
 rule_id: punct_fixed_expression_guards
 description: Fixed-expression guards and extra punctuation deletion examples.
 slots:
-  subject: [Система, Программа, Команда]
+  subject: [Система, Программа, Команда, Служба, Панель, Форма]
 cases:
   positive:
     - sub_rule_id: delete_comma_kak_chasy
@@ -31,6 +31,24 @@ cases:
       metadata:
         operation: delete_extra_comma
         guard_family: stable_kak_expression
+    - sub_rule_id: delete_comma_kak_pravilo_guard
+      source: "Система работала, как обычно."
+      target: "Система работала как обычно."
+      gap_operations:
+        - label: DELETE_PUNCTUATION
+          source_pattern: "работала"
+      metadata:
+        operation: delete_extra_comma
+        guard_family: stable_kak_expression
+    - sub_rule_id: delete_comma_bez_ustali
+      source: "Оператор работал, без устали."
+      target: "Оператор работал без устали."
+      gap_operations:
+        - label: DELETE_PUNCTUATION
+          source_pattern: "работал"
+      metadata:
+        operation: delete_extra_comma
+        guard_family: stable_expression
   hard_negative:
     - sub_rule_id: stable_kak_chasy_guard
       source_template: "{subject} работала как часы."
@@ -45,6 +63,11 @@ cases:
     - sub_rule_id: stable_kak_nikogda_guard
       source: "Отчёт важен как никогда."
       target: "Отчёт важен как никогда."
+      metadata:
+        guard: stable_expression_no_comma
+    - sub_rule_id: stable_bez_ustali_guard
+      source: "Оператор работал без устали."
+      target: "Оператор работал без устали."
       metadata:
         guard: stable_expression_no_comma
   clean_identity:
