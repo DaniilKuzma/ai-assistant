@@ -84,6 +84,17 @@ class RuleLabel(str, Enum):
     TYPO_CHARACTER_NOISE = "typo_character_noise"
     TYPO_KEYBOARD_NEIGHBOR = "typo_keyboard_neighbor"
     TYPO_SPACE_NOISE = "typo_space_noise"
+    PUNCT_FINAL_MARKS = "punct_final_marks"
+    PUNCT_DASH_SYNTAX = "punct_dash_syntax"
+    PUNCT_HOMOGENEOUS_EXTENDED = "punct_homogeneous_extended"
+    PUNCT_DETACHED_DEFINITIONS = "punct_detached_definitions"
+    PUNCT_DETACHED_ADVERBIALS = "punct_detached_adverbials"
+    PUNCT_COMPARATIVE_TURNS = "punct_comparative_turns"
+    PUNCT_INTRODUCTORY_EXTENDED = "punct_introductory_extended"
+    PUNCT_ADDRESS_INTERJECTION = "punct_address_interjection"
+    PUNCT_COMPLEX_SENTENCES = "punct_complex_sentences"
+    PUNCT_BSP = "punct_bsp"
+    PUNCT_FIXED_EXPRESSION_GUARDS = "punct_fixed_expression_guards"
 
 
 TOKEN_EDIT_LABELS: tuple[str, ...] = (
@@ -165,6 +176,17 @@ RULE_LABELS: tuple[str, ...] = (
     "typo_character_noise",
     "typo_keyboard_neighbor",
     "typo_space_noise",
+    "punct_final_marks",
+    "punct_dash_syntax",
+    "punct_homogeneous_extended",
+    "punct_detached_definitions",
+    "punct_detached_adverbials",
+    "punct_comparative_turns",
+    "punct_introductory_extended",
+    "punct_address_interjection",
+    "punct_complex_sentences",
+    "punct_bsp",
+    "punct_fixed_expression_guards",
 )
 
 TOKEN_LABEL_TO_ID: Mapping[str, int] = MappingProxyType(

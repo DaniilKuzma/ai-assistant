@@ -226,7 +226,7 @@ def count_logical_token_edits(token_labels: list[str] | tuple[str, ...]) -> int:
 
 def allowed_source_surface_failures(example: GeneratedExample) -> set[str]:
     if (
-        example.primary_rule_id == "final_punctuation"
+        example.primary_rule_id in {"final_punctuation", "punct_final_marks"}
         and example.mode == "positive"
         and example.metadata.get("expected_error") == "missing_final_punctuation"
         and validate_surface(example.source_text) == ["missing_final_punctuation"]

@@ -1,0 +1,127 @@
+rules:
+  - rule_id: punct_complex_sentences
+    description: Controlled punctuation in compound and subordinate sentences.
+    slots:
+      actor: [Редактор, Студент, Учитель, Секретарь]
+      object: [отчёт, текст, файл, план]
+    cases:
+      positive:
+        - sub_rule_id: ssp_i
+          source_template: "{actor} проверил {object} и комиссия утвердила план."
+          target_template: "{actor} проверил {object}, и комиссия утвердила план."
+          gap_operations:
+            - label: COMMA
+              source_pattern: "{object}"
+          metadata:
+            subtype: compound_i
+        - sub_rule_id: ssp_no
+          source: "Отчёт готов но файл открыт."
+          target: "Отчёт готов, но файл открыт."
+          gap_operations:
+            - label: COMMA
+              source_pattern: "готов"
+          metadata:
+            subtype: compound_no
+        - sub_rule_id: spp_chto
+          source_template: "{actor} сказал что {object} готов."
+          target_template: "{actor} сказал, что {object} готов."
+          gap_operations:
+            - label: COMMA
+              source_pattern: "сказал"
+          metadata:
+            subtype: subordinate_chto
+        - sub_rule_id: spp_esli
+          source_template: "Если {object} готов {actor} отправит письмо."
+          target_template: "Если {object} готов, {actor} отправит письмо."
+          gap_operations:
+            - label: COMMA
+              source_pattern: "готов"
+          metadata:
+            subtype: subordinate_esli
+        - sub_rule_id: complex_conjunction_non_split
+          source: "Редактор задержался потому что файл был открыт."
+          target: "Редактор задержался, потому что файл был открыт."
+          gap_operations:
+            - label: COMMA
+              source_pattern: "задержался"
+          metadata:
+            subtype: complex_conjunction_non_split
+        - sub_rule_id: complex_conjunction_split
+          source: "Редактор задержался потому что файл был открыт."
+          target: "Редактор задержался потому, что файл был открыт."
+          gap_operations:
+            - label: COMMA
+              source_pattern: "потому"
+          metadata:
+            subtype: complex_conjunction_split
+      hard_negative:
+        - sub_rule_id: common_secondary_member_guard
+          source_template: "Утром {actor} проверил {object} и отправил письмо."
+          target_template: "Утром {actor} проверил {object} и отправил письмо."
+          metadata:
+            guard: common_secondary_member_no_comma
+        - sub_rule_id: chto_pronoun_guard
+          source: "Редактор понял что-то важное."
+          target: "Редактор понял что-то важное."
+          metadata:
+            guard: chto_pronoun_no_comma
+      clean_identity:
+        - sub_rule_id: clean_spp_chto
+          source_template: "{actor} сказал, что {object} готов."
+          target_template: "{actor} сказал, что {object} готов."
+          metadata:
+            subtype: clean_subordinate
+
+  - rule_id: punct_bsp
+    description: Controlled punctuation in asyndetic complex sentences.
+    cases:
+      positive:
+        - sub_rule_id: bsp_comma
+          source: "Солнце село город затих."
+          target: "Солнце село, город затих."
+          gap_operations:
+            - label: COMMA
+              source_pattern: "село"
+          metadata:
+            subtype: bsp_comma
+        - sub_rule_id: bsp_colon
+          source: "Я понял отчёт готов."
+          target: "Я понял: отчёт готов."
+          gap_operations:
+            - label: COLON
+              source_pattern: "понял"
+          metadata:
+            subtype: bsp_colon_explanation
+        - sub_rule_id: bsp_dash
+          source: "Файл открылся работа началась."
+          target: "Файл открылся — работа началась."
+          gap_operations:
+            - label: DASH
+              source_pattern: "открылся"
+          metadata:
+            subtype: bsp_dash_consequence
+        - sub_rule_id: bsp_semicolon
+          source: "Отчёт был готов редактор ушёл домой."
+          target: "Отчёт был готов; редактор ушёл домой."
+          gap_operations:
+            - label: SEMICOLON
+              source_pattern: "готов"
+          metadata:
+            subtype: bsp_semicolon
+      hard_negative:
+        - sub_rule_id: simple_sentence_guard
+          source: "Редактор проверил отчёт."
+          target: "Редактор проверил отчёт."
+          metadata:
+            guard: simple_sentence_no_bsp_punctuation
+        - sub_rule_id: conjunction_sentence_guard
+          source: "Редактор проверил отчёт и отправил письмо."
+          target: "Редактор проверил отчёт и отправил письмо."
+          metadata:
+            guard: conjunction_not_bsp
+      clean_identity:
+        - sub_rule_id: clean_bsp_colon
+          source: "Я понял: отчёт готов."
+          target: "Я понял: отчёт готов."
+          metadata:
+            subtype: clean_bsp

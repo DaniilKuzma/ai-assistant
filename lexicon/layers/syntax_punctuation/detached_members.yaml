@@ -1,0 +1,121 @@
+rules:
+  - rule_id: punct_detached_definitions
+    description: Detached definitions and appositions.
+    slots:
+      noun: [Отчёт, Документ, Протокол, План]
+      place: [архиве, кабинете, классе, офисе]
+    cases:
+      positive:
+        - sub_rule_id: participial_after_noun
+          source_template: "{noun} подготовленный студентом лежал в {place}."
+          target_template: "{noun}, подготовленный студентом, лежал в {place}."
+          gap_operations:
+            - label: COMMA
+              source_pattern: "{noun}"
+            - label: COMMA
+              source_pattern: "студентом"
+          expected_gap_edit_count: 2
+          metadata:
+            subtype: participial_after_defined_word
+        - sub_rule_id: cause_before_noun
+          source: "Уставший после проверки редактор закрыл файл."
+          target: "Уставший после проверки, редактор закрыл файл."
+          gap_operations:
+            - label: COMMA
+              source_pattern: "проверки"
+          metadata:
+            subtype: participial_before_cause_context
+        - sub_rule_id: pronoun_definition
+          source: "Он уставший после проверки закрыл файл."
+          target: "Он, уставший после проверки, закрыл файл."
+          gap_operations:
+            - label: COMMA
+              source_pattern: "Он"
+            - label: COMMA
+              source_pattern: "проверки"
+          expected_gap_edit_count: 2
+          metadata:
+            subtype: personal_pronoun_definition
+        - sub_rule_id: apposition
+          source: "Москва столица России приняла форум."
+          target: "Москва, столица России, приняла форум."
+          gap_operations:
+            - label: COMMA
+              source_pattern: "Москва"
+            - label: COMMA
+              source_pattern: "России"
+          expected_gap_edit_count: 2
+          metadata:
+            subtype: apposition
+      hard_negative:
+        - sub_rule_id: before_noun_no_cause_guard
+          source_template: "Подготовленный студентом {noun} лежал в {place}."
+          target_template: "Подготовленный студентом {noun} лежал в {place}."
+          metadata:
+            guard: participial_before_noun_no_cause
+        - sub_rule_id: close_definition_guard
+          source: "Новый рабочий отчёт готов."
+          target: "Новый рабочий отчёт готов."
+          metadata:
+            guard: close_definition
+      clean_identity:
+        - sub_rule_id: clean_apposition
+          source: "Москва, столица России, приняла форум."
+          target: "Москва, столица России, приняла форум."
+          metadata:
+            subtype: clean_apposition
+
+  - rule_id: punct_detached_adverbials
+    description: Detached adverbials and clarifying circumstances.
+    slots:
+      actor: [Редактор, Студент, Учитель, Секретарь]
+      object: [отчёт, текст, файл, план]
+    cases:
+      positive:
+        - sub_rule_id: gerund_phrase
+          source_template: "{actor} проверил {object} не меняя текста."
+          target_template: "{actor} проверил {object}, не меняя текста."
+          gap_operations:
+            - label: COMMA
+              source_pattern: "{object}"
+          metadata:
+            subtype: gerund_phrase
+        - sub_rule_id: single_gerund
+          source_template: "{actor} улыбаясь ответил на вопрос."
+          target_template: "{actor}, улыбаясь, ответил на вопрос."
+          gap_operations:
+            - label: COMMA
+              source_pattern: "{actor}"
+            - label: COMMA
+              source_pattern: "улыбаясь"
+          expected_gap_edit_count: 2
+          metadata:
+            subtype: single_gerund
+        - sub_rule_id: clarifying_time
+          source: "В аудитории утром начался урок."
+          target: "В аудитории, утром, начался урок."
+          gap_operations:
+            - label: COMMA
+              source_pattern: "аудитории"
+            - label: COMMA
+              source_pattern: "утром"
+          expected_gap_edit_count: 2
+          metadata:
+            subtype: clarifying_time
+      hard_negative:
+        - sub_rule_id: fixed_expression_spustya_rukava_guard
+          source: "Студент работал спустя рукава."
+          target: "Студент работал спустя рукава."
+          metadata:
+            guard: fixed_expression_no_comma
+        - sub_rule_id: adverbial_adverb_guard
+          source_template: "{actor} сидел молча."
+          target_template: "{actor} сидел молча."
+          metadata:
+            guard: adverb_no_comma
+      clean_identity:
+        - sub_rule_id: clean_gerund_phrase
+          source_template: "{actor} проверил {object}, не меняя текста."
+          target_template: "{actor} проверил {object}, не меняя текста."
+          metadata:
+            subtype: clean_gerund_phrase

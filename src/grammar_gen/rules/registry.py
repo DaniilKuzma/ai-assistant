@@ -97,7 +97,6 @@ def _is_enabled_rule(family: str, rule_id: str, enabled: frozenset[str]) -> bool
     aliases = {
         "orthography_contextual": frozenset({"contextual_orthography"}),
         "orthography_morphemic": frozenset({"morpheme"}),
-        "punctuation": frozenset({"syntax_punctuation"}),
     }
     return bool(aliases.get(family, frozenset()) & enabled)
 

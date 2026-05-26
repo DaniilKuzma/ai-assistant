@@ -66,6 +66,21 @@ def test_vocab_ids_are_stable() -> None:
     assert rule_id_to_label(rule_tag_to_id("typo_character_noise")) == "typo_character_noise"
     assert rule_id_to_label(rule_tag_to_id("typo_keyboard_neighbor")) == "typo_keyboard_neighbor"
     assert rule_id_to_label(rule_tag_to_id("typo_space_noise")) == "typo_space_noise"
+    assert rule_tag_to_id("punct_final_marks") > rule_tag_to_id("typo_space_noise")
+    for syntax_rule_id in (
+        "punct_final_marks",
+        "punct_dash_syntax",
+        "punct_homogeneous_extended",
+        "punct_detached_definitions",
+        "punct_detached_adverbials",
+        "punct_comparative_turns",
+        "punct_introductory_extended",
+        "punct_address_interjection",
+        "punct_complex_sentences",
+        "punct_bsp",
+        "punct_fixed_expression_guards",
+    ):
+        assert rule_id_to_label(rule_tag_to_id(syntax_rule_id)) == syntax_rule_id
 
 
 def test_unknown_labels_raise_value_error() -> None:

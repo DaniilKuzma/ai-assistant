@@ -1,0 +1,90 @@
+rule_id: punct_homogeneous_extended
+description: Extended homogeneous member punctuation examples.
+slots:
+  actor: [Редактор, Студент, Учитель, Секретарь]
+  first: [отчёт, текст, файл, план]
+  second: [письмо, протокол, таблицу, заявку]
+  third: [договор, доклад, справку, инструкцию]
+cases:
+  positive:
+    - sub_rule_id: no_conjunction_series
+      source_template: "{actor} проверил {first} {second} {third}."
+      target_template: "{actor} проверил {first}, {second}, {third}."
+      gap_operations:
+        - label: COMMA
+          source_pattern: "{first}"
+        - label: COMMA
+          source_pattern: "{second}"
+      expected_gap_edit_count: 2
+      metadata:
+        subtype: homogeneous_without_conjunctions
+    - sub_rule_id: repeated_conjunction
+      source_template: "{actor} проверил и {first} и {second}."
+      target_template: "{actor} проверил и {first}, и {second}."
+      gap_operations:
+        - label: COMMA
+          source_pattern: "{first}"
+      metadata:
+        subtype: repeated_conjunction
+    - sub_rule_id: adversative_homogeneous
+      source: "Отчёт краткий но точный."
+      target: "Отчёт краткий, но точный."
+      gap_operations:
+        - label: COMMA
+          source_pattern: "краткий"
+      metadata:
+        subtype: adversative_homogeneous
+    - sub_rule_id: general_word_colon
+      source: "В архиве были документы отчёты письма."
+      target: "В архиве были документы: отчёты, письма."
+      gap_operations:
+        - label: COLON
+          source_pattern: "документы"
+        - label: COMMA
+          source_pattern: "отчёты"
+      expected_gap_edit_count: 2
+      metadata:
+        subtype: generalizing_word_before_series
+    - sub_rule_id: general_word_after_series_dash
+      source: "Отчёты письма протоколы все лежали в архиве."
+      target: "Отчёты, письма, протоколы — все лежали в архиве."
+      gap_operations:
+        - label: COMMA
+          source_pattern: "Отчёты"
+        - label: COMMA
+          source_pattern: "письма"
+        - label: DASH
+          source_pattern: "протоколы"
+      expected_gap_edit_count: 3
+      metadata:
+        subtype: generalizing_word_after_series
+    - sub_rule_id: homogeneous_definitions
+      source: "Короткий точный отчёт помог комиссии."
+      target: "Короткий, точный отчёт помог комиссии."
+      gap_operations:
+        - label: COMMA
+          source_pattern: "Короткий"
+      metadata:
+        subtype: homogeneous_definitions
+  hard_negative:
+    - sub_rule_id: single_i_guard
+      source_template: "{actor} проверил {first} и {second}."
+      target_template: "{actor} проверил {first} и {second}."
+      metadata:
+        guard: single_i_no_comma
+    - sub_rule_id: heterogeneous_definitions_guard
+      source: "Новый рабочий отчёт готов."
+      target: "Новый рабочий отчёт готов."
+      metadata:
+        guard: heterogeneous_definitions
+    - sub_rule_id: relation_definition_guard
+      source: "Русский научный текст опубликован."
+      target: "Русский научный текст опубликован."
+      metadata:
+        guard: heterogeneous_definitions
+  clean_identity:
+    - sub_rule_id: clean_homogeneous_series
+      source_template: "{actor} проверил {first}, {second}, {third}."
+      target_template: "{actor} проверил {first}, {second}, {third}."
+      metadata:
+        subtype: clean_homogeneous

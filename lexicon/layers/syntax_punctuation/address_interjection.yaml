@@ -1,0 +1,70 @@
+rule_id: punct_address_interjection
+description: Address, interjection, and particle punctuation.
+slots:
+  address: [Редактор, Учитель, Студент, Секретарь]
+  object: [отчёт, текст, файл, план]
+cases:
+  positive:
+    - sub_rule_id: address_initial
+      source_template: "{address} проверь {object}."
+      target_template: "{address}, проверь {object}."
+      gap_operations:
+        - label: COMMA
+          source_pattern: "{address}"
+      metadata:
+        subtype: address
+        position: initial
+    - sub_rule_id: address_medial
+      source_template: "Проверь {address} {object}."
+      target_template: "Проверь, {address}, {object}."
+      gap_operations:
+        - label: COMMA
+          source_pattern: "Проверь"
+        - label: COMMA
+          source_pattern: "{address}"
+      expected_gap_edit_count: 2
+      metadata:
+        subtype: address
+        position: medial
+    - sub_rule_id: address_final
+      source_template: "Проверь {object} {address}."
+      target_template: "Проверь {object}, {address}."
+      gap_operations:
+        - label: COMMA
+          source_pattern: "{object}"
+      metadata:
+        subtype: address
+        position: final
+    - sub_rule_id: interjection_initial
+      source: "Ох редактор устал."
+      target: "Ох, редактор устал."
+      gap_operations:
+        - label: COMMA
+          source_pattern: "Ох"
+      metadata:
+        subtype: interjection
+    - sub_rule_id: affirmative_particle
+      source: "Да отчёт готов."
+      target: "Да, отчёт готов."
+      gap_operations:
+        - label: COMMA
+          source_pattern: "Да"
+      metadata:
+        subtype: affirmative_particle
+  hard_negative:
+    - sub_rule_id: subject_not_address_guard
+      source_template: "{address} проверил {object}."
+      target_template: "{address} проверил {object}."
+      metadata:
+        guard: subject_not_address
+    - sub_rule_id: lookalike_guard
+      source: "Охрана проверила вход."
+      target: "Охрана проверила вход."
+      metadata:
+        guard: address_lookalike
+  clean_identity:
+    - sub_rule_id: clean_address_initial
+      source_template: "{address}, проверь {object}."
+      target_template: "{address}, проверь {object}."
+      metadata:
+        subtype: clean_address

@@ -332,6 +332,25 @@ def test_delete_punctuation_removes_comma_after_word() -> None:
     ]
 
 
+def test_delete_punctuation_removes_dash_and_normalizes_space() -> None:
+    text = "\u041e\u0442\u0447\u0451\u0442 \u2014 \u0441\u043e\u0434\u0435\u0440\u0436\u0438\u0442 \u0434\u0430\u043d\u043d\u044b\u0435."
+    tokens = tokenize_runtime_words(text)
+
+    corrected, edits = apply_gap_labels(
+        text,
+        tokens,
+        ["DELETE_PUNCTUATION", "NONE", "NONE"],
+        [0.95, 1.0, 1.0],
+        threshold=0.7,
+        rule_ids=["punct_dash_syntax", "none", "none"],
+    )
+
+    assert corrected == "\u041e\u0442\u0447\u0451\u0442 \u0441\u043e\u0434\u0435\u0440\u0436\u0438\u0442 \u0434\u0430\u043d\u043d\u044b\u0435."
+    assert [(edit.source, edit.replacement, edit.rule_id) for edit in edits] == [
+        (" \u2014 ", " ", "punct_dash_syntax")
+    ]
+
+
 def test_none_gap_label_does_not_delete_existing_comma() -> None:
     text = "\u041e\u043d \u0437\u043d\u0430\u043b, \u0447\u0442\u043e \u0434\u0435\u043b\u0430\u0442\u044c"
     tokens = tokenize_runtime_words(text)

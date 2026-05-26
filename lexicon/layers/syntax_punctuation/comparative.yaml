@@ -1,0 +1,61 @@
+rule_id: punct_comparative_turns
+description: Controlled comparative turn punctuation.
+slots:
+  subject: [Отчёт, Текст, Сервис, Доклад]
+  quality: [точным, важным, кратким, полезным]
+cases:
+  positive:
+    - sub_rule_id: kak_comparison
+      source_template: "{subject} был {quality} как расчёт."
+      target_template: "{subject} был {quality}, как расчёт."
+      gap_operations:
+        - label: COMMA
+          source_pattern: "{quality}"
+      metadata:
+        subtype: kak_comparison
+    - sub_rule_id: kak_budto_comparison
+      source: "Система работала как будто без ошибок."
+      target: "Система работала, как будто без ошибок."
+      gap_operations:
+        - label: COMMA
+          source_pattern: "работала"
+      metadata:
+        subtype: kak_budto
+    - sub_rule_id: slovno_comparison
+      source: "Сервис отвечал словно опытный редактор."
+      target: "Сервис отвечал, словно опытный редактор."
+      gap_operations:
+        - label: COMMA
+          source_pattern: "отвечал"
+      metadata:
+        subtype: slovno
+    - sub_rule_id: tochno_comparison
+      source: "Текст звучал точно устное сообщение."
+      target: "Текст звучал, точно устное сообщение."
+      gap_operations:
+        - label: COMMA
+          source_pattern: "звучал"
+      metadata:
+        subtype: tochno
+  hard_negative:
+    - sub_rule_id: kak_quality_guard
+      source: "Редактор работал как эксперт."
+      target: "Редактор работал как эксперт."
+      metadata:
+        guard: kak_quality_no_comma
+    - sub_rule_id: stable_kak_chasy_guard
+      source: "Система работала как часы."
+      target: "Система работала как часы."
+      metadata:
+        guard: stable_expression
+    - sub_rule_id: kak_never_guard
+      source_template: "{subject} важен как никогда."
+      target_template: "{subject} важен как никогда."
+      metadata:
+        guard: stable_expression
+  clean_identity:
+    - sub_rule_id: clean_comparison
+      source_template: "{subject} был {quality}, как расчёт."
+      target_template: "{subject} был {quality}, как расчёт."
+      metadata:
+        subtype: clean_comparison

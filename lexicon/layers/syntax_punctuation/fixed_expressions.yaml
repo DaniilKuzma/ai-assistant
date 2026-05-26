@@ -1,0 +1,55 @@
+rule_id: punct_fixed_expression_guards
+description: Fixed-expression guards and extra punctuation deletion examples.
+slots:
+  subject: [Система, Программа, Команда]
+cases:
+  positive:
+    - sub_rule_id: delete_comma_kak_chasy
+      source_template: "{subject} работала, как часы."
+      target_template: "{subject} работала как часы."
+      gap_operations:
+        - label: DELETE_PUNCTUATION
+          source_pattern: "работала"
+      metadata:
+        operation: delete_extra_comma
+        guard_family: stable_kak_expression
+    - sub_rule_id: delete_comma_spustya_rukava
+      source: "Редактор работал, спустя рукава."
+      target: "Редактор работал спустя рукава."
+      gap_operations:
+        - label: DELETE_PUNCTUATION
+          source_pattern: "работал"
+      metadata:
+        operation: delete_extra_comma
+        guard_family: stable_gerund_expression
+    - sub_rule_id: delete_comma_kak_nikogda
+      source: "Отчёт важен, как никогда."
+      target: "Отчёт важен как никогда."
+      gap_operations:
+        - label: DELETE_PUNCTUATION
+          source_pattern: "важен"
+      metadata:
+        operation: delete_extra_comma
+        guard_family: stable_kak_expression
+  hard_negative:
+    - sub_rule_id: stable_kak_chasy_guard
+      source_template: "{subject} работала как часы."
+      target_template: "{subject} работала как часы."
+      metadata:
+        guard: stable_expression_no_comma
+    - sub_rule_id: stable_spustya_rukava_guard
+      source: "Редактор работал спустя рукава."
+      target: "Редактор работал спустя рукава."
+      metadata:
+        guard: stable_expression_no_comma
+    - sub_rule_id: stable_kak_nikogda_guard
+      source: "Отчёт важен как никогда."
+      target: "Отчёт важен как никогда."
+      metadata:
+        guard: stable_expression_no_comma
+  clean_identity:
+    - sub_rule_id: clean_fixed_expression
+      source_template: "{subject} работала как часы."
+      target_template: "{subject} работала как часы."
+      metadata:
+        guard: clean_fixed_expression

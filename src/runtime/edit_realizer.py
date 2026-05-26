@@ -317,6 +317,11 @@ def _delete_punctuation_edit(
         scan += 1
     if scan >= len(text) or text[scan] not in DELETE_PUNCTUATION_CHARS:
         return None
+    if text[scan] in {"-", "\u2014"}:
+        end = scan + 1
+        while end < len(text) and text[end].isspace():
+            end += 1
+        return RuntimeEdit(token.end, end, text[token.end : end], " ", "punctuation", rule_id, confidence)
     return RuntimeEdit(scan, scan + 1, text[scan], "", "punctuation", rule_id, confidence)
 
 

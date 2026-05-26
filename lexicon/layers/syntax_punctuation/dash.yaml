@@ -1,0 +1,70 @@
+rule_id: punct_dash_syntax
+description: Controlled dash examples for subject-predicate syntax.
+slots:
+  subject: [Отчёт, Протокол, План, Закон]
+  predicate: [документ, текст, основа, правило]
+  item: [Задача, Цель, Ошибка, Проверка]
+cases:
+  positive:
+    - sub_rule_id: noun_predicate_dash
+      source_template: "{subject} {predicate}."
+      target_template: "{subject} — {predicate}."
+      gap_operations:
+        - label: DASH
+          source_pattern: "{subject}"
+      metadata:
+        subtype: noun_predicate
+    - sub_rule_id: numeral_predicate_dash
+      source: "Три больше двух."
+      target: "Три — больше двух."
+      gap_operations:
+        - label: DASH
+          source_pattern: "Три"
+      metadata:
+        subtype: numeral_predicate
+    - sub_rule_id: infinitive_dash
+      source: "Проверить значит подтвердить результат."
+      target: "Проверить — значит подтвердить результат."
+      gap_operations:
+        - label: DASH
+          source_pattern: "Проверить"
+      metadata:
+        subtype: infinitive_predicate
+    - sub_rule_id: eto_vot_znachit_dash
+      source_template: "{item} это часть работы."
+      target_template: "{item} — это часть работы."
+      gap_operations:
+        - label: DASH
+          source_pattern: "{item}"
+      metadata:
+        subtype: eto_marker
+    - sub_rule_id: delete_extra_dash_subject_predicate
+      source_template: "{subject} — содержит данные."
+      target_template: "{subject} содержит данные."
+      gap_operations:
+        - label: DELETE_PUNCTUATION
+          source_pattern: "{subject}"
+      metadata:
+        operation: delete_extra_dash
+  hard_negative:
+    - sub_rule_id: no_dash_subject_predicate_verb
+      source_template: "{subject} содержит данные."
+      target_template: "{subject} содержит данные."
+      metadata:
+        guard: no_dash_subject_predicate
+    - sub_rule_id: no_dash_with_copula
+      source: "Студент был редактором."
+      target: "Студент был редактором."
+      metadata:
+        guard: no_dash_subject_predicate
+    - sub_rule_id: no_comma_subject_predicate
+      source: "Редактор проверил отчёт."
+      target: "Редактор проверил отчёт."
+      metadata:
+        guard: no_dash_subject_predicate
+  clean_identity:
+    - sub_rule_id: clean_dash_nominal
+      source_template: "{subject} — {predicate}."
+      target_template: "{subject} — {predicate}."
+      metadata:
+        subtype: clean_dash

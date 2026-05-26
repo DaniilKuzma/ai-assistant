@@ -13,6 +13,7 @@ from src.grammar_gen.randomness import RandomSource
 from src.rule_layers.compound_spelling import load_compound_spelling_specs
 from src.rule_layers.dictionary_typo import load_dictionary_typo_specs
 from src.rule_layers.spec_loader import load_layer_specs
+from src.rule_layers.syntax_punctuation import load_syntax_punctuation_specs
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -79,6 +80,8 @@ def _load_layer_specs(layer_name: str, *, root: Path, rng: RandomSource, seed: i
         return load_compound_spelling_specs(root)
     if layer_name == "dictionary_typo":
         return load_dictionary_typo_specs(root, seed=seed)
+    if layer_name == "syntax_punctuation":
+        return load_syntax_punctuation_specs(root)
     return load_layer_specs(layer_name, root=root, rng=rng)
 
 

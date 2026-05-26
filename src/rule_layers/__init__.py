@@ -11,6 +11,7 @@ from src.rule_layers.example_builders import (
     build_token_span_replacement_example,
 )
 from src.rule_layers.spec_loader import DEFAULT_LAYERS_DIR, load_layer_specs
+from src.rule_layers.syntax_punctuation import load_syntax_punctuation_specs
 
 
 __all__ = [
@@ -30,5 +31,6 @@ __all__ = [
     "load_dictionary_typo_specs",
     "load_compound_spelling_specs",
     "load_layer_specs",
+    "load_syntax_punctuation_specs",
     "validate_layer_coverage",
 ]
