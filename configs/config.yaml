@@ -70,6 +70,7 @@ runtime:
 
 paths:
   generated_eval_dir: data/generated_eval
+  checkpoint_output_dir: models/checkpoints
   adapter_output_dir: models/adapters/latest
   heads_output_dir: models/heads/latest
   lexicon_dir: lexicon

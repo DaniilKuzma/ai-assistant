@@ -19,6 +19,12 @@ PUNCTUATION_BY_LABEL = {
 }
 PUNCTUATION_CHARS = set(",.!?:;—…")
 
+TSYA_TO_TTSYA_REPLACEMENTS = {
+    "\u043e\u0448\u0438\u0431\u0430\u0435\u0442\u0441\u044f": "\u043e\u0448\u0438\u0431\u0430\u0442\u044c\u0441\u044f",
+    "\u0432\u043e\u0437\u0432\u0440\u0430\u0449\u0430\u0435\u0442\u0441\u044f": "\u0432\u043e\u0437\u0432\u0440\u0430\u0449\u0430\u0442\u044c\u0441\u044f",
+}
+TTSYA_TO_TSYA_REPLACEMENTS = {value: key for key, value in TSYA_TO_TTSYA_REPLACEMENTS.items()}
+
 
 LABEL_RULE_EDIT_TYPE: dict[str, tuple[str, str]] = {
     "DELETE": ("delete", "spelling"),
@@ -183,9 +189,9 @@ def _token_edit_for_label(
     elif label == "SPLIT_ZATO_TO_ZA_TO":
         replacement = _split_exact(source, "зато", "за то")
     elif label == "FIX_TSYA_TO_TTSYA":
-        replacement = re.sub(r"тся$", "ться", source, flags=re.IGNORECASE)
+        replacement = _fix_tsya_to_ttsya(source)
     elif label == "FIX_TTSYA_TO_TSYA":
-        replacement = re.sub(r"ться$", "тся", source, flags=re.IGNORECASE)
+        replacement = _fix_ttsya_to_tsya(source)
 
     if replacement is None or replacement == source:
         return None
@@ -257,6 +263,29 @@ def _consumed_indexes(tokens: Sequence[WordToken], index: int, label: str) -> se
 
 def _split_exact(source: str, lowered: str, replacement: str) -> str | None:
     if source.lower() != lowered:
+        return None
+    if source[:1].isupper():
+        return replacement[:1].upper() + replacement[1:]
+    return replacement
+
+
+def _fix_tsya_to_ttsya(source: str) -> str:
+    mapped = _mapped_replacement(source, TSYA_TO_TTSYA_REPLACEMENTS)
+    if mapped is not None:
+        return mapped
+    return re.sub(r"тся$", "ться", source, flags=re.IGNORECASE)
+
+
+def _fix_ttsya_to_tsya(source: str) -> str:
+    mapped = _mapped_replacement(source, TTSYA_TO_TSYA_REPLACEMENTS)
+    if mapped is not None:
+        return mapped
+    return re.sub(r"ться$", "тся", source, flags=re.IGNORECASE)
+
+
+def _mapped_replacement(source: str, replacements: dict[str, str]) -> str | None:
+    replacement = replacements.get(source.lower())
+    if replacement is None:
         return None
     if source[:1].isupper():
         return replacement[:1].upper() + replacement[1:]

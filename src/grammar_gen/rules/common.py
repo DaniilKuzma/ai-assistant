@@ -111,6 +111,19 @@ def varied_np(
     return noun_phrase_from_entry(entry, case=case, adjective_lemmas=adjectives)
 
 
+def object_np_for_frame(
+    builder: Any,
+    rng: Any,
+    frame: Any,
+    *,
+    case: str = "accs",
+    adjective_probability: float = 0.35,
+) -> NounPhrase:
+    entry = builder.lexicon.random_object_for_frame(frame, rng)
+    adjectives = varied_adjectives(builder, rng, noun_entry=entry, probability=adjective_probability)
+    return noun_phrase_from_entry(entry, case=case, adjective_lemmas=adjectives)
+
+
 def varied_adjectives(
     builder: Any,
     rng: Any,
@@ -291,6 +304,7 @@ __all__ = [
     "metadata_with_safety_clauses",
     "metadata_without_safety_clauses",
     "noun_phrase_from_entry",
+    "object_np_for_frame",
     "remove_punctuation_before",
     "replace_once_checked",
     "rule_ids_for_active_gap_labels",

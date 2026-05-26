@@ -1,0 +1,6 @@
+[training] loading tokenizer and model
+[training] device=cuda cuda_available=True epochs=3 samples_per_epoch=200000 batch_size=32 steps_per_epoch=6250 total_train_steps=18750 amp=True
+train epoch 1/3 [------------------------]   0.0% 0/6250 elapsed=00:00:00
+D:\projects\ai-assistant\src\training\trainer.py:412: UserWarning: Detected call of `lr_scheduler.step()` before `optimizer.step()`. In PyTorch 1.1.0 and later, you should call them in the opposite order: `optimizer.step()` before `lr_scheduler.step()`.  Failure to do this will result in PyTorch skipping the first value of the learning rate schedule. See more details at https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate
+  scheduler.step()
+train epoch 1/3 [------------------------]   1.0% 62/6250 elapsed=00:00:20 loss=5.9319 token=2.3954 gap=2.1903 rule=3.0273 lr=0.0000

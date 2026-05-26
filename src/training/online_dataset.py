@@ -114,9 +114,9 @@ def _resolve_jsonl_path(path_or_config: str | Path | Mapping[str, Any], split: s
 def _split_seed_offset(split: str) -> int:
     return {
         "train": 0,
-        "val": 1_000_000,
-        "test": 2_000_000,
-        "regression": 3_000_000,
+        "val": 10_000_000,
+        "test": 20_000_000,
+        "regression": 30_000_000,
     }.get(split, 0)
 
 

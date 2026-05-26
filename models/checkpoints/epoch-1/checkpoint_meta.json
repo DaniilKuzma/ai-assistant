@@ -1,0 +1,14 @@
+{
+  "adapter_epoch": 1,
+  "adapter_saved": false,
+  "epoch": 1,
+  "heads_epoch": 1,
+  "validation": {
+    "combined_score": null,
+    "epoch": 1,
+    "exact_match": null,
+    "loss": null,
+    "reason": "missing_or_empty_eval_jsonl:C:\\Users\\пк\\AppData\\Local\\Temp\\pytest-of-пк\\pytest-347\\test_train_entrypoint_runs_dir0\\generated_eval\\val.jsonl",
+    "status": "skipped"
+  }
+}

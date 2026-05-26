@@ -1,0 +1,37 @@
+{
+  "audit_failure_reasons": {},
+  "audit_failures_count": 0,
+  "base_seed": 13,
+  "count": 5000,
+  "first_failed_examples": [],
+  "mode_distribution": {
+    "clean_identity": 741,
+    "hard_negative": 527,
+    "positive": 3732
+  },
+  "output_path": "data\\generated_eval\\test.jsonl",
+  "rule_distribution": {
+    "comma_adversative": 416,
+    "comma_homogeneous": 434,
+    "comma_introductory": 458,
+    "comma_subordinate": 409,
+    "dash_subject_predicate": 437,
+    "final_punctuation": 409,
+    "hyphen_koe": 299,
+    "hyphen_particles": 308,
+    "hyphen_po_adverb": 265,
+    "ne_verb": 288,
+    "takzhe_tak_zhe": 293,
+    "tozhe_to_zhe": 318,
+    "tsya_ttsya": 346,
+    "zato_za_to": 320
+  },
+  "seed": 20000013,
+  "seed_offset": 20000000,
+  "split": "test",
+  "split_seed_overlap_with_train": false,
+  "split_seed_range_end": 20005012,
+  "split_seed_range_start": 20000013,
+  "train_seed_range_end": 600013,
+  "train_seed_range_start": 13
+}

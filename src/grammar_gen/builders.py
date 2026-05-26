@@ -31,6 +31,29 @@ SAFE_SUBORDINATE_FRAME_IDS = (
     "data_indicates",
     "include_requirement",
 )
+ADVERB_FRIENDLY_FRAME_FAMILIES = frozenset(
+    {
+        "action",
+        "approval",
+        "buying",
+        "calculation",
+        "communication",
+        "comparison",
+        "correction",
+        "data",
+        "document_work",
+        "event_work",
+        "file_action",
+        "meeting_work",
+        "movement",
+        "perception",
+        "placement",
+        "problem_solving",
+        "publication",
+        "reading",
+        "storage",
+    }
+)
 DASH_NOMINAL_PAIRS = (
     ("report_document", "отчёт", "документ"),
     ("law_document", "закон", "документ"),
@@ -40,6 +63,41 @@ DASH_NOMINAL_PAIRS = (
     ("instruction_text", "инструкция", "текст"),
     ("meeting_event", "собрание", "событие"),
     ("plan_document", "план", "документ"),
+    ("message_text", "сообщение", "текст"),
+    ("letter_message", "письмо", "сообщение"),
+    ("answer_message", "ответ", "сообщение"),
+    ("file_document", "файл", "документ"),
+    ("article_text", "статья", "текст"),
+    ("report_summary", "доклад", "сводка"),
+    ("overview_text", "обзор", "текст"),
+    ("rule_requirement", "правило", "требование"),
+    ("task_requirement", "задача", "требование"),
+    ("assignment_task", "задание", "задача"),
+    ("formula_rule", "формула", "правило"),
+    ("calculation_document", "расчёт", "документ"),
+    ("table_file", "таблица", "файл"),
+    ("text_document", "текст", "документ"),
+    ("summary_document", "сводка", "документ"),
+    ("contract_document", "договор", "документ"),
+    ("order_document", "приказ", "документ"),
+    ("certificate_document", "справка", "документ"),
+    ("manual_document", "инструкция", "документ"),
+    ("statement_document", "заявление", "документ"),
+    ("note_text", "заметка", "текст"),
+    ("description_text", "описание", "текст"),
+    ("notification_message", "уведомление", "сообщение"),
+    ("comment_message", "комментарий", "сообщение"),
+    ("code_law", "кодекс", "закон"),
+    ("norm_rule", "норма", "правило"),
+    ("condition_requirement", "условие", "требование"),
+    ("circumstance_fact", "обстоятельство", "факт"),
+    ("resolution_decision", "постановление", "решение"),
+    ("schedule_plan", "график", "план"),
+    ("session_meeting", "заседание", "собрание"),
+    ("textbook_book", "учебник", "книга"),
+    ("novel_book", "роман", "книга"),
+    ("outcome_result", "итог", "результат"),
+    ("conclusion_result", "вывод", "результат"),
 )
 
 
@@ -61,7 +119,7 @@ class GrammarBuilder:
         subject_entry = self.lexicon.random_subject_for_frame(frame, self.rng)
         subject = self._noun_phrase(subject_entry)
         object_np = self._object_for_frame(frame)
-        adverbs = self._optional_adverbs()
+        adverbs = self._optional_adverbs_for_frame(frame)
         predicate = VerbPhrase(
             verb_lemma=frame.verb_lemma,
             transitive=bool(frame.object_classes),
@@ -154,7 +212,7 @@ class GrammarBuilder:
             tense=tense,
             transitive=bool(frame.object_classes),
             object_np=self._object_for_frame(frame),
-            adverbs=self._optional_adverbs() if allow_adverbs else (),
+            adverbs=self._optional_adverbs_for_frame(frame) if allow_adverbs else (),
             negated=False,
             frame_id=frame.frame_id,
         )
@@ -172,7 +230,7 @@ class GrammarBuilder:
             verb_lemma=frame.verb_lemma,
             transitive=bool(frame.object_classes),
             object_np=self._object_for_frame(frame),
-            adverbs=self._optional_adverbs(),
+            adverbs=self._optional_adverbs_for_frame(frame),
             negated=allow_negation and frame.allow_ne and self.rng.chance(0.12),
             frame_id=frame.frame_id,
         )
@@ -208,6 +266,11 @@ class GrammarBuilder:
             return ()
         candidates = tuple(adverb for adverb in self.lexicon.adverbs if adverb.semantic_class == "manner")
         return (self.rng.choice(candidates or self.lexicon.adverbs).lemma,)
+
+    def _optional_adverbs_for_frame(self, frame: VerbFrame) -> tuple[str, ...]:
+        if frame.frame_family not in ADVERB_FRIENDLY_FRAME_FAMILIES:
+            return ()
+        return self._optional_adverbs()
 
     def _optional_left_adverbials(self) -> tuple[str, ...]:
         if not self.rng.chance(0.12):

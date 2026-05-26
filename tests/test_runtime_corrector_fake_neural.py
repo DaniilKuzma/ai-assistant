@@ -79,6 +79,18 @@ def test_fake_neural_backend_applies_token_and_gap_labels() -> None:
     ]
 
 
+def test_corrector_metadata_marks_direct_neural_backend() -> None:
+    corrector = Corrector(
+        neural_backend=FakeDirectNeuralBackend(),
+        config={"runtime": {"deterministic_first": False}},
+    )
+
+    result = corrector.correct("РћРЅ РЅРµР·РЅР°Р» С‡С‚Рѕ РґРµР»Р°С‚СЊ")
+
+    assert result.metadata["backend_kind"] == "direct_neural"
+    assert result.metadata["model_loaded"] is True
+
+
 def test_low_confidence_neural_prediction_is_skipped() -> None:
     corrector = Corrector(
         neural_backend=LowConfidenceBackend(),
@@ -89,6 +101,15 @@ def test_low_confidence_neural_prediction_is_skipped() -> None:
 
     assert result.corrected_text == "Он незнал что делать"
     assert result.edits == []
+
+
+def test_corrector_metadata_marks_deterministic_fallback() -> None:
+    corrector = Corrector(neural_backend=None, config={"runtime": {"neural_token_edits": True}})
+
+    result = corrector.correct("Р§РёСЃС‚С‹Р№ С‚РµРєСЃС‚.")
+
+    assert result.metadata["backend_kind"] == "deterministic_fallback"
+    assert result.metadata["model_loaded"] is False
 
 
 def test_low_margin_neural_prediction_is_skipped() -> None:

@@ -114,7 +114,7 @@ class Realizer:
 
     def _render_verb(self, vp: VerbPhrase, subject: NounPhrase) -> str:
         if vp.tense == "present":
-            return self.morphology.inflect_verb_present_3sg(vp.verb_lemma)
+            return self.morphology.inflect_verb_present(vp.verb_lemma, number=subject.number)
         if vp.tense == "past":
             return self.morphology.inflect_verb_past(vp.verb_lemma, subject.gender, subject.number)
         return self.morphology.infinitive(vp.verb_lemma)

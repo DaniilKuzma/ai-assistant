@@ -36,7 +36,7 @@ create_file,создать,person|organization|software_agent,file|document|plan
 update_file,обновить,person|organization|software_agent,file|document|data,,true,file_action
 delete_file,удалить,person|organization|software_agent,file|data|message,,true,file_action
 receive_message,получить,person|organization|software_agent,message|file|document,от:gent:person|от:gent:organization,true,communication
-answer_question,ответить,person|organization,question|request,,true,communication
+answer_request,ответить,person|organization,,на:accs:request|на:accs:question,true,communication
 ask_question,задать,person,question,,true,communication
 discuss_issue,обсудить,person|organization,question|problem|issue|plan,,true,communication
 find_error,найти,person|organization|software_agent,error|file|document|data,,true,perception

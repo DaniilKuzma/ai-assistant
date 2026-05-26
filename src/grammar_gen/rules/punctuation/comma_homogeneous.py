@@ -62,10 +62,26 @@ def _homogeneous_sentence(builder: GrammarBuilder, realizer: Realizer, rng: Rand
     subject = varied_np(builder, rng, ("person",), adjective_probability=0.25)
     verb_lemma = rng.choice(("проверить", "прочитать", "подписать", "открыть"))
     verb = realizer.morphology.inflect_verb_past(verb_lemma, subject.gender, subject.number)
-    objects = [_object_for_verb(builder, rng, verb_lemma) for _ in range(3)]
+    objects = _objects_for_verb(builder, rng, verb_lemma, count=3)
     rendered = [realizer.render_np(obj) for obj in objects]
     text = f"{realizer.render_np(subject)} {verb} {rendered[0]}, {rendered[1]} и {rendered[2]}."
     return capitalize_first(text), rendered[1]
+
+
+def _objects_for_verb(builder: GrammarBuilder, rng: RandomSource, verb_lemma: str, *, count: int):
+    objects = []
+    used_lemmas: set[str] = set()
+    attempts = 0
+    while len(objects) < count and attempts < 100:
+        attempts += 1
+        obj = _object_for_verb(builder, rng, verb_lemma)
+        if obj.noun_lemma in used_lemmas:
+            continue
+        used_lemmas.add(obj.noun_lemma)
+        objects.append(obj)
+    if len(objects) != count:
+        raise ValueError(f"Could not generate {count} distinct homogeneous objects for {verb_lemma!r}.")
+    return objects
 
 
 def _object_for_verb(builder: GrammarBuilder, rng: RandomSource, verb_lemma: str):

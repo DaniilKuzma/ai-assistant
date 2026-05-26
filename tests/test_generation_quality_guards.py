@@ -64,6 +64,65 @@ def test_bad_target_morphology_is_rejected(text: str) -> None:
 @pytest.mark.parametrize(
     "text",
     (
+        "Данные показывает факт.",
+        "Данные содержит факт.",
+        "Данные включает факт.",
+        "Медсестра ответила заявку.",
+        "Инженер ответил вопрос.",
+        "Больница исправила устную цитату.",
+    ),
+)
+def test_known_bad_present_plural_and_answer_frames_are_rejected(text: str) -> None:
+    example = _manual_example(text, metadata={"uses_safety_clauses": False})
+
+    assert validate_generated_pair(example) != []
+
+
+def test_frame_object_allowlist_is_enforced_in_safety_clause() -> None:
+    example = _manual_example(
+        "Сосед исправил цитату.",
+        metadata={
+            "uses_safety_clauses": True,
+            "safety_clauses": [
+                _safety_clause(
+                    frame_id="correct_error",
+                    verb_lemma="исправить",
+                    subject_lemma="сосед",
+                    subject_class="person",
+                    object_lemma="цитата",
+                    object_class="text",
+                )
+            ],
+        },
+    )
+
+    assert "invalid_object_lemma_for_frame" in validate_generated_pair(example)
+
+
+def test_zato_generation_respects_correct_error_object_allowlist() -> None:
+    config = load_config(ROOT / "configs" / "config.yaml")
+    generator = online_generator_from_config(config, seed=10_000_013)
+
+    example = generator.sample_by_index(4824)
+    correct_error_objects = [
+        clause["object"]["lemma"]
+        for clause in example.metadata["safety_clauses"]
+        if clause["frame_id"] == "correct_error" and clause.get("object") is not None
+    ]
+
+    assert "цитата" not in correct_error_objects
+    assert "больница исправила цитату" not in example.target_text.lower()
+
+
+def test_answer_request_prep_slot_surface_is_accepted() -> None:
+    example = _manual_example("Медсестра ответила на заявку.", metadata={"uses_safety_clauses": False})
+
+    assert validate_generated_pair(example) == []
+
+
+@pytest.mark.parametrize(
+    "text",
+    (
         "Сосед открыл файл.",
         "Отчёт содержит ошибку.",
         "Банк провёл собрание.",
@@ -245,6 +304,52 @@ def test_comma_subordinate_uses_only_safe_complement_main_clauses() -> None:
     )
 
 
+def test_comma_homogeneous_uses_distinct_object_lemmas() -> None:
+    generator = _generator()
+    examples = [
+        generator.sample(rule_id="comma_homogeneous", mode=GenerationMode.POSITIVE)
+        for _ in range(500)
+    ]
+    duplicate_objects = []
+    for example in examples:
+        verb_index = next(
+            index
+            for index, token in enumerate(example.source_tokens)
+            if token.lemma in {"проверить", "прочитать", "подписать", "открыть"}
+        )
+        object_lemmas = [
+            token.lemma
+            for token in example.source_tokens[verb_index + 1 :]
+            if token.pos == "NOUN"
+        ]
+        if len(object_lemmas) != len(set(object_lemmas)):
+            duplicate_objects.append((example.source_text, object_lemmas))
+
+    assert duplicate_objects == []
+
+
+def test_content_frames_do_not_use_agentive_manner_adverbs() -> None:
+    generator = _generator()
+    examples = [generator.sample_by_index(index) for index in range(5000)]
+    bad_pattern = re.compile(
+        r"\b(?:быстро|медленно|внимательно|правильно|ошибочно|тихо|громко|спокойно|"
+        r"уверенно|подробно|кратко|вместе|отдельно)\s+"
+        r"(?:содержит|содержат|содержал[аи]?|содержали|включает|включают|"
+        r"включал[аи]?|включали|показывает|показывают|показывал[аи]?|показывали|"
+        r"описывает|описывают|описывал[аи]?|описывали|регулирует|регулировал[аи]?|"
+        r"регулировали|затронул[аи]?|затронули|вызывал[аи]?|вызывали)\b",
+        re.IGNORECASE,
+    )
+
+    bad_examples = [
+        (example.source_text, example.target_text)
+        for example in examples
+        if bad_pattern.search(example.target_text.lower())
+    ]
+
+    assert bad_examples == []
+
+
 def test_dash_subject_predicate_uses_only_curated_pair_ids() -> None:
     generator = _generator()
     allowed_pair_ids = {
@@ -256,6 +361,41 @@ def test_dash_subject_predicate_uses_only_curated_pair_ids() -> None:
         "instruction_text",
         "meeting_event",
         "plan_document",
+        "message_text",
+        "letter_message",
+        "answer_message",
+        "file_document",
+        "article_text",
+        "report_summary",
+        "overview_text",
+        "rule_requirement",
+        "task_requirement",
+        "assignment_task",
+        "formula_rule",
+        "calculation_document",
+        "table_file",
+        "text_document",
+        "summary_document",
+        "contract_document",
+        "order_document",
+        "certificate_document",
+        "manual_document",
+        "statement_document",
+        "note_text",
+        "description_text",
+        "notification_message",
+        "comment_message",
+        "code_law",
+        "norm_rule",
+        "condition_requirement",
+        "circumstance_fact",
+        "resolution_decision",
+        "schedule_plan",
+        "session_meeting",
+        "textbook_book",
+        "novel_book",
+        "outcome_result",
+        "conclusion_result",
     }
 
     examples = [
@@ -295,9 +435,9 @@ def test_online_generator_5000_examples_have_no_semantic_audit_failures() -> Non
     assert failures == []
 
 
-def test_production_generator_5000_examples_quality_gate() -> None:
+def test_production_generator_10000_examples_quality_gate() -> None:
     generator = _generator()
-    examples = [generator.sample_by_index(index) for index in range(5000)]
+    examples = [generator.sample_by_index(index) for index in range(10000)]
     audit = audit_batch(examples)
     validation_failures = [
         (index, example.primary_rule_id, validate_generated_pair(example), example.source_text, example.target_text)
@@ -333,6 +473,15 @@ def test_production_generator_5000_examples_quality_gate() -> None:
         "отправил уведомление, что",
         "сохранил данные, что",
         "задание требовало",
+        "данные показывает",
+        "данные содержит",
+        "данные включает",
+        "ответил заявку",
+        "ответила заявку",
+        "ответили заявку",
+        "ответил вопрос",
+        "больница исправила цитату",
+        "больница исправила устную цитату",
     )
     bad_targets = [
         (index, example.source_text, example.target_text)
@@ -420,6 +569,7 @@ def test_curated_morphology_covers_generation_lexicon() -> None:
         "past_neut",
         "past_plur",
         "present_3sg",
+        "present_3pl",
         "infinitive",
     }
 

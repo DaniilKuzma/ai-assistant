@@ -6,6 +6,7 @@ import argparse
 import csv
 import json
 from pathlib import Path
+import sys
 from typing import Any
 
 from src.config.load_config import load_config
@@ -16,6 +17,7 @@ from src.evaluation.direct_metrics import (
     normalize_text_for_eval,
     rule_breakdown,
 )
+from src.progress import ProgressReporter
 from src.runtime.corrector import Corrector
 from src.runtime.edit_realizer import apply_gap_labels, apply_token_edit_labels
 from src.schema import GeneratedExample, RuntimeEdit
@@ -32,13 +34,34 @@ def evaluate_corrector(
     config_path: str | Path,
     dataset_path: str | Path,
     output_dir: str | Path,
+    *,
+    allow_fallback: bool = False,
 ) -> dict[str, Any]:
     config = load_config(config_path)
     examples = read_jsonl_examples(dataset_path)
-    corrector = Corrector.from_config(config)
+    print(
+        f"[evaluation] loading corrector dataset={dataset_path} examples={len(examples)}",
+        file=sys.stderr,
+        flush=True,
+    )
+    corrector = Corrector.from_config(config, strict_neural=True, allow_fallback=allow_fallback)
+    backend_metadata = _corrector_backend_metadata(corrector)
+    if _neural_runtime_enabled(config) and backend_metadata["backend_kind"] != "direct_neural" and not allow_fallback:
+        raise RuntimeError(
+            "Evaluation would use deterministic fallback while neural runtime is enabled. "
+            "Pass --allow-fallback to evaluate fallback behavior explicitly."
+        )
     diagnostics = _instrument_corrector(corrector)
 
     rows: list[dict[str, Any]] = []
+    reporter = ProgressReporter(
+        f"evaluate {Path(dataset_path).name}",
+        total=len(examples),
+        sink=lambda line: print(line, file=sys.stderr, flush=True),
+        min_interval_seconds=float(config.get("training", {}).get("progress_log_interval_seconds", 30.0)),
+        step_interval=max(1, max(1, len(examples)) // 100),
+    )
+    reporter.start()
     for row_id, example in enumerate(examples):
         threshold_before = diagnostics.rejected_by_threshold
         scope_before = diagnostics.rejected_by_scope_guard
@@ -77,14 +100,30 @@ def evaluate_corrector(
                 "runtime_metadata": dict(result.metadata),
             }
         )
+        processed = row_id + 1
+        reporter.update(
+            processed,
+            {
+                "exact": sum(1 for row in rows if bool(row["exact_match"])) / processed,
+                "rows": processed,
+            },
+        )
 
-    summary = _summary_metrics(examples, rows)
+    summary = _summary_metrics(examples, rows, backend_metadata=backend_metadata, allow_fallback=allow_fallback)
+    reporter.finish({"exact": summary["exact_match"], "rows": len(rows)})
     per_rule = rule_breakdown(examples, rows)
     _write_outputs(Path(output_dir), summary, per_rule, rows)
     return summary
 
 
-def _summary_metrics(examples: Sequence[GeneratedExample], rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+def _summary_metrics(
+    examples: Sequence[GeneratedExample],
+    rows: Sequence[Mapping[str, Any]],
+    *,
+    backend_metadata: Mapping[str, Any] | None = None,
+    allow_fallback: bool = False,
+) -> dict[str, Any]:
+    backend_fields = _summary_backend_fields(rows, backend_metadata, allow_fallback)
     if not rows:
         edit_metrics = edit_precision_recall_f1([], [])
         return {
@@ -99,6 +138,7 @@ def _summary_metrics(examples: Sequence[GeneratedExample], rows: Sequence[Mappin
             "edit_f1": edit_metrics["f1"],
             "rejected_by_threshold": 0,
             "rejected_by_scope_guard": 0,
+            **backend_fields,
         }
 
     exact_total = 0
@@ -150,6 +190,7 @@ def _summary_metrics(examples: Sequence[GeneratedExample], rows: Sequence[Mappin
         "edit_f1": edit_metrics["f1"],
         "rejected_by_threshold": sum(int(row.get("rejected_by_threshold", 0) or 0) for row in rows),
         "rejected_by_scope_guard": sum(int(row.get("rejected_by_scope_guard", 0) or 0) for row in rows),
+        **backend_fields,
     }
 
 
@@ -235,6 +276,45 @@ def _write_worst_examples(path: Path, rows: Sequence[Mapping[str, Any]]) -> None
                 )
             )
             handle.write("\n")
+
+
+def _neural_runtime_enabled(config: Mapping[str, Any]) -> bool:
+    runtime = config.get("runtime", {}) if isinstance(config, Mapping) else {}
+    if not isinstance(runtime, Mapping):
+        return False
+    return bool(runtime.get("neural_token_edits", True) or runtime.get("neural_punctuation", True))
+
+
+def _corrector_backend_metadata(corrector: Any) -> dict[str, Any]:
+    backend = getattr(corrector, "neural_backend", None)
+    return {
+        "backend_kind": "direct_neural" if backend is not None else "deterministic_fallback",
+        "model_loaded": backend is not None,
+        "adapter_path": str(getattr(backend, "adapter_path", "") or ""),
+        "heads_path": str(getattr(backend, "heads_path", "") or ""),
+        "selected_epoch": getattr(backend, "selected_epoch", None),
+    }
+
+
+def _summary_backend_fields(
+    rows: Sequence[Mapping[str, Any]],
+    backend_metadata: Mapping[str, Any] | None,
+    allow_fallback: bool,
+) -> dict[str, Any]:
+    fields = dict(backend_metadata or {})
+    if rows:
+        runtime_metadata = rows[0].get("runtime_metadata")
+        if isinstance(runtime_metadata, Mapping):
+            for key in ("backend_kind", "model_loaded", "adapter_path", "heads_path", "selected_epoch"):
+                if runtime_metadata.get(key) not in (None, ""):
+                    fields[key] = runtime_metadata.get(key)
+    fields.setdefault("backend_kind", "unknown")
+    fields.setdefault("model_loaded", False)
+    fields.setdefault("adapter_path", "")
+    fields.setdefault("heads_path", "")
+    fields.setdefault("selected_epoch", None)
+    fields["allow_fallback"] = bool(allow_fallback)
+    return fields
 
 
 def _instrument_corrector(corrector: Any) -> _RuntimeDiagnostics:
@@ -345,8 +425,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("config")
     parser.add_argument("--dataset", required=True)
     parser.add_argument("--output", required=True)
+    parser.add_argument("--allow-fallback", action="store_true")
     args = parser.parse_args(argv)
-    summary = evaluate_corrector(args.config, args.dataset, args.output)
+    summary = evaluate_corrector(args.config, args.dataset, args.output, allow_fallback=args.allow_fallback)
     print(json.dumps(summary, ensure_ascii=False, sort_keys=True))
     return 0
 

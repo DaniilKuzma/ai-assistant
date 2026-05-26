@@ -40,6 +40,42 @@ def test_merge_tak_zhe_consumes_second_token() -> None:
     ]
 
 
+def test_tsya_ttsya_realizer_handles_controlled_vowel_change_to_infinitive() -> None:
+    text = "\u0412\u0440\u0430\u0447 \u0445\u043e\u0442\u0435\u043b \u043e\u0448\u0438\u0431\u0430\u0435\u0442\u0441\u044f."
+    tokens = tokenize_runtime_words(text)
+
+    corrected, edits = apply_token_edit_labels(
+        text,
+        tokens,
+        ["KEEP", "KEEP", "FIX_TSYA_TO_TTSYA"],
+        [1.0, 1.0, 0.99],
+        threshold=0.7,
+    )
+
+    assert corrected == "\u0412\u0440\u0430\u0447 \u0445\u043e\u0442\u0435\u043b \u043e\u0448\u0438\u0431\u0430\u0442\u044c\u0441\u044f."
+    assert [(edit.source, edit.replacement, edit.rule_id) for edit in edits] == [
+        ("\u043e\u0448\u0438\u0431\u0430\u0435\u0442\u0441\u044f", "\u043e\u0448\u0438\u0431\u0430\u0442\u044c\u0441\u044f", "tsya_ttsya")
+    ]
+
+
+def test_tsya_ttsya_realizer_handles_controlled_vowel_change_to_finite() -> None:
+    text = "\u0412\u0440\u0430\u0447 \u0432\u043e\u0437\u0432\u0440\u0430\u0449\u0430\u0442\u044c\u0441\u044f \u0443\u0442\u0440\u043e\u043c."
+    tokens = tokenize_runtime_words(text)
+
+    corrected, edits = apply_token_edit_labels(
+        text,
+        tokens,
+        ["KEEP", "FIX_TTSYA_TO_TSYA", "KEEP"],
+        [1.0, 0.99, 1.0],
+        threshold=0.7,
+    )
+
+    assert corrected == "\u0412\u0440\u0430\u0447 \u0432\u043e\u0437\u0432\u0440\u0430\u0449\u0430\u0435\u0442\u0441\u044f \u0443\u0442\u0440\u043e\u043c."
+    assert [(edit.source, edit.replacement, edit.rule_id) for edit in edits] == [
+        ("\u0432\u043e\u0437\u0432\u0440\u0430\u0449\u0430\u0442\u044c\u0441\u044f", "\u0432\u043e\u0437\u0432\u0440\u0430\u0449\u0430\u0435\u0442\u0441\u044f", "tsya_ttsya")
+    ]
+
+
 def test_gap_comma_insertion_preserves_spaces() -> None:
     text = "Он знал что делать"
     tokens = tokenize_runtime_words(text)

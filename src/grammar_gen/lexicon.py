@@ -208,12 +208,11 @@ class Lexicon:
     def random_object_for_frame(self, frame: VerbFrame, rng: RandomSource) -> NounEntry:
         if not frame.object_classes:
             raise ValueError(f"Frame {frame.frame_id!r} does not allow a direct object.")
-        allowed_lemmas = _FRAME_OBJECT_LEMMA_ALLOWLISTS.get(frame.frame_id)
         candidates = [
             noun
             for noun in self.nouns
             if self.frames.validate_object(frame, noun)
-            and (allowed_lemmas is None or noun.lemma in allowed_lemmas)
+            and object_lemma_allowed_for_frame(frame.frame_id, noun.lemma)
         ]
         if not candidates:
             raise ValueError(f"No noun entries can fill object slot for frame {frame.frame_id!r}.")
@@ -296,6 +295,7 @@ VERB_FORM_COLUMNS = (
     "past_neut",
     "past_plur",
     "present_3sg",
+    "present_3pl",
     "infinitive",
 )
 ADJECTIVE_FORM_COLUMNS = (
@@ -373,6 +373,11 @@ _FRAME_OBJECT_LEMMA_ALLOWLISTS = {
     "check_document": frozenset({"документ", "заявление", "протокол", "договор", "приказ", "справка", "инструкция", "отчёт", "доклад", "сводка", "обзор", "текст", "статья", "заметка", "расчёт", "вычисление", "формула", "задача", "задание"}),
     "review_report": frozenset({"документ", "заявление", "протокол", "договор", "приказ", "справка", "инструкция", "отчёт", "доклад", "сводка", "обзор", "файл"}),
 }
+
+
+def object_lemma_allowed_for_frame(frame_id: str, lemma: str) -> bool:
+    allowed_lemmas = _FRAME_OBJECT_LEMMA_ALLOWLISTS.get(frame_id)
+    return allowed_lemmas is None or lemma in allowed_lemmas
 
 
 def _fallback_lexicon() -> Lexicon:

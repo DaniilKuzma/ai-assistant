@@ -12,9 +12,9 @@ from src.grammar_gen.rules.common import (
     metadata_with_safety_clauses,
     metadata_without_safety_clauses,
     noun_phrase_from_entry,
+    object_np_for_frame,
     replace_once_checked,
     token_labels_all_keep,
-    varied_np,
 )
 from src.grammar_gen.safety import validate_target_ast_or_raise
 from src.grammar_gen.semantics import VerbFrame
@@ -130,7 +130,7 @@ class NeVerbRule(RuleProgram):
 def _sentence_with_negated_allowed_verb(builder: GrammarBuilder, rng: RandomSource) -> SimpleSentence:
     frame = _controlled_allowed_negative_frame(builder)
     subject = noun_phrase_from_entry(_controlled_subject(builder, frame, rng))
-    object_np = varied_np(builder, rng, tuple(frame.object_classes), case="accs", adjective_probability=0.25)
+    object_np = object_np_for_frame(builder, rng, frame, case="accs", adjective_probability=0.25)
     predicate = VerbPhrase(
         verb_lemma=frame.verb_lemma,
         object_np=object_np,

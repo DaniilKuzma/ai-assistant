@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
 import yaml
 
 from src.evaluation.evaluate import evaluate_corrector
@@ -15,11 +16,14 @@ def test_direct_evaluation_writes_runtime_reports(monkeypatch, tmp_path: Path) -
     output_dir = tmp_path / "reports"
     config_path = tmp_path / "config.yaml"
     write_jsonl_examples(dataset_path, _frozen_examples(30))
-    config_path.write_text(yaml.safe_dump({"runtime": {"neural_token_edits": False}}, allow_unicode=True), encoding="utf-8")
+    config_path.write_text(
+        yaml.safe_dump({"runtime": {"neural_token_edits": False, "neural_punctuation": False}}, allow_unicode=True),
+        encoding="utf-8",
+    )
 
     class FakeCorrector:
         @classmethod
-        def from_config(cls, config):
+        def from_config(cls, config, *, strict_neural=False, allow_fallback=False):
             return cls()
 
         def correct(self, text: str) -> CorrectionResult:
@@ -75,6 +79,148 @@ def test_direct_evaluation_writes_runtime_reports(monkeypatch, tmp_path: Path) -
     summary_from_disk = json.loads(summary_path.read_text(encoding="utf-8"))
     assert "exact_match" in summary_from_disk
     assert "overcorrection_rate" in summary_from_disk
+    assert summary_from_disk["backend_kind"] == "deterministic_fallback"
+
+
+def test_direct_evaluation_fails_on_silent_fallback_without_flag(monkeypatch, tmp_path: Path) -> None:
+    dataset_path = tmp_path / "val.jsonl"
+    output_dir = tmp_path / "reports"
+    config_path = tmp_path / "config.yaml"
+    write_jsonl_examples(dataset_path, _frozen_examples(3))
+    config_path.write_text(
+        yaml.safe_dump({"runtime": {"neural_token_edits": True, "neural_punctuation": False}}, allow_unicode=True),
+        encoding="utf-8",
+    )
+
+    seen: dict[str, object] = {}
+
+    class FallbackCorrector:
+        neural_backend = None
+
+        @classmethod
+        def from_config(cls, config, *, strict_neural=False, allow_fallback=False):
+            seen["strict_neural"] = strict_neural
+            seen["allow_fallback"] = allow_fallback
+            return cls()
+
+        def correct(self, text: str) -> CorrectionResult:
+            return CorrectionResult(source_text=text, corrected_text=text, edits=[], metadata={})
+
+    monkeypatch.setattr("src.evaluation.evaluate.Corrector", FallbackCorrector)
+
+    with pytest.raises(RuntimeError, match="deterministic fallback"):
+        evaluate_corrector(config_path, dataset_path, output_dir)
+
+    assert seen == {"strict_neural": True, "allow_fallback": False}
+
+
+def test_direct_evaluation_allows_fallback_only_when_explicit(monkeypatch, tmp_path: Path) -> None:
+    dataset_path = tmp_path / "val.jsonl"
+    output_dir = tmp_path / "reports"
+    config_path = tmp_path / "config.yaml"
+    write_jsonl_examples(dataset_path, _frozen_examples(3))
+    config_path.write_text(
+        yaml.safe_dump({"runtime": {"neural_token_edits": True, "neural_punctuation": False}}, allow_unicode=True),
+        encoding="utf-8",
+    )
+
+    class FallbackCorrector:
+        neural_backend = None
+
+        @classmethod
+        def from_config(cls, config, *, strict_neural=False, allow_fallback=False):
+            return cls()
+
+        def correct(self, text: str) -> CorrectionResult:
+            return CorrectionResult(
+                source_text=text,
+                corrected_text=text,
+                edits=[],
+                metadata={"backend_kind": "deterministic_fallback", "model_loaded": False},
+            )
+
+    monkeypatch.setattr("src.evaluation.evaluate.Corrector", FallbackCorrector)
+
+    summary = evaluate_corrector(config_path, dataset_path, output_dir, allow_fallback=True)
+    summary_from_disk = json.loads((output_dir / "evaluation_summary.json").read_text(encoding="utf-8"))
+
+    assert summary["backend_kind"] == "deterministic_fallback"
+    assert summary_from_disk["backend_kind"] == "deterministic_fallback"
+
+
+def test_manual_pair_dataset_evaluator_writes_tag_metrics(monkeypatch, tmp_path: Path) -> None:
+    from scripts import evaluate_pair_dataset
+
+    dataset_path = tmp_path / "manual.jsonl"
+    output_dir = tmp_path / "manual_report"
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text("runtime:\n  neural_token_edits: true\n  neural_punctuation: false\n", encoding="utf-8")
+    _write_jsonl(
+        dataset_path,
+        [
+            {"source": "Он незнал", "target": "Он не знал", "tags": ["ne_verb"], "scope": "in_scope"},
+            {"source": "Чистый текст.", "target": "Чистый текст.", "tags": ["clean"], "scope": "in_scope"},
+        ],
+    )
+
+    class FakeCorrector:
+        neural_backend = object()
+
+        @classmethod
+        def from_config(cls, config, *, strict_neural=False, allow_fallback=False):
+            assert strict_neural is True
+            return cls()
+
+        def correct(self, text: str) -> CorrectionResult:
+            corrected = "Он не знал" if text == "Он незнал" else text
+            return CorrectionResult(source_text=text, corrected_text=corrected, edits=[], metadata={"backend_kind": "direct_neural"})
+
+    monkeypatch.setattr(evaluate_pair_dataset, "Corrector", FakeCorrector)
+
+    summary = evaluate_pair_dataset.evaluate_pair_dataset(config_path, dataset_path, output_dir)
+    summary_from_disk = json.loads((output_dir / "evaluation_summary.json").read_text(encoding="utf-8"))
+
+    assert summary["exact_match"] == 1.0
+    assert summary["per_tag"]["ne_verb"]["exact_match"] == 1.0
+    assert summary_from_disk["unchanged_when_clean"] == 1.0
+    assert (output_dir / "worst_examples.jsonl").exists()
+
+
+def test_external_spellcheck_evaluator_reports_diagnostic_subsets(monkeypatch, tmp_path: Path) -> None:
+    from scripts import evaluate_external_spellcheck
+
+    dataset_path = tmp_path / "test.json"
+    output_dir = tmp_path / "external_report"
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text("runtime:\n  neural_token_edits: true\n  neural_punctuation: false\n", encoding="utf-8")
+    _write_jsonl(
+        dataset_path,
+        [
+            {"source": "Он незнал", "correction": "Он не знал"},
+            {"source": "Чистый текст.", "correction": "Чистый текст."},
+        ],
+    )
+
+    class FakeCorrector:
+        neural_backend = object()
+
+        @classmethod
+        def from_config(cls, config, *, strict_neural=False, allow_fallback=False):
+            assert strict_neural is True
+            return cls()
+
+        def correct(self, text: str) -> CorrectionResult:
+            corrected = "Он не знал" if text == "Он незнал" else text
+            return CorrectionResult(source_text=text, corrected_text=corrected, edits=[], metadata={"backend_kind": "direct_neural"})
+
+    monkeypatch.setattr(evaluate_external_spellcheck, "Corrector", FakeCorrector)
+
+    summary = evaluate_external_spellcheck.evaluate_external_spellcheck(config_path, dataset_path, output_dir, limit=1000)
+
+    assert {"all", "in_scope_by_simple_diff_filter", "clean_no_change"} <= set(summary)
+    assert summary["all"]["example_count"] == 2
+    assert summary["clean_no_change"]["unchanged_when_clean"] == 1.0
+    assert (output_dir / "evaluation_summary.json").exists()
 
 
 def _frozen_examples(count: int) -> list[GeneratedExample]:
@@ -148,3 +294,10 @@ def _tokens(text: str) -> list[WordToken]:
     if start is not None:
         tokens.append(WordToken(text=text[start:], start=start, end=len(text)))
     return tokens
+
+
+def _write_jsonl(path: Path, rows: list[dict[str, object]]) -> None:
+    path.write_text(
+        "".join(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n" for row in rows),
+        encoding="utf-8",
+    )

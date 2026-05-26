@@ -111,6 +111,17 @@ def test_fallback_morphology_covers_required_forms() -> None:
     assert engine.inflect_adjective("умный", "neut", "nomn") == "умное"
 
 
+def test_present_plural_morphology_for_content_frame_verbs() -> None:
+    engine = MorphologyEngine(use_pymorphy=False)
+
+    assert engine.inflect_verb_present("показывать", number="sing") == "показывает"
+    assert engine.inflect_verb_present("показывать", number="plur") == "показывают"
+    assert engine.inflect_verb_present("содержать", number="plur") == "содержат"
+    assert engine.inflect_verb_present("включать", number="plur") == "включают"
+    assert engine.inflect_verb_present("описывать", number="plur") == "описывают"
+    assert engine.inflect_verb_present("требовать", number="plur") == "требуют"
+
+
 def test_random_adjective_for_noun_uses_semantic_class_compatibility() -> None:
     lexicon = Lexicon.default()
     rng = RandomSource(seed=31)

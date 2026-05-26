@@ -16,7 +16,7 @@ EXPECTED_POSITIVE_GAPS = {
     "comma_homogeneous": {"COMMA"},
     "comma_adversative": {"COMMA"},
     "dash_subject_predicate": {"DASH"},
-    "final_punctuation": {"DOT", "QUESTION", "EXCLAMATION"},
+    "final_punctuation": {"DOT"},
 }
 RULE_IDS = tuple(EXPECTED_POSITIVE_GAPS)
 
@@ -88,14 +88,14 @@ def test_comma_subordinate_hard_negative_has_no_comma_before_chto_to() -> None:
     assert trap.gap_labels[trap_index - 1] != "COMMA"
 
 
-def test_final_punctuation_positive_generates_dot_question_and_exclamation() -> None:
+def test_final_punctuation_positive_generates_dot() -> None:
     generator = _generator(seed=31)
     labels = {
         generator.sample(rule_id="final_punctuation", mode=GenerationMode.POSITIVE).gap_labels[-1]
         for _ in range(30)
     }
 
-    assert {"DOT", "QUESTION", "EXCLAMATION"}.issubset(labels)
+    assert labels == {"DOT"}
 
 
 def test_final_punctuation_positive_pair_safety_allows_expected_missing_final_mark() -> None:

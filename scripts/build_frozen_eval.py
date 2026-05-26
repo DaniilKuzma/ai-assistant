@@ -18,9 +18,9 @@ from src.schema.serialization import write_jsonl_examples
 
 
 SPLIT_SEED_OFFSETS = {
-    "val": 0,
-    "test": 1_000_000,
-    "regression": 2_000_000,
+    "val": 10_000_000,
+    "test": 20_000_000,
+    "regression": 30_000_000,
 }
 
 
@@ -65,7 +65,17 @@ def build_frozen_eval(
     config = load_config(config_path)
     base_seed = int(config.get("generation", {}).get("seed", 0))
     seed_offset = SPLIT_SEED_OFFSETS[split]
+    train_start, train_end = _train_seed_range(config, base_seed)
+    train_max_index = train_end - train_start
+    if seed_offset <= train_max_index + 1_000_000:
+        raise RuntimeError(
+            f"Frozen eval seed offset for {split!r} overlaps or is too close to training range: "
+            f"offset={seed_offset}, train_max_index={train_max_index}."
+        )
     effective_seed = base_seed + seed_offset
+    split_seed_range_start = effective_seed
+    split_seed_range_end = effective_seed + count - 1 if count > 0 else effective_seed - 1
+    overlaps_train = _ranges_overlap(split_seed_range_start, split_seed_range_end, train_start, train_end)
 
     generator = online_generator_from_config(config, seed=effective_seed)
     examples = [generator.sample_by_index(index) for index in range(count)]
@@ -78,6 +88,11 @@ def build_frozen_eval(
         "seed": effective_seed,
         "base_seed": base_seed,
         "seed_offset": seed_offset,
+        "train_seed_range_start": train_start,
+        "train_seed_range_end": train_end,
+        "split_seed_range_start": split_seed_range_start,
+        "split_seed_range_end": split_seed_range_end,
+        "split_seed_overlap_with_train": overlaps_train,
         "rule_distribution": audit["rule_distribution"],
         "mode_distribution": audit["mode_distribution"],
         "audit_failures_count": audit["failed_examples_count"],
@@ -89,6 +104,21 @@ def build_frozen_eval(
 
 def _manifest_path(output_path: Path) -> Path:
     return output_path.with_suffix(".manifest.json")
+
+
+def _train_seed_range(config: dict[str, Any], base_seed: int) -> tuple[int, int]:
+    generation = config.get("generation", {}) if isinstance(config, dict) else {}
+    training = config.get("training", {}) if isinstance(config, dict) else {}
+    samples_per_epoch = int(generation.get("samples_per_epoch", 0) or 0)
+    epochs = int(training.get("epochs", 1) or 1)
+    train_max_index = max(0, samples_per_epoch * epochs)
+    return base_seed, base_seed + train_max_index
+
+
+def _ranges_overlap(left_start: int, left_end: int, right_start: int, right_end: int) -> bool:
+    if left_end < left_start:
+        return False
+    return not (left_end < right_start or left_start > right_end)
 
 
 def _write_manifest(path: Path, manifest: dict[str, Any]) -> None:

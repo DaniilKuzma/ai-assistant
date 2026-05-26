@@ -245,6 +245,44 @@ def test_inanimate_masculine_object_adjective_uses_nominative_like_accusative() 
     assert realizer.render_sentence(ast) == "Документ включал чистый факт."
 
 
+def test_present_plural_predicate_agrees_with_plural_subject() -> None:
+    lexicon = Lexicon.default()
+    realizer = Realizer(lexicon, MorphologyEngine(use_pymorphy=False))
+    ast = SimpleSentence(
+        Clause(
+            subject=_np(lexicon, "данные"),
+            predicate=VerbPhrase(
+                verb_lemma="показывать",
+                tense="present",
+                object_np=replace(_np(lexicon, "факт"), case="accs"),
+                frame_id="data_indicates",
+            ),
+        )
+    )
+
+    rendered = realizer.render_sentence(ast)
+
+    assert rendered == "Данные показывают факт."
+    assert validate_ast_sentence(ast, rendered) == []
+
+
+def test_present_singular_predicate_with_plural_subject_is_rejected() -> None:
+    lexicon = Lexicon.default()
+    ast = SimpleSentence(
+        Clause(
+            subject=_np(lexicon, "данные"),
+            predicate=VerbPhrase(
+                verb_lemma="показывать",
+                tense="present",
+                object_np=replace(_np(lexicon, "факт"), case="accs"),
+                frame_id="data_indicates",
+            ),
+        )
+    )
+
+    assert "subject_verb_number_agreement" in validate_ast_sentence(ast, "Данные показывает факт.")
+
+
 def _generator(seed: int) -> tuple[GrammarBuilder, Realizer]:
     lexicon = Lexicon.default()
     morphology = MorphologyEngine()

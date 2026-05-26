@@ -6,11 +6,14 @@ from types import SimpleNamespace
 from typing import Any
 import json
 import math
+import shutil
+import sys
 
 import torch
 
 from src.config.load_config import load_config
 from src.model.edit_model import DirectEditModelConfig, DirectEditTaggerModel
+from src.progress import ProgressReporter
 from src.schema.labels import (
     GAP_ID_TO_LABEL,
     GAP_LABEL_TO_ID,
@@ -35,10 +38,12 @@ def train_model(
     _apply_overrides(config, overrides or {})
     if (overrides or {}).get("smoke"):
         _apply_smoke_config(config, overrides or {})
+    config["_debug_model"] = bool(debug_model)
 
     seed = int(config.get("generation", {}).get("seed", 13))
     torch.manual_seed(seed)
 
+    print("[training] loading tokenizer and model", file=sys.stderr, flush=True)
     tokenizer = DebugTokenizer() if debug_model else _load_configured_tokenizer(config)
     model = _build_model(config, debug_model=debug_model)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -70,11 +75,18 @@ def train_model(
     scaler = torch.amp.GradScaler("cuda", enabled=amp_enabled)
     collator = DirectBatchCollator()
     train_dataset = OnlineGrammarDataset(config, tokenizer, split="train", seed=seed)
+    print(
+        "[training] "
+        f"device={device} cuda_available={torch.cuda.is_available()} "
+        f"epochs={epochs} samples_per_epoch={samples_per_epoch} "
+        f"batch_size={batch_size} steps_per_epoch={steps_per_epoch} "
+        f"total_train_steps={total_train_steps} amp={amp_enabled}",
+        file=sys.stderr,
+        flush=True,
+    )
 
     loss_history: list[dict[str, float | int]] = []
     validation_history: list[dict[str, Any]] = []
-    best_epoch: int | None = None
-    best_metric: float | None = None
     best_heads_state: dict[str, Any] | None = None
     last_heads_state: dict[str, Any] | None = None
     batches_seen = 0
@@ -97,6 +109,7 @@ def train_model(
             training,
             steps_per_epoch,
             amp_enabled=amp_enabled,
+            progress_label=f"train epoch {epoch}/{epochs}",
         )
         batches_seen += int(epoch_result["steps"])
         loss_history.append({"epoch": epoch, **epoch_result})
@@ -111,25 +124,25 @@ def train_model(
                 device,
                 eval_batch_size=eval_batch_size,
                 amp_enabled=amp_enabled,
+                progress_label=f"validate epoch {epoch}/{epochs}",
             )
             validation["epoch"] = epoch
         else:
             validation = {"epoch": epoch, "status": "skipped", "reason": "validate_each_epoch=false"}
         validation_history.append(validation)
 
-        metric = validation.get("exact_match")
-        if isinstance(metric, (float, int)) and (best_metric is None or float(metric) > best_metric):
-            best_metric = float(metric)
-            best_epoch = epoch
+        selected_so_far = _select_best_checkpoint(validation_history, fallback_epoch=epoch)
+        if int(selected_so_far["selected_epoch"]) == epoch:
             best_heads_state = _heads_state_dict(model)
 
-        if bool(training.get("save_each_epoch", False)):
-            _save_epoch_checkpoint(model, config, epoch)
+        if bool(training.get("save_each_epoch", False)) or epochs == 1:
+            _save_epoch_checkpoint(model, config, epoch, validation=validation)
 
     if best_heads_state is None:
-        best_epoch = epochs
         best_heads_state = last_heads_state or _heads_state_dict(model)
 
+    selected = _select_best_checkpoint(validation_history, fallback_epoch=epochs)
+    selected_epoch = int(selected["selected_epoch"])
     summary = {
         "epochs": epochs,
         "samples_per_epoch": samples_per_epoch,
@@ -137,8 +150,11 @@ def train_model(
         "effective_batch_size": batch_size * gradient_accumulation_steps,
         "total_train_steps": total_train_steps,
         "actual_train_steps": batches_seen,
-        "best_epoch": best_epoch,
-        "best_metric": best_metric,
+        "best_epoch": selected_epoch,
+        "best_metric": selected["selected_metric"],
+        "selected_epoch": selected_epoch,
+        "selected_metric": selected["selected_metric"],
+        "selected_validation_loss": selected["selected_validation_loss"],
         "loss_history": loss_history,
         "validation_history": validation_history,
         "debug_model": bool(debug_model),
@@ -159,6 +175,10 @@ def _train_epoch(
     steps_per_epoch: int,
     *,
     amp_enabled: bool,
+    progress_label: str = "train",
+    progress_sink: Any | None = None,
+    progress_interval_seconds: float | None = None,
+    progress_step_interval: int | None = None,
 ) -> dict[str, float | int]:
     model.train()
     optimizer.zero_grad(set_to_none=True)
@@ -172,6 +192,14 @@ def _train_epoch(
     max_grad_norm = float(training.get("max_grad_norm", 1.0))
     pending_step = False
     steps = 0
+    reporter = ProgressReporter(
+        progress_label,
+        total=steps_per_epoch,
+        sink=progress_sink or _stderr_progress_sink,
+        min_interval_seconds=_progress_interval_seconds(training, progress_interval_seconds),
+        step_interval=_progress_step_interval(training, progress_step_interval, steps_per_epoch),
+    )
+    reporter.start()
 
     for step, batch in enumerate(dataloader, start=1):
         if step > steps_per_epoch:
@@ -188,6 +216,16 @@ def _train_epoch(
             value = loss if key == "loss" else components[key]
             totals[key] += float(value.detach().cpu())
         steps += 1
+        reporter.update(
+            steps,
+            {
+                "loss": totals["loss"] / max(1, steps),
+                "token": totals["token_edit_loss"] / max(1, steps),
+                "gap": totals["gap_punctuation_loss"] / max(1, steps),
+                "rule": totals["rule_loss"] / max(1, steps),
+                "lr": _current_lr(optimizer),
+            },
+        )
 
         if step % gradient_accumulation_steps == 0:
             _optimizer_step(model, optimizer, scheduler, scaler, max_grad_norm, amp_enabled)
@@ -197,6 +235,15 @@ def _train_epoch(
         _optimizer_step(model, optimizer, scheduler, scaler, max_grad_norm, amp_enabled)
 
     denominator = max(1, steps)
+    reporter.finish(
+        {
+            "loss": totals["loss"] / denominator,
+            "token": totals["token_edit_loss"] / denominator,
+            "gap": totals["gap_punctuation_loss"] / denominator,
+            "rule": totals["rule_loss"] / denominator,
+            "lr": _current_lr(optimizer),
+        }
+    )
     return {
         "steps": steps,
         "loss": totals["loss"] / denominator,
@@ -215,6 +262,7 @@ def _validate(
     *,
     eval_batch_size: int,
     amp_enabled: bool,
+    progress_label: str = "validate",
 ) -> dict[str, Any]:
     from torch.utils.data import DataLoader
 
@@ -233,6 +281,14 @@ def _validate(
     total_examples = 0
     exact_matches = 0
     dataloader = DataLoader(dataset, batch_size=eval_batch_size, collate_fn=collator.collate)
+    reporter = ProgressReporter(
+        progress_label,
+        total=len(dataset),
+        sink=_stderr_progress_sink,
+        min_interval_seconds=_progress_interval_seconds(config.get("training", {}), None),
+        step_interval=_progress_step_interval(config.get("training", {}), None, len(dataset)),
+    )
+    reporter.start()
     with torch.no_grad():
         for batch in dataloader:
             inputs, labels = _move_batch(batch, device)
@@ -243,8 +299,16 @@ def _validate(
             exact = _batch_exact_matches(outputs, labels)
             exact_matches += int(exact.sum().detach().cpu().item())
             total_examples += int(inputs["input_ids"].shape[0])
+            reporter.update(
+                total_examples,
+                {
+                    "loss": total_loss / max(1, len(dataloader)),
+                    "exact": exact_matches / max(1, total_examples),
+                },
+            )
 
     exact_match = exact_matches / max(1, total_examples)
+    reporter.finish({"loss": total_loss / max(1, len(dataloader)), "exact": exact_match})
     return {
         "status": "ok",
         "examples": total_examples,
@@ -345,10 +409,41 @@ def _optimizer_step(
         scaler.unscale_(optimizer)
     if max_grad_norm > 0:
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
+    scale_before = float(scaler.get_scale()) if amp_enabled and hasattr(scaler, "get_scale") else None
     scaler.step(optimizer)
     scaler.update()
-    scheduler.step()
+    optimizer_stepped = True
+    if scale_before is not None and hasattr(scaler, "get_scale"):
+        optimizer_stepped = float(scaler.get_scale()) >= scale_before
+    if optimizer_stepped:
+        scheduler.step()
     optimizer.zero_grad(set_to_none=True)
+
+
+def _current_lr(optimizer: Any) -> float:
+    param_groups = getattr(optimizer, "param_groups", [])
+    if not param_groups:
+        return 0.0
+    return float(param_groups[0].get("lr", 0.0))
+
+
+def _progress_interval_seconds(training: Mapping[str, Any], override: float | None) -> float:
+    if override is not None:
+        return max(0.0, float(override))
+    return max(0.0, float(training.get("progress_log_interval_seconds", 30.0)))
+
+
+def _progress_step_interval(training: Mapping[str, Any], override: int | None, total_steps: int) -> int:
+    if override is not None:
+        return max(1, int(override))
+    configured = training.get("progress_log_interval_steps")
+    if configured is not None:
+        return max(1, int(configured))
+    return max(1, max(1, int(total_steps)) // 100)
+
+
+def _stderr_progress_sink(line: str) -> None:
+    print(line, file=sys.stderr, flush=True)
 
 
 def _linear_warmup_scheduler(optimizer: Any, *, total_steps: int, warmup_ratio: float) -> Any:
@@ -461,15 +556,79 @@ def _heads_state_dict(model: Any) -> dict[str, Any]:
     }
 
 
-def _save_epoch_checkpoint(model: Any, config: Mapping[str, Any], epoch: int) -> None:
+def _select_best_checkpoint(validation_history: list[dict[str, Any]], *, fallback_epoch: int) -> dict[str, Any]:
+    candidates: list[tuple[float, float, int, dict[str, Any]]] = []
+    for row in validation_history:
+        metric = row.get("exact_match")
+        if not isinstance(metric, (float, int)):
+            continue
+        loss = row.get("loss")
+        loss_value = float(loss) if isinstance(loss, (float, int)) else float("inf")
+        epoch = int(row.get("epoch") or fallback_epoch)
+        candidates.append((float(metric), -loss_value, epoch, row))
+
+    if not candidates:
+        return {
+            "selected_epoch": int(fallback_epoch),
+            "selected_metric": None,
+            "selected_validation_loss": None,
+        }
+
+    metric, negative_loss, epoch, _row = max(candidates, key=lambda item: (item[0], item[1], item[2]))
+    return {
+        "selected_epoch": int(epoch),
+        "selected_metric": float(metric),
+        "selected_validation_loss": float(-negative_loss),
+    }
+
+
+def _save_epoch_checkpoint(
+    model: Any,
+    config: Mapping[str, Any],
+    epoch: int,
+    *,
+    validation: Mapping[str, Any] | None = None,
+) -> None:
     import torch
 
-    heads_dir = Path(str(config.get("paths", {}).get("heads_output_dir", "models/heads/latest")))
-    checkpoint_dir = heads_dir / f"checkpoint-epoch-{epoch}"
+    checkpoint_dir = _checkpoint_dir(config, epoch)
+    if checkpoint_dir.exists():
+        shutil.rmtree(checkpoint_dir)
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
     torch.save(_heads_state_dict(model), checkpoint_dir / "heads.pt")
     (checkpoint_dir / "labels.json").write_text(
         json.dumps(_label_maps(), ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    (checkpoint_dir / "architecture.json").write_text(
+        json.dumps(
+            {
+                "architecture": "direct_edit_tagger_v1",
+                "debug_model": bool(config.get("_debug_model", False)),
+                "epoch": int(epoch),
+            },
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    adapter_saved = _save_adapter_checkpoint(model, checkpoint_dir / "adapters")
+    (checkpoint_dir / "checkpoint_meta.json").write_text(
+        json.dumps(
+            {
+                "epoch": int(epoch),
+                "heads_epoch": int(epoch),
+                "adapter_epoch": int(epoch),
+                "adapter_saved": adapter_saved,
+                "validation": dict(validation or {}),
+            },
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
         encoding="utf-8",
     )
 
@@ -482,29 +641,53 @@ def _save_final_artifacts(
 ) -> dict[str, str]:
     import torch
 
-    paths = config.get("paths", {}) if isinstance(config, Mapping) else {}
-    adapter_dir = Path(str(paths.get("adapter_output_dir", "models/adapters/latest")))
-    heads_dir = Path(str(paths.get("heads_output_dir", "models/heads/latest")))
-    heads_dir.mkdir(parents=True, exist_ok=True)
+    selected_epoch = int(summary.get("selected_epoch") or summary.get("best_epoch") or 1)
+    checkpoint_dir = _checkpoint_dir(config, selected_epoch)
+    if not checkpoint_dir.exists():
+        _write_checkpoint_from_state(model, config, selected_epoch, heads_state, summary)
+    return _copy_selected_checkpoint_to_latest(config, selected_epoch=selected_epoch, summary=summary)
 
-    heads_path = heads_dir / "heads.pt"
-    labels_path = heads_dir / "labels.json"
-    summary_path = heads_dir / "training_summary.json"
-    architecture_path = heads_dir / "architecture.json"
-    torch.save(heads_state, heads_path)
-    labels_path.write_text(
+
+def _write_checkpoint_from_state(
+    model: Any,
+    config: Mapping[str, Any],
+    epoch: int,
+    heads_state: dict[str, Any],
+    summary: Mapping[str, Any],
+) -> None:
+    import torch
+
+    checkpoint_dir = _checkpoint_dir(config, epoch)
+    if checkpoint_dir.exists():
+        shutil.rmtree(checkpoint_dir)
+    checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    torch.save(heads_state, checkpoint_dir / "heads.pt")
+    (checkpoint_dir / "labels.json").write_text(
         json.dumps(_label_maps(), ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
-    summary_path.write_text(
-        json.dumps(dict(summary), ensure_ascii=False, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
-    architecture_path.write_text(
+    (checkpoint_dir / "architecture.json").write_text(
         json.dumps(
             {
                 "architecture": "direct_edit_tagger_v1",
                 "debug_model": bool(summary.get("debug_model", False)),
+                "epoch": int(epoch),
+            },
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    adapter_saved = _save_adapter_checkpoint(model, checkpoint_dir / "adapters")
+    (checkpoint_dir / "checkpoint_meta.json").write_text(
+        json.dumps(
+            {
+                "epoch": int(epoch),
+                "heads_epoch": int(epoch),
+                "adapter_epoch": int(epoch),
+                "adapter_saved": adapter_saved,
             },
             ensure_ascii=False,
             indent=2,
@@ -514,17 +697,98 @@ def _save_final_artifacts(
         encoding="utf-8",
     )
 
-    encoder = getattr(model, "encoder", None)
-    if _is_peft_encoder(encoder):
-        adapter_dir.mkdir(parents=True, exist_ok=True)
-        encoder.save_pretrained(adapter_dir)
+
+def _copy_selected_checkpoint_to_latest(
+    config: Mapping[str, Any],
+    *,
+    selected_epoch: int,
+    summary: Mapping[str, Any],
+) -> dict[str, str]:
+    checkpoint_dir = _checkpoint_dir(config, selected_epoch)
+    if not checkpoint_dir.exists():
+        raise FileNotFoundError(f"Selected checkpoint is missing: {checkpoint_dir}")
+
+    paths = config.get("paths", {}) if isinstance(config, Mapping) else {}
+    adapter_dir = Path(str(paths.get("adapter_output_dir", "models/adapters/latest")))
+    heads_dir = Path(str(paths.get("heads_output_dir", "models/heads/latest")))
+    heads_dir.mkdir(parents=True, exist_ok=True)
+
+    for filename in ("heads.pt", "labels.json"):
+        shutil.copy2(checkpoint_dir / filename, heads_dir / filename)
+
+    architecture = json.loads((checkpoint_dir / "architecture.json").read_text(encoding="utf-8"))
+    architecture["selected_epoch"] = int(selected_epoch)
+    (heads_dir / "architecture.json").write_text(
+        json.dumps(architecture, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+    checkpoint_meta = json.loads((checkpoint_dir / "checkpoint_meta.json").read_text(encoding="utf-8"))
+    checkpoint_meta["selected_epoch"] = int(selected_epoch)
+    checkpoint_meta["heads_epoch"] = int(checkpoint_meta.get("heads_epoch") or selected_epoch)
+    checkpoint_meta["adapter_epoch"] = int(checkpoint_meta.get("adapter_epoch") or selected_epoch)
+    artifact_consistent = checkpoint_meta["heads_epoch"] == checkpoint_meta["adapter_epoch"] == int(selected_epoch)
+    checkpoint_meta["artifact_consistency_check"] = artifact_consistent
+    (heads_dir / "checkpoint_meta.json").write_text(
+        json.dumps(checkpoint_meta, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    (heads_dir / "selected_checkpoint_meta.json").write_text(
+        json.dumps(
+            {
+                **checkpoint_meta,
+                "selected_epoch": int(selected_epoch),
+                "selected_checkpoint_dir": str(checkpoint_dir),
+            },
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    source_adapter_dir = checkpoint_dir / "adapters"
+    if source_adapter_dir.exists() and any(source_adapter_dir.iterdir()):
+        if adapter_dir.exists():
+            shutil.rmtree(adapter_dir)
+        shutil.copytree(source_adapter_dir, adapter_dir)
+    elif adapter_dir.exists():
+        shutil.rmtree(adapter_dir)
+
+    summary_dict = dict(summary)
+    summary_dict["selected_epoch"] = int(selected_epoch)
+    summary_dict["artifact_consistency_check"] = artifact_consistent
+    if isinstance(summary, dict):
+        summary["artifact_consistency_check"] = artifact_consistent
+    summary_path = heads_dir / "training_summary.json"
+    summary_path.write_text(
+        json.dumps(summary_dict, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
 
     return {
-        "heads_path": str(heads_path),
-        "labels_path": str(labels_path),
+        "heads_path": str(heads_dir / "heads.pt"),
+        "labels_path": str(heads_dir / "labels.json"),
         "summary_path": str(summary_path),
-        "architecture_path": str(architecture_path),
+        "architecture_path": str(heads_dir / "architecture.json"),
+        "checkpoint_meta_path": str(heads_dir / "checkpoint_meta.json"),
     }
+
+
+def _save_adapter_checkpoint(model: Any, adapter_dir: Path) -> bool:
+    adapter_dir.mkdir(parents=True, exist_ok=True)
+    encoder = getattr(model, "encoder", None)
+    if _is_peft_encoder(encoder):
+        encoder.save_pretrained(adapter_dir)
+        return True
+    return False
+
+
+def _checkpoint_dir(config: Mapping[str, Any], epoch: int) -> Path:
+    paths = config.get("paths", {}) if isinstance(config, Mapping) else {}
+    root = Path(str(paths.get("checkpoint_output_dir", "models/checkpoints")))
+    return root / f"epoch-{int(epoch)}"
 
 
 def _is_peft_encoder(encoder: Any) -> bool:

@@ -1,0 +1,1 @@
+{"changed_when_needed": 1.0, "char_accuracy": 0.999690007804969, "edit_f1": 1.0, "edit_precision": 1.0, "edit_recall": 1.0, "exact_match": 0.9834, "example_count": 5000, "overcorrection_rate": 0.0, "rejected_by_scope_guard": 0, "rejected_by_threshold": 0, "unchanged_when_clean": 1.0}

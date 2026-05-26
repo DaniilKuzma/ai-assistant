@@ -37,7 +37,13 @@ class Corrector:
         self.scope_guard = ScopeGuard()
 
     @classmethod
-    def from_config(cls, config: Mapping[str, Any] | str | Path) -> "Corrector":
+    def from_config(
+        cls,
+        config: Mapping[str, Any] | str | Path,
+        *,
+        strict_neural: bool = False,
+        allow_fallback: bool = False,
+    ) -> "Corrector":
         if isinstance(config, (str, Path)):
             config = load_config(config)
         runtime = config.get("runtime", {}) if isinstance(config, Mapping) else {}
@@ -45,7 +51,12 @@ class Corrector:
         if bool(runtime.get("neural_token_edits", True) or runtime.get("neural_punctuation", True)):
             try:
                 backend = DirectNeuralBackend.from_config(config)
-            except Exception:
+            except Exception as exc:
+                if strict_neural and not allow_fallback:
+                    raise RuntimeError(
+                        "Neural runtime is enabled, but DirectNeuralBackend could not be loaded. "
+                        "Evaluation refuses to use deterministic fallback unless --allow-fallback is set."
+                    ) from exc
                 backend = None
         return cls(
             deterministic_engine=DeterministicRuleEngine.from_config(config),
@@ -54,8 +65,9 @@ class Corrector:
         )
 
     def correct(self, text: str) -> CorrectionResult:
+        runtime_metadata = self._runtime_metadata()
         if not text:
-            return CorrectionResult(source_text=text, corrected_text=text, edits=[])
+            return CorrectionResult(source_text=text, corrected_text=text, edits=[], metadata=runtime_metadata)
 
         source_text = text
         current = text
@@ -72,16 +84,30 @@ class Corrector:
 
         ok, reasons = self.scope_guard.validate_result(source_text, current, edits)
         if not ok:
+            metadata = dict(runtime_metadata)
+            metadata["scope_guard_rejections"] = reasons
             return CorrectionResult(
                 source_text=source_text,
                 corrected_text=source_text,
                 edits=[],
-                metadata={"scope_guard_rejections": reasons},
+                metadata=metadata,
             )
 
         attach_explanations(edits)
-        metadata = {"scope_guard_warnings": reasons} if reasons else {}
+        metadata = dict(runtime_metadata)
+        if reasons:
+            metadata["scope_guard_warnings"] = reasons
         return CorrectionResult(source_text=source_text, corrected_text=current, edits=edits, metadata=metadata)
+
+    def _runtime_metadata(self) -> dict[str, Any]:
+        backend = self.neural_backend
+        return {
+            "backend_kind": "direct_neural" if backend is not None else "deterministic_fallback",
+            "model_loaded": backend is not None,
+            "adapter_path": str(getattr(backend, "adapter_path", "") or ""),
+            "heads_path": str(getattr(backend, "heads_path", "") or ""),
+            "selected_epoch": getattr(backend, "selected_epoch", None),
+        }
 
     def _apply_deterministic(self, text: str) -> tuple[str, list[RuntimeEdit]]:
         current = text

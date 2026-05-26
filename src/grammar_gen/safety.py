@@ -15,7 +15,7 @@ from src.grammar_gen.ast import (
     SimpleSentence,
     VerbPhrase,
 )
-from src.grammar_gen.lexicon import Lexicon, NounEntry
+from src.grammar_gen.lexicon import Lexicon, NounEntry, object_lemma_allowed_for_frame
 from src.grammar_gen.morphology import MorphologyEngine, is_valid_prepositional_phrase
 from src.grammar_gen.semantic_safety import reject_semantic_nonsense, validate_clause_semantics
 from src.grammar_gen.semantics import PrepSlot, VerbFrame
@@ -49,6 +49,19 @@ BAD_PAIR_REASONS = (
     ("bad_pair_stol_reshil_vopros", re.compile(r"\bстол\s+решил\s+вопрос\b", re.IGNORECASE)),
     ("bad_pair_produkty_prochitali_dokument", re.compile(r"\bпродукты\s+прочитали\s+документ\b", re.IGNORECASE)),
 )
+BAD_PAIR_REASONS = (
+    *BAD_PAIR_REASONS,
+    ("bad_present_plural:dannye_pokazyvaet", re.compile(r"\bданные\s+показывает\b", re.IGNORECASE)),
+    ("bad_present_plural:dannye_soderzhit", re.compile(r"\bданные\s+содержит\b", re.IGNORECASE)),
+    ("bad_present_plural:dannye_vklyuchaet", re.compile(r"\bданные\s+включает\b", re.IGNORECASE)),
+    ("bad_answer_direct_object:request", re.compile(r"\bответил[аи]?\s+заявк[ауи]\b", re.IGNORECASE)),
+    ("bad_answer_direct_object:question", re.compile(r"\bответил[аи]?\s+вопрос\b", re.IGNORECASE)),
+    (
+        "bad_object_pair:bolnitsa_ispravila_tsitatu",
+        re.compile(r"\bбольница\s+исправила\s+(?:[а-яё-]+\s+){0,2}цитат[ауые]\b", re.IGNORECASE),
+    ),
+)
+
 BAD_TARGET_MORPHOLOGY_REASONS = (
     ("target_infinitive_as_finite:провести", re.compile(r"\bпровести\b", re.IGNORECASE)),
     ("target_infinitive_as_finite:открыть", re.compile(r"\bоткрыть\b", re.IGNORECASE)),
@@ -309,7 +322,7 @@ def check_predicate_rendering(ast: Any, rendered_text: str) -> list[str]:
     for clause in _clauses_for_ast(ast):
         predicate = clause.predicate
         if predicate.tense == "present":
-            expected = morphology.inflect_verb_present_3sg(predicate.verb_lemma)
+            expected = morphology.inflect_verb_present(predicate.verb_lemma, number=clause.subject.number)
         elif predicate.tense == "past":
             expected = morphology.inflect_verb_past(predicate.verb_lemma, clause.subject.gender, clause.subject.number)
         else:
@@ -331,6 +344,15 @@ def check_subject_verb_agreement(ast: Any, rendered_text: str) -> list[str]:
     for clause in _clauses_for_ast(ast):
         predicate = clause.predicate
         subject = clause.subject
+        if predicate.tense == "present":
+            sing = morphology.inflect_verb_present(predicate.verb_lemma, number="sing")
+            plur = morphology.inflect_verb_present(predicate.verb_lemma, number="plur")
+            if subject.number == "plur" and sing != plur and _contains_word(lowered, sing):
+                reasons.append("subject_verb_number_agreement")
+            elif subject.number != "plur" and sing != plur and _contains_word(lowered, plur):
+                reasons.append("subject_verb_number_agreement")
+            continue
+
         if predicate.tense != "past":
             continue
 
@@ -650,6 +672,9 @@ def _validate_safety_clause(clause: Any) -> list[str]:
             object_class = str(obj.get("semantic_class") or "")
             if object_class not in frame.object_classes or object_class not in allowed_object_classes:
                 reasons.append("invalid_object_semantics")
+            object_lemma = str(obj.get("lemma") or "")
+            if object_lemma and not object_lemma_allowed_for_frame(frame.frame_id, object_lemma):
+                reasons.append("invalid_object_lemma_for_frame")
     elif obj is not None:
         reasons.append("unexpected_object")
 
@@ -695,7 +720,7 @@ def _string_list(value: Any) -> list[str]:
 
 def _render_predicate_verb(predicate: VerbPhrase, subject: NounPhrase, morphology: MorphologyEngine) -> str:
     if predicate.tense == "present":
-        return morphology.inflect_verb_present_3sg(predicate.verb_lemma)
+        return morphology.inflect_verb_present(predicate.verb_lemma, number=subject.number)
     if predicate.tense == "past":
         return morphology.inflect_verb_past(predicate.verb_lemma, subject.gender, subject.number)
     return morphology.infinitive(predicate.verb_lemma)

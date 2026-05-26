@@ -12,6 +12,7 @@ from src.grammar_gen.rules.common import (
     make_clean_identity_example,
     metadata_with_safety_clauses,
     metadata_without_safety_clauses,
+    object_np_for_frame,
     replace_once_checked,
     token_labels_all_keep,
     varied_np,
@@ -122,7 +123,7 @@ def _clause_for_frame(builder: GrammarBuilder, rng: RandomSource, frame_id: str)
         subject=varied_np(builder, rng, (subject_entry.semantic_class,), adjective_probability=0.20),
         predicate=VerbPhrase(
             verb_lemma=frame.verb_lemma,
-            object_np=varied_np(builder, rng, tuple(frame.object_classes), case="accs", adjective_probability=0.25),
+            object_np=object_np_for_frame(builder, rng, frame, case="accs", adjective_probability=0.25),
             frame_id=frame.frame_id,
         ),
     )

@@ -85,16 +85,23 @@ class MorphologyEngine:
         fallback = _fallback_verb_past(lemma, gender, number)
         return result or fallback or self._missing_form("verb_past", lemma, gender, number)
 
-    def inflect_verb_present_3sg(self, lemma: str) -> str:
-        curated = self._verb_forms.get(lemma, {}).get("present_3sg")
+    def inflect_verb_present(self, lemma: str, person: str = "3", number: str = "sing") -> str:
+        if str(person) != "3":
+            return self._missing_form("verb_present", lemma, str(person), number)
+        number_tag = _number_tag(number)
+        form_key = "present_3pl" if number_tag == "plur" else "present_3sg"
+        curated = self._verb_forms.get(lemma, {}).get(form_key)
         if curated:
             return curated
-        result = self._inflect_with_pymorphy(lemma, "INFN", {"pres", "3per", "sing"})
+        result = self._inflect_with_pymorphy(lemma, "INFN", {"pres", "3per", number_tag})
         if result:
             return result
-        result = self._inflect_with_pymorphy(lemma, "INFN", {"futr", "3per", "sing"})
-        fallback = _FALLBACK_PRESENT_3SG.get(lemma)
-        return result or fallback or self._missing_form("verb_present_3sg", lemma)
+        result = self._inflect_with_pymorphy(lemma, "INFN", {"futr", "3per", number_tag})
+        fallback = _FALLBACK_PRESENT_3PL.get(lemma) if number_tag == "plur" else _FALLBACK_PRESENT_3SG.get(lemma)
+        return result or fallback or self._missing_form("verb_present", lemma, str(person), number_tag)
+
+    def inflect_verb_present_3sg(self, lemma: str) -> str:
+        return self.inflect_verb_present(lemma, person="3", number="sing")
 
     def infinitive(self, lemma: str) -> str:
         curated = self._verb_forms.get(lemma, {}).get("infinitive")
@@ -543,4 +550,22 @@ _FALLBACK_PRESENT_3SG = {
     "писать": "пишет",
     "решать": "решает",
     "готовиться": "готовится",
+    "показывать": "показывает",
+    "содержать": "содержит",
+    "включать": "включает",
+    "описывать": "описывает",
+    "требовать": "требует",
+}
+
+_FALLBACK_PRESENT_3PL = {
+    "идти": "идут",
+    "говорить": "говорят",
+    "писать": "пишут",
+    "решать": "решают",
+    "готовиться": "готовятся",
+    "показывать": "показывают",
+    "содержать": "содержат",
+    "включать": "включают",
+    "описывать": "описывают",
+    "требовать": "требуют",
 }

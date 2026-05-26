@@ -18,6 +18,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("config", help="Path to YAML config.")
     parser.add_argument("--dataset", required=True, help="Frozen eval JSONL, for example data/generated_eval/val.jsonl.")
     parser.add_argument("--output", required=True, help="Directory for direct evaluation reports.")
+    parser.add_argument("--allow-fallback", action="store_true", help="Allow explicit deterministic fallback evaluation.")
     args = parser.parse_args(argv)
 
     dataset_path = Path(args.dataset)
@@ -31,7 +32,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
 
-    summary = evaluate_corrector(args.config, dataset_path, args.output)
+    summary = evaluate_corrector(args.config, dataset_path, args.output, allow_fallback=args.allow_fallback)
     print(json.dumps(summary, ensure_ascii=False, sort_keys=True))
     return 0
 

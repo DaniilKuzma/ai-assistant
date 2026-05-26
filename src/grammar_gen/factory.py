@@ -58,7 +58,7 @@ def _validate_curated_critical_coverage(lexicon: Lexicon) -> None:
         "masc_acc_inanim",
         "neut_acc",
     }
-    verb_columns = {"past_masc", "past_fem", "past_neut", "past_plur", "present_3sg", "infinitive"}
+    verb_columns = {"past_masc", "past_fem", "past_neut", "past_plur", "present_3sg", "present_3pl", "infinitive"}
     frame_verbs = {frame.verb_lemma for frame in lexicon.frames.frames}
 
     missing: list[str] = []

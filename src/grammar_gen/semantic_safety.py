@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from typing import Any, Mapping
 
+from src.grammar_gen.lexicon import object_lemma_allowed_for_frame
 from src.grammar_gen.semantics import SemanticFrameLexicon, VerbFrame
 
 
@@ -78,6 +79,8 @@ _CONTENT_VERBS = {
     "описывало",
     "описывали",
 }
+_CONTENT_VERBS.update({"содержат", "включают", "показывают", "описывают", "требуют"})
+
 _ADVERB_SKIP = {
     "быстро",
     "медленно",
@@ -178,9 +181,17 @@ def validate_frame_fillers(frame: VerbFrame, subject: Any, object_np: Any | None
     if frame.object_classes:
         if object_np is None:
             reasons.append("missing_object")
+        elif _get_value(object_np, "preposition"):
+            reasons.append("unexpected_prep_object")
         elif not single_frame_lexicon.validate_object(frame, object_np):
             reasons.append("invalid_object_semantics")
+        elif not object_lemma_allowed_for_frame(frame.frame_id, str(_get_value(object_np, "lemma") or "")):
+            reasons.append("invalid_object_lemma_for_frame")
     elif object_np is not None:
+        preposition = str(_get_value(object_np, "preposition") or "")
+        case = str(_get_value(object_np, "case") or "")
+        if preposition and single_frame_lexicon.validate_prep_slot(frame, preposition, object_np, case):
+            return reasons
         reasons.append("unexpected_object")
 
     return reasons

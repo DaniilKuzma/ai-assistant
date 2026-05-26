@@ -27,10 +27,26 @@ class DirectPrediction:
 
 
 class DirectNeuralBackend:
-    def __init__(self, tokenizer: Any, model: Any, max_length: int = 128) -> None:
+    def __init__(
+        self,
+        tokenizer: Any,
+        model: Any,
+        max_length: int = 128,
+        device: Any | None = None,
+        *,
+        adapter_path: str | Path | None = None,
+        heads_path: str | Path | None = None,
+        selected_epoch: int | None = None,
+    ) -> None:
+        import torch
+
         self.tokenizer = tokenizer
         self.model = model
         self.max_length = max_length
+        self.device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.adapter_path = str(adapter_path or "")
+        self.heads_path = str(heads_path or "")
+        self.selected_epoch = selected_epoch
 
     @classmethod
     def from_config(cls, config: Mapping[str, Any]) -> "DirectNeuralBackend":
@@ -45,20 +61,40 @@ class DirectNeuralBackend:
         model_config = config.get("model", {}) if isinstance(config, Mapping) else {}
         lora = model_config.get("lora", {}) if isinstance(model_config, Mapping) else {}
         lora_enabled = bool(lora.get("enabled", True)) if isinstance(lora, Mapping) else True
+        runtime = config.get("runtime", {}) if isinstance(config, Mapping) else {}
+        allow_adapter_fallback = bool(runtime.get("allow_neural_adapter_fallback", False)) if isinstance(runtime, Mapping) else False
         if lora_enabled and not adapter_dir.exists():
-            raise FileNotFoundError(f"Direct edit adapter artifact is missing: {adapter_dir}")
+            if allow_adapter_fallback:
+                lora_enabled = False
+            else:
+                raise FileNotFoundError(f"Direct edit adapter artifact is missing: {adapter_dir}")
 
         tokenizer = load_tokenizer(_encoder_config(model_config))
-        direct = DirectEditTaggerModel(_direct_model_config(model_config)).module
+        direct = DirectEditTaggerModel(_direct_model_config(model_config, lora_enabled=False)).module
         if lora_enabled:
-            direct.encoder = _load_peft_adapter(direct.encoder, adapter_dir)
+            direct.encoder = _load_peft_adapter(
+                direct.encoder,
+                adapter_dir,
+                allow_fallback=allow_adapter_fallback,
+            )
 
         import torch
 
         state = torch.load(heads_path, map_location="cpu")
         direct.heads.load_state_dict(state)
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if hasattr(direct, "to"):
+            direct.to(device)
         direct.eval()
-        return cls(tokenizer, direct, int(model_config.get("max_sequence_length", 128)))
+        return cls(
+            tokenizer,
+            direct,
+            int(model_config.get("max_sequence_length", 128)),
+            device=device,
+            adapter_path=adapter_dir if lora_enabled else "",
+            heads_path=heads_path,
+            selected_epoch=_selected_epoch(heads_dir),
+        )
 
     def predict(self, text: str) -> DirectPrediction:
         import torch
@@ -78,13 +114,13 @@ class DirectNeuralBackend:
         gap_left, gap_right, gap_mask = _gap_indices(words, offsets, word_indices, word_mask, self.max_length)
 
         batch = {
-            "input_ids": encoded["input_ids"],
-            "attention_mask": encoded["attention_mask"],
-            "word_token_indices": torch.tensor([word_indices], dtype=torch.long),
-            "word_token_mask": torch.tensor([word_mask], dtype=torch.bool),
-            "gap_left_indices": torch.tensor([gap_left], dtype=torch.long),
-            "gap_right_indices": torch.tensor([gap_right], dtype=torch.long),
-            "gap_mask": torch.tensor([gap_mask], dtype=torch.bool),
+            "input_ids": encoded["input_ids"].to(self.device),
+            "attention_mask": encoded["attention_mask"].to(self.device),
+            "word_token_indices": torch.tensor([word_indices], dtype=torch.long, device=self.device),
+            "word_token_mask": torch.tensor([word_mask], dtype=torch.bool, device=self.device),
+            "gap_left_indices": torch.tensor([gap_left], dtype=torch.long, device=self.device),
+            "gap_right_indices": torch.tensor([gap_right], dtype=torch.long, device=self.device),
+            "gap_mask": torch.tensor([gap_mask], dtype=torch.bool, device=self.device),
         }
 
         with torch.no_grad():
@@ -117,28 +153,30 @@ def _encoder_config(model_config: Mapping[str, Any]) -> EncoderLoadConfig:
     )
 
 
-def _direct_model_config(model_config: Mapping[str, Any]) -> DirectEditModelConfig:
+def _direct_model_config(model_config: Mapping[str, Any], *, lora_enabled: bool | None = None) -> DirectEditModelConfig:
     lora = model_config.get("lora", {}) if isinstance(model_config, Mapping) else {}
     encoder_config = _encoder_config(model_config)
     return DirectEditModelConfig(
         model_name=encoder_config.model_name,
         fallback_model_name=encoder_config.fallback_model_name,
         local_files_only=encoder_config.local_files_only,
-        lora_enabled=bool(lora.get("enabled", True)) if isinstance(lora, Mapping) else True,
+        lora_enabled=bool(lora.get("enabled", True)) if lora_enabled is None and isinstance(lora, Mapping) else bool(lora_enabled),
         lora_r=int(lora.get("r", 8)) if isinstance(lora, Mapping) else 8,
         lora_alpha=int(lora.get("alpha", 16)) if isinstance(lora, Mapping) else 16,
         lora_dropout=float(lora.get("dropout", 0.05)) if isinstance(lora, Mapping) else 0.05,
     )
 
 
-def _load_peft_adapter(encoder: Any, adapter_dir: Path) -> Any:
+def _load_peft_adapter(encoder: Any, adapter_dir: Path, *, allow_fallback: bool = False) -> Any:
     ensure_pytorch_transformers_backend()
     try:
         from peft import PeftModel
 
         return PeftModel.from_pretrained(encoder, adapter_dir)
-    except Exception:
-        return encoder
+    except Exception as exc:
+        if allow_fallback:
+            return encoder
+        raise RuntimeError(f"Failed to load PEFT adapter from {adapter_dir}: {exc}") from exc
 
 
 def _resolve_path(value: Any) -> Path:
@@ -163,6 +201,25 @@ def _validate_architecture_marker(heads_dir: Path, config: Mapping[str, Any]) ->
     allow_debug_model = bool(runtime.get("allow_debug_model", False)) if isinstance(runtime, Mapping) else False
     if bool(marker.get("debug_model", False)) and not allow_debug_model:
         raise RuntimeError("Refusing to load debug_model direct edit heads without allow_debug_model=true.")
+
+
+def _selected_epoch(heads_dir: Path) -> int | None:
+    for name in ("checkpoint_meta.json", "selected_checkpoint_meta.json", "architecture.json"):
+        path = heads_dir / name
+        if not path.exists():
+            continue
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            continue
+        value = data.get("selected_epoch") or data.get("epoch")
+        if value is None:
+            continue
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            continue
+    return None
 
 
 def _offsets(value: Any) -> list[tuple[int, int]]:
