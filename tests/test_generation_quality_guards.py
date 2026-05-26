@@ -355,47 +355,13 @@ def test_dash_subject_predicate_uses_only_curated_pair_ids() -> None:
     allowed_pair_ids = {
         "report_document",
         "law_document",
+        "instruction_text",
         "error_problem",
         "request_document",
         "protocol_document",
-        "instruction_text",
         "meeting_event",
         "plan_document",
         "message_text",
-        "letter_message",
-        "answer_message",
-        "file_document",
-        "article_text",
-        "report_summary",
-        "overview_text",
-        "rule_requirement",
-        "task_requirement",
-        "assignment_task",
-        "formula_rule",
-        "calculation_document",
-        "table_file",
-        "text_document",
-        "summary_document",
-        "contract_document",
-        "order_document",
-        "certificate_document",
-        "manual_document",
-        "statement_document",
-        "note_text",
-        "description_text",
-        "notification_message",
-        "comment_message",
-        "code_law",
-        "norm_rule",
-        "condition_requirement",
-        "circumstance_fact",
-        "resolution_decision",
-        "schedule_plan",
-        "session_meeting",
-        "textbook_book",
-        "novel_book",
-        "outcome_result",
-        "conclusion_result",
     }
 
     examples = [
@@ -471,6 +437,8 @@ def test_production_generator_10000_examples_quality_gate() -> None:
         "провёл собрание, что",
         "сравнил документ, что",
         "отправил уведомление, что",
+        "писатель создал личный договор",
+        "вчера девочка съела рыбу?",
         "сохранил данные, что",
         "задание требовало",
         "данные показывает",
@@ -505,11 +473,35 @@ def test_production_generator_10000_examples_quality_gate() -> None:
         for example in examples
     }
     duplicate_ratio = 1.0 - (len(unique_pairs) / len(examples))
+    metadata_failures = [
+        (index, example.primary_rule_id, example.metadata)
+        for index, example in enumerate(examples)
+        if example.metadata.get("uses_construction_bank") is not True
+        or not example.metadata.get("construction_id")
+        or not example.metadata.get("construction_family")
+        or "safety_clauses" not in example.metadata
+    ]
 
     assert audit["failed_examples_count"] == 0
     assert validation_failures == []
+    assert metadata_failures == []
     assert bad_targets == []
     assert duplicate_ratio < 0.25
+
+
+def test_production_random_clause_without_construction_context_fails() -> None:
+    registry = RuleRegistry()
+    registry.register_rule(_RandomClauseRule())
+    generator = OnlineExampleGenerator(
+        registry,
+        Lexicon.default(),
+        MorphologyEngine(use_pymorphy=False),
+        {"generation": {"mix": {"orthography_contextual": 1.0}, "grammar": {"max_generation_retries": 1}}},
+        seed=13,
+    )
+
+    with pytest.raises(GenerationError, match="random_clause.*construction"):
+        generator.sample(rule_id="ne_verb", mode=GenerationMode.POSITIVE)
 
 
 def test_ne_verb_positive_expected_edit_count_is_logical_one() -> None:
@@ -653,6 +645,27 @@ class _AlwaysBadRule(RuleProgram):
             explanation_ids=[self.info.rule_id],
             metadata={"uses_safety_clauses": False},
         )
+
+
+class _RandomClauseRule(RuleProgram):
+    info = RuleInfo(
+        rule_id="ne_verb",
+        family="orthography_contextual",
+        description="random clause misuse",
+        explanation="random clause misuse",
+    )
+    supported_modes = (GenerationMode.POSITIVE,)
+
+    def generate(
+        self,
+        builder: GrammarBuilder,
+        realizer: Realizer,
+        rng: RandomSource,
+        mode: GenerationMode,
+    ) -> GeneratedExample:
+        del realizer, rng, mode
+        builder.random_clause()
+        raise AssertionError("random_clause guard did not stop production generation")
 
 
 def _generator() -> OnlineExampleGenerator:

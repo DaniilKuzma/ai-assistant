@@ -4,7 +4,13 @@ from src.grammar_gen.builders import GrammarBuilder
 from src.grammar_gen.randomness import RandomSource
 from src.grammar_gen.realizer import Realizer
 from src.grammar_gen.rules.base import GenerationMode, RuleInfo, RuleProgram
-from src.grammar_gen.rules.common import make_punctuation_example, remove_punctuation_before
+from src.grammar_gen.rules.common import (
+    make_punctuation_example,
+    metadata_from_construction,
+    remove_punctuation_before,
+    render_construction_by_id,
+    render_construction_for_rule,
+)
 from src.grammar_gen.safety import validate_target_ast_or_raise
 from src.schema import GeneratedExample
 
@@ -35,30 +41,23 @@ class DashSubjectPredicateRule(RuleProgram):
         mode: GenerationMode,
     ) -> GeneratedExample:
         if mode is GenerationMode.POSITIVE:
-            target, ast = _dash_target(builder, realizer)
+            rendered = render_construction_for_rule(builder, realizer, rng, self.info.rule_id, "dash_nominal")
+            target = rendered.text
             source = remove_punctuation_before(target, _second_word(target))
-            example = _example(source, target, realizer, self.info.rule_id, mode, {"dash_pair_id": ast.pair_id})
-            validate_target_ast_or_raise(ast, target, example)
+            example = _example(source, target, realizer, self.info.rule_id, mode, metadata_from_construction(rendered))
+            validate_target_ast_or_raise(rendered.ast, target, example)
             return example
         if mode is GenerationMode.HARD_NEGATIVE:
-            text = rng.choice(
-                (
-                    "Комиссия проверила отчёт.",
-                    "Студент прочитал книгу.",
-                )
-            )
-            return _example(text, text, realizer, self.info.rule_id, mode, {"trap_type": "verbal_predicate"})
+            rendered = render_construction_by_id(builder, realizer, rng, "dash_nominal_verbal_predicate_trap")
+            text = rendered.text
+            return _example(text, text, realizer, self.info.rule_id, mode, metadata_from_construction(rendered))
         if mode is GenerationMode.CLEAN_IDENTITY:
-            text, ast = _dash_target(builder, realizer)
-            example = _example(text, text, realizer, self.info.rule_id, mode, {"dash_pair_id": ast.pair_id})
-            validate_target_ast_or_raise(ast, text, example)
+            rendered = render_construction_for_rule(builder, realizer, rng, self.info.rule_id, "dash_nominal")
+            text = rendered.text
+            example = _example(text, text, realizer, self.info.rule_id, mode, metadata_from_construction(rendered))
+            validate_target_ast_or_raise(rendered.ast, text, example)
             return example
         raise ValueError(f"Unsupported generation mode: {mode!r}")
-
-
-def _dash_target(builder: GrammarBuilder, realizer: Realizer):
-    ast = builder.dash_subject_predicate_sentence()
-    return realizer.render_sentence(ast).replace(" - ", " \u2014 "), ast
 
 
 def _second_word(text: str) -> str:

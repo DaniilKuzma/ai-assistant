@@ -1,0 +1,42 @@
+patterns:
+  - id: dash_nominal_curated_safe_pairs
+    family: dash_nominal
+    surface: "{subject} — {predicate}."
+    roles:
+      subject:
+        semantic_classes: [document, report, text, error, request, meeting, plan, message, law]
+        allow_adjectives: false
+      predicate:
+        semantic_classes: [document, text, problem, event]
+        allow_adjectives: false
+    allowed_rule_ids: [dash_subject_predicate]
+    punctuation_profile:
+      nominal_separator: DASH
+    metadata:
+      render_type: dash_nominal
+      pairs:
+        - {id: report_document, subject: отчёт, predicate: документ}
+        - {id: law_document, subject: закон, predicate: документ}
+        - {id: instruction_text, subject: инструкция, predicate: текст}
+        - {id: error_problem, subject: ошибка, predicate: проблема}
+        - {id: request_document, subject: заявка, predicate: документ}
+        - {id: protocol_document, subject: протокол, predicate: документ}
+        - {id: meeting_event, subject: собрание, predicate: событие}
+        - {id: plan_document, subject: план, predicate: документ}
+        - {id: message_text, subject: сообщение, predicate: текст}
+
+  - id: dash_nominal_verbal_predicate_trap
+    family: dash_nominal
+    surface: "{subject} проверил {object}."
+    roles:
+      subject:
+        semantic_classes: [person, organization, software_agent]
+      object:
+        semantic_classes: [document, report, text, file, book]
+        case: accs
+    allowed_rule_ids: [dash_subject_predicate]
+    allowed_frame_ids: [check_document, read_text, review_report, open_file]
+    metadata:
+      render_type: simple_transitive
+      context_only: true
+      trap_type: verbal_predicate

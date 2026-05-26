@@ -1,0 +1,16 @@
+patterns:
+  - id: tsya_ttsya_controlled_person
+    family: tsya_ttsya
+    surface: "{subject} хочет учиться."
+    roles:
+      subject:
+        semantic_classes: [person]
+    allowed_rule_ids: [tsya_ttsya]
+    metadata:
+      render_type: tsya_ttsya
+      verbs:
+        - {infinitive: учиться, finite: учится}
+        - {infinitive: готовиться, finite: готовится}
+        - {infinitive: трудиться, finite: трудится}
+        - {infinitive: ошибаться, finite: ошибается}
+        - {infinitive: возвращаться, finite: возвращается}

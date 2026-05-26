@@ -6,6 +6,7 @@ from typing import Any
 
 from src.config.load_config import load_config
 from src.grammar_gen.builders import GrammarBuilder
+from src.grammar_gen.constructions import ConstructionBank
 from src.grammar_gen.lexicon import Lexicon
 from src.grammar_gen.morphology import MorphologyEngine
 from src.grammar_gen.randomness import RandomSource
@@ -48,7 +49,14 @@ class OnlineExampleGenerator:
         validate_generation_config(self.config)
         self.base_seed = _resolve_seed(self.config, seed)
         self.rng = RandomSource(seed=self.base_seed)
-        self.builder = GrammarBuilder(lexicon, morphology, self.rng)
+        self.construction_bank = ConstructionBank.default()
+        self.builder = GrammarBuilder(
+            lexicon,
+            morphology,
+            self.rng,
+            construction_bank=self.construction_bank,
+            production=True,
+        )
         self.realizer = Realizer(lexicon, morphology)
 
     def sample(
@@ -79,7 +87,13 @@ class OnlineExampleGenerator:
 
         generation_seed = self.base_seed + index
         rng = RandomSource(seed=generation_seed)
-        builder = GrammarBuilder(self.lexicon, self.morphology, rng)
+        builder = GrammarBuilder(
+            self.lexicon,
+            self.morphology,
+            rng,
+            construction_bank=self.construction_bank,
+            production=True,
+        )
         return self._sample_with_rng(
             rng=rng,
             builder=builder,
@@ -351,6 +365,7 @@ def _with_rule_metadata_defaults(
     mode: GenerationMode,
 ) -> GeneratedExample:
     metadata = dict(example.metadata)
+    metadata.setdefault("production", True)
     metadata.setdefault("uses_safety_clauses", False)
 
     token_expected, gap_expected = _expected_edit_counts(example, rule, mode, metadata)

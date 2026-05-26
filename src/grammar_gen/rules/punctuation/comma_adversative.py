@@ -4,7 +4,14 @@ from src.grammar_gen.builders import GrammarBuilder
 from src.grammar_gen.randomness import RandomSource
 from src.grammar_gen.realizer import Realizer
 from src.grammar_gen.rules.base import GenerationMode, RuleInfo, RuleProgram
-from src.grammar_gen.rules.common import capitalize_first, make_punctuation_example, remove_punctuation_before, varied_np
+from src.grammar_gen.rules.common import (
+    make_punctuation_example,
+    metadata_from_construction,
+    remove_punctuation_before,
+    render_construction_by_id,
+    render_construction_for_rule,
+)
+from src.grammar_gen.safety import validate_target_ast_or_raise
 from src.schema import GeneratedExample
 
 
@@ -34,40 +41,24 @@ class CommaAdversativeRule(RuleProgram):
         mode: GenerationMode,
     ) -> GeneratedExample:
         if mode is GenerationMode.POSITIVE:
-            target = _adversative_sentence(builder, realizer, rng)
-            marker = "но не" if ", но " in target else "а не"
+            rendered = render_construction_for_rule(builder, realizer, rng, self.info.rule_id, "adversative")
+            target = rendered.text
+            marker = str(rendered.metadata["adversative_marker"])
             source = remove_punctuation_before(target, marker)
-            return _example(source, target, realizer, self.info.rule_id, mode)
+            example = _example(source, target, realizer, self.info.rule_id, mode, metadata_from_construction(rendered))
+            validate_target_ast_or_raise(rendered.ast, target, example)
+            return example
         if mode is GenerationMode.HARD_NEGATIVE:
-            text = rng.choice(
-                (
-                    "Студент проверил отчёт а также письмо.",
-                    "Редактор прочитал книгу а также отчёт.",
-                )
-            )
-            return _example(text, text, realizer, self.info.rule_id, mode, {"trap_type": "a_takzhe"})
+            rendered = render_construction_by_id(builder, realizer, rng, "adversative_a_takzhe_trap")
+            text = rendered.text
+            return _example(text, text, realizer, self.info.rule_id, mode, metadata_from_construction(rendered))
         if mode is GenerationMode.CLEAN_IDENTITY:
-            text = _adversative_sentence(builder, realizer, rng)
-            return _example(text, text, realizer, self.info.rule_id, mode)
+            rendered = render_construction_for_rule(builder, realizer, rng, self.info.rule_id, "adversative")
+            text = rendered.text
+            example = _example(text, text, realizer, self.info.rule_id, mode, metadata_from_construction(rendered))
+            validate_target_ast_or_raise(rendered.ast, text, example)
+            return example
         raise ValueError(f"Unsupported generation mode: {mode!r}")
-
-
-def _adversative_sentence(builder: GrammarBuilder, realizer: Realizer, rng: RandomSource) -> str:
-    subject = varied_np(builder, rng, ("person", "organization"), adjective_probability=0.25)
-    first_object = varied_np(
-        builder,
-        rng,
-        ("document", "report", "text", "message", "file", "book", "plan"),
-        case="accs",
-    )
-    second_object = varied_np(builder, rng, ("error", "problem", "text", "document", "file"), case="accs")
-    first_verb = realizer.morphology.inflect_verb_past("проверить", subject.gender, subject.number)
-    second_verb = realizer.morphology.inflect_verb_past("исправить", subject.gender, subject.number)
-    conjunction = rng.choice(("но", "а"))
-    return capitalize_first(
-        f"{realizer.render_np(subject)} {first_verb} {realizer.render_np(first_object)}, "
-        f"{conjunction} не {second_verb} {realizer.render_np(second_object)}."
-    )
 
 
 def _example(

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 import re
+from collections.abc import Iterator
+from typing import Any
 
 from src.grammar_gen.ast import (
     Clause,
@@ -102,10 +105,29 @@ DASH_NOMINAL_PAIRS = (
 
 
 class GrammarBuilder:
-    def __init__(self, lexicon: Lexicon, morphology: MorphologyEngine, rng: RandomSource) -> None:
+    def __init__(
+        self,
+        lexicon: Lexicon,
+        morphology: MorphologyEngine,
+        rng: RandomSource,
+        construction_bank: Any | None = None,
+        *,
+        production: bool = False,
+    ) -> None:
         self.lexicon = lexicon
         self.morphology = morphology
         self.rng = rng
+        self.construction_bank = construction_bank
+        self.production = production
+        self._construction_context_stack: list[str] = []
+
+    @contextmanager
+    def construction_context(self, construction_id: str) -> Iterator[None]:
+        self._construction_context_stack.append(construction_id)
+        try:
+            yield
+        finally:
+            self._construction_context_stack.pop()
 
     def random_subject(self, semantic_class: str | None = None) -> NounPhrase:
         return self._noun_phrase(self.lexicon.random_noun(self.rng, semantic_class=semantic_class))
@@ -115,6 +137,8 @@ class GrammarBuilder:
         return self._noun_phrase(self.rng.choice(candidates), case="accs")
 
     def random_clause(self, transitive: bool | None = None, allow_negation: bool = False) -> Clause:
+        if self.production and not self._construction_context_stack:
+            raise RuntimeError("random_clause requires construction context in production generation.")
         frame = self.lexicon.frames.random_frame(self.rng, allow_object=transitive)
         subject_entry = self.lexicon.random_subject_for_frame(frame, self.rng)
         subject = self._noun_phrase(subject_entry)

@@ -5,13 +5,13 @@ from src.grammar_gen.randomness import RandomSource
 from src.grammar_gen.realizer import Realizer
 from src.grammar_gen.rules.base import GenerationMode, RuleInfo, RuleProgram
 from src.grammar_gen.rules.common import (
-    capitalize_first,
     make_punctuation_example,
-    noun_phrase_from_entry,
+    metadata_from_construction,
     remove_punctuation_before,
-    varied_adjectives,
-    varied_np,
+    render_construction_by_id,
+    render_construction_for_rule,
 )
+from src.grammar_gen.safety import validate_target_ast_or_raise
 from src.schema import GeneratedExample
 
 
@@ -41,68 +41,24 @@ class CommaHomogeneousRule(RuleProgram):
         mode: GenerationMode,
     ) -> GeneratedExample:
         if mode is GenerationMode.POSITIVE:
-            target, marker = _homogeneous_sentence(builder, realizer, rng)
+            rendered = render_construction_for_rule(builder, realizer, rng, self.info.rule_id, "homogeneous_objects")
+            target = rendered.text
+            marker = str(rendered.metadata["homogeneous_marker"])
             source = remove_punctuation_before(target, marker)
-            return _example(source, target, realizer, self.info.rule_id, mode)
+            example = _example(source, target, realizer, self.info.rule_id, mode, metadata_from_construction(rendered))
+            validate_target_ast_or_raise(rendered.ast, target, example)
+            return example
         if mode is GenerationMode.HARD_NEGATIVE:
-            text = rng.choice(
-                (
-                    "Студент прочитал книгу и отчёт.",
-                    "Редактор проверил отчёт и письмо.",
-                )
-            )
-            return _example(text, text, realizer, self.info.rule_id, mode, {"trap_type": "single_conjunction"})
+            rendered = render_construction_by_id(builder, realizer, rng, "homogeneous_objects_single_conjunction_trap")
+            text = rendered.text
+            return _example(text, text, realizer, self.info.rule_id, mode, metadata_from_construction(rendered))
         if mode is GenerationMode.CLEAN_IDENTITY:
-            text, _marker = _homogeneous_sentence(builder, realizer, rng)
-            return _example(text, text, realizer, self.info.rule_id, mode)
+            rendered = render_construction_for_rule(builder, realizer, rng, self.info.rule_id, "homogeneous_objects")
+            text = rendered.text
+            example = _example(text, text, realizer, self.info.rule_id, mode, metadata_from_construction(rendered))
+            validate_target_ast_or_raise(rendered.ast, text, example)
+            return example
         raise ValueError(f"Unsupported generation mode: {mode!r}")
-
-
-def _homogeneous_sentence(builder: GrammarBuilder, realizer: Realizer, rng: RandomSource) -> tuple[str, str]:
-    subject = varied_np(builder, rng, ("person",), adjective_probability=0.25)
-    verb_lemma = rng.choice(("проверить", "прочитать", "подписать", "открыть"))
-    verb = realizer.morphology.inflect_verb_past(verb_lemma, subject.gender, subject.number)
-    objects = _objects_for_verb(builder, rng, verb_lemma, count=3)
-    rendered = [realizer.render_np(obj) for obj in objects]
-    text = f"{realizer.render_np(subject)} {verb} {rendered[0]}, {rendered[1]} и {rendered[2]}."
-    return capitalize_first(text), rendered[1]
-
-
-def _objects_for_verb(builder: GrammarBuilder, rng: RandomSource, verb_lemma: str, *, count: int):
-    objects = []
-    used_lemmas: set[str] = set()
-    attempts = 0
-    while len(objects) < count and attempts < 100:
-        attempts += 1
-        obj = _object_for_verb(builder, rng, verb_lemma)
-        if obj.noun_lemma in used_lemmas:
-            continue
-        used_lemmas.add(obj.noun_lemma)
-        objects.append(obj)
-    if len(objects) != count:
-        raise ValueError(f"Could not generate {count} distinct homogeneous objects for {verb_lemma!r}.")
-    return objects
-
-
-def _object_for_verb(builder: GrammarBuilder, rng: RandomSource, verb_lemma: str):
-    allowed_lemmas = {
-        "подписать": ("документ", "заявление", "протокол", "договор", "приказ", "отчёт", "доклад", "сводка"),
-        "открыть": ("файл", "архив", "документ"),
-    }.get(verb_lemma)
-    if allowed_lemmas is not None:
-        candidates = tuple(noun for noun in builder.lexicon.nouns if noun.lemma in allowed_lemmas)
-        entry = rng.choice(candidates)
-        return noun_phrase_from_entry(
-            entry,
-            case="accs",
-            adjective_lemmas=varied_adjectives(builder, rng, noun_entry=entry, probability=0.15),
-        )
-
-    classes = {
-        "проверить": ("document", "report", "text", "calculation", "task", "data"),
-        "прочитать": ("book", "document", "text", "message", "report"),
-    }[verb_lemma]
-    return varied_np(builder, rng, classes, case="accs", adjective_probability=0.15)
 
 
 def _example(

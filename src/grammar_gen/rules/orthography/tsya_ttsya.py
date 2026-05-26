@@ -8,6 +8,8 @@ from src.grammar_gen.rules.common import (
     capitalize_first,
     gap_labels_from_text,
     make_clean_identity_example,
+    metadata_from_construction,
+    render_construction_by_id,
     token_labels_all_keep,
     varied_np,
 )
@@ -45,45 +47,50 @@ class TsyaTtsyaRule(RuleProgram):
         rng: RandomSource,
         mode: GenerationMode,
     ) -> GeneratedExample:
-        infinitive, finite = rng.choice(CONTROLLED_VERBS)
-        subject_np = varied_np(builder, rng, ("person",), adjective_probability=0.20)
-        subject = capitalize_first(realizer.render_np(subject_np))
-        want = realizer.morphology.inflect_verb_past("хотеть", subject_np.gender, subject_np.number)
         if mode is GenerationMode.POSITIVE:
-            if rng.chance(0.5):
+            rendered = render_construction_by_id(builder, realizer, rng, "tsya_ttsya_controlled_person")
+            infinitive = str(rendered.metadata["tsya_infinitive"])
+            finite = str(rendered.metadata["tsya_finite"])
+            if rendered.metadata["tsya_direction"] == "infinitive":
                 return _labeled_example(
-                    source=f"{subject} {want} {finite}.",
-                    target=f"{subject} {want} {infinitive}.",
+                    source=rendered.text.replace(infinitive, finite),
+                    target=rendered.text,
                     labeled_token=finite,
                     label="FIX_TSYA_TO_TTSYA",
                     realizer=realizer,
                     rule_id=self.info.rule_id,
                     mode=GenerationMode.POSITIVE,
+                    metadata=metadata_from_construction(rendered),
                 )
             return _labeled_example(
-                source=f"{subject} {infinitive} утром.",
-                target=f"{subject} {finite} утром.",
+                source=rendered.text.replace(finite, infinitive),
+                target=rendered.text,
                 labeled_token=infinitive,
                 label="FIX_TTSYA_TO_TSYA",
                 realizer=realizer,
                 rule_id=self.info.rule_id,
                 mode=GenerationMode.POSITIVE,
+                metadata=metadata_from_construction(rendered),
             )
         if mode is GenerationMode.HARD_NEGATIVE:
-            text = (
-                f"{subject} {want} {infinitive}."
-                if rng.chance(0.5)
-                else f"{subject} {finite} утром."
+            rendered = render_construction_by_id(builder, realizer, rng, "tsya_ttsya_controlled_person")
+            return _identity_example(
+                rendered.text,
+                realizer,
+                self.info.rule_id,
+                GenerationMode.HARD_NEGATIVE,
+                metadata_from_construction(rendered),
             )
-            return _identity_example(text, realizer, self.info.rule_id, GenerationMode.HARD_NEGATIVE, {})
         if mode is GenerationMode.CLEAN_IDENTITY:
-            text = (
-                f"{subject} {want} {infinitive}."
-                if rng.chance(0.5)
-                else f"{subject} {finite} утром."
-            )
+            rendered = render_construction_by_id(builder, realizer, rng, "tsya_ttsya_controlled_person")
+            text = rendered.text
             tokens = realizer.tokenize_words_with_offsets(text)
-            return make_clean_identity_example(text, tokens, rule_id=self.info.rule_id)
+            return make_clean_identity_example(
+                text,
+                tokens,
+                rule_id=self.info.rule_id,
+                metadata=metadata_from_construction(rendered),
+            )
         raise ValueError(f"Unsupported generation mode: {mode!r}")
 
 
@@ -96,6 +103,7 @@ def _labeled_example(
     realizer: Realizer,
     rule_id: str,
     mode: GenerationMode,
+    metadata: dict[str, object],
 ) -> GeneratedExample:
     tokens = realizer.tokenize_words_with_offsets(source)
     labels = token_labels_all_keep(tokens)
@@ -105,7 +113,7 @@ def _labeled_example(
             break
     else:
         raise ValueError(f"Token {labeled_token!r} was not found in source sentence.")
-    return _example(source, target, tokens, labels, rule_id, mode, {})
+    return _example(source, target, tokens, labels, rule_id, mode, metadata)
 
 
 def _identity_example(

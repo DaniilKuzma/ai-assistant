@@ -10,10 +10,12 @@ from src.grammar_gen.rules.common import (
     gap_labels_from_text,
     label_span,
     make_clean_identity_example,
+    metadata_from_construction,
     metadata_with_safety_clauses,
     metadata_without_safety_clauses,
     object_np_for_frame,
     replace_once_checked,
+    render_construction_by_id,
     token_labels_all_keep,
     varied_np,
 )
@@ -46,7 +48,7 @@ class TozheRule(RuleProgram):
         if mode is GenerationMode.POSITIVE:
             return self._positive(builder, realizer, rng)
         if mode is GenerationMode.HARD_NEGATIVE:
-            return self._hard_negative(realizer, rng)
+            return self._hard_negative(builder, realizer, rng)
         if mode is GenerationMode.CLEAN_IDENTITY:
             return self._clean_identity(builder, realizer, rng)
         raise ValueError(f"Unsupported generation mode: {mode!r}")
@@ -57,7 +59,8 @@ class TozheRule(RuleProgram):
         realizer: Realizer,
         rng: RandomSource,
     ) -> GeneratedExample:
-        target, sentence = _additive_sentence(builder, realizer, rng)
+        rendered = render_construction_by_id(builder, realizer, rng, "simple_tozhe_check_document")
+        target = rendered.text
         source = replace_once_checked(target, "тоже", "то же")
         source_tokens = realizer.tokenize_words_with_offsets(source)
         labels = token_labels_all_keep(source_tokens)
@@ -70,28 +73,25 @@ class TozheRule(RuleProgram):
             labels,
             self.info.rule_id,
             GenerationMode.POSITIVE,
-            metadata_with_safety_clauses(sentence, builder.lexicon),
+            metadata_from_construction(rendered),
         )
-        validate_target_ast_or_raise(sentence, target, example)
+        validate_target_ast_or_raise(rendered.ast, target, example)
         return example
 
     def _hard_negative(
         self,
+        builder: GrammarBuilder,
         realizer: Realizer,
         rng: RandomSource,
     ) -> GeneratedExample:
-        text = rng.choice(
-            (
-                "Студент выбрал то же самое.",
-                "Студент сделал то же, что эксперт.",
-            )
-        )
+        rendered = render_construction_by_id(builder, realizer, rng, "tozhe_same_trap")
+        text = rendered.text
         return _identity_example(
             text,
             realizer,
             self.info.rule_id,
             GenerationMode.HARD_NEGATIVE,
-            metadata_without_safety_clauses(),
+            metadata_from_construction(rendered),
         )
 
     def _clean_identity(
@@ -101,15 +101,18 @@ class TozheRule(RuleProgram):
         rng: RandomSource,
     ) -> GeneratedExample:
         if rng.chance(0.5):
-            text, sentence = _additive_sentence(builder, realizer, rng)
-            metadata = metadata_with_safety_clauses(sentence, builder.lexicon)
+            rendered = render_construction_by_id(builder, realizer, rng, "simple_tozhe_check_document")
+            text = rendered.text
+            metadata = metadata_from_construction(rendered)
         else:
-            text = "Студент выбрал то же самое."
-            metadata = metadata_without_safety_clauses()
+            rendered = render_construction_by_id(builder, realizer, rng, "tozhe_same_trap")
+            text = rendered.text
+            metadata = metadata_from_construction(rendered)
         tokens = realizer.tokenize_words_with_offsets(text)
         example = make_clean_identity_example(text, tokens, rule_id=self.info.rule_id, metadata=metadata)
         if "safety_clauses" in metadata:
-            validate_target_ast_or_raise(sentence, text, example)
+            if rendered.ast is not None:
+                validate_target_ast_or_raise(rendered.ast, text, example)
         return example
 
 

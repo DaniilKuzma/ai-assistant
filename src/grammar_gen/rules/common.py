@@ -85,6 +85,45 @@ def metadata_without_safety_clauses(metadata: dict[str, Any] | None = None) -> d
     return result
 
 
+def metadata_from_construction(rendered: Any, metadata: dict[str, Any] | None = None) -> dict[str, Any]:
+    result = dict(getattr(rendered, "metadata", {}) or {})
+    result.update(metadata or {})
+    result["uses_construction_bank"] = True
+    result["construction_id"] = getattr(rendered, "pattern_id", result.get("construction_id", ""))
+    result.setdefault("construction_family", result.get("family", ""))
+    result.setdefault("safety_clauses", list(getattr(rendered, "safety_clauses", []) or []))
+    result.setdefault("uses_safety_clauses", bool(result["safety_clauses"]))
+    return result
+
+
+def render_construction_for_rule(
+    builder: Any,
+    realizer: Any,
+    rng: Any,
+    rule_id: str,
+    family: str | None = None,
+    *,
+    include_context: bool = False,
+) -> Any:
+    bank = getattr(builder, "construction_bank", None)
+    if bank is None:
+        raise ValueError("GrammarBuilder must have a ConstructionBank for production generation.")
+    pattern = bank.sample_for_rule(rule_id, rng, family=family, include_context=include_context)
+    return bank.render(pattern, builder, realizer, rng)
+
+
+def render_construction_by_id(
+    builder: Any,
+    realizer: Any,
+    rng: Any,
+    pattern_id: str,
+) -> Any:
+    bank = getattr(builder, "construction_bank", None)
+    if bank is None:
+        raise ValueError("GrammarBuilder must have a ConstructionBank for production generation.")
+    return bank.render(bank.pattern(pattern_id), builder, realizer, rng)
+
+
 def noun_phrase_from_entry(entry: Any, *, case: str = "nomn", adjective_lemmas: tuple[str, ...] = ()) -> NounPhrase:
     number = "plur" if entry.gender == "plur" else "sing"
     return NounPhrase(
@@ -302,11 +341,14 @@ __all__ = [
     "make_clean_identity_example",
     "make_punctuation_example",
     "metadata_with_safety_clauses",
+    "metadata_from_construction",
     "metadata_without_safety_clauses",
     "noun_phrase_from_entry",
     "object_np_for_frame",
     "remove_punctuation_before",
     "replace_once_checked",
+    "render_construction_by_id",
+    "render_construction_for_rule",
     "rule_ids_for_active_gap_labels",
     "token_labels_all_keep",
     "varied_adjectives",

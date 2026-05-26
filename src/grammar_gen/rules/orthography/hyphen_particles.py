@@ -10,7 +10,9 @@ from src.grammar_gen.rules.common import (
     gap_labels_from_text,
     label_span,
     make_clean_identity_example,
+    metadata_from_construction,
     noun_phrase_from_entry,
+    render_construction_by_id,
     varied_np,
     varied_adjectives,
     replace_once_checked,
@@ -49,15 +51,36 @@ class HyphenParticlesRule(RuleProgram):
         mode: GenerationMode,
     ) -> GeneratedExample:
         if mode is GenerationMode.POSITIVE:
-            target, source, sequence, label = _particle_case(builder, realizer, rng)
-            return _hyphen_positive(source, target, sequence, label, realizer, self.info.rule_id)
+            rendered = render_construction_by_id(builder, realizer, rng, "hyphen_particles_context")
+            return _hyphen_positive(
+                str(rendered.metadata["source_text"]),
+                rendered.text,
+                tuple(rendered.metadata["token_sequence"]),
+                str(rendered.metadata["token_label"]),
+                realizer,
+                self.info.rule_id,
+                metadata_from_construction(rendered),
+            )
         if mode is GenerationMode.HARD_NEGATIVE:
-            text = rng.choice(("То решение осталось важным.", "Либо эксперт, либо студент проверил отчёт."))
-            return _identity_example(text, realizer, self.info.rule_id, GenerationMode.HARD_NEGATIVE, {})
+            rendered = render_construction_by_id(builder, realizer, rng, "hyphen_particles_negative_context")
+            text = rendered.text
+            return _identity_example(
+                text,
+                realizer,
+                self.info.rule_id,
+                GenerationMode.HARD_NEGATIVE,
+                metadata_from_construction(rendered),
+            )
         if mode is GenerationMode.CLEAN_IDENTITY:
-            target, _, _, _ = _particle_case(builder, realizer, rng)
+            rendered = render_construction_by_id(builder, realizer, rng, "hyphen_particles_context")
+            target = rendered.text
             tokens = realizer.tokenize_words_with_offsets(target)
-            return make_clean_identity_example(target, tokens, rule_id=self.info.rule_id)
+            return make_clean_identity_example(
+                target,
+                tokens,
+                rule_id=self.info.rule_id,
+                metadata=metadata_from_construction(rendered),
+            )
         raise ValueError(f"Unsupported generation mode: {mode!r}")
 
 
@@ -84,27 +107,39 @@ class HyphenKoeRule(RuleProgram):
         mode: GenerationMode,
     ) -> GeneratedExample:
         if mode is GenerationMode.POSITIVE:
-            target, source = _koe_sentence(builder, realizer, rng)
+            rendered = render_construction_by_id(builder, realizer, rng, "hyphen_koe_context")
             return _hyphen_positive(
-                source,
-                target,
-                ("Кое", "кто"),
-                "HYPHENATE_KOE",
+                str(rendered.metadata["source_text"]),
+                rendered.text,
+                tuple(rendered.metadata["token_sequence"]),
+                str(rendered.metadata["token_label"]),
                 realizer,
                 self.info.rule_id,
+                metadata_from_construction(rendered),
             )
         if mode is GenerationMode.HARD_NEGATIVE:
+            rendered = render_construction_by_id(builder, realizer, rng, "hyphen_koe_negative_context")
             return _identity_example(
-                "Студент кое у кого спросил.",
+                rendered.text,
                 realizer,
                 self.info.rule_id,
                 GenerationMode.HARD_NEGATIVE,
-                {},
+                metadata_from_construction(rendered),
             )
         if mode is GenerationMode.CLEAN_IDENTITY:
-            text = _koe_sentence(builder, realizer, rng)[0] if rng.chance(0.5) else "Студент кое у кого спросил."
+            rendered = (
+                render_construction_by_id(builder, realizer, rng, "hyphen_koe_context")
+                if rng.chance(0.5)
+                else render_construction_by_id(builder, realizer, rng, "hyphen_koe_negative_context")
+            )
+            text = rendered.text
             tokens = realizer.tokenize_words_with_offsets(text)
-            return make_clean_identity_example(text, tokens, rule_id=self.info.rule_id)
+            return make_clean_identity_example(
+                text,
+                tokens,
+                rule_id=self.info.rule_id,
+                metadata=metadata_from_construction(rendered),
+            )
         raise ValueError(f"Unsupported generation mode: {mode!r}")
 
 
@@ -131,28 +166,39 @@ class HyphenPoAdverbRule(RuleProgram):
         mode: GenerationMode,
     ) -> GeneratedExample:
         if mode is GenerationMode.POSITIVE:
-            target = _po_adverb_sentence(builder, realizer, rng)
-            source = replace_once_checked(target, "по-русски", "по русски")
+            rendered = render_construction_by_id(builder, realizer, rng, "hyphen_po_adverb_context")
             return _hyphen_positive(
-                source,
-                target,
-                ("по", "русски"),
-                "HYPHENATE_PO_ADVERB",
+                str(rendered.metadata["source_text"]),
+                rendered.text,
+                tuple(rendered.metadata["token_sequence"]),
+                str(rendered.metadata["token_label"]),
                 realizer,
                 self.info.rule_id,
+                metadata_from_construction(rendered),
             )
         if mode is GenerationMode.HARD_NEGATIVE:
+            rendered = render_construction_by_id(builder, realizer, rng, "hyphen_po_adverb_negative_context")
             return _identity_example(
-                "Студент шёл по русской дороге.",
+                rendered.text,
                 realizer,
                 self.info.rule_id,
                 GenerationMode.HARD_NEGATIVE,
-                {},
+                metadata_from_construction(rendered),
             )
         if mode is GenerationMode.CLEAN_IDENTITY:
-            text = _po_adverb_sentence(builder, realizer, rng) if rng.chance(0.5) else "Студент шёл по русской дороге."
+            rendered = (
+                render_construction_by_id(builder, realizer, rng, "hyphen_po_adverb_context")
+                if rng.chance(0.5)
+                else render_construction_by_id(builder, realizer, rng, "hyphen_po_adverb_negative_context")
+            )
+            text = rendered.text
             tokens = realizer.tokenize_words_with_offsets(text)
-            return make_clean_identity_example(text, tokens, rule_id=self.info.rule_id)
+            return make_clean_identity_example(
+                text,
+                tokens,
+                rule_id=self.info.rule_id,
+                metadata=metadata_from_construction(rendered),
+            )
         raise ValueError(f"Unsupported generation mode: {mode!r}")
 
 
@@ -219,12 +265,13 @@ def _hyphen_positive(
     first_label: str,
     realizer: Realizer,
     rule_id: str,
+    metadata: dict[str, object],
 ) -> GeneratedExample:
     source_tokens = realizer.tokenize_words_with_offsets(source)
     labels = token_labels_all_keep(source_tokens)
     start = find_token_sequence(source_tokens, sequence)
     label_span(labels, start, start + 2, first_label)
-    return _example(source, target, source_tokens, labels, rule_id, GenerationMode.POSITIVE, {})
+    return _example(source, target, source_tokens, labels, rule_id, GenerationMode.POSITIVE, metadata)
 
 
 def _identity_example(

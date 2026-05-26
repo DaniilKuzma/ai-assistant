@@ -1,0 +1,54 @@
+patterns:
+  - id: adversative_document_correction
+    family: adversative
+    surface: "{subject} проверил {object}, но не исправил {problem}."
+    roles:
+      subject:
+        semantic_classes: [person, organization]
+      object:
+        semantic_classes: [document, report, text, message, file, book, plan]
+        case: accs
+      problem:
+        semantic_classes: [error, problem, text, document, file]
+        case: accs
+    allowed_rule_ids: [comma_adversative]
+    metadata:
+      render_type: adversative
+      main_frame_ids: [check_document, review_report]
+      second_frame_ids: [correct_error, fix_problem]
+      negated_second: true
+
+  - id: zato_document_correction
+    family: adversative
+    surface: "{subject} проверил {object}, зато исправил {problem}."
+    roles:
+      subject:
+        semantic_classes: [person, organization]
+      object:
+        semantic_classes: [document, report, text, file]
+        case: accs
+      problem:
+        semantic_classes: [error, problem, text, document, file]
+        case: accs
+    allowed_rule_ids: [zato_za_to]
+    metadata:
+      render_type: adversative
+      conjunction: зато
+      main_frame_ids: [check_document, review_report]
+      second_frame_ids: [correct_error, fix_problem]
+      negated_second: false
+
+  - id: adversative_a_takzhe_trap
+    family: adversative
+    surface: "Студент проверил отчёт а также письмо."
+    roles:
+      context:
+        semantic_classes: [text]
+    allowed_rule_ids: [comma_adversative]
+    metadata:
+      render_type: fixed_text
+      context_only: true
+      trap_type: a_takzhe
+      texts:
+        - "Студент проверил отчёт а также письмо."
+        - "Редактор прочитал книгу а также отчёт."

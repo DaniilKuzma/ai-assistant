@@ -1,0 +1,74 @@
+patterns:
+  - id: subordinate_that_report_content
+    family: subordinate_that
+    surface: "{person_or_org} сообщил, что {content_source} содержит {content_object}."
+    roles:
+      person_or_org:
+        semantic_classes: [person, organization]
+      content_source:
+        semantic_classes: [document, report, text, message, data, request, law, book, plan]
+      content_object:
+        semantic_classes: [information, error, requirement, fact, result, task, process, decision, problem, request]
+        case: accs
+    allowed_rule_ids: [comma_subordinate]
+    allowed_frame_ids:
+      - subordinate_report
+      - subordinate_confirm
+      - subordinate_decide
+      - subordinate_write
+      - subordinate_indicate
+    allowed_frame_families: [subordinate_complement]
+    metadata:
+      render_type: subordinate_that
+      subordinate_frame_ids:
+        - contain_info
+        - law_contains
+        - document_describes
+        - report_shows
+        - plan_includes
+        - message_contains
+        - book_contains
+        - request_contains
+        - data_indicates
+        - include_requirement
+
+  - id: subordinate_that_check_showed_content
+    family: subordinate_that
+    surface: "Проверка показала, что {content_source} содержит {content_object}."
+    roles:
+      check:
+        semantic_classes: [event]
+      content_source:
+        semantic_classes: [document, report, text, message, data, request, law, book, plan]
+      content_object:
+        semantic_classes: [information, error, requirement, fact, result, task, process, decision, problem, request]
+        case: accs
+    allowed_rule_ids: [comma_subordinate]
+    allowed_frame_ids:
+      - check_showed
+      - check_established
+    allowed_frame_families: [subordinate_complement]
+    metadata:
+      render_type: subordinate_that
+      subordinate_frame_ids:
+        - contain_info
+        - document_describes
+        - report_shows
+        - data_indicates
+        - include_requirement
+
+  - id: comma_subordinate_chto_pronoun_trap
+    family: subordinate_that
+    surface: "Редактор заметил что-то важное."
+    roles:
+      context:
+        semantic_classes: [text]
+    allowed_rule_ids: [comma_subordinate]
+    metadata:
+      render_type: fixed_text
+      context_only: true
+      trap_type: chto_pronoun
+      texts:
+        - "Редактор заметил что-то важное."
+        - "Редактор заметил кое-что важное."
+        - "Студент не то что проверил отчёт."

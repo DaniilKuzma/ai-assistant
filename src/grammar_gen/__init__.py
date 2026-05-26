@@ -11,6 +11,7 @@ from src.grammar_gen.ast import (
     VerbPhrase,
 )
 from src.grammar_gen.builders import GrammarBuilder
+from src.grammar_gen.constructions import ConstructionBank, ConstructionPattern, ConstructionRole, RenderedConstruction
 from src.grammar_gen.lexicon import (
     AdjectiveEntry,
     AdverbEntry,
@@ -42,6 +43,9 @@ __all__ = [
     "AdverbEntry",
     "Clause",
     "ComplexSentence",
+    "ConstructionBank",
+    "ConstructionPattern",
+    "ConstructionRole",
     "DashSubjectPredicateSentence",
     "GrammarBuilder",
     "HomogeneousSentence",
@@ -56,6 +60,7 @@ __all__ = [
     "PrepositionEntry",
     "RandomSource",
     "Realizer",
+    "RenderedConstruction",
     "SemanticClass",
     "SemanticFrameLexicon",
     "SimpleSentence",

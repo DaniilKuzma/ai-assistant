@@ -1,0 +1,71 @@
+patterns:
+  - id: simple_final_statement
+    family: simple_transitive
+    surface: "{subject} {predicate} {object}."
+    roles:
+      subject:
+        semantic_classes: [person, organization, software_agent]
+      object:
+        semantic_classes: [document, report, text, message, file, error, problem, data, calculation, task, result]
+        case: accs
+    allowed_rule_ids: [final_punctuation]
+    allowed_frame_ids:
+      - check_document
+      - notice_error
+      - process_data
+      - approve_decision
+      - read_text
+      - prepare_document
+      - correct_error
+      - analyze_data
+      - show_result
+      - open_file
+    metadata:
+      render_type: simple_transitive
+      allow_adverbials: false
+
+  - id: simple_ne_verb_check_document
+    family: simple_transitive
+    surface: "{subject} не проверил {object}."
+    roles:
+      subject:
+        semantic_classes: [person, organization, software_agent]
+      object:
+        semantic_classes: [document, report, text, calculation, task]
+        case: accs
+    allowed_rule_ids: [ne_verb]
+    allowed_frame_ids: [check_document]
+    metadata:
+      render_type: simple_transitive
+      negated: true
+      phenomenon: ne_verb
+
+  - id: simple_takzhe_check_document
+    family: simple_transitive
+    surface: "{subject} также проверил {object}."
+    roles:
+      subject:
+        semantic_classes: [person, organization, software_agent]
+      object:
+        semantic_classes: [document, report, text, calculation, task]
+        case: accs
+    allowed_rule_ids: [takzhe_tak_zhe]
+    allowed_frame_ids: [check_document]
+    metadata:
+      render_type: simple_transitive
+      adverb: также
+
+  - id: simple_tozhe_check_document
+    family: simple_transitive
+    surface: "{subject} тоже проверил {object}."
+    roles:
+      subject:
+        semantic_classes: [person, organization, software_agent]
+      object:
+        semantic_classes: [document, report, text, calculation, task]
+        case: accs
+    allowed_rule_ids: [tozhe_to_zhe]
+    allowed_frame_ids: [check_document]
+    metadata:
+      render_type: simple_transitive
+      adverb: тоже

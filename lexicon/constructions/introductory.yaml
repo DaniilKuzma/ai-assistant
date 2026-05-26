@@ -1,0 +1,35 @@
+patterns:
+  - id: introductory_safe_clause
+    family: introductory
+    surface: "Конечно, {subject} проверил {object}."
+    roles:
+      subject:
+        semantic_classes: [person, organization, software_agent]
+      object:
+        semantic_classes: [document, report, text, message, file, error, problem, data]
+        case: accs
+    allowed_rule_ids: [comma_introductory]
+    allowed_frame_ids:
+      - check_document
+      - process_data
+      - notice_error
+      - approve_decision
+    metadata:
+      render_type: introductory
+      introductory_words: [конечно]
+      positions: [initial, medial]
+
+  - id: introductory_normal_adverb_trap
+    family: introductory
+    surface: "Документ точно включал факт."
+    roles:
+      context:
+        semantic_classes: [text]
+    allowed_rule_ids: [comma_introductory]
+    metadata:
+      render_type: fixed_text
+      context_only: true
+      trap_type: normal_adverb
+      texts:
+        - "Документ точно включал факт."
+        - "Комиссия примерно проверила отчёт."

@@ -56,6 +56,18 @@ BAD_PAIR_REASONS = (
     ("bad_present_plural:dannye_vklyuchaet", re.compile(r"\bданные\s+включает\b", re.IGNORECASE)),
     ("bad_answer_direct_object:request", re.compile(r"\bответил[аи]?\s+заявк[ауи]\b", re.IGNORECASE)),
     ("bad_answer_direct_object:question", re.compile(r"\bответил[аи]?\s+вопрос\b", re.IGNORECASE)),
+    ("bad_subordinate_main:hold_meeting_chto", re.compile(r"\bпров[её]л[аи]?\s+собрани[ея],\s+что\b", re.IGNORECASE)),
+    ("bad_subordinate_main:send_notification_chto", re.compile(r"\bотправил[аи]?\s+уведомлени[ея],\s+что\b", re.IGNORECASE)),
+    ("bad_subordinate_main:compare_document_chto", re.compile(r"\bсравнил[аи]?\s+документ,\s+что\b", re.IGNORECASE)),
+    ("bad_dash_pair:city_quote", re.compile(r"\bгородская\s+цитата\b", re.IGNORECASE)),
+    (
+        "bad_context_pair:writer_personal_contract",
+        re.compile(r"\bписатель\s+создал\s+личн(?:ый|ого)\s+договор\b", re.IGNORECASE),
+    ),
+    (
+        "bad_question_context:girl_ate_fish",
+        re.compile(r"\bвчера\s+девочка\s+съела\s+рыб[уы]\?", re.IGNORECASE),
+    ),
     (
         "bad_object_pair:bolnitsa_ispravila_tsitatu",
         re.compile(r"\bбольница\s+исправила\s+(?:[а-яё-]+\s+){0,2}цитат[ауые]\b", re.IGNORECASE),
@@ -169,6 +181,7 @@ def validate_generated_pair(example: GeneratedExample) -> list[str]:
     reasons.extend(real_source_reasons)
     reasons.extend(target_reasons)
     reasons.extend(_validate_metadata_json_safety(example.metadata))
+    reasons.extend(_validate_construction_metadata(example))
     reasons.extend(_validate_token_edit_counts(example))
     reasons.extend(_validate_safety_clause_metadata(example))
     return _dedupe(reasons)
@@ -509,6 +522,50 @@ def _resolve_noun(lexicon: Lexicon, np: NounPhrase | None) -> NounEntry | None:
 def _validate_metadata_json_safety(metadata: dict[str, Any]) -> list[str]:
     reason = _json_safety_reason(metadata, "$")
     return ["metadata_not_json_safe"] if reason is not None else []
+
+
+def _validate_construction_metadata(example: GeneratedExample) -> list[str]:
+    if example.metadata.get("production") is not True:
+        return []
+
+    reasons: list[str] = []
+    if example.metadata.get("uses_construction_bank") is not True:
+        reasons.append("missing_construction_bank_usage")
+
+    construction_id = str(example.metadata.get("construction_id") or "").strip()
+    construction_family = str(example.metadata.get("construction_family") or "").strip()
+    if not construction_id:
+        reasons.append("missing_construction_id")
+    if not construction_family:
+        reasons.append("missing_construction_family")
+
+    raw_clauses = example.metadata.get("safety_clauses")
+    if not isinstance(raw_clauses, list):
+        reasons.append("missing_safety_clauses")
+        raw_clauses = []
+
+    if not construction_id:
+        return _dedupe(reasons)
+
+    try:
+        from src.grammar_gen.constructions import ConstructionBank
+
+        pattern = ConstructionBank.default().pattern(construction_id)
+    except Exception:
+        reasons.append("unknown_construction_id")
+        pattern = None
+
+    if pattern is None:
+        return _dedupe(reasons)
+    if construction_family and pattern.family != construction_family:
+        reasons.append("construction_family_mismatch")
+    if example.primary_rule_id not in pattern.allowed_rule_ids:
+        reasons.append("construction_rule_not_allowed")
+
+    for clause in raw_clauses:
+        reasons.extend(_validate_safety_clause(clause))
+
+    return _dedupe(reasons)
 
 
 def _json_safety_reason(value: Any, path: str) -> str | None:

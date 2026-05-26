@@ -9,11 +9,13 @@ from src.grammar_gen.rules.base import GenerationMode, RuleInfo, RuleProgram
 from src.grammar_gen.rules.common import (
     gap_labels_from_text,
     make_clean_identity_example,
+    metadata_from_construction,
     metadata_with_safety_clauses,
     metadata_without_safety_clauses,
     noun_phrase_from_entry,
     object_np_for_frame,
     replace_once_checked,
+    render_construction_by_id,
     token_labels_all_keep,
 )
 from src.grammar_gen.safety import validate_target_ast_or_raise
@@ -46,7 +48,7 @@ class NeVerbRule(RuleProgram):
         if mode is GenerationMode.POSITIVE:
             return self._positive(builder, realizer, rng)
         if mode is GenerationMode.HARD_NEGATIVE:
-            return self._hard_negative(realizer, rng)
+            return self._hard_negative(builder, realizer, rng)
         if mode is GenerationMode.CLEAN_IDENTITY:
             return self._clean_identity(builder, realizer, rng)
         raise ValueError(f"Unsupported generation mode: {mode!r}")
@@ -57,8 +59,8 @@ class NeVerbRule(RuleProgram):
         realizer: Realizer,
         rng: RandomSource,
     ) -> GeneratedExample:
-        sentence = _sentence_with_negated_allowed_verb(builder, rng)
-        target = realizer.render_sentence(sentence)
+        rendered = render_construction_by_id(builder, realizer, rng, "simple_ne_verb_check_document")
+        target = rendered.text
         target_tokens = realizer.tokenize_words_with_offsets(target)
         ne_index = _find_token(target_tokens, "не")
         if ne_index < 0 or ne_index + 1 >= len(target_tokens):
@@ -80,32 +82,25 @@ class NeVerbRule(RuleProgram):
             token_edit_labels=labels,
             rule_id=self.info.rule_id,
             mode=GenerationMode.POSITIVE,
-            metadata=metadata_with_safety_clauses(
-                sentence,
-                builder.lexicon,
-                {"phenomenon": "ne_verb"},
-            ),
+            metadata=metadata_from_construction(rendered, {"phenomenon": "ne_verb"}),
         )
-        validate_target_ast_or_raise(sentence, target, example)
+        validate_target_ast_or_raise(rendered.ast, target, example)
         return example
 
     def _hard_negative(
         self,
+        builder: GrammarBuilder,
         realizer: Realizer,
         rng: RandomSource,
     ) -> GeneratedExample:
-        text = rng.choice(
-            (
-                "Студент ненавидел шум.",
-                "Комиссия негодовала после заседания.",
-            )
-        )
+        rendered = render_construction_by_id(builder, realizer, rng, "ne_verb_lexicalized_trap")
+        text = rendered.text
         return _identity_example(
             text,
             realizer,
             self.info.rule_id,
             GenerationMode.HARD_NEGATIVE,
-            metadata_without_safety_clauses({"trap_type": "lexicalized_ne_verb"}),
+            metadata_from_construction(rendered),
         )
 
     def _clean_identity(
@@ -114,16 +109,16 @@ class NeVerbRule(RuleProgram):
         realizer: Realizer,
         rng: RandomSource,
     ) -> GeneratedExample:
-        sentence = _sentence_with_negated_allowed_verb(builder, rng)
-        text = realizer.render_sentence(sentence)
+        rendered = render_construction_by_id(builder, realizer, rng, "simple_ne_verb_check_document")
+        text = rendered.text
         tokens = realizer.tokenize_words_with_offsets(text)
         example = make_clean_identity_example(
             text,
             tokens,
             rule_id=self.info.rule_id,
-            metadata=metadata_with_safety_clauses(sentence, builder.lexicon),
+            metadata=metadata_from_construction(rendered),
         )
-        validate_target_ast_or_raise(sentence, text, example)
+        validate_target_ast_or_raise(rendered.ast, text, example)
         return example
 
 
