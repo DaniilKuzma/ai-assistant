@@ -39,6 +39,23 @@ generation:
       - suffix_its_ets
       - suffix_enn_yan
       - n_nn_basic
+  rule_layers:
+    enabled: false
+    root: lexicon/layers
+    layers: []
+    groups:
+      compound_spelling:
+        enabled: false
+        layers: []
+      morpheme:
+        enabled: false
+        layers: []
+      dictionary_typo:
+        enabled: false
+        layers: []
+      syntax_punctuation:
+        enabled: false
+        layers: []
   grammar:
     max_sentence_words: 28
     min_sentence_words: 3

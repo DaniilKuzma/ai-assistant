@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from src.grammar_gen.rules.base import RuleProgram
+
+if TYPE_CHECKING:
+    from src.rule_layers.base import LayerRuleSpec
 
 
 class RuleRegistry:
@@ -18,6 +21,17 @@ class RuleRegistry:
             raise ValueError(f"Duplicate rule id: {rule_id}")
         self._rules[rule_id] = rule
         return rule
+
+    def register_layered_rules(self, specs: tuple[LayerRuleSpec, ...]) -> tuple[RuleProgram, ...]:
+        from src.rule_layers.direct_cases import layer_rule_programs
+        from src.schema.labels import rule_tag_to_id
+
+        for spec in specs:
+            rule_tag_to_id(spec.rule_id)
+        programs = layer_rule_programs(specs)
+        for program in programs:
+            self.register_rule(program)
+        return programs
 
     def get_rule(self, rule_id: str) -> RuleProgram | None:
         return self._rules.get(rule_id)
@@ -48,6 +62,13 @@ def register_rule(rule: RuleProgram) -> RuleProgram:
     return default_rule_registry().register_rule(rule)
 
 
+def register_layered_rules(
+    registry: RuleRegistry,
+    specs: tuple[LayerRuleSpec, ...],
+) -> tuple[RuleProgram, ...]:
+    return registry.register_layered_rules(specs)
+
+
 def get_rule(rule_id: str) -> RuleProgram | None:
     return default_rule_registry().get_rule(rule_id)
 
@@ -75,6 +96,8 @@ def _is_enabled_rule(family: str, rule_id: str, enabled: frozenset[str]) -> bool
         return True
     aliases = {
         "orthography_contextual": frozenset({"contextual_orthography"}),
+        "orthography_morphemic": frozenset({"morpheme"}),
+        "punctuation": frozenset({"syntax_punctuation"}),
     }
     return bool(aliases.get(family, frozenset()) & enabled)
 
@@ -92,6 +115,7 @@ __all__ = [
     "default_rule_registry",
     "enabled_rules",
     "get_rule",
+    "register_layered_rules",
     "register_rule",
 ]
 

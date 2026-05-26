@@ -323,6 +323,10 @@ def _normalize_mix_key(key: str) -> str:
         "orthography_contextual",
         "orthography_morphemic",
         "punctuation",
+        "compound_spelling",
+        "morpheme",
+        "dictionary_typo",
+        "syntax_punctuation",
         "clean_identity",
         "hard_negative",
     }
@@ -339,6 +343,14 @@ def _mode_and_family_from_mix_key(key: str) -> tuple[GenerationMode, str | None]
         return GenerationMode.POSITIVE, "orthography_morphemic"
     if normalized == "punctuation":
         return GenerationMode.POSITIVE, "punctuation"
+    if normalized == "compound_spelling":
+        return GenerationMode.POSITIVE, "compound_spelling"
+    if normalized == "morpheme":
+        return GenerationMode.POSITIVE, "morpheme"
+    if normalized == "dictionary_typo":
+        return GenerationMode.POSITIVE, "dictionary_typo"
+    if normalized == "syntax_punctuation":
+        return GenerationMode.POSITIVE, "syntax_punctuation"
     if normalized == "clean_identity":
         return GenerationMode.CLEAN_IDENTITY, None
     if normalized == "hard_negative":
@@ -388,6 +400,10 @@ def _expected_edit_counts(
     mode: GenerationMode,
     metadata: Mapping[str, Any],
 ) -> tuple[int, int]:
+    metadata_counts = _expected_counts_from_metadata(metadata)
+    if metadata_counts is not None:
+        return metadata_counts
+
     if mode is not GenerationMode.POSITIVE or example.source_text == example.target_text:
         return 0, 0
 
@@ -402,6 +418,28 @@ def _expected_edit_counts(
         return 1, 0
 
     return 0, 0
+
+
+def _expected_counts_from_metadata(metadata: Mapping[str, Any]) -> tuple[int, int] | None:
+    has_token = "expected_token_edit_count" in metadata
+    has_gap = "expected_gap_edit_count" in metadata
+    if not has_token and not has_gap:
+        return None
+    token_count = _non_negative_int(metadata.get("expected_token_edit_count", 0), "expected_token_edit_count")
+    gap_count = _non_negative_int(metadata.get("expected_gap_edit_count", 0), "expected_gap_edit_count")
+    return token_count, gap_count
+
+
+def _non_negative_int(value: Any, key: str) -> int:
+    if isinstance(value, bool):
+        raise ValueError(f"{key} must be a non-negative integer.")
+    try:
+        result = int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{key} must be a non-negative integer.") from exc
+    if result < 0:
+        raise ValueError(f"{key} must be a non-negative integer.")
+    return result
 
 
 __all__ = ["GenerationError", "OnlineExampleGenerator", "validate_generation_config"]
