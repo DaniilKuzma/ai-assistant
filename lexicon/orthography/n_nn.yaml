@@ -24,6 +24,48 @@ lexeme_cards:
       - {context_class: dependent_word, dependent_word: вчера, template: "Рядом стоял {word} вчера забор.", construction_id: orthography_adjective_safe_context}
     explanation_id: n_nn_basic
   - rule_id: n_nn_basic
+    sub_rule_id: prefixed_participle
+    correct_lemma: покрашенный
+    wrong_lemma: покрашеный
+    pos: PRTF
+    gender: masc
+    semantic_class: object
+    correct_site: нн
+    wrong_site: н
+    forms:
+      nomn_masc_sing: {correct: покрашенный, wrong: покрашеный, morph_features: {pos: PRTF, prefix: true}}
+    safe_contexts:
+      - {context_class: participle}
+    explanation_id: n_nn_basic
+  - rule_id: n_nn_basic
+    sub_rule_id: short_participle
+    correct_lemma: написано
+    wrong_lemma: написанно
+    pos: PRTS
+    gender: neut
+    semantic_class: document
+    correct_site: н
+    wrong_site: нн
+    forms:
+      neut_sing: {correct: написано, wrong: написанно, morph_features: {pos: PRTS, gender: neut}}
+    safe_contexts:
+      - {context_class: business}
+    explanation_id: n_nn_basic
+  - rule_id: n_nn_basic
+    sub_rule_id: exception_n
+    correct_lemma: юный
+    wrong_lemma: юнный
+    pos: ADJF
+    gender: masc
+    semantic_class: person
+    correct_site: н
+    wrong_site: нн
+    forms:
+      nomn_masc_sing: {correct: юный, wrong: юнный, morph_features: {pos: ADJF}}
+    safe_contexts:
+      - {context_class: educational}
+    explanation_id: n_nn_basic
+  - rule_id: n_nn_basic
     correct_lemma: жаренная
     wrong_lemma: жареная
     pos: ADJF

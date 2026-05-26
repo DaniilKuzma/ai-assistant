@@ -155,6 +155,10 @@ def _varied_template(
     fallback_construction_id: str,
 ) -> tuple[str, str]:
     variant = context.get("variant")
+    context_class = str(context.get("context_class") or "")
+    generic = _generic_template(context_class, variant)
+    if generic is not None:
+        return generic, "orthography_word_quote"
     if pos == "NOUN":
         return _noun_quote_template(variant), "orthography_word_quote"
     if pos in {"ADJ", "ADJF", "PRTF"}:
@@ -387,6 +391,50 @@ def _engine_template(variant: Any) -> str:
     actor = _slot(("инженер", "техник", "мастер", "механик"), variant, "actor")
     verb = _slot(("проверил", "осмотрел", "запустил", "настроил"), variant, "verb")
     return f"{actor.capitalize()} {verb} {{word}} {noun}."
+
+
+def _generic_template(context_class: str, variant: Any) -> str | None:
+    groups: dict[str, tuple[str, ...]] = {
+        "business": (
+            "В отчете отдела указали форму «{word}».",
+            "Секретарь внес в протокол слово «{word}».",
+            "В деловом письме оставили вариант «{word}».",
+        ),
+        "educational": (
+            "В учебном задании встретилось слово «{word}».",
+            "Учитель подчеркнул в диктанте форму «{word}».",
+            "На уроке разобрали написание «{word}».",
+        ),
+        "everyday": (
+            "Дома на записке было написано «{word}».",
+            "В разговорной заметке встретилась форма «{word}».",
+            "В сообщении соседу осталось слово «{word}».",
+        ),
+        "technical": (
+            "В техническом документе указали параметр «{word}».",
+            "Инженер сверил в инструкции форму «{word}».",
+            "В журнале настройки записали слово «{word}».",
+        ),
+        "action": (
+            "Редактор быстро исправил слово «{word}».",
+            "Проверяющий утром отметил форму «{word}».",
+            "Автор после сверки оставил вариант «{word}».",
+        ),
+        "introductory": (
+            "Кстати, в тексте встретилось слово «{word}».",
+            "Разумеется, редактор заметил форму «{word}».",
+            "Во-первых, проверили написание «{word}».",
+        ),
+        "time_place": (
+            "Утром в кабинете сверили слово «{word}».",
+            "Вчера на совещании обсудили форму «{word}».",
+            "На стенде у входа заметили вариант «{word}».",
+        ),
+    }
+    templates = groups.get(context_class)
+    if not templates:
+        return None
+    return _slot(templates, variant, "generic_shape")
 
 
 def _find_token(tokens: list[WordToken], source_word: str) -> int:

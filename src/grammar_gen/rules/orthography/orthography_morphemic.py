@@ -43,23 +43,29 @@ def _compiler() -> OrthographicScenarioCompiler:
     return OrthographicScenarioCompiler.default()
 
 
-ORTHOGRAPHY_MORPHEMIC_RULES = (
-    OrthographyMorphemicRule(
-        "suffix_its_ets",
-        "Word-level suffix -иц-/-ец- orthographic situations.",
-        (GenerationMode.POSITIVE,),
-    ),
-    OrthographyMorphemicRule(
-        "suffix_enn_yan",
-        "Word-level suffix -енн-/-ян-/-ан- orthographic situations.",
-        (GenerationMode.POSITIVE, GenerationMode.HARD_NEGATIVE),
-    ),
-    OrthographyMorphemicRule(
-        "n_nn_basic",
-        "Basic н/нн orthographic situations with dependent-word contexts.",
-        (GenerationMode.POSITIVE, GenerationMode.HARD_NEGATIVE),
-    ),
-)
+def _morphemic_rules_from_specs() -> tuple[OrthographyMorphemicRule, ...]:
+    compiler = _compiler()
+    rules: list[OrthographyMorphemicRule] = []
+    for rule_id in sorted(compiler.specs):
+        modes = tuple(
+            mode
+            for mode in (GenerationMode.POSITIVE, GenerationMode.HARD_NEGATIVE)
+            if compiler.has_mode(rule_id, mode)
+        )
+        if not modes:
+            continue
+        spec = compiler.specs[rule_id]
+        rules.append(
+            OrthographyMorphemicRule(
+                rule_id,
+                f"Controlled morphemic orthography examples for {spec.family}.",
+                modes,
+            )
+        )
+    return tuple(rules)
+
+
+ORTHOGRAPHY_MORPHEMIC_RULES = _morphemic_rules_from_specs()
 
 
 __all__ = ["ORTHOGRAPHY_MORPHEMIC_RULES", "OrthographyMorphemicRule"]

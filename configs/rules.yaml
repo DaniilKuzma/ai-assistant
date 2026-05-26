@@ -179,6 +179,54 @@ synthetic_generation:
       source_datasets:
       - synthetic_balanced_punctuation_delete_replace
       - synthetic_balanced_punctuation_punctuation_noise
+    morpheme_hissing_vowels:
+      domain: orthography
+      groups:
+      - morpheme
+      source_datasets:
+      - controlled_orthography_morpheme
+    morpheme_soft_hard_signs:
+      domain: orthography
+      groups:
+      - morpheme
+      source_datasets:
+      - controlled_orthography_morpheme
+    morpheme_root_vowels:
+      domain: orthography
+      groups:
+      - morpheme
+      source_datasets:
+      - controlled_orthography_morpheme
+    morpheme_prefixes:
+      domain: orthography
+      groups:
+      - morpheme
+      source_datasets:
+      - controlled_orthography_morpheme
+    morpheme_suffixes:
+      domain: orthography
+      groups:
+      - morpheme
+      source_datasets:
+      - controlled_orthography_morpheme
+    morpheme_n_nn:
+      domain: orthography
+      groups:
+      - morpheme
+      source_datasets:
+      - controlled_orthography_morpheme
+    morpheme_consonants:
+      domain: orthography
+      groups:
+      - morpheme
+      source_datasets:
+      - controlled_orthography_morpheme
+    morpheme_endings:
+      domain: orthography
+      groups:
+      - morpheme
+      source_datasets:
+      - controlled_orthography_morpheme
   disabled:
     yo_e_candidate: Disabled by default because е/ё requires opt-in lexicon support and model scoring.
     capitalization_ner: Requires NER-backed spans; synthetic corruption is unsafe without labeled entity boundaries.

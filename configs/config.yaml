@@ -49,6 +49,14 @@ generation:
       - suffix_its_ets
       - suffix_enn_yan
       - n_nn_basic
+      - morpheme_hissing_vowels
+      - morpheme_soft_hard_signs
+      - morpheme_root_vowels
+      - morpheme_prefixes
+      - morpheme_suffixes
+      - morpheme_n_nn
+      - morpheme_consonants
+      - morpheme_endings
   rule_layers:
     enabled: true
     root: lexicon/layers

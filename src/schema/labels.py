@@ -69,6 +69,14 @@ class RuleLabel(str, Enum):
     COMPOUND_NOUNS_ADJECTIVES = "compound_nouns_adjectives"
     COMPOUND_NE_SPELLINGS = "compound_ne_spellings"
     COMPOUND_POL_POLU = "compound_pol_polu"
+    MORPHEME_HISSING_VOWELS = "morpheme_hissing_vowels"
+    MORPHEME_SOFT_HARD_SIGNS = "morpheme_soft_hard_signs"
+    MORPHEME_ROOT_VOWELS = "morpheme_root_vowels"
+    MORPHEME_PREFIXES = "morpheme_prefixes"
+    MORPHEME_SUFFIXES = "morpheme_suffixes"
+    MORPHEME_N_NN = "morpheme_n_nn"
+    MORPHEME_CONSONANTS = "morpheme_consonants"
+    MORPHEME_ENDINGS = "morpheme_endings"
 
 
 TOKEN_EDIT_LABELS: tuple[str, ...] = (
@@ -135,6 +143,14 @@ RULE_LABELS: tuple[str, ...] = (
     "compound_nouns_adjectives",
     "compound_ne_spellings",
     "compound_pol_polu",
+    "morpheme_hissing_vowels",
+    "morpheme_soft_hard_signs",
+    "morpheme_root_vowels",
+    "morpheme_prefixes",
+    "morpheme_suffixes",
+    "morpheme_n_nn",
+    "morpheme_consonants",
+    "morpheme_endings",
 )
 
 TOKEN_LABEL_TO_ID: Mapping[str, int] = MappingProxyType(

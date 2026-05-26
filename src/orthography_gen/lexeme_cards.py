@@ -14,6 +14,7 @@ from src.orthography_gen.rule_specs import DEFAULT_ORTHOGRAPHY_DIR
 @dataclass(frozen=True)
 class LexemeCard:
     rule_id: str
+    sub_rule_id: str
     correct_lemma: str
     wrong_lemma: str
     pos: str
@@ -22,9 +23,11 @@ class LexemeCard:
     semantic_class: str | None = None
     stress_position: str | None = None
     derivational_base: str | None = None
+    site_type: str | None = None
+    morph_features: dict[str, str] = field(default_factory=dict)
     correct_site: str = ""
     wrong_site: str = ""
-    forms: dict[str, dict[str, str]] = field(default_factory=dict)
+    forms: dict[str, dict[str, Any]] = field(default_factory=dict)
     safe_contexts: list[dict[str, Any]] = field(default_factory=list)
     hard_negative_contexts: list[dict[str, Any]] = field(default_factory=list)
     exception_group: str | None = None
@@ -34,6 +37,7 @@ class LexemeCard:
     def from_mapping(cls, data: Mapping[str, Any]) -> "LexemeCard":
         card = cls(
             rule_id=_required_str(data, "rule_id"),
+            sub_rule_id=str(data.get("sub_rule_id") or data.get("rule_id") or "").strip(),
             correct_lemma=_required_str(data, "correct_lemma"),
             wrong_lemma=_required_str(data, "wrong_lemma"),
             pos=_required_str(data, "pos"),
@@ -42,6 +46,8 @@ class LexemeCard:
             semantic_class=_optional_str(data.get("semantic_class")),
             stress_position=_optional_str(data.get("stress_position")),
             derivational_base=_optional_str(data.get("derivational_base")),
+            site_type=_optional_str(data.get("site_type")),
+            morph_features=_string_mapping(data.get("morph_features")),
             correct_site=str(data.get("correct_site") or ""),
             wrong_site=str(data.get("wrong_site") or ""),
             forms=_forms_from_mapping(data.get("forms")),
@@ -57,11 +63,13 @@ class LexemeCard:
     def lexeme_card_id(self) -> str:
         payload = {
             "rule_id": self.rule_id,
+            "sub_rule_id": self.sub_rule_id,
             "correct_lemma": self.correct_lemma,
             "wrong_lemma": self.wrong_lemma,
             "pos": self.pos,
             "correct_site": self.correct_site,
             "wrong_site": self.wrong_site,
+            "site_type": self.site_type,
             "stress_position": self.stress_position,
             "exception_group": self.exception_group,
         }
@@ -89,6 +97,8 @@ class LexemeCard:
             "semantic_class": self.semantic_class,
             "stress_position": self.stress_position,
             "derivational_base": self.derivational_base,
+            "site_type": self.site_type,
+            "morph_features": dict(self.morph_features),
             "correct_site": self.correct_site,
             "wrong_site": self.wrong_site,
             "forms": {key: dict(value) for key, value in self.forms.items()},
@@ -123,18 +133,23 @@ def _yaml_paths(path: str | Path) -> tuple[Path, ...]:
     return tuple(sorted(base.glob("*.yaml")))
 
 
-def _forms_from_mapping(value: Any) -> dict[str, dict[str, str]]:
+def _forms_from_mapping(value: Any) -> dict[str, dict[str, Any]]:
     if not isinstance(value, Mapping):
         return {}
-    result: dict[str, dict[str, str]] = {}
+    result: dict[str, dict[str, Any]] = {}
     for key, raw_forms in value.items():
         if not isinstance(raw_forms, Mapping):
             raise ValueError(f"Invalid forms mapping for {key!r}.")
-        result[str(key)] = {
-            "correct": str(raw_forms.get("correct") or ""),
-            "wrong": str(raw_forms.get("wrong") or ""),
-        }
+        result[str(key)] = dict(raw_forms)
+        result[str(key)]["correct"] = str(raw_forms.get("correct") or "")
+        result[str(key)]["wrong"] = str(raw_forms.get("wrong") or "")
     return result
+
+
+def _string_mapping(value: Any) -> dict[str, str]:
+    if not isinstance(value, Mapping):
+        return {}
+    return {str(key): str(item) for key, item in value.items() if str(key).strip()}
 
 
 def _context_list(value: Any) -> list[dict[str, Any]]:

@@ -10,7 +10,9 @@ import yaml
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_ORTHOGRAPHY_DIR = PROJECT_ROOT / "lexicon" / "orthography"
 
-SITE_TYPES = frozenset({"suffix", "root", "prefix", "ending", "particle", "hyphen", "split_join"})
+SITE_TYPES = frozenset(
+    {"suffix", "root", "prefix", "ending", "particle", "hyphen", "split_join", "sign", "consonant"}
+)
 MODEL_ROLES = frozenset(
     {"deterministic_replace", "detect_and_replace", "context_disambiguation", "hard_negative_only"}
 )

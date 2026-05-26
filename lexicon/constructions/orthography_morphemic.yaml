@@ -5,7 +5,7 @@ patterns:
     roles:
       context:
         semantic_classes: [text]
-    allowed_rule_ids: [suffix_its_ets, suffix_enn_yan, n_nn_basic]
+    allowed_rule_ids: [suffix_its_ets, suffix_enn_yan, n_nn_basic, morpheme_hissing_vowels, morpheme_soft_hard_signs, morpheme_root_vowels, morpheme_prefixes, morpheme_suffixes, morpheme_n_nn, morpheme_consonants, morpheme_endings]
     metadata:
       render_type: fixed_text
       texts:
@@ -17,7 +17,7 @@ patterns:
     roles:
       context:
         semantic_classes: [text]
-    allowed_rule_ids: [suffix_its_ets, suffix_enn_yan, n_nn_basic]
+    allowed_rule_ids: [suffix_its_ets, suffix_enn_yan, n_nn_basic, morpheme_hissing_vowels, morpheme_soft_hard_signs, morpheme_root_vowels, morpheme_prefixes, morpheme_suffixes, morpheme_n_nn, morpheme_consonants, morpheme_endings]
     metadata:
       render_type: fixed_text
       texts:
@@ -29,7 +29,7 @@ patterns:
     roles:
       context:
         semantic_classes: [text]
-    allowed_rule_ids: [suffix_its_ets, suffix_enn_yan, n_nn_basic]
+    allowed_rule_ids: [suffix_its_ets, suffix_enn_yan, n_nn_basic, morpheme_hissing_vowels, morpheme_soft_hard_signs, morpheme_root_vowels, morpheme_prefixes, morpheme_suffixes, morpheme_n_nn, morpheme_consonants, morpheme_endings]
     metadata:
       render_type: fixed_text
       texts:

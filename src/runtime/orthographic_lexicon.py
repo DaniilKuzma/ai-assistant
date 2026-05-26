@@ -113,7 +113,7 @@ def _entries_from_cards(cards: Iterable[LexemeCard]) -> list[CorrectionEntry]:
                         context_class=str(context.get("context_class") or "") if isinstance(context, Mapping) else "",
                         ambiguity_level="unambiguous",
                         operation="dict_replace",
-                        sub_rule_id="",
+                        sub_rule_id=card.sub_rule_id,
                         confidence=1.0,
                     )
                 )

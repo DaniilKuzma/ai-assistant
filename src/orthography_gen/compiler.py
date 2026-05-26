@@ -64,6 +64,7 @@ class OrthographicScenarioCompiler:
         context.setdefault("derivational_base", card.derivational_base or "")
         context.setdefault("correct_lemma", card.correct_lemma)
         context.setdefault("wrong_lemma", card.wrong_lemma)
+        context.setdefault("sub_rule_id", card.sub_rule_id)
 
         wrapped = self.wrapper.wrap(
             source_word=replacement.source,
@@ -81,6 +82,7 @@ class OrthographicScenarioCompiler:
             wrapped.construction_id,
             replacement.source,
             replacement.target,
+            form_key,
             expected_edits=1 if generation_mode is GenerationMode.POSITIVE else 0,
         )
         return GeneratedExample(
@@ -152,19 +154,26 @@ class OrthographicScenarioCompiler:
         construction_id: str,
         source: str,
         target: str,
+        form_key: str,
         *,
         expected_edits: int,
     ) -> dict[str, Any]:
         spec = self.specs[card.rule_id]
+        site_type = card.site_type or spec.site_type
+        morph_features = _morph_features(card, form_key)
         return {
+            "layer": "morpheme",
             "production": True,
             "uses_construction_bank": True,
             "construction_id": construction_id,
             "construction_family": "orthography_morphemic",
             "uses_safety_clauses": False,
             "safety_clauses": [],
+            "sub_rule_id": card.sub_rule_id or card.rule_id,
+            "site_type": site_type,
             "orthography_site": {
-                "site_type": spec.site_type,
+                "site_type": site_type,
+                "sub_rule_id": card.sub_rule_id or card.rule_id,
                 "correct_site": card.correct_site,
                 "wrong_site": card.wrong_site,
                 "stress_position": card.stress_position,
@@ -176,6 +185,9 @@ class OrthographicScenarioCompiler:
             "expected_edit_count": expected_edits,
             "expected_token_edit_count": expected_edits,
             "expected_gap_edit_count": 0,
+            "correct_form": target,
+            "wrong_form": source,
+            "morph_features": morph_features,
             "replacement": {"source": source, "target": target},
             "context_class": str(context.get("context_class") or ""),
         }
@@ -191,6 +203,19 @@ def _choose_context(contexts: list[dict[str, Any]], rng: RandomSource) -> dict[s
     if not contexts:
         return {}
     return dict(rng.choice(tuple(contexts)))
+
+
+def _morph_features(card: LexemeCard, form_key: str) -> dict[str, str]:
+    features = dict(card.morph_features)
+    raw_form = card.forms.get(form_key, {})
+    raw_features = raw_form.get("morph_features") if isinstance(raw_form, dict) else None
+    if isinstance(raw_features, dict):
+        features.update({str(key): str(value) for key, value in raw_features.items()})
+    features.setdefault("form_key", form_key)
+    features.setdefault("pos", card.pos)
+    if card.gender:
+        features.setdefault("gender", card.gender)
+    return features
 
 
 __all__ = ["OrthographicScenarioCompiler"]
