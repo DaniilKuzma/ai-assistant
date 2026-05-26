@@ -10,6 +10,20 @@ from src.schema.labels import gap_label_to_id, token_label_to_id
 from src.rule_layers.base import LayerDirectCase, LayerOperation
 
 
+SPAN_FIRST_LABELS = frozenset(
+    {
+        "MERGE_TAK_ZHE_TO_TAKZHE",
+        "MERGE_TO_ZHE_TO_TOZHE",
+        "MERGE_ZA_TO_TO_ZATO",
+        "HYPHENATE_PARTICLE_TO",
+        "HYPHENATE_PARTICLE_LIBO",
+        "HYPHENATE_PARTICLE_NIBUD",
+        "HYPHENATE_KOE",
+        "HYPHENATE_PO_ADVERB",
+    }
+)
+
+
 def build_token_span_replacement_example(
     case: LayerDirectCase,
     realizer: Realizer,
@@ -128,6 +142,10 @@ def _apply_token_operation(
 
     labels[start] = operation.label
     rule_ids[start] = case.rule_id
+    if operation.label in SPAN_FIRST_LABELS:
+        for index in range(start + 1, end):
+            labels[index] = "SKIP_MERGED"
+            rule_ids[index] = case.rule_id
 
 
 def _apply_gap_operation(
@@ -206,7 +224,7 @@ def _metadata(
     target_patterns: Sequence[str],
 ) -> dict[str, Any]:
     metadata = dict(case.metadata)
-    operation = _operation_name(operation_names)
+    operation = str(metadata.get("operation") or _operation_name(operation_names))
     metadata.update(
         {
             "layer": layer,

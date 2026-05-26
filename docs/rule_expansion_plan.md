@@ -10,6 +10,7 @@
 - Орфография: приставки на з-/с- (`consonants_prefix_z_s`): bounded dictionary candidates для `сделать`-подобных форм и приставок без-/бес-, раз-/рас-, из-/ис-, воз-/вос-, вз-/вс-.
 - Орфография: прописная буква в начале текста (`capitalization_sentence_start`): легкий fallback только для первого токена.
 - Пунктуация: финальная точка (`sentence_final_default_dot`): candidate для точки, если в конце нет `.`, `?`, `!` или `...`.
+- Орфография: controlled `compound_spelling_layer` для слитного, дефисного и раздельного написания (`compound_service_words`, `compound_prepositions`, `compound_pronouns_particles`, `compound_adverbs`, `compound_nouns_adjectives`, `compound_ne_spellings`, `compound_pol_polu`). Полная таблица покрытия: `docs/compound_spelling_coverage.md`.
 
 ## Частично реализовано или candidate-only
 

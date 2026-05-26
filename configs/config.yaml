@@ -25,13 +25,23 @@ generation:
     - deterministic_orthography
     - contextual_orthography
     - orthography_morphemic
+    - compound_spelling
     - punctuation
   mix:
-    orthography_contextual: 0.35
+    orthography_contextual: 0.25
     orthography_morphemic: 0.25
+    compound_spelling: 0.20
     punctuation: 0.40
     clean_identity: 0.15
     hard_negative: 0.10
+  sampling_exclude_rule_ids:
+    - ne_verb
+    - takzhe_tak_zhe
+    - tozhe_to_zhe
+    - zato_za_to
+    - hyphen_particles
+    - hyphen_koe
+    - hyphen_po_adverb
   orthography_morphemic:
     enabled: true
     weight: 0.25
@@ -40,13 +50,14 @@ generation:
       - suffix_enn_yan
       - n_nn_basic
   rule_layers:
-    enabled: false
+    enabled: true
     root: lexicon/layers
     layers: []
     groups:
       compound_spelling:
-        enabled: false
-        layers: []
+        enabled: true
+        layers:
+          - compound_spelling
       morpheme:
         enabled: false
         layers: []

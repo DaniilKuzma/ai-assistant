@@ -1,0 +1,73 @@
+# Strict compound spelling specs for adverbs.
+entries:
+  - rule_id: compound_adverbs
+    sub_rule_id: po_adverb_omu
+    operation: hyphenate
+    correct: по-новому
+    wrong_variants: [по новому]
+    semantic_hint: adverb with по-...-ому.
+    forbidden_contexts: ["по новому плану", "по новому адресу", "по новому правилу"]
+    positive_templates:
+      - "Редактор {wrong} оформил отчёт."
+      - "Команда {wrong} настроила сервис утром."
+      - "Система {wrong} показала результат."
+    hard_negative_templates:
+      - "Комиссия работала по новому плану."
+      - "Секретарь отправил письмо по новому адресу."
+      - "Редактор сверил текст по новому правилу."
+    clean_templates:
+      - "Редактор по-новому оформил отчёт."
+
+  - rule_id: compound_adverbs
+    sub_rule_id: po_adverb_ski
+    operation: hyphenate
+    correct: по-русски
+    wrong_variants: [по русски]
+    semantic_hint: adverb with по-...-ски.
+    forbidden_contexts: ["по русской дороге", "по русскому тексту", "по русским правилам"]
+    positive_templates:
+      - "Студент ответил {wrong}."
+      - "Редактор написал примечание {wrong} вечером."
+      - "Учитель объяснил правило {wrong}."
+    hard_negative_templates:
+      - "Студент шёл по русской дороге."
+      - "Редактор сверил замечание по русскому тексту."
+      - "Комиссия проверяла работу по русским правилам."
+    clean_templates:
+      - "Студент ответил по-русски."
+
+  - rule_id: compound_adverbs
+    sub_rule_id: repeated_adverbs
+    operation: hyphenate
+    correct: тихо-тихо
+    wrong_variants: [тихо тихо]
+    semantic_hint: repeated adverb.
+    forbidden_contexts: ["тихо и спокойно", "тихо потом", "тихо рядом"]
+    positive_templates:
+      - "Секретарь {wrong} закрыл дверь."
+      - "В архиве {wrong} работала система."
+      - "Редактор {wrong} прочитал письмо."
+    hard_negative_templates:
+      - "Секретарь говорил тихо и спокойно."
+      - "Система сначала работала тихо потом громко."
+      - "Редактор сидел тихо рядом с окном."
+    clean_templates:
+      - "Секретарь тихо-тихо закрыл дверь."
+
+  - rule_id: compound_adverbs
+    sub_rule_id: ordinal_adverbs
+    operation: hyphenate
+    correct: во-первых
+    wrong_variants: [во первых]
+    semantic_hint: ordinal introductory adverb.
+    forbidden_contexts: ["во первых числах", "во первых строках", "во первых главах"]
+    positive_templates:
+      - "{Wrong}, отчёт был точным."
+      - "{Wrong}, комиссия проверила сроки."
+      - "{Wrong}, редактор исправил заголовок."
+    hard_negative_templates:
+      - "Во первых числах месяца комиссия собралась."
+      - "Во первых строках письма была просьба."
+      - "Во первых главах книги описан архив."
+    clean_templates:
+      - "Во-первых, отчёт был точным."

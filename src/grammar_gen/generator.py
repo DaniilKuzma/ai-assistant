@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -195,7 +195,9 @@ class OnlineExampleGenerator:
         rules = [
             rule
             for rule in self.registry.enabled_rules(self.config)
-            if rule.can_generate(mode) and (family is None or rule.info.family == family)
+            if rule.info.rule_id not in _sampling_excluded_rule_ids(self.config)
+            and rule.can_generate(mode)
+            and (family is None or rule.info.family == family)
         ]
         if not rules:
             family_detail = f" and family {family!r}" if family is not None else ""
@@ -311,6 +313,18 @@ def _generation_mix(config: Mapping[str, Any]) -> dict[str, float]:
     if not mix:
         raise ValueError("At least one generation mix weight must be positive.")
     return mix
+
+
+def _sampling_excluded_rule_ids(config: Mapping[str, Any]) -> frozenset[str]:
+    generation = config.get("generation", {}) if isinstance(config, Mapping) else {}
+    raw = generation.get("sampling_exclude_rule_ids", ()) if isinstance(generation, Mapping) else ()
+    if raw is None:
+        return frozenset()
+    if isinstance(raw, str):
+        return frozenset({raw})
+    if isinstance(raw, Sequence) and not isinstance(raw, (bytes, bytearray)):
+        return frozenset(str(item) for item in raw if str(item).strip())
+    return frozenset()
 
 
 def _normalize_mix_key(key: str) -> str:

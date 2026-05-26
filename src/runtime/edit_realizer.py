@@ -211,7 +211,10 @@ def _token_edit_for_label(
     elif label == "DICT_REPLACE":
         if orthographic_lexicon is None:
             return None
-        entries = orthographic_lexicon.lookup(source, rule_id=rule_id, operation="dict_replace")
+        entries = [
+            *orthographic_lexicon.lookup(source, rule_id=rule_id, operation="dict_replace"),
+            *orthographic_lexicon.lookup(source, rule_id=rule_id, operation="replace"),
+        ]
         targets = {entry.target for entry in entries}
         if len(targets) != 1:
             return None
@@ -259,7 +262,7 @@ def _span_replace_by_lexicon_edit(
         entries = [
             entry
             for entry in orthographic_lexicon.lookup(source, rule_id=rule_id)
-            if entry.operation != "dict_replace"
+            if entry.operation not in {"dict_replace", "replace"}
         ]
         if not entries:
             continue
@@ -387,7 +390,7 @@ def _match_case(source: str, replacement: str) -> str:
 def _edit_type_for_lexicon_operation(operation: str) -> str:
     if operation in {"split_join", "split", "merge", "join"}:
         return "split_join"
-    if operation in {"hyphen", "unhyphen", "dehyphen"}:
+    if operation in {"hyphen", "hyphenate", "unhyphen", "unhyphenate", "dehyphen"}:
         return "hyphen"
     return "spelling"
 

@@ -160,7 +160,11 @@ def _forbidden_phrase_reasons(example: GeneratedExample) -> list[str]:
         if any(_contains_forbidden_phrase(text, phrase) for text in texts):
             reasons.append(reason)
 
-    if example.mode == GenerationMode.HARD_NEGATIVE.value and any(TAKZHE_KAK_RE.search(text) for text in texts):
+    if (
+        example.mode == GenerationMode.HARD_NEGATIVE.value
+        and example.primary_rule_id != "compound_service_words"
+        and any(TAKZHE_KAK_RE.search(text) for text in texts)
+    ):
         reasons.append("forbidden_hard_negative_takzhe_kak")
     if any(NUMBERED_EXAMPLE_SHELL_RE.search(text) for text in (example.source_text, example.target_text)):
         reasons.append("forbidden_numbered_example_shell")

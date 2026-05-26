@@ -5195,24 +5195,26 @@ orthography:
     order: 124
     source_url: https://orfogrammka.ru/орфография/сложные_слова_с_несклоняемой_первой_частью_в_им_п_ед_ч_с_окончанием/
     implementation:
-      status: planned
-      executable: false
-      rule_ids: []
+      status: partial
+      executable: true
+      rule_ids:
+      - compound_nouns_adjectives
       aliases: []
-      requires: []
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      requires:
+      - model
+      notes: compound_spelling_layer supplies controlled generated examples for selected compound nouns; broad natural-context disambiguation remains model-assisted.
     dataset:
-      eligible_now: false
-      reason: planned
+      eligible_now: true
+      reason: eligible_controlled_generation
       last_known_eval_coverage: null
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_PLANNED
-      training_eligibility_reason: planned
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_CONTROLLED_EXAMPLES
+      training_eligibility_reason: controlled compound_spelling examples with hard negatives
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
       current_validator_support: false
       current_eval_coverage: null
       current_gap_coverage: null
@@ -5275,24 +5277,26 @@ orthography:
     order: 126
     source_url: https://orfogrammka.ru/орфография/слова_с_первыми_частями_диско_макси_миди_мини/
     implementation:
-      status: planned
-      executable: false
-      rule_ids: []
+      status: partial
+      executable: true
+      rule_ids:
+      - compound_nouns_adjectives
       aliases: []
-      requires: []
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      requires:
+      - model
+      notes: compound_spelling_layer covers controlled first-part noun examples such as мини-отель; full dictionary coverage remains model-assisted.
     dataset:
-      eligible_now: false
-      reason: planned
+      eligible_now: true
+      reason: eligible_controlled_generation
       last_known_eval_coverage: null
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_PLANNED
-      training_eligibility_reason: planned
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_CONTROLLED_EXAMPLES
+      training_eligibility_reason: controlled compound_spelling examples with hard negatives
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
       current_validator_support: false
       current_eval_coverage: null
       current_gap_coverage: null
@@ -5357,24 +5361,26 @@ orthography:
     order: 128
     source_url: https://orfogrammka.ru/орфография/группа_слов_обозначающих_должности_и_звания/
     implementation:
-      status: planned
-      executable: false
-      rule_ids: []
+      status: partial
+      executable: true
+      rule_ids:
+      - compound_nouns_adjectives
       aliases: []
-      requires: []
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      requires:
+      - model
+      notes: compound_spelling_layer covers controlled apposition examples such as врач-терапевт; unrestricted title/name handling remains model-assisted.
     dataset:
-      eligible_now: false
-      reason: planned
+      eligible_now: true
+      reason: eligible_controlled_generation
       last_known_eval_coverage: null
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_PLANNED
-      training_eligibility_reason: planned
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_CONTROLLED_EXAMPLES
+      training_eligibility_reason: controlled compound_spelling examples with hard negatives
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
       current_validator_support: false
       current_eval_coverage: null
       current_gap_coverage: null
@@ -5441,12 +5447,13 @@ orthography:
       executable: true
       rule_ids:
       - pol_polu_compounds
+      - compound_pol_polu
       aliases: []
       requires:
       - dictionary
       - model
       - morphology
-      notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
+      notes: Existing bounded path remains; compound_spelling_layer adds controlled пол-/полу- generated examples with hard negatives.
     dataset:
       eligible_now: true
       reason: eligible_but_needs_threshold
@@ -5560,24 +5567,26 @@ orthography:
     order: 133
     source_url: https://orfogrammka.ru/орфография/сочетания_с_приложениями_и_определениями_следующими_после_существительных/
     implementation:
-      status: planned
-      executable: false
-      rule_ids: []
+      status: partial
+      executable: true
+      rule_ids:
+      - compound_nouns_adjectives
       aliases: []
-      requires: []
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      requires:
+      - model
+      notes: compound_spelling_layer supplies controlled apposition hard negatives; full syntactic attachment remains model-assisted.
     dataset:
-      eligible_now: false
-      reason: planned
+      eligible_now: true
+      reason: eligible_controlled_generation
       last_known_eval_coverage: null
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_PLANNED
-      training_eligibility_reason: planned
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_CONTROLLED_EXAMPLES
+      training_eligibility_reason: controlled compound_spelling examples with hard negatives
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
       current_validator_support: false
       current_eval_coverage: null
       current_gap_coverage: null
@@ -5790,24 +5799,26 @@ orthography:
     order: 139
     source_url: https://orfogrammka.ru/орфография/дефисное_написание_прилагательных_качества/
     implementation:
-      status: planned
-      executable: false
-      rule_ids: []
+      status: partial
+      executable: true
+      rule_ids:
+      - compound_nouns_adjectives
       aliases: []
-      requires: []
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      requires:
+      - model
+      notes: compound_spelling_layer covers controlled color-shade adjectives such as ярко-красный.
     dataset:
-      eligible_now: false
-      reason: planned
+      eligible_now: true
+      reason: eligible_controlled_generation
       last_known_eval_coverage: null
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_PLANNED
-      training_eligibility_reason: planned
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_CONTROLLED_EXAMPLES
+      training_eligibility_reason: controlled compound_spelling examples with hard negatives
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
       current_validator_support: false
       current_eval_coverage: null
       current_gap_coverage: null
@@ -5947,24 +5958,26 @@ orthography:
     order: 143
     source_url: https://orfogrammka.ru/орфография/прилагательные_образованные_из_основ_слов_с_подчинительным_отношением/
     implementation:
-      status: planned
-      executable: false
-      rule_ids: []
+      status: partial
+      executable: true
+      rule_ids:
+      - compound_nouns_adjectives
       aliases: []
-      requires: []
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      requires:
+      - model
+      notes: compound_spelling_layer covers controlled compound adjective examples; broad semantic relation choice remains model-assisted.
     dataset:
-      eligible_now: false
-      reason: planned
+      eligible_now: true
+      reason: eligible_controlled_generation
       last_known_eval_coverage: null
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_PLANNED
-      training_eligibility_reason: planned
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_CONTROLLED_EXAMPLES
+      training_eligibility_reason: controlled compound_spelling examples with hard negatives
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
       current_validator_support: false
       current_eval_coverage: null
       current_gap_coverage: null
@@ -6107,12 +6120,13 @@ orthography:
       rule_ids:
       - context_to_zhe
       - context_chto_by
+      - compound_service_words
       aliases: []
       requires:
       - syntax
       - morphology
       - model
-      notes: syntax_orthography_candidate_backed
+      notes: syntax_orthography_candidate_backed; compound_spelling_layer adds controlled service-word examples.
     dataset:
       eligible_now: true
       reason: syntax eval support verified
@@ -6150,10 +6164,11 @@ orthography:
       executable: true
       rule_ids:
       - hyphen_koe_koy
+      - compound_pronouns_particles
       aliases: []
       requires:
       - model
-      notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
+      notes: Existing bounded path remains; compound_spelling_layer adds controlled кое- examples.
     dataset:
       eligible_now: true
       reason: eligible_but_needs_more_training
@@ -6191,10 +6206,11 @@ orthography:
       executable: true
       rule_ids:
       - hyphen_particles
+      - compound_pronouns_particles
       aliases: []
       requires:
       - model
-      notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
+      notes: Existing bounded path remains; compound_spelling_layer adds controlled -то/-либо/-нибудь examples.
     dataset:
       eligible_now: true
       reason: eligible_but_needs_more_training
@@ -6271,12 +6287,13 @@ orthography:
       rule_ids:
       - context_to_zhe
       - context_chto_by
+      - compound_service_words
       aliases: []
       requires:
       - syntax
       - morphology
       - model
-      notes: syntax_orthography_candidate_backed
+      notes: syntax_orthography_candidate_backed; compound_spelling_layer adds controlled service-word hard negatives.
     dataset:
       eligible_now: true
       reason: syntax eval support verified
@@ -6956,26 +6973,27 @@ orthography:
     order: 169
     source_url: https://orfogrammka.ru/орфография/наречия_с_приставкой_в_во_образованные_от_порядковых_числительных/
     implementation:
-      status: syntax_required
-      executable: false
-      rule_ids: []
+      status: partial
+      executable: true
+      rule_ids:
+      - compound_adverbs
       aliases: []
       requires:
       - model
       - syntax
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      notes: compound_spelling_layer covers controlled ordinal and repeated adverbs; full adverb taxonomy remains syntax/model-assisted.
     dataset:
-      eligible_now: false
-      reason: needs_dictionary
+      eligible_now: true
+      reason: eligible_controlled_generation
       last_known_eval_coverage: null
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
-      training_eligibility_reason: dictionary-backed lexical or morphology support is required before training inclusion
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_CONTROLLED_EXAMPLES
+      training_eligibility_reason: controlled compound_spelling examples with hard negatives
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
       current_validator_support: false
       current_eval_coverage: null
       current_gap_coverage: null
@@ -7001,10 +7019,11 @@ orthography:
       executable: true
       rule_ids:
       - hyphen_po_adverbs
+      - compound_adverbs
       aliases: []
       requires:
       - model
-      notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
+      notes: Existing bounded path remains; compound_spelling_layer adds controlled по-... adverb examples and hard negatives.
     dataset:
       eligible_now: true
       reason: eligible_but_needs_more_training
@@ -7163,11 +7182,12 @@ orthography:
       rule_ids:
       - context_vsledstvie
       - context_nesmotrya
+      - compound_prepositions
       aliases: []
       requires:
       - model
       - syntax
-      notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
+      notes: Existing bounded path remains; compound_spelling_layer adds controlled derived-preposition examples and hard negatives.
     dataset:
       eligible_now: true
       reason: syntax eval support verified
@@ -7208,12 +7228,14 @@ orthography:
       - context_za_to
       - context_vsledstvie
       - context_nesmotrya
+      - compound_service_words
+      - compound_prepositions
       aliases: []
       requires:
       - syntax
       - morphology
       - model
-      notes: syntax_orthography_candidate_backed
+      notes: syntax_orthography_candidate_backed; compound_spelling_layer adds controlled service-word and preposition examples.
     dataset:
       eligible_now: true
       reason: syntax eval support verified
@@ -7253,11 +7275,12 @@ orthography:
       - context_tak_zhe
       - context_to_zhe
       - context_chto_by
+      - compound_service_words
       aliases: []
       requires:
       - model
       - syntax
-      notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
+      notes: Existing bounded path remains; compound_spelling_layer adds controlled также/тоже/чтобы examples.
     dataset:
       eligible_now: true
       reason: syntax eval support verified
@@ -7576,12 +7599,14 @@ orthography:
       - context_tak_zhe
       - context_to_zhe
       - context_chto_by
+      - compound_pronouns_particles
+      - compound_adverbs
       aliases: []
       requires:
       - syntax
       - morphology
       - model
-      notes: syntax_orthography_candidate_backed
+      notes: syntax_orthography_candidate_backed; compound_spelling_layer adds controlled particle/adverb hyphen examples.
     dataset:
       eligible_now: true
       reason: syntax eval support verified
@@ -7621,12 +7646,13 @@ orthography:
       - context_tak_zhe
       - context_to_zhe
       - context_chto_by
+      - compound_service_words
       aliases: []
       requires:
       - syntax
       - morphology
       - model
-      notes: syntax_orthography_candidate_backed
+      notes: syntax_orthography_candidate_backed; compound_spelling_layer adds controlled hard negatives for separated particles.
     dataset:
       eligible_now: true
       reason: syntax eval support verified
@@ -7821,12 +7847,13 @@ orthography:
       rule_ids:
       - ne_adjective
       - ne_adverb
+      - compound_ne_spellings
       aliases: []
       requires:
       - model
       - morphology
       - syntax
-      notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
+      notes: Existing bounded path remains; compound_spelling_layer adds controlled не- noun/adjective/adverb examples and hard negatives.
     dataset:
       eligible_now: true
       reason: syntax eval support verified
@@ -7952,12 +7979,13 @@ orthography:
       - ne_adverb
       - ne_short_form
       - ne_predicative
+      - compound_ne_spellings
       aliases: []
       requires:
       - syntax
       - morphology
       - model
-      notes: syntax_orthography_candidate_backed
+      notes: syntax_orthography_candidate_backed; compound_spelling_layer adds controlled lexicalized не- examples.
     dataset:
       eligible_now: true
       reason: syntax eval support verified
@@ -8042,12 +8070,13 @@ orthography:
       executable: true
       rule_ids:
       - ne_participle
+      - compound_ne_spellings
       aliases: []
       requires:
       - syntax
       - morphology
       - model
-      notes: syntax_orthography_candidate_backed
+      notes: syntax_orthography_candidate_backed; compound_spelling_layer adds controlled participle examples and dependent-word hard negatives.
     dataset:
       eligible_now: true
       reason: syntax eval support verified
@@ -8123,12 +8152,13 @@ orthography:
       executable: true
       rule_ids:
       - ne_verb
+      - compound_ne_spellings
       aliases: []
       requires:
       - model
       - morphology
       - syntax
-      notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
+      notes: Existing bounded path remains; compound_spelling_layer adds grouped ne_verb examples with legacy SPLIT_NE_VERB labels.
     dataset:
       eligible_now: true
       reason: syntax eval support verified
@@ -8375,12 +8405,13 @@ orthography:
       - ne_participle
       - ne_short_form
       - ne_predicative
+      - compound_ne_spellings
       aliases: []
       requires:
       - syntax
       - morphology
       - model
-      notes: syntax_orthography_candidate_backed
+      notes: syntax_orthography_candidate_backed; compound_spelling_layer treats opposition as hard-negative coverage.
     dataset:
       eligible_now: true
       reason: syntax eval support verified
@@ -8423,12 +8454,13 @@ orthography:
       - ne_short_form
       - ne_predicative
       - ni_particle_context
+      - compound_ne_spellings
       aliases: []
       requires:
       - syntax
       - morphology
       - model
-      notes: syntax_orthography_candidate_backed
+      notes: syntax_orthography_candidate_backed; compound_spelling_layer treats усилители отрицания as hard-negative coverage.
     dataset:
       eligible_now: true
       reason: syntax eval support verified
@@ -8511,12 +8543,13 @@ orthography:
       executable: true
       rule_ids:
       - ne_participle
+      - compound_ne_spellings
       aliases: []
       requires:
       - model
       - morphology
       - syntax
-      notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
+      notes: Existing bounded path remains; compound_spelling_layer adds dependent-word hard negatives for participles.
     dataset:
       eligible_now: true
       reason: syntax eval support verified
@@ -8777,24 +8810,26 @@ orthography:
     order: 213
     source_url: https://orfogrammka.ru/орфография/дефисное_написание_повторяемых_сочетаний/
     implementation:
-      status: planned
-      executable: false
-      rule_ids: []
+      status: partial
+      executable: true
+      rule_ids:
+      - compound_adverbs
       aliases: []
-      requires: []
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      requires:
+      - model
+      notes: compound_spelling_layer covers controlled repeated adverbs such as тихо-тихо.
     dataset:
-      eligible_now: false
-      reason: planned
+      eligible_now: true
+      reason: eligible_controlled_generation
       last_known_eval_coverage: null
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_PLANNED
-      training_eligibility_reason: planned
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_CONTROLLED_EXAMPLES
+      training_eligibility_reason: controlled compound_spelling examples with hard negatives
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
       current_validator_support: false
       current_eval_coverage: null
       current_gap_coverage: null
@@ -8815,24 +8850,26 @@ orthography:
     order: 214
     source_url: https://orfogrammka.ru/орфография/парные_конструкции_из_слов_с_первой_частью_полу/
     implementation:
-      status: planned
-      executable: false
-      rule_ids: []
+      status: partial
+      executable: true
+      rule_ids:
+      - compound_pol_polu
       aliases: []
-      requires: []
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      requires:
+      - model
+      notes: compound_spelling_layer covers controlled полу- compounds; full paired-construction coverage remains model-assisted.
     dataset:
-      eligible_now: false
-      reason: planned
+      eligible_now: true
+      reason: eligible_controlled_generation
       last_known_eval_coverage: null
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_PLANNED
-      training_eligibility_reason: planned
-      current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_CONTROLLED_EXAMPLES
+      training_eligibility_reason: controlled compound_spelling examples with hard negatives
+      current_candidate_path: true
+      current_synthetic_support: true
+      current_hard_negative_support: true
       current_validator_support: false
       current_eval_coverage: null
       current_gap_coverage: null

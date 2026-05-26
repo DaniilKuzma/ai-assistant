@@ -1,0 +1,149 @@
+# Compound spelling strict spec.
+# Each entry requires:
+# rule_id, sub_rule_id, operation, correct, wrong_variants,
+# positive_templates, hard_negative_templates.
+# Optional: clean_templates, semantic_hint, forbidden_contexts.
+entries:
+  - rule_id: compound_service_words
+    sub_rule_id: takzhe_tak_zhe
+    operation: merge
+    correct: также
+    wrong_variants: [так же]
+    semantic_hint: additive conjunction meaning "also".
+    forbidden_contexts: ["так же, как", "так же точно", "так же быстро"]
+    positive_templates:
+      - "Редактор {wrong} проверил отчёт."
+      - "Комиссия {wrong} изучила заявление после заседания."
+      - "Система {wrong} показала результат в журнале."
+    hard_negative_templates:
+      - "Редактор сделал так же, как эксперт."
+      - "Система работала так же быстро, как вчера."
+      - "Документ оформили так же аккуратно, как справку."
+    clean_templates:
+      - "Редактор также проверил отчёт."
+
+  - rule_id: compound_service_words
+    sub_rule_id: tozhe_to_zhe
+    operation: merge
+    correct: тоже
+    wrong_variants: [то же]
+    semantic_hint: additive particle/adverb meaning "also".
+    forbidden_contexts: ["то же самое", "то же решение", "то же правило"]
+    positive_templates:
+      - "Инженер {wrong} открыл файл."
+      - "Команда {wrong} отправила сообщение утром."
+      - "Автор {wrong} прочитал заключение перед встречей."
+    hard_negative_templates:
+      - "Редактор выбрал то же самое."
+      - "Комиссия оставила то же решение."
+      - "Эксперт повторил то же правило в отчёте."
+    clean_templates:
+      - "Инженер тоже открыл файл."
+
+  - rule_id: compound_service_words
+    sub_rule_id: chto_by_chto_bi
+    operation: merge
+    correct: чтобы
+    wrong_variants: [что бы]
+    semantic_hint: target conjunction before an infinitive or subordinate clause.
+    forbidden_contexts: ["что бы ни", "что бы такое", "что бы ещё"]
+    positive_templates:
+      - "Автор пришёл раньше, {wrong} подготовить доклад."
+      - "Комиссия собралась утром, {wrong} обсудить план."
+      - "Редактор открыл файл, {wrong} исправить ошибку."
+    hard_negative_templates:
+      - "Что бы ни случилось, отчёт останется в архиве."
+      - "Редактор спросил, что бы такое добавить в письмо."
+      - "Комиссия уточнила, что бы ещё проверить перед заседанием."
+    clean_templates:
+      - "Автор пришёл раньше, чтобы подготовить доклад."
+
+  - rule_id: compound_service_words
+    sub_rule_id: zato_za_to
+    operation: merge
+    correct: зато
+    wrong_variants: [за то]
+    semantic_hint: adversative conjunction meaning "but".
+    forbidden_contexts: ["за то решение", "за то письмо", "за то, что"]
+    positive_templates:
+      - "Отчёт был кратким, {wrong} точным."
+      - "Редактор задержался, {wrong} исправил ошибку."
+      - "Система работала медленно, {wrong} сохранила данные."
+    hard_negative_templates:
+      - "Комиссия голосовала за то решение."
+      - "Редактор отвечал за то письмо."
+      - "Автор поблагодарил команду за то, что отчёт приняли."
+    clean_templates:
+      - "Отчёт был кратким, зато точным."
+
+  - rule_id: compound_service_words
+    sub_rule_id: potomu_chto_po_tomu_chto
+    operation: merge
+    correct: потому что
+    wrong_variants: [по тому что]
+    semantic_hint: causal conjunction.
+    forbidden_contexts: ["по тому что видно", "по тому что написано"]
+    positive_templates:
+      - "Собрание перенесли, {wrong} директор задержался."
+      - "Отчёт вернули, {wrong} в таблице была ошибка."
+      - "Система не открыла файл, {wrong} архив был повреждён."
+    hard_negative_templates:
+      - "По тому что видно на схеме, ошибка была в расчёте."
+      - "Редактор судил по тому что написано в справке."
+      - "Комиссия сверила вывод по тому что указано в протоколе."
+    clean_templates:
+      - "Собрание перенесли, потому что директор задержался."
+
+  - rule_id: compound_service_words
+    sub_rule_id: ottogo_ot_togo
+    operation: merge
+    correct: оттого
+    wrong_variants: [от того]
+    semantic_hint: causal adverb meaning "for that reason".
+    forbidden_contexts: ["от того дома", "от того решения", "от того автора"]
+    positive_templates:
+      - "Отчёт задержали, {wrong} комиссия ждала подпись."
+      - "Файл не открылся, {wrong} архив был повреждён."
+      - "Система работала медленно, {wrong} данные были большими."
+    hard_negative_templates:
+      - "Курьер отошёл от того дома."
+      - "Комиссия отказалась от того решения."
+      - "Редактор получил письмо от того автора."
+    clean_templates:
+      - "Отчёт задержали, оттого комиссия ждала подпись."
+
+  - rule_id: compound_service_words
+    sub_rule_id: otchego_ot_chego
+    operation: merge
+    correct: отчего
+    wrong_variants: [от чего]
+    semantic_hint: causal/interrogative adverb.
+    forbidden_contexts: ["от чего зависит", "от чего отказались", "от чего защищает"]
+    positive_templates:
+      - "Редактор понял, {wrong} возникла ошибка."
+      - "Комиссия выяснила, {wrong} задержали проект."
+      - "Инженер объяснил, {wrong} зависла система."
+    hard_negative_templates:
+      - "Комиссия уточнила, от чего зависит срок."
+      - "Редактор записал, от чего отказались участники."
+      - "Инженер показал, от чего защищает фильтр."
+    clean_templates:
+      - "Редактор понял, отчего возникла ошибка."
+
+  - rule_id: compound_service_words
+    sub_rule_id: zachem_za_chem
+    operation: merge
+    correct: зачем
+    wrong_variants: [за чем]
+    semantic_hint: interrogative adverb meaning purpose.
+    forbidden_contexts: ["за чем следит", "за чем стоит", "за чем пришёл"]
+    positive_templates:
+      - "Редактор спросил, {wrong} изменили форму."
+      - "Комиссия уточнила, {wrong} перенесли заседание."
+      - "Инженер объяснил, {wrong} обновили сервис."
+    hard_negative_templates:
+      - "Редактор проверил, за чем следит система."
+      - "Комиссия выяснила, за чем стоит этот запрос."
+      - "Секретарь записал, за чем пришёл посетитель."
+    clean_templates:
+      - "Редактор спросил, зачем изменили форму."

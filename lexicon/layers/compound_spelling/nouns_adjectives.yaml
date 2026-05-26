@@ -1,0 +1,181 @@
+# Strict compound spelling specs for compound nouns and adjectives.
+entries:
+  - rule_id: compound_nouns_adjectives
+    sub_rule_id: compound_nouns
+    operation: merge
+    correct: лесостепь
+    wrong_variants: [лесо степь]
+    semantic_hint: compound common noun with a linking vowel.
+    forbidden_contexts: ["лесо и степь", "лесо возле степи", "лесо за степью"]
+    positive_templates:
+      - "На карте была отмечена {wrong}."
+      - "Учитель объяснил, где начинается {wrong}."
+      - "В отчёте описана {wrong} к северу от города."
+    hard_negative_templates:
+      - "На схеме отдельно показали лес и степь."
+      - "Экспедиция изучала лес возле степи."
+      - "Дорога шла через лес за степью."
+    clean_templates:
+      - "На карте была отмечена лесостепь."
+
+  - rule_id: compound_nouns_adjectives
+    sub_rule_id: hyphen_appositions
+    operation: hyphenate
+    correct: врач-терапевт
+    wrong_variants: [врач терапевт]
+    semantic_hint: appositional noun compound for profession.
+    forbidden_contexts: ["врач и терапевт", "врач стал терапевтом", "врач у терапевта"]
+    positive_templates:
+      - "В кабинет вошёл {wrong}."
+      - "Пациента принял опытный {wrong} утром."
+      - "В отчёте указан {wrong} из больницы."
+    hard_negative_templates:
+      - "На консилиуме выступили врач и терапевт."
+      - "Молодой врач стал терапевтом."
+      - "Пациент спросил врача у терапевта."
+    clean_templates:
+      - "В кабинет вошёл врач-терапевт."
+
+  - rule_id: compound_nouns_adjectives
+    sub_rule_id: compound_first_parts
+    operation: hyphenate
+    correct: мини-отель
+    wrong_variants: [мини отель]
+    semantic_hint: noun with an indeclinable first part.
+    forbidden_contexts: ["мини отельный", "мини отдельно", "мини от этого"]
+    positive_templates:
+      - "Рядом с вокзалом открылся {wrong}."
+      - "В справочнике указан новый {wrong}."
+      - "Комиссия проверила небольшой {wrong} у площади."
+    hard_negative_templates:
+      - "Редактор исправил мини отельный буклет."
+      - "Секретарь записал слово мини отдельно от названия."
+      - "Комиссия отказалась от этого проекта."
+    clean_templates:
+      - "Рядом с вокзалом открылся мини-отель."
+
+  - rule_id: compound_nouns_adjectives
+    sub_rule_id: compound_adjectives_social
+    operation: hyphenate
+    correct: социально-экономический
+    wrong_variants: [социально экономический]
+    semantic_hint: compound adjective with coordinate relation.
+    forbidden_contexts: ["социально важный", "экономический отчёт", "социально полезный"]
+    positive_templates:
+      - "Комиссия изучила {wrong} отчёт."
+      - "Автор подготовил {wrong} обзор для совета."
+      - "В документ внесли {wrong} раздел."
+    hard_negative_templates:
+      - "Проект был социально важный."
+      - "Редактор проверил экономический отчёт."
+      - "Этот план социально полезный для района."
+    clean_templates:
+      - "Комиссия изучила социально-экономический отчёт."
+
+  - rule_id: compound_nouns_adjectives
+    sub_rule_id: compound_adjectives_directional
+    operation: hyphenate
+    correct: северо-западный
+    wrong_variants: [северо западный]
+    semantic_hint: compound adjective for direction.
+    forbidden_contexts: ["северо и западный", "северо от города", "западный район"]
+    positive_templates:
+      - "В отчёте описан {wrong} район."
+      - "Карта показывала {wrong} ветер вечером."
+      - "Комиссия проверила {wrong} участок дороги."
+    hard_negative_templates:
+      - "Экспедиция изучала северный и западный маршруты."
+      - "Лагерь стоял к северу от города."
+      - "Редактор описал западный район отдельно."
+    clean_templates:
+      - "В отчёте описан северо-западный район."
+
+  - rule_id: compound_nouns_adjectives
+    sub_rule_id: compound_adjectives_color
+    operation: hyphenate
+    correct: ярко-красный
+    wrong_variants: [ярко красный]
+    semantic_hint: compound adjective for a shade of color.
+    forbidden_contexts: ["ярко светил", "красный отчёт", "ярко оформленный"]
+    positive_templates:
+      - "На схеме был {wrong} маркер."
+      - "Редактор выделил {wrong} фрагмент."
+      - "В файле появился {wrong} значок."
+    hard_negative_templates:
+      - "Экран ярко светил в темноте."
+      - "Редактор проверил красный отчёт."
+      - "Комиссия увидела ярко оформленный стенд."
+    clean_templates:
+      - "На схеме был ярко-красный маркер."
+
+  - rule_id: compound_pol_polu
+    sub_rule_id: pol_before_vowel
+    operation: hyphenate
+    correct: пол-яблока
+    wrong_variants: [пол яблока]
+    semantic_hint: пол- before a vowel is hyphenated.
+    forbidden_contexts: ["пол ящика", "пол яблоневого сада", "получил яблоко"]
+    positive_templates:
+      - "Ребёнок съел {wrong} утром."
+      - "В рецепте осталось {wrong} для начинки."
+      - "На тарелке лежало {wrong} рядом с грушей."
+    hard_negative_templates:
+      - "На складе был пол ящика яблок."
+      - "Экскурсовод показал пол яблоневого сада."
+      - "Покупатель получил яблоко утром."
+    clean_templates:
+      - "Ребёнок съел пол-яблока утром."
+
+  - rule_id: compound_pol_polu
+    sub_rule_id: pol_before_l
+    operation: hyphenate
+    correct: пол-лимона
+    wrong_variants: [пол лимона]
+    semantic_hint: пол- before л is hyphenated.
+    forbidden_contexts: ["пол лотка", "пол литра", "получил лимон"]
+    positive_templates:
+      - "Повар добавил {wrong} в чай."
+      - "В миске осталось {wrong} после завтрака."
+      - "Сосед принёс {wrong} для варенья."
+    hard_negative_templates:
+      - "На столе стоял пол лотка посуды."
+      - "Повар отмерил пол литра воды."
+      - "Покупатель получил лимон на рынке."
+    clean_templates:
+      - "Повар добавил пол-лимона в чай."
+
+  - rule_id: compound_pol_polu
+    sub_rule_id: pol_before_capital
+    operation: hyphenate
+    correct: пол-Москвы
+    wrong_variants: [пол Москвы]
+    semantic_hint: пол- before a proper name is hyphenated.
+    forbidden_contexts: ["пол московского района", "половина Москвы", "пол площади"]
+    positive_templates:
+      - "Экскурсовод показал {wrong} за день."
+      - "В отчёте обсуждали ремонт на {wrong}."
+      - "Новость заинтересовала {wrong} утром."
+    hard_negative_templates:
+      - "Комиссия проверила пол московского района."
+      - "Половина Москвы ждала новости."
+      - "На схеме отметили пол площади."
+    clean_templates:
+      - "Экскурсовод показал пол-Москвы за день."
+
+  - rule_id: compound_pol_polu
+    sub_rule_id: polu_compounds
+    operation: merge
+    correct: полуфинал
+    wrong_variants: [полу финал]
+    semantic_hint: полу- compounds are written solid.
+    forbidden_contexts: ["полу финальный", "полу и финал", "полу перед словом"]
+    positive_templates:
+      - "Команда вышла в {wrong} турнира."
+      - "Редактор описал {wrong} конкурса в обзоре."
+      - "После матча начался {wrong} соревнования."
+    hard_negative_templates:
+      - "Автор написал полу финальный вариант слова отдельно."
+      - "Редактор сравнил полу и финал в заметке."
+      - "Учитель поставил полу перед словом как пример."
+    clean_templates:
+      - "Команда вышла в полуфинал турнира."

@@ -1,0 +1,163 @@
+# Strict compound spelling specs for derived prepositions and prepositional phrases.
+entries:
+  - rule_id: compound_prepositions
+    sub_rule_id: v_techenie_v_techenii
+    operation: split
+    correct: в течение
+    wrong_variants: [в течении]
+    semantic_hint: temporal preposition meaning "during".
+    forbidden_contexts: ["в течении реки", "в течении ручья", "в течении Волги"]
+    positive_templates:
+      - "Отчёт подготовили {wrong} недели."
+      - "Комиссия проверила документы {wrong} месяца."
+      - "Система обновляла данные {wrong} часа."
+    hard_negative_templates:
+      - "В течении реки заметили мусор."
+      - "В течении ручья были водоросли."
+      - "В течении Волги изменился уровень воды."
+    clean_templates:
+      - "Отчёт подготовили в течение недели."
+
+  - rule_id: compound_prepositions
+    sub_rule_id: v_prodolzhenie_v_prodolzhenii
+    operation: split
+    correct: в продолжение
+    wrong_variants: [в продолжении]
+    semantic_hint: temporal preposition meaning "over the course of".
+    forbidden_contexts: ["в продолжении статьи", "в продолжении книги", "в продолжении письма"]
+    positive_templates:
+      - "Редактор правил текст {wrong} вечера."
+      - "Команда обсуждала план {wrong} часа."
+      - "Комиссия слушала доклад {wrong} заседания."
+    hard_negative_templates:
+      - "В продолжении статьи появился новый пример."
+      - "В продолжении книги герой вернулся домой."
+      - "В продолжении письма автор уточнил просьбу."
+    clean_templates:
+      - "Редактор правил текст в продолжение вечера."
+
+  - rule_id: compound_prepositions
+    sub_rule_id: vsledstvie_v_sledstvii
+    operation: merge
+    correct: вследствие
+    wrong_variants: [в следствии]
+    semantic_hint: causal derived preposition.
+    forbidden_contexts: ["в следствии по делу", "в следствии появились", "в следствии участвовал"]
+    positive_templates:
+      - "Совещание отменили {wrong} болезни директора."
+      - "Документ вернули {wrong} ошибки в расчёте."
+      - "Срок изменили {wrong} задержки поставки."
+    hard_negative_templates:
+      - "В следствии по делу появились новые документы."
+      - "В следствии участвовал опытный эксперт."
+      - "В следствии появились важные показания."
+    clean_templates:
+      - "Совещание отменили вследствие болезни директора."
+
+  - rule_id: compound_prepositions
+    sub_rule_id: naschet_na_schet
+    operation: merge
+    correct: насчёт
+    wrong_variants: [на счёт]
+    semantic_hint: derived preposition meaning "about".
+    forbidden_contexts: ["на счёт в банке", "на банковский счёт", "на счёт клиента"]
+    positive_templates:
+      - "Редактор спросил {wrong} оплаты."
+      - "Комиссия договорилась {wrong} сроков."
+      - "Инженер уточнил {wrong} обновления сервиса."
+    hard_negative_templates:
+      - "Деньги перевели на счёт в банке."
+      - "Компания внесла оплату на банковский счёт."
+      - "Бухгалтер посмотрел на счёт клиента."
+    clean_templates:
+      - "Редактор спросил насчёт оплаты."
+
+  - rule_id: compound_prepositions
+    sub_rule_id: vvidu_v_vidu
+    operation: merge
+    correct: ввиду
+    wrong_variants: [в виду]
+    semantic_hint: causal preposition meaning "because of".
+    forbidden_contexts: ["иметь в виду", "держать в виду", "в виду города"]
+    positive_templates:
+      - "Заседание перенесли {wrong} ремонта зала."
+      - "Отчёт сократили {wrong} нового лимита."
+      - "Файл закрыли {wrong} ошибки доступа."
+    hard_negative_templates:
+      - "Редактор просил иметь в виду этот срок."
+      - "Комиссия решила держать в виду новый план."
+      - "Корабль стоял в виду города."
+    clean_templates:
+      - "Заседание перенесли ввиду ремонта зала."
+
+  - rule_id: compound_prepositions
+    sub_rule_id: napodobie_na_podobie
+    operation: merge
+    correct: наподобие
+    wrong_variants: [на подобие]
+    semantic_hint: derived preposition meaning "like".
+    forbidden_contexts: ["на подобие фигур", "на подобие схем", "на подобие форм"]
+    positive_templates:
+      - "Автор сделал таблицу {wrong} старого образца."
+      - "Редактор оформил справку {wrong} протокола."
+      - "Команда подготовила форму {wrong} прежнего отчёта."
+    hard_negative_templates:
+      - "Эксперт указал на подобие фигур."
+      - "Редактор обратил внимание на подобие схем."
+      - "Комиссия посмотрела на подобие форм."
+    clean_templates:
+      - "Автор сделал таблицу наподобие старого образца."
+
+  - rule_id: compound_prepositions
+    sub_rule_id: navstrechu_na_vstrechu
+    operation: merge
+    correct: навстречу
+    wrong_variants: [на встречу]
+    semantic_hint: directional derived preposition/adverb.
+    forbidden_contexts: ["на встречу с директором", "на встречу комиссии", "на деловую встречу"]
+    positive_templates:
+      - "Секретарь вышел {wrong} гостям."
+      - "Команда пошла {wrong} участникам проекта."
+      - "Директор сделал шаг {wrong} сотрудникам."
+    hard_negative_templates:
+      - "Секретарь пришёл на встречу с директором."
+      - "Редактор попал на встречу комиссии."
+      - "Инженер опоздал на деловую встречу."
+    clean_templates:
+      - "Секретарь вышел навстречу гостям."
+
+  - rule_id: compound_prepositions
+    sub_rule_id: nesmotrya_na_ne_smotrya_na
+    operation: merge
+    correct: несмотря на
+    wrong_variants: [не смотря на]
+    semantic_hint: concessive derived preposition.
+    forbidden_contexts: ["не смотря на экран", "не смотря на доску", "не смотря на окно"]
+    positive_templates:
+      - "{Wrong} задержку, отчёт приняли."
+      - "{Wrong} усталость, редактор проверил текст."
+      - "{Wrong} дождь, комиссия собралась вовремя."
+    hard_negative_templates:
+      - "Инженер отвечал, не смотря на экран."
+      - "Учитель говорил, не смотря на доску."
+      - "Редактор подписал письмо, не смотря на окно."
+    clean_templates:
+      - "Несмотря на задержку, отчёт приняли."
+
+  - rule_id: compound_prepositions
+    sub_rule_id: nevziraya_na_ne_vziraya_na
+    operation: merge
+    correct: невзирая на
+    wrong_variants: [не взирая на]
+    semantic_hint: concessive derived preposition.
+    forbidden_contexts: ["не взирая на картину", "не взирая на сцену", "не взирая на экран"]
+    positive_templates:
+      - "{Wrong} трудности, команда завершила проект."
+      - "{Wrong} усталость, комиссия продолжила заседание."
+      - "{Wrong} шум, редактор дочитал отчёт."
+    hard_negative_templates:
+      - "Посетитель прошёл мимо, не взирая на картину."
+      - "Зритель сидел тихо, не взирая на сцену."
+      - "Инженер отвечал, не взирая на экран."
+    clean_templates:
+      - "Невзирая на трудности, команда завершила проект."

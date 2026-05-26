@@ -1,0 +1,109 @@
+# Strict compound spelling specs for pronouns and particles.
+entries:
+  - rule_id: compound_pronouns_particles
+    sub_rule_id: koe_pronouns
+    operation: hyphenate
+    correct: кое-кто
+    wrong_variants: [кое кто]
+    semantic_hint: indefinite pronoun with кое-.
+    forbidden_contexts: ["кое у кого", "кое о чём", "кое с кем"]
+    positive_templates:
+      - "{Wrong} проверил отчёт."
+      - "{Wrong} оставил сообщение вечером."
+      - "{Wrong} уже подписал документ."
+    hard_negative_templates:
+      - "Редактор кое у кого спросил адрес."
+      - "Комиссия кое о чём договорилась заранее."
+      - "Инженер кое с кем обсудил задачу."
+    clean_templates:
+      - "Кое-кто проверил отчёт."
+
+  - rule_id: compound_pronouns_particles
+    sub_rule_id: postfix_to_libo_nibud
+    operation: hyphenate
+    correct: кто-нибудь
+    wrong_variants: [кто нибудь]
+    semantic_hint: indefinite pronoun with -нибудь.
+    forbidden_contexts: ["кто то сделал", "либо эксперт, либо студент", "то решение"]
+    positive_templates:
+      - "{Wrong} проверил отчёт."
+      - "Редактор спросил, пришёл ли {wrong} из комиссии."
+      - "Вечером {wrong} отправил сообщение."
+    hard_negative_templates:
+      - "Редактор заметил, кто то сделал раньше."
+      - "Либо эксперт, либо студент проверил отчёт."
+      - "То решение осталось важным для комиссии."
+    clean_templates:
+      - "Кто-нибудь проверил отчёт."
+
+  - rule_id: compound_pronouns_particles
+    sub_rule_id: postfix_to_libo_nibud
+    operation: hyphenate
+    correct: кто-либо
+    wrong_variants: [кто либо]
+    semantic_hint: indefinite pronoun with -либо.
+    forbidden_contexts: ["либо эксперт, либо студент", "кто либо сделал"]
+    positive_templates:
+      - "{Wrong} подписал протокол."
+      - "Комиссия проверит, сообщил ли {wrong} о сроках."
+      - "После обеда {wrong} открыл архив."
+    hard_negative_templates:
+      - "Либо эксперт, либо студент проверил отчёт."
+      - "Редактор заметил, кто либо сделал раньше."
+      - "Либо система, либо сервис отправит сообщение."
+    clean_templates:
+      - "Кто-либо подписал протокол."
+
+  - rule_id: compound_pronouns_particles
+    sub_rule_id: postfix_to_libo_nibud
+    operation: hyphenate
+    correct: кто-то
+    wrong_variants: [кто то]
+    semantic_hint: indefinite pronoun with -то.
+    forbidden_contexts: ["кто то сделал", "то решение", "то письмо"]
+    positive_templates:
+      - "{Wrong} открыл файл."
+      - "Утром {wrong} отправил письмо."
+      - "Комиссия решила, что {wrong} проверил расчёт."
+    hard_negative_templates:
+      - "Редактор заметил, кто то сделал раньше."
+      - "То решение осталось важным."
+      - "То письмо лежало в архиве."
+    clean_templates:
+      - "Кто-то открыл файл."
+
+  - rule_id: compound_pronouns_particles
+    sub_rule_id: nu_ka
+    operation: hyphenate
+    correct: ну-ка
+    wrong_variants: [ну ка]
+    semantic_hint: colloquial particle written with a hyphen.
+    forbidden_contexts: ["ну как", "ну когда", "ну кажется"]
+    positive_templates:
+      - "{Wrong}, проверь отчёт ещё раз."
+      - "{Wrong}, открой файл перед заседанием."
+      - "{Wrong}, подпиши заявление сегодня."
+    hard_negative_templates:
+      - "Ну как прошла встреча?"
+      - "Ну когда комиссия примет решение?"
+      - "Ну кажется отчёт уже готов."
+    clean_templates:
+      - "Ну-ка, проверь отчёт ещё раз."
+
+  - rule_id: compound_pronouns_particles
+    sub_rule_id: vse_taki
+    operation: hyphenate
+    correct: всё-таки
+    wrong_variants: [всё таки]
+    semantic_hint: particle written with a hyphen.
+    forbidden_contexts: ["всё так и", "всё такое", "всё так"]
+    positive_templates:
+      - "Редактор {wrong} исправил ошибку."
+      - "Комиссия {wrong} приняла решение вечером."
+      - "Инженер {wrong} восстановил файл."
+    hard_negative_templates:
+      - "Всё так и осталось в архиве."
+      - "Всё такое решение комиссия не поддержала."
+      - "Всё так спокойно прошло на встрече."
+    clean_templates:
+      - "Редактор всё-таки исправил ошибку."

@@ -1,0 +1,127 @@
+# Strict compound spelling specs for controlled "не" spellings.
+entries:
+  - rule_id: compound_ne_spellings
+    sub_rule_id: ne_verb
+    operation: split
+    correct: не знает
+    wrong_variants: [незнает]
+    semantic_hint: particle не with finite verbs is written separately.
+    forbidden_contexts: ["ненавидит", "негодовал", "недомогал"]
+    positive_templates:
+      - "Редактор {wrong} ответа."
+      - "Комиссия {wrong} точного срока."
+      - "Секретарь {wrong} нового адреса."
+    hard_negative_templates:
+      - "Студент ненавидит шум."
+      - "Комиссия негодовала после заседания."
+      - "Секретарь недомогал утром."
+    clean_templates:
+      - "Редактор не знает ответа."
+
+  - rule_id: compound_ne_spellings
+    sub_rule_id: ne_verb
+    operation: split
+    correct: не проверил
+    wrong_variants: [непроверил]
+    semantic_hint: particle не with finite verbs is written separately.
+    forbidden_contexts: ["ненавидел", "негодовал", "недоумевал"]
+    positive_templates:
+      - "Редактор {wrong} отчёт."
+      - "Инженер {wrong} файл перед встречей."
+      - "Сотрудник {wrong} расчёт вечером."
+    hard_negative_templates:
+      - "Редактор ненавидел шум."
+      - "Инженер недоумевал после сбоя."
+      - "Сотрудник негодовал из-за ошибки."
+    clean_templates:
+      - "Редактор не проверил отчёт."
+
+  - rule_id: compound_ne_spellings
+    sub_rule_id: ne_verb
+    operation: split
+    correct: не видел
+    wrong_variants: [невидел]
+    semantic_hint: particle не with finite verbs is written separately.
+    forbidden_contexts: ["ненавидел", "недовидел", "невидимый"]
+    positive_templates:
+      - "Эксперт {wrong} ошибки в таблице."
+      - "Редактор {wrong} письма утром."
+      - "Инженер {wrong} предупреждения на экране."
+    hard_negative_templates:
+      - "Эксперт ненавидел спешку."
+      - "Редактор изучил невидимый знак."
+      - "Инженер недовидел строку из-за блика."
+    clean_templates:
+      - "Эксперт не видел ошибки в таблице."
+
+  - rule_id: compound_ne_spellings
+    sub_rule_id: ne_nouns
+    operation: merge
+    correct: неправда
+    wrong_variants: [не правда]
+    semantic_hint: controlled noun with lexicalized не- spelling.
+    forbidden_contexts: ["не правда, а ложь", "далеко не правда", "вовсе не правда"]
+    positive_templates:
+      - "В письме была {wrong}."
+      - "Редактор понял, что это {wrong}."
+      - "Комиссия решила, что заявление было {wrong}."
+    hard_negative_templates:
+      - "Это не правда, а ложь."
+      - "Такой вывод далеко не правда."
+      - "Это вовсе не правда в строгом смысле."
+    clean_templates:
+      - "В письме была неправда."
+
+  - rule_id: compound_ne_spellings
+    sub_rule_id: ne_adjectives
+    operation: merge
+    correct: небольшой
+    wrong_variants: [не большой]
+    semantic_hint: controlled adjective with a lexicalized не- form.
+    forbidden_contexts: ["не большой, а маленький", "далеко не большой", "вовсе не большой"]
+    positive_templates:
+      - "Редактор исправил {wrong} фрагмент."
+      - "Комиссия рассмотрела {wrong} вопрос после обеда."
+      - "В отчёте был {wrong} раздел о сроках."
+    hard_negative_templates:
+      - "Это был не большой, а маленький фрагмент."
+      - "Проект был далеко не большой."
+      - "Раздел оказался вовсе не большой."
+    clean_templates:
+      - "Редактор исправил небольшой фрагмент."
+
+  - rule_id: compound_ne_spellings
+    sub_rule_id: ne_adverbs
+    operation: merge
+    correct: нетрудно
+    wrong_variants: [не трудно]
+    semantic_hint: controlled adverb with a lexicalized не- form.
+    forbidden_contexts: ["не трудно, а легко", "далеко не трудно", "вовсе не трудно"]
+    positive_templates:
+      - "Редактору было {wrong} найти ошибку."
+      - "Комиссии было {wrong} согласовать план."
+      - "Инженеру было {wrong} открыть архив."
+    hard_negative_templates:
+      - "Это было не трудно, а легко."
+      - "Задание было далеко не трудно."
+      - "Это было вовсе не трудно."
+    clean_templates:
+      - "Редактору было нетрудно найти ошибку."
+
+  - rule_id: compound_ne_spellings
+    sub_rule_id: ne_participles
+    operation: merge
+    correct: непрочитанный
+    wrong_variants: [не прочитанный]
+    semantic_hint: controlled full participle without dependent words.
+    forbidden_contexts: ["не прочитанный редактором", "не прочитанный вовремя", "не прочитанный, а просмотренный"]
+    positive_templates:
+      - "В архиве лежал {wrong} отчёт."
+      - "Редактор нашёл {wrong} документ на столе."
+      - "Комиссия вернула {wrong} доклад."
+    hard_negative_templates:
+      - "В архиве лежал не прочитанный редактором отчёт."
+      - "На столе был не прочитанный вовремя документ."
+      - "Это был не прочитанный, а просмотренный доклад."
+    clean_templates:
+      - "В архиве лежал непрочитанный отчёт."
