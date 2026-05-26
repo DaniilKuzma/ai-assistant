@@ -1,0 +1,105 @@
+rule_spec:
+  rule_id: n_nn_basic
+  orfogrammka_id: orthography.n_nn.basic
+  family: n_nn
+  pos: ADJF
+  site_type: suffix
+  requires: [pos, dependent_word, semantic_context, exception_group]
+  correct_patterns: ["н", "нн"]
+  wrong_patterns: ["нн", "н"]
+  explanation_id: n_nn_basic
+  model_role: context_disambiguation
+lexeme_cards:
+  - rule_id: n_nn_basic
+    correct_lemma: крашенный
+    wrong_lemma: крашеный
+    pos: ADJF
+    gender: masc
+    semantic_class: object
+    correct_site: нн
+    wrong_site: н
+    forms:
+      nomn_masc_sing: {correct: крашенный, wrong: крашеный}
+    safe_contexts:
+      - {context_class: dependent_word, dependent_word: вчера, template: "Рядом стоял {word} вчера забор.", construction_id: orthography_adjective_safe_context}
+    explanation_id: n_nn_basic
+  - rule_id: n_nn_basic
+    correct_lemma: жаренная
+    wrong_lemma: жареная
+    pos: ADJF
+    gender: femn
+    semantic_class: food
+    correct_site: нн
+    wrong_site: н
+    forms:
+      nomn_femn_sing: {correct: жаренная, wrong: жареная}
+    safe_contexts:
+      - {context_class: dependent_word, dependent_word: на масле, template: "На столе была {word} на масле картошка.", construction_id: orthography_adjective_safe_context}
+    explanation_id: n_nn_basic
+  - rule_id: n_nn_basic
+    correct_lemma: организованный
+    wrong_lemma: организованый
+    pos: ADJF
+    gender: masc
+    semantic_class: abstract
+    correct_site: нн
+    wrong_site: н
+    forms:
+      nomn_masc_sing: {correct: организованный, wrong: организованый}
+    safe_contexts:
+      - {context_class: participle, template: "Комиссия утвердила {word} процесс.", construction_id: orthography_adjective_safe_context}
+    explanation_id: n_nn_basic
+  - rule_id: n_nn_basic
+    correct_lemma: крашеный
+    wrong_lemma: крашеный
+    pos: ADJF
+    gender: masc
+    semantic_class: object
+    correct_site: н
+    wrong_site: н
+    forms:
+      nomn_masc_sing: {correct: крашеный, wrong: крашеный}
+    hard_negative_contexts:
+      - {context_class: no_dependent_word, template: "Рядом стоял {word} забор.", construction_id: orthography_adjective_safe_context}
+    explanation_id: n_nn_basic
+  - rule_id: n_nn_basic
+    correct_lemma: жареная
+    wrong_lemma: жареная
+    pos: ADJF
+    gender: femn
+    semantic_class: food
+    correct_site: н
+    wrong_site: н
+    forms:
+      nomn_femn_sing: {correct: жареная, wrong: жареная}
+    hard_negative_contexts:
+      - {context_class: no_dependent_word, template: "На столе была {word} картошка.", construction_id: orthography_adjective_safe_context}
+    explanation_id: n_nn_basic
+  - rule_id: n_nn_basic
+    correct_lemma: ветреный
+    wrong_lemma: ветреный
+    pos: ADJF
+    gender: masc
+    semantic_class: abstract
+    exception_group: vetreny_exception
+    correct_site: н
+    wrong_site: н
+    forms:
+      nomn_masc_sing: {correct: ветреный, wrong: ветреный}
+    hard_negative_contexts:
+      - {context_class: exception, template: "Сегодня был {word} день.", construction_id: orthography_adjective_safe_context}
+    explanation_id: n_nn_basic
+  - rule_id: n_nn_basic
+    correct_lemma: безветренный
+    wrong_lemma: безветренный
+    pos: ADJF
+    gender: masc
+    semantic_class: abstract
+    exception_group: bezvetrenny
+    correct_site: нн
+    wrong_site: нн
+    forms:
+      nomn_masc_sing: {correct: безветренный, wrong: безветренный}
+    hard_negative_contexts:
+      - {context_class: exception, template: "Сегодня был {word} день.", construction_id: orthography_adjective_safe_context}
+    explanation_id: n_nn_basic

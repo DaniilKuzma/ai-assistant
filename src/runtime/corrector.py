@@ -15,6 +15,7 @@ from src.runtime.edit_realizer import (
 )
 from src.runtime.explanations import attach_explanations
 from src.runtime.neural_backend import DirectNeuralBackend
+from src.runtime.orthographic_lexicon import OrthographicCorrectionLexicon
 from src.runtime.scope_guard import ScopeGuard
 from src.runtime.thresholds import RuntimeThresholds
 from src.runtime.tokenization import tokenize_runtime_words
@@ -35,6 +36,7 @@ class Corrector:
         self.neural_backend = neural_backend
         self.thresholds = RuntimeThresholds.from_config(self.config)
         self.scope_guard = ScopeGuard()
+        self.orthographic_lexicon = OrthographicCorrectionLexicon.from_config(self.config)
 
     @classmethod
     def from_config(
@@ -137,7 +139,15 @@ class Corrector:
         margins = _float_list_attr(prediction, "token_margins", len(tokens), 1.0)
         rule_ids = _list_attr(prediction, "rule_ids", len(tokens), "none")
         accepted_labels = self._gate_token_labels(text, tokens, labels, confidences, margins, rule_ids)
-        return apply_token_edit_labels(text, tokens, accepted_labels, confidences, threshold=0.0, rule_ids=rule_ids)
+        return apply_token_edit_labels(
+            text,
+            tokens,
+            accepted_labels,
+            confidences,
+            threshold=0.0,
+            rule_ids=rule_ids,
+            orthographic_lexicon=self.orthographic_lexicon,
+        )
 
     def _apply_neural_gap_edits(self, text: str) -> tuple[str, list[RuntimeEdit]]:
         if not bool(self.runtime_config.get("neural_punctuation", True)):
@@ -163,7 +173,7 @@ class Corrector:
         accepted = ["KEEP"] * len(tokens)
         consumed: set[int] = set()
         for index, label in enumerate(labels[: len(tokens)]):
-            if index in consumed or label in {"KEEP", "SKIP_MERGED", "DICT_REPLACE"}:
+            if index in consumed or label in {"KEEP", "SKIP_MERGED"}:
                 continue
             rule_id = _rule_id(rule_ids, index)
             edit_type = token_edit_type_for_label(label)
@@ -180,6 +190,7 @@ class Corrector:
                 [1.0] * len(tokens),
                 threshold=0.0,
                 rule_ids=rule_ids,
+                orthographic_lexicon=self.orthographic_lexicon,
             )
             if candidate_edits and all(self.scope_guard.validate_edit(text, edit) for edit in candidate_edits):
                 accepted[index] = label

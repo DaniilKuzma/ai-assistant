@@ -6,6 +6,10 @@ from src.grammar_gen.rules.orthography.hyphen_particles import (
     HyphenPoAdverbRule,
 )
 from src.grammar_gen.rules.orthography.ne_verb import NeVerbRule
+from src.grammar_gen.rules.orthography.orthography_morphemic import (
+    ORTHOGRAPHY_MORPHEMIC_RULES,
+    OrthographyMorphemicRule,
+)
 from src.grammar_gen.rules.orthography.takzhe import TakzheRule
 from src.grammar_gen.rules.orthography.tozhe import TozheRule
 from src.grammar_gen.rules.orthography.tsya_ttsya import TsyaTtsyaRule
@@ -21,6 +25,7 @@ ORTHOGRAPHY_RULES = (
     HyphenKoeRule(),
     HyphenPoAdverbRule(),
     TsyaTtsyaRule(),
+    *ORTHOGRAPHY_MORPHEMIC_RULES,
 )
 
 
@@ -37,6 +42,7 @@ __all__ = [
     "HyphenPoAdverbRule",
     "NeVerbRule",
     "ORTHOGRAPHY_RULES",
+    "OrthographyMorphemicRule",
     "TakzheRule",
     "TozheRule",
     "TsyaTtsyaRule",

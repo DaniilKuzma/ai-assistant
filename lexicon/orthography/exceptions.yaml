@@ -1,0 +1,12 @@
+rule_spec:
+  rule_id: orthography_exceptions
+  orfogrammka_id: orthography.exceptions
+  family: exceptions
+  pos: ANY
+  site_type: suffix
+  requires: [exception_group]
+  correct_patterns: ["exception"]
+  wrong_patterns: ["exception"]
+  explanation_id: orthography_exceptions
+  model_role: hard_negative_only
+lexeme_cards: []

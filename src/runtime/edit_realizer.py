@@ -4,6 +4,7 @@ from dataclasses import replace
 import re
 from collections.abc import Sequence
 
+from src.runtime.orthographic_lexicon import OrthographicCorrectionLexicon
 from src.schema import RuntimeEdit, WordToken
 
 
@@ -55,6 +56,7 @@ def apply_token_edit_labels(
     threshold: float,
     *,
     rule_ids: Sequence[str] | None = None,
+    orthographic_lexicon: OrthographicCorrectionLexicon | None = None,
 ) -> tuple[str, list[RuntimeEdit]]:
     edits: list[RuntimeEdit] = []
     consumed: set[int] = set()
@@ -64,7 +66,7 @@ def apply_token_edit_labels(
         if index in consumed:
             continue
         label = str(labels[index])
-        if label in {"KEEP", "SKIP_MERGED", "DICT_REPLACE"}:
+        if label in {"KEEP", "SKIP_MERGED"}:
             continue
         confidence = float(confidences[index])
         if confidence < threshold:
@@ -77,6 +79,7 @@ def apply_token_edit_labels(
             label,
             confidence,
             _rule_id_for(index, rule_ids, label),
+            orthographic_lexicon,
         )
         if edit is None:
             continue
@@ -146,6 +149,7 @@ def _token_edit_for_label(
     label: str,
     confidence: float,
     rule_id: str,
+    orthographic_lexicon: OrthographicCorrectionLexicon | None,
 ) -> RuntimeEdit | None:
     token = tokens[index]
     source = text[token.start : token.end]
@@ -192,6 +196,13 @@ def _token_edit_for_label(
         replacement = _fix_tsya_to_ttsya(source)
     elif label == "FIX_TTSYA_TO_TSYA":
         replacement = _fix_ttsya_to_tsya(source)
+    elif label == "DICT_REPLACE":
+        if orthographic_lexicon is None:
+            return None
+        entries = orthographic_lexicon.lookup(source, rule_id=rule_id)
+        if len(entries) != 1:
+            return None
+        replacement = _match_case(source, entries[0].target)
 
     if replacement is None or replacement == source:
         return None
@@ -281,6 +292,12 @@ def _fix_ttsya_to_tsya(source: str) -> str:
     if mapped is not None:
         return mapped
     return re.sub(r"ться$", "тся", source, flags=re.IGNORECASE)
+
+
+def _match_case(source: str, replacement: str) -> str:
+    if source[:1].isupper():
+        return replacement[:1].upper() + replacement[1:]
+    return replacement
 
 
 def _mapped_replacement(source: str, replacements: dict[str, str]) -> str | None:

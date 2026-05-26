@@ -57,6 +57,9 @@ class RuleLabel(str, Enum):
     COMMA_ADVERSATIVE = "comma_adversative"
     DASH_SUBJECT_PREDICATE = "dash_subject_predicate"
     FINAL_PUNCTUATION = "final_punctuation"
+    SUFFIX_ITS_ETS = "suffix_its_ets"
+    SUFFIX_ENN_YAN = "suffix_enn_yan"
+    N_NN_BASIC = "n_nn_basic"
 
 
 TOKEN_EDIT_LABELS: tuple[str, ...] = (
@@ -111,6 +114,9 @@ RULE_LABELS: tuple[str, ...] = (
     "comma_adversative",
     "dash_subject_predicate",
     "final_punctuation",
+    "suffix_its_ets",
+    "suffix_enn_yan",
+    "n_nn_basic",
 )
 
 TOKEN_LABEL_TO_ID: Mapping[str, int] = MappingProxyType(

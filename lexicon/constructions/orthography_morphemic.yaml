@@ -1,0 +1,36 @@
+patterns:
+  - id: orthography_word_quote
+    family: orthography_morphemic
+    surface: "В словаре указано слово «{word}»."
+    roles:
+      context:
+        semantic_classes: [text]
+    allowed_rule_ids: [suffix_its_ets, suffix_enn_yan, n_nn_basic]
+    metadata:
+      render_type: fixed_text
+      texts:
+        - "В словаре указано слово «пример»."
+
+  - id: orthography_noun_safe_context
+    family: orthography_morphemic
+    surface: "В тексте встретилось {word}."
+    roles:
+      context:
+        semantic_classes: [text]
+    allowed_rule_ids: [suffix_its_ets, suffix_enn_yan, n_nn_basic]
+    metadata:
+      render_type: fixed_text
+      texts:
+        - "В тексте встретилось слово."
+
+  - id: orthography_adjective_safe_context
+    family: orthography_morphemic
+    surface: "Редактор заметил {word} пример."
+    roles:
+      context:
+        semantic_classes: [text]
+    allowed_rule_ids: [suffix_its_ets, suffix_enn_yan, n_nn_basic]
+    metadata:
+      render_type: fixed_text
+      texts:
+        - "Редактор заметил новый пример."

@@ -294,6 +294,7 @@ def _generation_mix(config: Mapping[str, Any]) -> dict[str, float]:
     if not isinstance(raw_mix, Mapping) or not raw_mix:
         return {
             "orthography_contextual": 0.35,
+            "orthography_morphemic": 0.25,
             "punctuation": 0.40,
             "clean_identity": 0.15,
             "hard_negative": 0.10,
@@ -320,6 +321,7 @@ def _normalize_mix_key(key: str) -> str:
     normalized = aliases.get(normalized, normalized)
     allowed = {
         "orthography_contextual",
+        "orthography_morphemic",
         "punctuation",
         "clean_identity",
         "hard_negative",
@@ -333,6 +335,8 @@ def _mode_and_family_from_mix_key(key: str) -> tuple[GenerationMode, str | None]
     normalized = _normalize_mix_key(key)
     if normalized == "orthography_contextual":
         return GenerationMode.POSITIVE, "orthography_contextual"
+    if normalized == "orthography_morphemic":
+        return GenerationMode.POSITIVE, "orthography_morphemic"
     if normalized == "punctuation":
         return GenerationMode.POSITIVE, "punctuation"
     if normalized == "clean_identity":
@@ -393,6 +397,8 @@ def _expected_edit_counts(
         return 0, 1
 
     if rule.info.family == "orthography_contextual":
+        return 1, 0
+    if rule.info.family == "orthography_morphemic":
         return 1, 0
 
     return 0, 0

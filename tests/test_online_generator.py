@@ -41,6 +41,17 @@ def test_sample_by_index_is_deterministic() -> None:
     assert second.stable_id() == first.stable_id()
 
 
+def test_online_generator_can_sample_orthography_morphemic_family() -> None:
+    generator = _generator()
+
+    example = generator.sample(rule_id="suffix_its_ets", mode="positive")
+
+    assert example.primary_rule_id == "suffix_its_ets"
+    assert example.token_edit_labels.count("DICT_REPLACE") == 1
+    assert example.metadata["replacement"]["source"] in example.source_text
+    assert example.metadata["replacement"]["target"] in example.target_text
+
+
 def test_different_indexes_usually_have_different_stable_ids() -> None:
     generator = _generator()
 

@@ -24,12 +24,21 @@ generation:
   enabled_rule_groups:
     - deterministic_orthography
     - contextual_orthography
+    - orthography_morphemic
     - punctuation
   mix:
     orthography_contextual: 0.35
+    orthography_morphemic: 0.25
     punctuation: 0.40
     clean_identity: 0.15
     hard_negative: 0.10
+  orthography_morphemic:
+    enabled: true
+    weight: 0.25
+    rules:
+      - suffix_its_ets
+      - suffix_enn_yan
+      - n_nn_basic
   grammar:
     max_sentence_words: 28
     min_sentence_words: 3

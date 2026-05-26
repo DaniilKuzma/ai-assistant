@@ -52,6 +52,9 @@ def test_vocab_ids_are_stable() -> None:
     assert rule_id_to_label(0) == "none"
     assert rule_tag_to_id("final_punctuation") == 15
     assert rule_id_to_label(15) == "final_punctuation"
+    assert rule_tag_to_id("suffix_its_ets") > 15
+    assert rule_tag_to_id("suffix_enn_yan") > 15
+    assert rule_tag_to_id("n_nn_basic") > 15
 
 
 def test_unknown_labels_raise_value_error() -> None:
@@ -136,4 +139,3 @@ def test_runtime_edit_is_dataclass_serializable() -> None:
         "confidence": 0.92,
         "explanation": "Раздельное написание не с глаголом.",
     }
-

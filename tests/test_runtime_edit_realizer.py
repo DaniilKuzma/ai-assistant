@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from src.runtime.edit_realizer import apply_gap_labels, apply_token_edit_labels
+from src.runtime.orthographic_lexicon import OrthographicCorrectionLexicon
 from src.runtime.tokenization import tokenize_runtime_words
 
 
@@ -104,6 +105,44 @@ def test_gap_comma_insertion_does_not_duplicate_existing_comma() -> None:
         ["NONE", "COMMA", "NONE", "NONE"],
         [1.0, 0.93, 1.0, 1.0],
         threshold=0.7,
+    )
+
+    assert corrected == text
+    assert edits == []
+
+
+def test_dict_replace_uses_orthographic_lexicon_replacement() -> None:
+    text = "В словаре указано слово «коженный»."
+    tokens = tokenize_runtime_words(text)
+
+    corrected, edits = apply_token_edit_labels(
+        text,
+        tokens,
+        ["KEEP", "KEEP", "KEEP", "KEEP", "DICT_REPLACE"],
+        [1.0, 1.0, 1.0, 1.0, 0.96],
+        threshold=0.7,
+        rule_ids=["none", "none", "none", "none", "suffix_enn_yan"],
+        orthographic_lexicon=OrthographicCorrectionLexicon.default(),
+    )
+
+    assert corrected == "В словаре указано слово «кожаный»."
+    assert [(edit.source, edit.replacement, edit.rule_id, edit.edit_type) for edit in edits] == [
+        ("коженный", "кожаный", "suffix_enn_yan", "spelling")
+    ]
+
+
+def test_dict_replace_skips_unknown_or_ambiguous_replacement() -> None:
+    text = "В словаре указано слово «неизвестный»."
+    tokens = tokenize_runtime_words(text)
+
+    corrected, edits = apply_token_edit_labels(
+        text,
+        tokens,
+        ["KEEP", "KEEP", "KEEP", "KEEP", "DICT_REPLACE"],
+        [1.0, 1.0, 1.0, 1.0, 0.99],
+        threshold=0.7,
+        rule_ids=["none", "none", "none", "none", "suffix_enn_yan"],
+        orthographic_lexicon=OrthographicCorrectionLexicon.default(),
     )
 
     assert corrected == text

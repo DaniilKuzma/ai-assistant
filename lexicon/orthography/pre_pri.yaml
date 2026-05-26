@@ -1,0 +1,12 @@
+rule_spec:
+  rule_id: pre_pri
+  orfogrammka_id: orthography.pre_pri
+  family: pre_pri
+  pos: ANY
+  site_type: prefix
+  requires: [semantic_context]
+  correct_patterns: ["пре-", "при-"]
+  wrong_patterns: ["при-", "пре-"]
+  explanation_id: pre_pri
+  model_role: context_disambiguation
+lexeme_cards: []

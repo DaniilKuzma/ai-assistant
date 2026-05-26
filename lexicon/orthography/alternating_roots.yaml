@@ -1,0 +1,12 @@
+rule_spec:
+  rule_id: alternating_roots
+  orfogrammka_id: orthography.alternating_roots
+  family: alternating_roots
+  pos: ANY
+  site_type: root
+  requires: [stress_position, semantic_context]
+  correct_patterns: ["alternating_root"]
+  wrong_patterns: ["alternating_root"]
+  explanation_id: alternating_roots
+  model_role: context_disambiguation
+lexeme_cards: []

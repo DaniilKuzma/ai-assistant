@@ -1,0 +1,96 @@
+rule_spec:
+  rule_id: suffix_its_ets
+  orfogrammka_id: orthography.suffix_its_ets
+  family: suffix_its_ets
+  pos: NOUN
+  site_type: suffix
+  requires: [stress_position, pos]
+  correct_patterns: ["-иц-", "-ец-"]
+  wrong_patterns: ["-ец-", "-иц-"]
+  explanation_id: suffix_its_ets
+  model_role: deterministic_replace
+lexeme_cards:
+  - rule_id: suffix_its_ets
+    correct_lemma: платьице
+    wrong_lemma: платьеце
+    pos: NOUN
+    gender: neut
+    semantic_class: object
+    stress_position: before_suffix
+    correct_site: иц
+    wrong_site: ец
+    forms:
+      nomn_neut_sing: {correct: платьице, wrong: платьеце}
+    safe_contexts:
+      - {context_class: quote, template: "В словаре указано слово «{word}».", construction_id: orthography_word_quote}
+    explanation_id: suffix_its_ets
+  - rule_id: suffix_its_ets
+    correct_lemma: маслице
+    wrong_lemma: маслеце
+    pos: NOUN
+    gender: neut
+    semantic_class: object
+    stress_position: before_suffix
+    correct_site: иц
+    wrong_site: ец
+    forms:
+      nomn_neut_sing: {correct: маслице, wrong: маслеце}
+    safe_contexts:
+      - {context_class: quote, template: "Редактор проверил слово «{word}».", construction_id: orthography_word_quote}
+    explanation_id: suffix_its_ets
+  - rule_id: suffix_its_ets
+    correct_lemma: растеньице
+    wrong_lemma: растеньеце
+    pos: NOUN
+    gender: neut
+    semantic_class: object
+    stress_position: before_suffix
+    correct_site: иц
+    wrong_site: ец
+    forms:
+      nomn_neut_sing: {correct: растеньице, wrong: растеньеце}
+    safe_contexts:
+      - {context_class: quote, template: "В тексте встретилось {word}.", construction_id: orthography_noun_safe_context}
+    explanation_id: suffix_its_ets
+  - rule_id: suffix_its_ets
+    correct_lemma: письмецо
+    wrong_lemma: письмицо
+    pos: NOUN
+    gender: neut
+    semantic_class: document
+    stress_position: ending
+    correct_site: ец
+    wrong_site: иц
+    forms:
+      nomn_neut_sing: {correct: письмецо, wrong: письмицо}
+    safe_contexts:
+      - {context_class: quote, template: "В словаре указано слово «{word}».", construction_id: orthography_word_quote}
+    explanation_id: suffix_its_ets
+  - rule_id: suffix_its_ets
+    correct_lemma: ружьецо
+    wrong_lemma: ружьицо
+    pos: NOUN
+    gender: neut
+    semantic_class: object
+    stress_position: ending
+    correct_site: ец
+    wrong_site: иц
+    forms:
+      nomn_neut_sing: {correct: ружьецо, wrong: ружьицо}
+    safe_contexts:
+      - {context_class: quote, template: "Редактор проверил слово «{word}».", construction_id: orthography_word_quote}
+    explanation_id: suffix_its_ets
+  - rule_id: suffix_its_ets
+    correct_lemma: пальтецо
+    wrong_lemma: пальтицо
+    pos: NOUN
+    gender: neut
+    semantic_class: object
+    stress_position: ending
+    correct_site: ец
+    wrong_site: иц
+    forms:
+      nomn_neut_sing: {correct: пальтецо, wrong: пальтицо}
+    safe_contexts:
+      - {context_class: quote, template: "В тексте встретилось {word}.", construction_id: orthography_noun_safe_context}
+    explanation_id: suffix_its_ets
