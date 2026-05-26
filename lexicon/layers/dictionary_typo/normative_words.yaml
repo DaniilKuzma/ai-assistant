@@ -1,0 +1,22 @@
+# Controlled dictionary words for dictionary_typo.
+entries:
+  - {rule_id: dictionary_normative_words, sub_rule_id: akkuratnyj, correct: аккуратный, wrong_variants: [акуратный], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_normative_words, sub_rule_id: iskusstvennyj, correct: искусственный, wrong_variants: [искуственный], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_normative_words, sub_rule_id: territoriya, correct: территория, wrong_variants: [територия], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_normative_words, sub_rule_id: kollektiv, correct: коллектив, wrong_variants: [колектив], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_normative_words, sub_rule_id: apellyaciya, correct: апелляция, wrong_variants: [апеляция], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_normative_words, sub_rule_id: grammatika, correct: грамматика, wrong_variants: [граматика], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_normative_words, sub_rule_id: biblioteka, correct: библиотека, wrong_variants: [библеотека], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_normative_words, sub_rule_id: periodicheski, correct: периодически, wrong_variants: [переодически], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_normative_words, sub_rule_id: obozhayu, correct: обожаю, wrong_variants: [обажаю], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_normative_words, sub_rule_id: zdes, correct: здесь, wrong_variants: [сдесь], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_normative_words, sub_rule_id: lestnica, correct: лестница, wrong_variants: [лесница], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_normative_words, sub_rule_id: serdce, correct: сердце, wrong_variants: [серце], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_normative_words, sub_rule_id: prazdnik, correct: праздник, wrong_variants: [прасник], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_normative_words, sub_rule_id: chestnyj, correct: честный, wrong_variants: [чесный], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_normative_words, sub_rule_id: chuvstvovat, correct: чувствовать, wrong_variants: [чуствовать], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_normative_words, sub_rule_id: agentstvo, correct: агентство, wrong_variants: [агенство], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_normative_words, sub_rule_id: vposledstvii, correct: впоследствии, wrong_variants: [впоследствие], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_normative_words, sub_rule_id: vperemeshku, correct: вперемешку, wrong_variants: [вперемежку], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_normative_words, sub_rule_id: naperekor, correct: наперекор, wrong_variants: [наперикор], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_normative_words, sub_rule_id: poodinochke, correct: поодиночке, wrong_variants: [по одиночке], typo_ops: [delete, insert, replace, transpose, duplicate]}

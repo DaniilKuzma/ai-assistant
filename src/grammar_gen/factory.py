@@ -11,6 +11,7 @@ from src.grammar_gen.rules.registry import RuleRegistry, default_rule_registry
 from src.grammar_gen.rules.registry import register_layered_rules
 from src.grammar_gen.randomness import RandomSource
 from src.rule_layers.compound_spelling import load_compound_spelling_specs
+from src.rule_layers.dictionary_typo import load_dictionary_typo_specs
 from src.rule_layers.spec_loader import load_layer_specs
 
 
@@ -67,15 +68,17 @@ def _registry_from_config(config: Mapping[str, Any]) -> RuleRegistry:
     specs = tuple(
         spec
         for layer_name in layer_names
-        for spec in _load_layer_specs(layer_name, root=root, rng=rng)
+        for spec in _load_layer_specs(layer_name, root=root, rng=rng, seed=seed)
     )
     register_layered_rules(registry, specs)
     return registry
 
 
-def _load_layer_specs(layer_name: str, *, root: Path, rng: RandomSource):
+def _load_layer_specs(layer_name: str, *, root: Path, rng: RandomSource, seed: int):
     if layer_name == "compound_spelling":
         return load_compound_spelling_specs(root)
+    if layer_name == "dictionary_typo":
+        return load_dictionary_typo_specs(root, seed=seed)
     return load_layer_specs(layer_name, root=root, rng=rng)
 
 

@@ -1,0 +1,53 @@
+# Trusted dictionary_typo runtime lexicon. These entries are inert unless the
+# model predicts DICT_REPLACE or SPAN_REPLACE_BY_LEXICON for the same rule_id.
+corrections:
+  - {source: "акуратный", target: "аккуратный", rule_id: dictionary_common_misspellings, sub_rule_id: akkuratnyj_one_k, operation: dict_replace}
+  - {source: "искуственный", target: "искусственный", rule_id: dictionary_common_misspellings, sub_rule_id: iskusstvennyj_one_s, operation: dict_replace}
+  - {source: "територия", target: "территория", rule_id: dictionary_common_misspellings, sub_rule_id: territoriya_one_r, operation: dict_replace}
+  - {source: "колектив", target: "коллектив", rule_id: dictionary_common_misspellings, sub_rule_id: kollektiv_one_l, operation: dict_replace}
+  - {source: "апеляция", target: "апелляция", rule_id: dictionary_normative_words, sub_rule_id: apellyaciya, operation: dict_replace}
+  - {source: "граматика", target: "грамматика", rule_id: dictionary_common_misspellings, sub_rule_id: grammatika_one_m, operation: dict_replace}
+  - {source: "библеотека", target: "библиотека", rule_id: dictionary_normative_words, sub_rule_id: biblioteka, operation: dict_replace}
+  - {source: "переодически", target: "периодически", rule_id: dictionary_normative_words, sub_rule_id: periodicheski, operation: dict_replace}
+  - {source: "обажаю", target: "обожаю", rule_id: dictionary_common_misspellings, sub_rule_id: obozhayu_a, operation: dict_replace}
+  - {source: "сдесь", target: "здесь", rule_id: dictionary_common_misspellings, sub_rule_id: zdes_s, operation: dict_replace}
+  - {source: "лесница", target: "лестница", rule_id: dictionary_common_misspellings, sub_rule_id: lestnica_missing_t, operation: dict_replace}
+  - {source: "серце", target: "сердце", rule_id: dictionary_common_misspellings, sub_rule_id: serdce_missing_d, operation: dict_replace}
+  - {source: "прасник", target: "праздник", rule_id: dictionary_common_misspellings, sub_rule_id: prazdnik_missing_d, operation: dict_replace}
+  - {source: "чесный", target: "честный", rule_id: dictionary_normative_words, sub_rule_id: chestnyj, operation: dict_replace}
+  - {source: "чуствовать", target: "чувствовать", rule_id: dictionary_common_misspellings, sub_rule_id: chuvstvovat_missing_v, operation: dict_replace}
+  - {source: "агенство", target: "агентство", rule_id: dictionary_common_misspellings, sub_rule_id: agentstvo_missing_t, operation: dict_replace}
+
+  - {source: "маркейтинг", target: "маркетинг", rule_id: dictionary_borrowed_words, sub_rule_id: marketing, operation: dict_replace}
+  - {source: "менеджемент", target: "менеджмент", rule_id: dictionary_borrowed_words, sub_rule_id: menedzhment, operation: dict_replace}
+  - {source: "дистрибютор", target: "дистрибьютор", rule_id: dictionary_borrowed_words, sub_rule_id: distribyutor, operation: dict_replace}
+  - {source: "риэлтор", target: "риелтор", rule_id: dictionary_borrowed_words, sub_rule_id: rieltor, operation: dict_replace}
+  - {source: "промоушн", target: "промоушен", rule_id: dictionary_borrowed_words, sub_rule_id: promoushen, operation: dict_replace}
+  - {source: "акаунт", target: "аккаунт", rule_id: dictionary_borrowed_words, sub_rule_id: akkaunt, operation: dict_replace}
+  - {source: "оффлайн", target: "офлайн", rule_id: dictionary_borrowed_words, sub_rule_id: oflajn, operation: dict_replace}
+  - {source: "он-лайн", target: "онлайн", rule_id: dictionary_borrowed_words, sub_rule_id: onlajn, operation: dict_replace}
+  - {source: "блоггер", target: "блогер", rule_id: dictionary_borrowed_words, sub_rule_id: bloger, operation: dict_replace}
+  - {source: "интерфэйс", target: "интерфейс", rule_id: dictionary_borrowed_words, sub_rule_id: interfejs, operation: dict_replace}
+  - {source: "фрэймворк", target: "фреймворк", rule_id: dictionary_borrowed_words, sub_rule_id: frejmvork, operation: dict_replace}
+
+  - {source: "алгаритм", target: "алгоритм", rule_id: dictionary_domain_terms, sub_rule_id: algoritm, operation: dict_replace}
+  - {source: "мадель", target: "модель", rule_id: dictionary_domain_terms, sub_rule_id: model, operation: dict_replace}
+  - {source: "корпусс", target: "корпус", rule_id: dictionary_domain_terms, sub_rule_id: korpus, operation: dict_replace}
+  - {source: "дейтасет", target: "датасет", rule_id: dictionary_domain_terms, sub_rule_id: dataset, operation: dict_replace}
+  - {source: "токинизация", target: "токенизация", rule_id: dictionary_domain_terms, sub_rule_id: tokenizaciya, operation: dict_replace}
+  - {source: "документацыя", target: "документация", rule_id: dictionary_domain_terms, sub_rule_id: dokumentaciya, operation: dict_replace}
+  - {source: "асистент", target: "ассистент", rule_id: dictionary_domain_terms, sub_rule_id: assistent, operation: dict_replace}
+  - {source: "пунтуация", target: "пунктуация", rule_id: dictionary_domain_terms, sub_rule_id: punktuaciya, operation: dict_replace}
+  - {source: "орфаграфия", target: "орфография", rule_id: dictionary_domain_terms, sub_rule_id: orfografiya, operation: dict_replace}
+  - {source: "коректура", target: "корректура", rule_id: dictionary_domain_terms, sub_rule_id: korrektura, operation: dict_replace}
+
+  - {source: "впоследствие", target: "впоследствии", rule_id: dictionary_normative_words, sub_rule_id: vposledstvii, operation: dict_replace}
+  - {source: "вперемежку", target: "вперемешку", rule_id: dictionary_normative_words, sub_rule_id: vperemeshku, operation: dict_replace}
+  - {source: "наперикор", target: "наперекор", rule_id: dictionary_normative_words, sub_rule_id: naperekor, operation: dict_replace}
+  - {source: "по одиночке", target: "поодиночке", rule_id: dictionary_normative_words, sub_rule_id: poodinochke, operation: split_join}
+
+  - {source: "орфо графия", target: "орфография", rule_id: typo_space_noise, sub_rule_id: split_orfografiya, operation: split_join}
+  - {source: "пунк туация", target: "пунктуация", rule_id: typo_space_noise, sub_rule_id: split_punktuaciya, operation: split_join}
+  - {source: "токен изация", target: "токенизация", rule_id: typo_space_noise, sub_rule_id: split_tokenizaciya, operation: split_join}
+  - {source: "вотчёте", target: "в отчёте", rule_id: typo_space_noise, sub_rule_id: glue_v_otchyote, operation: split_join}
+  - {source: "вдокументе", target: "в документе", rule_id: typo_space_noise, sub_rule_id: glue_v_dokumente, operation: split_join}

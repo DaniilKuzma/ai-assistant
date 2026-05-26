@@ -10994,32 +10994,33 @@ orthography:
     order: 268
     source_url: https://orfogrammka.ru/орфография/правописание_иноязычных_слов_и_предложений/
     implementation:
-      status: dictionary_model_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - dictionary_borrowed_words
       aliases: []
       requires:
       - dictionary
       - model
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      notes: dictionary_typo_layer supplies controlled borrowed-word examples; runtime remains model-assisted and lexicon-gated.
     dataset:
-      eligible_now: false
-      reason: needs_dictionary
+      eligible_now: true
+      reason: eligible_controlled_generation
       last_known_eval_coverage: null
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
-      training_eligibility_reason: requires dictionary-backed candidate path
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_CONTROLLED_EXAMPLES
+      training_eligibility_reason: controlled dictionary_typo borrowed-word examples with hard negatives
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
       current_validator_support: false
-      current_eval_coverage: null
+      current_eval_coverage: 1.0
       current_gap_coverage: null
-      risk_level: medium
+      risk_level: high
       needs_before_training:
-      - none
+      - threshold_calibration
   orthography_group_opechatki:
     source_section: orthography
     orfogrammka_id: null
@@ -11072,14 +11073,12 @@ orthography:
       status: model_required
       executable: true
       rule_ids:
-      - swapped_letters_candidate
-      - missing_letter_candidate
-      - extra_letter_candidate
+      - typo_character_noise
       aliases: []
       requires:
       - dictionary
       - model
-      notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
+      notes: dictionary_typo_layer supplies bounded delete/insert/replace/transpose/duplicate examples; runtime remains model-assisted and lexicon-gated.
     dataset:
       eligible_now: true
       reason: eligible_but_needs_threshold
@@ -11087,10 +11086,9 @@ orthography:
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: candidate path verified; validator guards and hard negatives are required before dataset
-        build
-      current_candidate_path: true
+      training_eligibility_decision: INCLUDE_CONTROLLED_EXAMPLES
+      training_eligibility_reason: controlled dictionary_typo character-noise examples with protected-token filtering
+      current_candidate_path: false
       current_synthetic_support: true
       current_hard_negative_support: true
       current_validator_support: true
@@ -11098,8 +11096,7 @@ orthography:
       current_gap_coverage: 0.0
       risk_level: high
       needs_before_training:
-      - validator
-      - hard_negatives
+      - threshold_calibration
   orthography_7_2:
     source_section: orthography
     orfogrammka_id: '7.2'
@@ -11113,30 +11110,33 @@ orthography:
     order: 271
     source_url: https://orfogrammka.ru/орфография/пропуск_или_вставка_пробела/
     implementation:
-      status: planned
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - typo_space_noise
       aliases: []
-      requires: []
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      requires:
+      - dictionary
+      - model
+      notes: dictionary_typo_layer supplies trusted split-word and glued-word examples; runtime uses SPAN_REPLACE_BY_LEXICON only after model prediction.
     dataset:
-      eligible_now: false
-      reason: planned
+      eligible_now: true
+      reason: eligible_controlled_generation
       last_known_eval_coverage: null
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_PLANNED
-      training_eligibility_reason: planned
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_CONTROLLED_EXAMPLES
+      training_eligibility_reason: controlled dictionary_typo space-noise examples with hard negatives
       current_candidate_path: false
       current_synthetic_support: false
       current_hard_negative_support: false
       current_validator_support: false
-      current_eval_coverage: null
-      current_gap_coverage: null
-      risk_level: low
+      current_eval_coverage: 1.0
+      current_gap_coverage: 1.0
+      risk_level: high
       needs_before_training:
-      - none
+      - threshold_calibration
   orthography_7_3:
     source_section: orthography
     orfogrammka_id: '7.3'
@@ -11153,12 +11153,12 @@ orthography:
       status: model_required
       executable: true
       rule_ids:
-      - keyboard_typo_candidate
+      - typo_keyboard_neighbor
       aliases: []
       requires:
       - dictionary
       - model
-      notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
+      notes: dictionary_typo_layer supplies Russian keyboard-neighbor examples; runtime remains model-assisted and lexicon-gated.
     dataset:
       eligible_now: true
       reason: eligible_but_needs_threshold
@@ -11166,10 +11166,9 @@ orthography:
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: candidate path verified; validator guards and hard negatives are required before dataset
-        build
-      current_candidate_path: true
+      training_eligibility_decision: INCLUDE_CONTROLLED_EXAMPLES
+      training_eligibility_reason: controlled dictionary_typo keyboard-neighbor examples with protected-token filtering
+      current_candidate_path: false
       current_synthetic_support: true
       current_hard_negative_support: true
       current_validator_support: false
@@ -11177,8 +11176,7 @@ orthography:
       current_gap_coverage: 0.0
       risk_level: high
       needs_before_training:
-      - validator
-      - hard_negatives
+      - threshold_calibration
   orthography_7_4:
     source_section: orthography
     orfogrammka_id: '7.4'
@@ -11453,17 +11451,17 @@ orthography:
     order: 280
     source_url: https://orfogrammka.ru/орфография/орфографические_ошибки_в_словарных_словах/
     implementation:
-      status: partial
+      status: model_required
       executable: true
       rule_ids:
-      - dictionary_fuzzy
-      - frequent_error_exact
+      - dictionary_normative_words
+      - dictionary_common_misspellings
       aliases:
       - frequent_errors
       requires:
       - dictionary
       - model
-      notes: Mapped to existing bounded project rule_id(s); implementation coverage is project-specific.
+      notes: Controlled dictionary_typo layer covers trusted normative words and explicit common misspellings; runtime still requires model-predicted direct labels and unambiguous lexicon lookup.
     dataset:
       eligible_now: true
       reason: eligible_but_needs_more_training
@@ -11471,18 +11469,16 @@ orthography:
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_AFTER_VALIDATOR
-      training_eligibility_reason: candidate path verified; current blocker is threshold calibration; candidate path verified;
-        validator guards and hard negatives are required before dataset build
-      current_candidate_path: true
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD
+      training_eligibility_reason: trusted dictionary_typo examples are generated online with protected-token hard negatives; runtime application remains model-assisted
+      current_candidate_path: false
       current_synthetic_support: true
       current_hard_negative_support: true
-      current_validator_support: true
+      current_validator_support: false
       current_eval_coverage: 1.0
       current_gap_coverage: 0.0
       risk_level: high
       needs_before_training:
-      - validator
       - hard_negatives
       - threshold_calibration
   orthography_8_2:
@@ -11535,32 +11531,33 @@ orthography:
     order: 282
     source_url: https://orfogrammka.ru/орфография/неизвестные_термины_неологизмы/
     implementation:
-      status: dictionary_model_required
-      executable: false
-      rule_ids: []
+      status: model_required
+      executable: true
+      rule_ids:
+      - dictionary_domain_terms
       aliases: []
       requires:
       - dictionary
       - model
-      notes: Present in Orfogrammka taxonomy; no executable project rule path is currently mapped.
+      notes: Controlled dictionary_typo domain-term entries protect accepted terminology and expose only trusted typo/misspelling corrections.
     dataset:
-      eligible_now: false
-      reason: needs_dictionary
+      eligible_now: true
+      reason: eligible_but_needs_more_training
       last_known_eval_coverage: null
       last_known_eval_count: null
       production_ready_now: false
-      training_eligible_now: false
-      training_eligibility_decision: BLOCK_NEEDS_DICTIONARY
-      training_eligibility_reason: requires dictionary-backed candidate path
+      training_eligible_now: true
+      training_eligibility_decision: INCLUDE_AFTER_THRESHOLD
+      training_eligibility_reason: domain terms are explicit lexicon entries with clean identities and hard negatives
       current_candidate_path: false
-      current_synthetic_support: false
-      current_hard_negative_support: false
+      current_synthetic_support: true
+      current_hard_negative_support: true
       current_validator_support: false
-      current_eval_coverage: null
-      current_gap_coverage: null
-      risk_level: medium
+      current_eval_coverage: 1.0
+      current_gap_coverage: 0.0
+      risk_level: high
       needs_before_training:
-      - none
+      - threshold_calibration
   orthography_8_4:
     source_section: orthography
     orfogrammka_id: '8.4'

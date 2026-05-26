@@ -1944,6 +1944,41 @@ ORTHOGRAPHY_RULES: tuple[object, ...] = (
         "dictionary_model_required",
         "Opt-in lexicon-backed е/ё candidates that require model scoring.",
     ),
+    DictionaryCandidateMetadataRule(
+        "dictionary_normative_words",
+        "dictionary_typo",
+        "Controlled trusted dictionary spelling examples that require model prediction at runtime.",
+    ),
+    DictionaryCandidateMetadataRule(
+        "dictionary_borrowed_words",
+        "dictionary_typo",
+        "Controlled borrowed-word spelling examples that require model prediction at runtime.",
+    ),
+    DictionaryCandidateMetadataRule(
+        "dictionary_domain_terms",
+        "dictionary_typo",
+        "Controlled domain-term spelling examples and hard negatives.",
+    ),
+    DictionaryCandidateMetadataRule(
+        "dictionary_common_misspellings",
+        "dictionary_typo",
+        "Trusted exact common misspelling examples that require model prediction at runtime.",
+    ),
+    DictionaryCandidateMetadataRule(
+        "typo_character_noise",
+        "dictionary_typo",
+        "Bounded generated character typo examples with trusted dictionary targets.",
+    ),
+    DictionaryCandidateMetadataRule(
+        "typo_keyboard_neighbor",
+        "dictionary_typo",
+        "Russian keyboard-neighbor typo examples with trusted dictionary targets.",
+    ),
+    DictionaryCandidateMetadataRule(
+        "typo_space_noise",
+        "dictionary_typo",
+        "Trusted split-word and glued-word typo examples.",
+    ),
     *syntax_orthography_rules(),
     PrefixPrePriRule(),
     FrequentErrorRule(),

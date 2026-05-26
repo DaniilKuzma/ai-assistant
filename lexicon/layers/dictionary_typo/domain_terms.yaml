@@ -1,0 +1,12 @@
+# IT, educational, and business terms protected from overcorrection.
+entries:
+  - {rule_id: dictionary_domain_terms, sub_rule_id: algoritm, correct: алгоритм, wrong_variants: [алгаритм], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_domain_terms, sub_rule_id: model, correct: модель, wrong_variants: [мадель], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_domain_terms, sub_rule_id: korpus, correct: корпус, wrong_variants: [корпусс], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_domain_terms, sub_rule_id: dataset, correct: датасет, wrong_variants: [дейтасет], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_domain_terms, sub_rule_id: tokenizaciya, correct: токенизация, wrong_variants: [токинизация], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_domain_terms, sub_rule_id: dokumentaciya, correct: документация, wrong_variants: [документацыя], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_domain_terms, sub_rule_id: assistent, correct: ассистент, wrong_variants: [асистент], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_domain_terms, sub_rule_id: punktuaciya, correct: пунктуация, wrong_variants: [пунтуация], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_domain_terms, sub_rule_id: orfografiya, correct: орфография, wrong_variants: [орфаграфия], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_domain_terms, sub_rule_id: korrektura, correct: корректура, wrong_variants: [коректура], typo_ops: [delete, insert, replace, transpose, duplicate]}

@@ -26,11 +26,13 @@ generation:
     - contextual_orthography
     - orthography_morphemic
     - compound_spelling
+    - dictionary_typo
     - punctuation
   mix:
     orthography_contextual: 0.25
     orthography_morphemic: 0.25
     compound_spelling: 0.20
+    dictionary_typo: 0.20
     punctuation: 0.40
     clean_identity: 0.15
     hard_negative: 0.10
@@ -70,8 +72,9 @@ generation:
         enabled: false
         layers: []
       dictionary_typo:
-        enabled: false
-        layers: []
+        enabled: true
+        layers:
+          - dictionary_typo
       syntax_punctuation:
         enabled: false
         layers: []

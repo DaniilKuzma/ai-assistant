@@ -47,16 +47,17 @@ class OrthographicCorrectionLexicon:
         base = Path(str(lexicon_dir))
         if not base.is_absolute():
             base = PROJECT_ROOT / base
-        return cls.from_root(base)
+        return cls.from_root(base, seed=_generation_seed(config))
 
     @classmethod
-    def from_root(cls, path: str | Path) -> "OrthographicCorrectionLexicon":
+    def from_root(cls, path: str | Path, *, seed: int | None = None) -> "OrthographicCorrectionLexicon":
         base = Path(path)
         entries: list[CorrectionEntry] = []
         orthography_dir = base / "orthography"
         if orthography_dir.exists():
             entries.extend(_entries_from_cards(load_lexeme_cards(orthography_dir)))
         entries.extend(_entries_from_layer_corrections(base / "layers"))
+        entries.extend(_entries_from_dictionary_typo(base / "layers", seed=seed))
         return cls(entries)
 
     @classmethod
@@ -127,6 +128,8 @@ def _entries_from_layer_corrections(path: str | Path) -> list[CorrectionEntry]:
 
     entries: list[CorrectionEntry] = []
     for yaml_path in sorted(base.rglob("corrections.yaml")):
+        if yaml_path.parent.name == "dictionary_typo":
+            continue
         with yaml_path.open("r", encoding="utf-8") as handle:
             raw = yaml.safe_load(handle) or {}
         raw_entries = raw.get("corrections", []) if isinstance(raw, Mapping) else []
@@ -135,6 +138,32 @@ def _entries_from_layer_corrections(path: str | Path) -> list[CorrectionEntry]:
         if not isinstance(raw_entries, list):
             raise ValueError(f"corrections must be a list: {yaml_path}")
         entries.extend(_entry_from_layer_mapping(item, yaml_path) for item in raw_entries)
+    return entries
+
+
+def _entries_from_dictionary_typo(path: str | Path, *, seed: int | None = None) -> list[CorrectionEntry]:
+    try:
+        from src.rule_layers.dictionary_typo import load_dictionary_typo_corrections
+    except Exception:
+        return []
+
+    base = Path(path)
+    if not (base / "dictionary_typo").exists():
+        return []
+
+    entries: list[CorrectionEntry] = []
+    for item in load_dictionary_typo_corrections(base, seed=seed):
+        entries.append(
+            CorrectionEntry(
+                source=item.source,
+                target=item.target,
+                rule_id=item.rule_id,
+                explanation_id=item.explanation_id,
+                operation=item.operation,
+                sub_rule_id=item.sub_rule_id,
+                confidence=1.0,
+            )
+        )
     return entries
 
 
@@ -176,6 +205,16 @@ def _confidence(value: Any) -> float:
     if confidence > 1.0:
         return 1.0
     return confidence
+
+
+def _generation_seed(config: Mapping[str, Any] | None) -> int | None:
+    generation = config.get("generation", {}) if isinstance(config, Mapping) else {}
+    if not isinstance(generation, Mapping) or "seed" not in generation:
+        return None
+    try:
+        return int(generation.get("seed"))
+    except (TypeError, ValueError):
+        return None
 
 
 __all__ = ["CorrectionEntry", "OrthographicCorrectionLexicon"]

@@ -11,6 +11,13 @@
 - Орфография: прописная буква в начале текста (`capitalization_sentence_start`): легкий fallback только для первого токена.
 - Пунктуация: финальная точка (`sentence_final_default_dot`): candidate для точки, если в конце нет `.`, `?`, `!` или `...`.
 - Орфография: controlled `compound_spelling_layer` для слитного, дефисного и раздельного написания (`compound_service_words`, `compound_prepositions`, `compound_pronouns_particles`, `compound_adverbs`, `compound_nouns_adjectives`, `compound_ne_spellings`, `compound_pol_polu`). Полная таблица покрытия: `docs/compound_spelling_coverage.md`.
+- Orthography: controlled `dictionary_typo` layer for trusted dictionary words,
+  borrowed words, domain terms, common misspellings, bounded typo noise, Russian
+  keyboard-neighbor noise, and split/glue space noise. Runtime remains
+  model-assisted: no deterministic typo autocorrect, no free edit-distance
+  guessing, and no correction unless the predicted direct label resolves through
+  an unambiguous trusted lexicon entry. Coverage details:
+  `docs/dictionary_typo_coverage.md`.
 
 ## Частично реализовано или candidate-only
 

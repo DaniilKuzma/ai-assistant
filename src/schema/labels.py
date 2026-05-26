@@ -77,6 +77,13 @@ class RuleLabel(str, Enum):
     MORPHEME_N_NN = "morpheme_n_nn"
     MORPHEME_CONSONANTS = "morpheme_consonants"
     MORPHEME_ENDINGS = "morpheme_endings"
+    DICTIONARY_NORMATIVE_WORDS = "dictionary_normative_words"
+    DICTIONARY_BORROWED_WORDS = "dictionary_borrowed_words"
+    DICTIONARY_DOMAIN_TERMS = "dictionary_domain_terms"
+    DICTIONARY_COMMON_MISSPELLINGS = "dictionary_common_misspellings"
+    TYPO_CHARACTER_NOISE = "typo_character_noise"
+    TYPO_KEYBOARD_NEIGHBOR = "typo_keyboard_neighbor"
+    TYPO_SPACE_NOISE = "typo_space_noise"
 
 
 TOKEN_EDIT_LABELS: tuple[str, ...] = (
@@ -151,6 +158,13 @@ RULE_LABELS: tuple[str, ...] = (
     "morpheme_n_nn",
     "morpheme_consonants",
     "morpheme_endings",
+    "dictionary_normative_words",
+    "dictionary_borrowed_words",
+    "dictionary_domain_terms",
+    "dictionary_common_misspellings",
+    "typo_character_noise",
+    "typo_keyboard_neighbor",
+    "typo_space_noise",
 )
 
 TOKEN_LABEL_TO_ID: Mapping[str, int] = MappingProxyType(

@@ -1,0 +1,14 @@
+# Controlled borrowed-word spellings. `риелтор` is canonical here; `риэлтор`
+# is a trusted correction source, not an accepted variant.
+entries:
+  - {rule_id: dictionary_borrowed_words, sub_rule_id: marketing, correct: маркетинг, wrong_variants: [маркейтинг], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_borrowed_words, sub_rule_id: menedzhment, correct: менеджмент, wrong_variants: [менеджемент], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_borrowed_words, sub_rule_id: distribyutor, correct: дистрибьютор, wrong_variants: [дистрибютор], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_borrowed_words, sub_rule_id: rieltor, correct: риелтор, wrong_variants: [риэлтор], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_borrowed_words, sub_rule_id: promoushen, correct: промоушен, wrong_variants: [промоушн], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_borrowed_words, sub_rule_id: akkaunt, correct: аккаунт, wrong_variants: [акаунт], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_borrowed_words, sub_rule_id: oflajn, correct: офлайн, wrong_variants: [оффлайн], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_borrowed_words, sub_rule_id: onlajn, correct: онлайн, wrong_variants: [он-лайн], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_borrowed_words, sub_rule_id: bloger, correct: блогер, wrong_variants: [блоггер], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_borrowed_words, sub_rule_id: interfejs, correct: интерфейс, wrong_variants: [интерфэйс], typo_ops: [delete, insert, replace, transpose, duplicate]}
+  - {rule_id: dictionary_borrowed_words, sub_rule_id: frejmvork, correct: фреймворк, wrong_variants: [фрэймворк], typo_ops: [delete, insert, replace, transpose, duplicate]}

@@ -59,6 +59,13 @@ def test_vocab_ids_are_stable() -> None:
     assert rule_tag_to_id("suffix_its_ets") > 15
     assert rule_tag_to_id("suffix_enn_yan") > 15
     assert rule_tag_to_id("n_nn_basic") > 15
+    assert rule_tag_to_id("dictionary_normative_words") > rule_tag_to_id("morpheme_endings")
+    assert rule_id_to_label(rule_tag_to_id("dictionary_borrowed_words")) == "dictionary_borrowed_words"
+    assert rule_id_to_label(rule_tag_to_id("dictionary_domain_terms")) == "dictionary_domain_terms"
+    assert rule_id_to_label(rule_tag_to_id("dictionary_common_misspellings")) == "dictionary_common_misspellings"
+    assert rule_id_to_label(rule_tag_to_id("typo_character_noise")) == "typo_character_noise"
+    assert rule_id_to_label(rule_tag_to_id("typo_keyboard_neighbor")) == "typo_keyboard_neighbor"
+    assert rule_id_to_label(rule_tag_to_id("typo_space_noise")) == "typo_space_noise"
 
 
 def test_unknown_labels_raise_value_error() -> None:
