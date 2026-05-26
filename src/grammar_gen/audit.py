@@ -38,6 +38,7 @@ TAKZHE_KAK_RE = re.compile(
     r"\b\u0442\u0430\u043a\u0436\u0435\s*,?\s+\u043a\u0430\u043a\b",
     re.IGNORECASE,
 )
+NUMBERED_EXAMPLE_SHELL_RE = re.compile(r"^\u0412 \u043f\u0440\u0438\u043c\u0435\u0440\u0435 \d+ \u0441\u043a\u0430\u0437\u0430\u043d\u043e:")
 
 
 def audit_example(example: GeneratedExample) -> list[str]:
@@ -161,6 +162,8 @@ def _forbidden_phrase_reasons(example: GeneratedExample) -> list[str]:
 
     if example.mode == GenerationMode.HARD_NEGATIVE.value and any(TAKZHE_KAK_RE.search(text) for text in texts):
         reasons.append("forbidden_hard_negative_takzhe_kak")
+    if any(NUMBERED_EXAMPLE_SHELL_RE.search(text) for text in (example.source_text, example.target_text)):
+        reasons.append("forbidden_numbered_example_shell")
     return reasons
 
 

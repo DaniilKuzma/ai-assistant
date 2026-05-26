@@ -37,6 +37,7 @@ class DirectNeuralBackend:
         adapter_path: str | Path | None = None,
         heads_path: str | Path | None = None,
         selected_epoch: int | None = None,
+        rule_head_loaded: bool = True,
     ) -> None:
         import torch
 
@@ -47,17 +48,20 @@ class DirectNeuralBackend:
         self.adapter_path = str(adapter_path or "")
         self.heads_path = str(heads_path or "")
         self.selected_epoch = selected_epoch
+        self.rule_head_loaded = bool(rule_head_loaded)
 
     @classmethod
     def from_config(cls, config: Mapping[str, Any]) -> "DirectNeuralBackend":
         paths = config.get("paths", {}) if isinstance(config, Mapping) else {}
         adapter_dir = _resolve_path(paths.get("adapter_output_dir", "models/adapters/latest"))
         heads_dir = _resolve_path(paths.get("heads_output_dir", "models/heads/latest"))
-        heads_path = heads_dir / "heads.pt"
+        heads_artifact_dir = _resolve_heads_artifact_dir(heads_dir)
+        heads_path = heads_artifact_dir / "heads.pt"
         if not heads_path.exists():
             raise FileNotFoundError(f"Direct edit heads artifact is missing: {heads_path}")
-        _validate_architecture_marker(heads_dir, config)
-        _validate_label_maps(heads_dir)
+        marker_dir = heads_artifact_dir if (heads_artifact_dir / "architecture.json").exists() else heads_dir
+        _validate_architecture_marker(marker_dir, config)
+        label_compatibility = _validate_label_maps(heads_artifact_dir)
 
         model_config = config.get("model", {}) if isinstance(config, Mapping) else {}
         lora = model_config.get("lora", {}) if isinstance(model_config, Mapping) else {}
@@ -82,7 +86,7 @@ class DirectNeuralBackend:
         import torch
 
         state = torch.load(heads_path, map_location="cpu")
-        direct.heads.load_state_dict(state)
+        rule_head_loaded = _load_heads_state(direct.heads, state, label_compatibility)
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         if hasattr(direct, "to"):
             direct.to(device)
@@ -94,7 +98,8 @@ class DirectNeuralBackend:
             device=device,
             adapter_path=adapter_dir if lora_enabled else "",
             heads_path=heads_path,
-            selected_epoch=_selected_epoch(heads_dir),
+            selected_epoch=_selected_epoch(heads_dir) or _selected_epoch(heads_artifact_dir),
+            rule_head_loaded=rule_head_loaded,
         )
 
     def predict(self, text: str) -> DirectPrediction:
@@ -129,7 +134,7 @@ class DirectNeuralBackend:
 
         token_probs = functional.softmax(outputs["token_edit_logits"][0], dim=-1)
         gap_probs = functional.softmax(outputs["gap_punctuation_logits"][0], dim=-1)
-        rule_ids = outputs["rule_logits"][0].argmax(dim=-1).tolist()
+        rule_ids = outputs["rule_logits"][0].argmax(dim=-1).tolist() if self.rule_head_loaded else []
         token_top = token_probs.topk(k=min(2, token_probs.shape[-1]), dim=-1)
         gap_top = gap_probs.topk(k=min(2, gap_probs.shape[-1]), dim=-1)
 
@@ -139,7 +144,9 @@ class DirectNeuralBackend:
             token_confidences=[float(value) for value in token_top.values[:, 0].tolist()[:token_count]],
             gap_labels=[GAP_ID_TO_LABEL[int(index)] for index in gap_probs.argmax(dim=-1).tolist()[:token_count]],
             gap_confidences=[float(value) for value in gap_top.values[:, 0].tolist()[:token_count]],
-            rule_ids=[RULE_ID_TO_LABEL[int(index)] for index in rule_ids[:token_count]],
+            rule_ids=[RULE_ID_TO_LABEL[int(index)] for index in rule_ids[:token_count]]
+            if self.rule_head_loaded
+            else ["none"] * token_count,
             token_margins=_margins(token_top.values.tolist(), token_count),
             gap_margins=_margins(gap_top.values.tolist(), token_count),
         )
@@ -185,6 +192,35 @@ def _resolve_path(value: Any) -> Path:
     return path if path.is_absolute() else PROJECT_ROOT / path
 
 
+def _resolve_heads_artifact_dir(heads_dir: Path) -> Path:
+    if (heads_dir / "heads.pt").exists():
+        return heads_dir
+
+    selected_epoch = _selected_epoch(heads_dir)
+    if selected_epoch is not None:
+        selected_dir = heads_dir / f"checkpoint-epoch-{selected_epoch}"
+        if (selected_dir / "heads.pt").exists():
+            return selected_dir
+
+    checkpoint_dirs = [
+        path
+        for path in heads_dir.glob("checkpoint-epoch-*")
+        if path.is_dir() and (path / "heads.pt").exists()
+    ]
+    if checkpoint_dirs:
+        return max(checkpoint_dirs, key=_checkpoint_sort_key)
+
+    return heads_dir
+
+
+def _checkpoint_sort_key(path: Path) -> tuple[int, str]:
+    suffix = path.name.removeprefix("checkpoint-epoch-")
+    try:
+        return (int(suffix), path.name)
+    except ValueError:
+        return (-1, path.name)
+
+
 def _validate_architecture_marker(heads_dir: Path, config: Mapping[str, Any]) -> None:
     marker_path = heads_dir / "architecture.json"
     if not marker_path.exists():
@@ -204,7 +240,7 @@ def _validate_architecture_marker(heads_dir: Path, config: Mapping[str, Any]) ->
         raise RuntimeError("Refusing to load debug_model direct edit heads without allow_debug_model=true.")
 
 
-def _validate_label_maps(heads_dir: Path) -> None:
+def _validate_label_maps(heads_dir: Path) -> dict[str, bool]:
     labels_path = heads_dir / "labels.json"
     if not labels_path.exists():
         raise RuntimeError(f"Direct edit label schema marker is missing: {labels_path}")
@@ -221,18 +257,41 @@ def _validate_label_maps(heads_dir: Path) -> None:
     mismatches = [
         name
         for name, expected_labels in expected.items()
-        if labels.get(name) != expected_labels
+        if name != "rule_id_to_label" and labels.get(name) != expected_labels
     ]
+    rule_labels = labels.get("rule_id_to_label")
+    rule_head_compatible = rule_labels == expected["rule_id_to_label"]
+    if not rule_head_compatible and not _is_compatible_rule_label_prefix(rule_labels, expected["rule_id_to_label"]):
+        mismatches.append("rule_id_to_label")
     if mismatches:
         detail = ", ".join(mismatches)
         raise RuntimeError(
             f"Direct edit label schema mismatch in {labels_path}: {detail}. "
             "Re-train direct heads with the current label schema before loading."
         )
+    return {"rule_head_compatible": rule_head_compatible}
+
+
+def _is_compatible_rule_label_prefix(saved: Any, expected: list[str]) -> bool:
+    return isinstance(saved, list) and len(saved) < len(expected) and saved == expected[: len(saved)]
+
+
+def _load_heads_state(heads: Any, state: Mapping[str, Any], label_compatibility: Mapping[str, bool]) -> bool:
+    if bool(label_compatibility.get("rule_head_compatible", True)):
+        heads.load_state_dict(state)
+        return True
+
+    compatible_state = {
+        key: value
+        for key, value in state.items()
+        if not str(key).startswith("rule.")
+    }
+    heads.load_state_dict(compatible_state, strict=False)
+    return False
 
 
 def _selected_epoch(heads_dir: Path) -> int | None:
-    for name in ("checkpoint_meta.json", "selected_checkpoint_meta.json", "architecture.json"):
+    for name in ("checkpoint_meta.json", "selected_checkpoint_meta.json", "architecture.json", "training_summary.json"):
         path = heads_dir / name
         if not path.exists():
             continue
@@ -240,7 +299,7 @@ def _selected_epoch(heads_dir: Path) -> int | None:
             data = json.loads(path.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
             continue
-        value = data.get("selected_epoch") or data.get("epoch")
+        value = data.get("selected_epoch") or data.get("best_epoch") or data.get("epoch")
         if value is None:
             continue
         try:

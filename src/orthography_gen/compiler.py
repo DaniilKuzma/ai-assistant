@@ -58,6 +58,12 @@ class OrthographicScenarioCompiler:
             replacement = self.injector.make_positive(card, form_key)
             context = _choose_context(card.safe_contexts, rng)
         context.setdefault("variant", rng.randint(1, 100_000))
+        context.setdefault("rule_id", card.rule_id)
+        context.setdefault("semantic_class", card.semantic_class or "")
+        context.setdefault("gender", card.gender or "")
+        context.setdefault("derivational_base", card.derivational_base or "")
+        context.setdefault("correct_lemma", card.correct_lemma)
+        context.setdefault("wrong_lemma", card.wrong_lemma)
 
         wrapped = self.wrapper.wrap(
             source_word=replacement.source,

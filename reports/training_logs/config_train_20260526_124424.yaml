@@ -1,0 +1,84 @@
+project:
+  name: russian-edit-corrector
+  strict_scope:
+  - spelling
+  - punctuation
+model:
+  encoder: ai-forever/ruRoberta-large
+  local_files_only: false
+  max_sequence_length: 128
+  lora:
+    enabled: true
+    r: 8
+    alpha: 16
+    dropout: 0.05
+generation:
+  mode: online_ast
+  seed: 13
+  samples_per_epoch: 50000
+  frozen_eval:
+    val_examples: 5000
+    test_examples: 5000
+    regression_examples: 1000
+    output_dir: data/generated_eval
+  enabled_rule_groups:
+  - deterministic_orthography
+  - contextual_orthography
+  - orthography_morphemic
+  - punctuation
+  mix:
+    orthography_contextual: 0.35
+    orthography_morphemic: 0.25
+    punctuation: 0.4
+    clean_identity: 0.15
+    hard_negative: 0.1
+  orthography_morphemic:
+    enabled: true
+    weight: 0.25
+    rules:
+    - suffix_its_ets
+    - suffix_enn_yan
+    - n_nn_basic
+  grammar:
+    max_sentence_words: 28
+    min_sentence_words: 3
+    reject_ungrammatical: true
+    max_generation_retries: 20
+    use_pymorphy: true
+training:
+  mode: online
+  batch_size: 32
+  eval_batch_size: 64
+  epochs: 2
+  learning_rate: 5.0e-05
+  weight_decay: 0.01
+  warmup_ratio: 0.06
+  gradient_accumulation_steps: 1
+  max_grad_norm: 1.0
+  mixed_precision: true
+  num_workers: 0
+  save_each_epoch: true
+  validate_each_epoch: true
+  token_edit_loss_weight: 1.0
+  gap_punctuation_loss_weight: 1.2
+  rule_loss_weight: 0.3
+  smoke_steps: 3
+  progress_log_interval_seconds: 60.0
+  progress_log_interval_steps: 1000000000
+runtime:
+  max_passes: 2
+  deterministic_first: true
+  neural_token_edits: true
+  neural_punctuation: true
+  confidence_thresholds:
+    token_edit: 0.7
+    punctuation: 0.7
+  correction_memory:
+    enabled: false
+    storage_path: data/user/correction_memory.jsonl
+paths:
+  generated_eval_dir: data/generated_eval
+  checkpoint_output_dir: models/checkpoints
+  adapter_output_dir: models/adapters/latest
+  heads_output_dir: models/heads/latest
+  lexicon_dir: lexicon

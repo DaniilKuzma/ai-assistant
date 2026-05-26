@@ -14,9 +14,9 @@ def test_training_config_uses_50k_online_ast_morphemic_generation() -> None:
     training = config["training"]
 
     assert generation["samples_per_epoch"] == 50_000
-    assert training["epochs"] == 3
+    assert training["epochs"] == 2
     assert training["batch_size"] == 32
-    assert generation["samples_per_epoch"] * training["epochs"] == 150_000
+    assert generation["samples_per_epoch"] * training["epochs"] == 100_000
     assert generation["mode"] == "online_ast"
     assert "orthography_morphemic" in generation["enabled_rule_groups"]
     assert generation["orthography_morphemic"]["enabled"] is True

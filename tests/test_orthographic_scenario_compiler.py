@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import re
 
 import yaml
 
@@ -9,8 +10,17 @@ from src.grammar_gen.randomness import RandomSource
 from src.grammar_gen.rules.base import GenerationMode
 from src.grammar_gen.safety import assert_json_safe_metadata, validate_generated_pair
 from src.orthography_gen.compiler import OrthographicScenarioCompiler
+from src.orthography_gen.lexeme_cards import load_lexeme_cards
 from src.runtime.orthographic_lexicon import OrthographicCorrectionLexicon
 from src.schema import GeneratedExample
+
+
+NUMBERED_EXAMPLE_SHELL_RE = re.compile(r"^В примере \d+ сказано:")
+STALE_ORTHOGRAPHY_CONTEXTS = (
+    "В словаре указано слово",
+    "Редактор проверил слово",
+)
+WEAK_ORTHOGRAPHY_SURFACES = {"пальтецо", "пальтицо"}
 
 
 def test_suffix_its_ets_positive_generates_dict_replace_metadata() -> None:
@@ -78,7 +88,7 @@ def test_n_nn_hard_negative_and_dependent_word_positive() -> None:
         compiler.compile_example("n_nn_basic", GenerationMode.HARD_NEGATIVE, RandomSource(seed=index))
         for index in range(30)
     ]
-    hard_negative = next(item for item in hard_negatives if "крашеный забор" in item.source_text.lower())
+    hard_negative = next(item for item in hard_negatives if item.metadata.get("context_class") == "no_dependent_word")
 
     assert hard_negative.source_text == hard_negative.target_text
     assert set(hard_negative.token_edit_labels) == {"KEEP"}
@@ -88,11 +98,11 @@ def test_n_nn_hard_negative_and_dependent_word_positive() -> None:
         compiler.compile_example("n_nn_basic", GenerationMode.POSITIVE, RandomSource(seed=index))
         for index in range(60)
     ]
-    positive = next(item for item in positives if "крашеный вчера забор" in item.source_text.lower())
+    positive = next(item for item in positives if item.metadata.get("context_class") == "dependent_word")
 
-    assert "крашенный вчера забор" in positive.target_text.lower()
+    assert positive.metadata["replacement"]["source"] in positive.source_text
+    assert positive.metadata["replacement"]["target"] in positive.target_text
     assert positive.token_edit_labels.count("DICT_REPLACE") == 1
-    assert positive.metadata["replacement"] == {"source": "крашеный", "target": "крашенный"}
 
 
 def test_generated_examples_validate_and_metadata_is_json_safe() -> None:
@@ -116,6 +126,38 @@ def test_generated_examples_validate_and_metadata_is_json_safe() -> None:
         assert validate_generated_pair(example) == []
         assert_json_safe_metadata(example.metadata)
         json.dumps(example.metadata, ensure_ascii=False)
+
+
+def test_morphemic_examples_do_not_use_numbered_or_stale_quote_shells() -> None:
+    compiler = OrthographicScenarioCompiler.default()
+    examples = compiler.compile_batch(
+        300,
+        rules=["suffix_its_ets", "suffix_enn_yan", "n_nn_basic"],
+        rng=RandomSource(seed=9001),
+    )
+
+    stale = [
+        example.source_text
+        for example in examples
+        if NUMBERED_EXAMPLE_SHELL_RE.search(example.source_text)
+        or NUMBERED_EXAMPLE_SHELL_RE.search(example.target_text)
+        or any(phrase in example.source_text or phrase in example.target_text for phrase in STALE_ORTHOGRAPHY_CONTEXTS)
+    ]
+
+    assert stale == []
+
+
+def test_morphemic_lexicon_excludes_weak_suffix_its_ets_surfaces() -> None:
+    surfaces: set[str] = set()
+    for card in load_lexeme_cards():
+        if card.rule_id != "suffix_its_ets":
+            continue
+        surfaces.add(card.correct_lemma)
+        surfaces.add(card.wrong_lemma)
+        for forms in card.forms.values():
+            surfaces.update(forms.values())
+
+    assert surfaces.isdisjoint(WEAK_ORTHOGRAPHY_SURFACES)
 
 
 def test_runtime_orthographic_lexicon_lookups_and_ambiguity(tmp_path: Path) -> None:

@@ -37,7 +37,10 @@
     "comma_homogeneous",
     "comma_adversative",
     "dash_subject_predicate",
-    "final_punctuation"
+    "final_punctuation",
+    "suffix_its_ets",
+    "suffix_enn_yan",
+    "n_nn_basic"
   ],
   "rule_tag_to_id": {
     "clean_identity": 1,
@@ -50,8 +53,11 @@
     "hyphen_koe": 7,
     "hyphen_particles": 6,
     "hyphen_po_adverb": 8,
+    "n_nn_basic": 18,
     "ne_verb": 2,
     "none": 0,
+    "suffix_enn_yan": 17,
+    "suffix_its_ets": 16,
     "takzhe_tak_zhe": 3,
     "tozhe_to_zhe": 4,
     "tsya_ttsya": 9,

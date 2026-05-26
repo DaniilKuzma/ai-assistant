@@ -200,9 +200,10 @@ def _token_edit_for_label(
         if orthographic_lexicon is None:
             return None
         entries = orthographic_lexicon.lookup(source, rule_id=rule_id)
-        if len(entries) != 1:
+        targets = {entry.target for entry in entries}
+        if len(targets) != 1:
             return None
-        replacement = _match_case(source, entries[0].target)
+        replacement = _match_case(source, next(iter(targets)))
 
     if replacement is None or replacement == source:
         return None

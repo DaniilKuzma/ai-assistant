@@ -11,7 +11,7 @@ from src.runtime.edit_realizer import apply_token_edit_labels
 from src.runtime.neural_backend import DirectNeuralBackend
 from src.runtime.orthographic_lexicon import OrthographicCorrectionLexicon
 from src.runtime.tokenization import tokenize_runtime_words
-from src.schema.labels import GAP_ID_TO_LABEL, TOKEN_ID_TO_LABEL
+from src.schema.labels import GAP_ID_TO_LABEL, RULE_ID_TO_LABEL, TOKEN_ID_TO_LABEL
 
 
 KOZHENNY_SENTENCE = "\u0412 \u0441\u043b\u043e\u0432\u0430\u0440\u0435 \u0443\u043a\u0430\u0437\u0430\u043d\u043e \u0441\u043b\u043e\u0432\u043e \u00ab\u043a\u043e\u0436\u0435\u043d\u043d\u044b\u0439\u00bb."
@@ -77,6 +77,26 @@ def test_apply_token_edit_labels_applies_dict_replace_with_lexicon() -> None:
     ]
 
 
+def test_apply_token_edit_labels_applies_dict_replace_when_contexts_share_target() -> None:
+    text = "\u041d\u0430 \u0441\u0442\u043e\u043b\u0435 \u043b\u0435\u0436\u0430\u043b \u043c\u0430\u0441\u043b\u044f\u043d\u044b\u0439 \u043d\u043e\u0436."
+    tokens = tokenize_runtime_words(text)
+
+    corrected, edits = apply_token_edit_labels(
+        text,
+        tokens,
+        ["KEEP", "KEEP", "KEEP", "DICT_REPLACE", "KEEP"],
+        [1.0] * len(tokens),
+        threshold=0.7,
+        rule_ids=["none", "none", "none", "suffix_enn_yan", "none"],
+        orthographic_lexicon=OrthographicCorrectionLexicon.default(),
+    )
+
+    assert corrected == "\u041d\u0430 \u0441\u0442\u043e\u043b\u0435 \u043b\u0435\u0436\u0430\u043b \u043c\u0430\u0441\u043b\u0435\u043d\u044b\u0439 \u043d\u043e\u0436."
+    assert [(edit.source, edit.replacement, edit.rule_id) for edit in edits] == [
+        ("\u043c\u0430\u0441\u043b\u044f\u043d\u044b\u0439", "\u043c\u0430\u0441\u043b\u0435\u043d\u044b\u0439", "suffix_enn_yan")
+    ]
+
+
 def test_corrector_applies_fake_neural_dict_replace_prediction() -> None:
     corrector = Corrector(
         neural_backend=DictReplaceBackend(),
@@ -102,26 +122,9 @@ def test_direct_neural_backend_rejects_stale_labels_before_torch_load(monkeypatc
     (heads_dir / "labels.json").write_text(
         json.dumps(
             {
-                "token_id_to_label": list(TOKEN_ID_TO_LABEL),
+                "token_id_to_label": [*list(TOKEN_ID_TO_LABEL), "STALE_TOKEN_LABEL"],
                 "gap_id_to_label": list(GAP_ID_TO_LABEL),
-                "rule_id_to_label": [
-                    "none",
-                    "clean_identity",
-                    "ne_verb",
-                    "takzhe_tak_zhe",
-                    "tozhe_to_zhe",
-                    "zato_za_to",
-                    "hyphen_particles",
-                    "hyphen_koe",
-                    "hyphen_po_adverb",
-                    "tsya_ttsya",
-                    "comma_subordinate",
-                    "comma_introductory",
-                    "comma_homogeneous",
-                    "comma_adversative",
-                    "dash_subject_predicate",
-                    "final_punctuation",
-                ],
+                "rule_id_to_label": list(RULE_ID_TO_LABEL),
             },
             ensure_ascii=False,
         ),
@@ -133,7 +136,7 @@ def test_direct_neural_backend_rejects_stale_labels_before_torch_load(monkeypatc
 
     monkeypatch.setattr("torch.load", fail_torch_load)
 
-    with pytest.raises(RuntimeError, match="label schema.*rule_id_to_label"):
+    with pytest.raises(RuntimeError, match="label schema.*token_id_to_label"):
         DirectNeuralBackend.from_config(
             {
                 "model": {"lora": {"enabled": False}, "local_files_only": True},

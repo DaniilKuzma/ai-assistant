@@ -239,6 +239,17 @@ def test_raw_dataclass_in_metadata_fails_json_safety() -> None:
     assert "metadata_not_json_safe" in validate_generated_pair(example)
 
 
+def test_audit_rejects_numbered_example_shell() -> None:
+    from src.grammar_gen.audit import audit_example
+
+    example = _manual_example(
+        "В примере 1919 сказано: В словаре указано слово «коженный».",
+        metadata={"uses_safety_clauses": False},
+    )
+
+    assert "forbidden_numbered_example_shell" in audit_example(example)
+
+
 def test_missing_required_safety_clauses_fails() -> None:
     example = _manual_example(
         "Студент купил продукты.",

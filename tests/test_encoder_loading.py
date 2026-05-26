@@ -6,6 +6,35 @@ from pathlib import Path
 import pytest
 
 from src.model.encoder import EncoderLoadConfig, PRIMARY_ENCODER, load_encoder, load_tokenizer
+from src.schema.labels import GAP_ID_TO_LABEL, RULE_ID_TO_LABEL, TOKEN_ID_TO_LABEL
+
+
+def _write_label_maps(path: Path) -> None:
+    path.write_text(
+        __import__("json").dumps(
+            {
+                "token_id_to_label": list(TOKEN_ID_TO_LABEL),
+                "gap_id_to_label": list(GAP_ID_TO_LABEL),
+                "rule_id_to_label": list(RULE_ID_TO_LABEL),
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+
+def _write_legacy_rule_prefix_label_maps(path: Path) -> None:
+    path.write_text(
+        __import__("json").dumps(
+            {
+                "token_id_to_label": list(TOKEN_ID_TO_LABEL),
+                "gap_id_to_label": list(GAP_ID_TO_LABEL),
+                "rule_id_to_label": list(RULE_ID_TO_LABEL[:-3]),
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
 
 
 def test_ensure_pytorch_transformers_backend_disables_tf_and_flax(monkeypatch):
@@ -114,6 +143,7 @@ def test_direct_neural_backend_loads_saved_adapter_onto_plain_encoder(monkeypatc
     heads_dir.mkdir()
     adapter_dir.mkdir()
     (heads_dir / "heads.pt").write_bytes(b"fake-heads")
+    _write_label_maps(heads_dir / "labels.json")
     (heads_dir / "architecture.json").write_text(
         '{"architecture": "direct_edit_tagger_v1", "debug_model": false}\n',
         encoding="utf-8",
@@ -167,6 +197,127 @@ def test_direct_neural_backend_loads_saved_adapter_onto_plain_encoder(monkeypatc
     assert backend.model.encoder == "loaded-adapter"
 
 
+def test_direct_neural_backend_loads_selected_checkpoint_inside_heads_latest(monkeypatch, tmp_path):
+    from src.runtime import neural_backend
+
+    heads_dir = tmp_path / "heads" / "latest"
+    checkpoint_dir = heads_dir / "checkpoint-epoch-2"
+    adapter_dir = tmp_path / "adapter"
+    checkpoint_dir.mkdir(parents=True)
+    adapter_dir.mkdir()
+    (checkpoint_dir / "heads.pt").write_bytes(b"fake-heads")
+    _write_label_maps(checkpoint_dir / "labels.json")
+    (heads_dir / "architecture.json").write_text(
+        '{"architecture": "direct_edit_tagger_v1", "debug_model": false, "selected_epoch": 2}\n',
+        encoding="utf-8",
+    )
+    (heads_dir / "training_summary.json").write_text('{"selected_epoch": 2}\n', encoding="utf-8")
+
+    class FakeHeads:
+        def load_state_dict(self, state):
+            self.state = state
+
+    class FakeModule:
+        def __init__(self) -> None:
+            self.encoder = "plain-encoder"
+            self.heads = FakeHeads()
+
+        def eval(self) -> None:
+            pass
+
+    class FakeDirectEditTaggerModel:
+        def __init__(self, config) -> None:
+            self.module = FakeModule()
+
+    loaded_paths = []
+
+    import torch
+
+    monkeypatch.setattr(neural_backend, "load_tokenizer", lambda config: "tokenizer")
+    monkeypatch.setattr(neural_backend, "DirectEditTaggerModel", FakeDirectEditTaggerModel)
+    monkeypatch.setattr(neural_backend, "_load_peft_adapter", lambda encoder, path, **kwargs: encoder)
+    monkeypatch.setattr(torch, "load", lambda path, map_location=None: loaded_paths.append(path) or {"heads": "state"})
+
+    backend = neural_backend.DirectNeuralBackend.from_config(
+        {
+            "model": {"encoder": "fake", "lora": {"enabled": True}},
+            "paths": {
+                "adapter_output_dir": str(adapter_dir),
+                "heads_output_dir": str(heads_dir),
+            },
+        }
+    )
+
+    assert loaded_paths == [checkpoint_dir / "heads.pt"]
+    assert backend.heads_path == str(checkpoint_dir / "heads.pt")
+    assert backend.selected_epoch == 2
+
+
+def test_direct_neural_backend_skips_legacy_rule_head_when_rule_labels_were_extended(monkeypatch, tmp_path):
+    from src.runtime import neural_backend
+
+    heads_dir = tmp_path / "heads"
+    adapter_dir = tmp_path / "adapter"
+    heads_dir.mkdir()
+    adapter_dir.mkdir()
+    (heads_dir / "heads.pt").write_bytes(b"fake-heads")
+    _write_legacy_rule_prefix_label_maps(heads_dir / "labels.json")
+    (heads_dir / "architecture.json").write_text(
+        '{"architecture": "direct_edit_tagger_v1", "debug_model": false}\n',
+        encoding="utf-8",
+    )
+
+    loaded_state = {}
+
+    class FakeHeads:
+        def load_state_dict(self, state, strict=True):
+            loaded_state["state"] = state
+            loaded_state["strict"] = strict
+
+    class FakeModule:
+        def __init__(self) -> None:
+            self.encoder = "plain-encoder"
+            self.heads = FakeHeads()
+
+        def eval(self) -> None:
+            pass
+
+    class FakeDirectEditTaggerModel:
+        def __init__(self, config) -> None:
+            self.module = FakeModule()
+
+    import torch
+
+    monkeypatch.setattr(neural_backend, "load_tokenizer", lambda config: "tokenizer")
+    monkeypatch.setattr(neural_backend, "DirectEditTaggerModel", FakeDirectEditTaggerModel)
+    monkeypatch.setattr(neural_backend, "_load_peft_adapter", lambda encoder, path, **kwargs: encoder)
+    monkeypatch.setattr(
+        torch,
+        "load",
+        lambda path, map_location=None: {
+            "token_edit.weight": object(),
+            "rule.weight": object(),
+            "rule.bias": object(),
+            "gap_punctuation.weight": object(),
+        },
+    )
+
+    backend = neural_backend.DirectNeuralBackend.from_config(
+        {
+            "model": {"encoder": "fake", "lora": {"enabled": True}},
+            "paths": {
+                "adapter_output_dir": str(adapter_dir),
+                "heads_output_dir": str(heads_dir),
+            },
+        }
+    )
+
+    assert backend.rule_head_loaded is False
+    assert loaded_state["strict"] is False
+    assert "rule.weight" not in loaded_state["state"]
+    assert "rule.bias" not in loaded_state["state"]
+
+
 def test_direct_neural_backend_moves_runtime_model_to_cuda_when_available(monkeypatch, tmp_path):
     from src.runtime import neural_backend
 
@@ -175,6 +326,7 @@ def test_direct_neural_backend_moves_runtime_model_to_cuda_when_available(monkey
     heads_dir.mkdir()
     adapter_dir.mkdir()
     (heads_dir / "heads.pt").write_bytes(b"fake-heads")
+    _write_label_maps(heads_dir / "labels.json")
     (heads_dir / "architecture.json").write_text(
         '{"architecture": "direct_edit_tagger_v1", "debug_model": false}\n',
         encoding="utf-8",
