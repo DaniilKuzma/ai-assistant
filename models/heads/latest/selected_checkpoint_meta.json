@@ -7,11 +7,11 @@
   "selected_checkpoint_dir": "models\\checkpoints\\epoch-2",
   "selected_epoch": 2,
   "validation": {
-    "combined_score": 0.9934,
+    "combined_score": 0.954,
     "epoch": 2,
-    "exact_match": 0.9934,
-    "examples": 5000,
-    "loss": 0.0019887436518027106,
+    "exact_match": 0.954,
+    "examples": 500,
+    "loss": 0.015159787028096616,
     "status": "ok"
   }
 }

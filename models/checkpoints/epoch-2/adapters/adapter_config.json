@@ -31,8 +31,8 @@
   "revision": null,
   "target_modules": [
     "value",
-    "key",
     "query",
+    "key",
     "dense"
   ],
   "target_parameters": null,
