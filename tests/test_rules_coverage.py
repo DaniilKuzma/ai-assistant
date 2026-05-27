@@ -10,15 +10,11 @@ import yaml
 RULES_PATH = Path("configs/rules.yaml")
 STRICT_STATUSES = {
     "implemented",
-    "partial",
-    "candidate_only",
-    "model_required",
+    "controlled_implemented",
+    "model_assisted",
+    "dictionary_required",
     "syntax_required",
-    "dictionary_model_required",
-    "ner_required",
     "planned",
-    "metadata_only",
-    "disabled",
 }
 
 
@@ -49,6 +45,9 @@ def _v3_entry(
             "aliases": [],
             "requires": requires or [],
             "notes": "Fixture entry.",
+            "layer": "",
+            "sub_rule_ids": [],
+            "tests": [],
         },
         "dataset": {
             "eligible_now": False,
@@ -145,21 +144,22 @@ def test_iter_coverage_entries_keeps_legacy_flat_fields_for_callers():
 
 
 def test_implemented_rule_ids_exist_in_registry():
+    from src.rules.coverage_matrix import direct_generation_rule_ids
     from src.rules.coverage_matrix import iter_coverage_entries, load_rules_coverage
-    from src.rules.registry import rule_by_id
 
     data = load_rules_coverage(RULES_PATH)
+    registry_ids = direct_generation_rule_ids()
     implemented_entries = [
         (domain, group, entry)
         for domain, group, entry in iter_coverage_entries(data)
-        if entry["status"] == "implemented"
+        if entry["status"] in {"implemented", "controlled_implemented"}
     ]
 
     assert implemented_entries
     for domain, group, entry in implemented_entries:
         assert entry["rules"], f"{domain}.{group} must list at least one rule_id"
         for rule_id in entry["rules"]:
-            assert rule_by_id(rule_id) is not None
+            assert rule_id in registry_ids
 
 
 def test_implemented_groups_have_test_markers():
@@ -169,7 +169,7 @@ def test_implemented_groups_have_test_markers():
     implemented_entries = [
         (domain, group, entry)
         for domain, group, entry in iter_coverage_entries(data)
-        if entry["status"] == "implemented"
+        if entry["status"] in {"implemented", "controlled_implemented"}
     ]
 
     assert implemented_entries
@@ -177,7 +177,7 @@ def test_implemented_groups_have_test_markers():
         assert entry.get("tests"), f"{domain}.{group} must list pytest coverage markers"
 
 
-def test_planned_and_metadata_statuses_do_not_require_executable_rules(tmp_path):
+def test_planned_dependency_statuses_do_not_require_executable_rules(tmp_path):
     from src.rules.coverage_matrix import validate_rules_coverage
 
     path = tmp_path / "rules.yaml"
@@ -185,8 +185,8 @@ def test_planned_and_metadata_statuses_do_not_require_executable_rules(tmp_path)
         path,
         {"future_dictionary_rule": _v3_entry(status="planned", requires=["dictionary"], rule_ids=[])},
         {
+            "future_dictionary_required_rule": _v3_entry(section="punctuation", status="dictionary_required", requires=["dictionary"], rule_ids=[]),
             "future_syntax_rule": _v3_entry(section="punctuation", status="syntax_required", requires=["syntax"], rule_ids=[]),
-            "future_metadata_group": _v3_entry(section="punctuation", status="metadata_only", requires=[], rule_ids=[]),
         },
     )
 
@@ -203,21 +203,38 @@ def test_executable_entries_require_real_rule_ids(tmp_path):
         validate_rules_coverage(path)
 
 
-def test_candidate_only_and_partial_entries_require_real_rule_ids(tmp_path):
+def test_controlled_and_model_assisted_executable_entries_require_real_rule_ids(tmp_path):
     from src.rules.coverage_matrix import validate_rules_coverage
 
     path = tmp_path / "rules.yaml"
     _write_fixture(
         path,
         {
-            "fake_candidate_only_rule": _v3_entry(status="candidate_only", requires=["model"], rule_ids=["not_a_real_candidate_rule_id"], executable=True),
-            "fake_partial_rule": _v3_entry(status="partial", requires=["dictionary"], rule_ids=["not_a_real_partial_rule_id"], executable=True),
+            "fake_controlled_rule": _v3_entry(status="controlled_implemented", requires=["model"], rule_ids=["not_a_real_controlled_rule_id"], executable=True),
+            "fake_model_assisted_rule": _v3_entry(status="model_assisted", requires=["dictionary"], rule_ids=["not_a_real_model_assisted_rule_id"], executable=True),
         },
         {},
     )
 
-    with pytest.raises(ValueError, match="not_a_real_candidate_rule_id"):
+    with pytest.raises(ValueError, match="not_a_real_controlled_rule_id"):
         validate_rules_coverage(path)
+
+
+def test_controlled_layer_entries_declare_layer_subrules_and_tests():
+    from src.rules.coverage_matrix import iter_coverage_entries, load_rules_coverage
+
+    data = load_rules_coverage(RULES_PATH)
+    layer_entries = [
+        entry
+        for _domain, _group, entry in iter_coverage_entries(data)
+        if entry["status"] == "controlled_implemented"
+    ]
+
+    assert layer_entries
+    for entry in layer_entries:
+        assert entry.get("layer"), entry["title"]
+        assert entry.get("sub_rule_ids"), entry["title"]
+        assert entry.get("tests"), entry["title"]
 
 
 def test_unknown_dependency_is_rejected(tmp_path):

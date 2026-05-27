@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from src.grammar_gen import Lexicon, MorphologyEngine
+from src.config.load_config import load_config
+from src.grammar_gen.factory import online_generator_from_config
 from src.grammar_gen.generator import OnlineExampleGenerator, _generation_mix, _mode_and_family_from_mix_key
 from src.grammar_gen.rules.base import GenerationMode
 from src.grammar_gen.rules.registry import RuleRegistry, default_rule_registry, register_layered_rules
@@ -63,6 +65,22 @@ def test_generation_mix_preserves_old_config_aliases() -> None:
     assert mix == {"orthography_contextual": 1.0}
     assert mode is GenerationMode.POSITIVE
     assert family == "orthography_contextual"
+
+
+def test_canonical_morpheme_mix_key_samples_morphemic_rules() -> None:
+    config = load_config("configs/config.yaml")
+    config["generation"]["enabled_rule_groups"] = ["morpheme"]
+    config["generation"]["mix"] = {"morpheme": 1.0}
+    config["generation"]["grammar"]["max_generation_retries"] = 20
+
+    example = online_generator_from_config(config, seed=11).sample_by_index(0)
+
+    assert example.metadata["layer"] == "morpheme"
+    assert example.primary_rule_id.startswith("morpheme_") or example.primary_rule_id in {
+        "suffix_its_ets",
+        "suffix_enn_yan",
+        "n_nn_basic",
+    }
 
 
 def test_default_config_still_generates_with_old_registry() -> None:

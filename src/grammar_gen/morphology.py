@@ -40,7 +40,7 @@ class MorphologyEngine:
                 self._morph = None
         self.uses_pymorphy = self._morph is not None
         resolved_lexicon = lexicon
-        if resolved_lexicon is None and (not use_pymorphy or self._morph is None):
+        if resolved_lexicon is None:
             resolved_lexicon = Lexicon.default()
         self._noun_forms = {
             noun.lemma: dict(noun.forms)

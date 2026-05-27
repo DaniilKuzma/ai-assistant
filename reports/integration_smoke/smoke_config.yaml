@@ -1,35 +1,32 @@
 project:
   name: russian-edit-corrector
-  strict_scope: [spelling, punctuation]
-
+  strict_scope:
+  - spelling
+  - punctuation
 model:
   encoder: ai-forever/ruRoberta-large
-  local_files_only: false
-  max_sequence_length: 128
+  local_files_only: true
+  max_sequence_length: 24
   lora:
-    enabled: true
-    r: 8
-    alpha: 16
-    dropout: 0.05
-
+    enabled: false
 generation:
   mode: online_ast
   seed: 13
-  samples_per_epoch: 50000
+  samples_per_epoch: 4
   frozen_eval:
     val_examples: 500
     test_examples: 500
     regression_examples: 200
     output_dir: data/generated_eval
   enabled_rule_groups:
-    - deterministic_orthography
-    - contextual_orthography
-    - morpheme
-    - orthography_morphemic
-    - compound_spelling
-    - dictionary_typo
-    - punctuation
-    - syntax_punctuation
+  - deterministic_orthography
+  - contextual_orthography
+  - morpheme
+  - orthography_morphemic
+  - compound_spelling
+  - dictionary_typo
+  - punctuation
+  - syntax_punctuation
   mix:
     orthography_contextual: 0.16
     morpheme: 0.12
@@ -38,30 +35,30 @@ generation:
     punctuation: 0.22
     syntax_punctuation: 0.12
     clean_identity: 0.15
-    hard_negative: 0.10
+    hard_negative: 0.1
   sampling_exclude_rule_ids:
-    - ne_verb
-    - takzhe_tak_zhe
-    - tozhe_to_zhe
-    - zato_za_to
-    - hyphen_particles
-    - hyphen_koe
-    - hyphen_po_adverb
+  - ne_verb
+  - takzhe_tak_zhe
+  - tozhe_to_zhe
+  - zato_za_to
+  - hyphen_particles
+  - hyphen_koe
+  - hyphen_po_adverb
   orthography_morphemic:
     enabled: true
     weight: 0.25
     rules:
-      - suffix_its_ets
-      - suffix_enn_yan
-      - n_nn_basic
-      - morpheme_hissing_vowels
-      - morpheme_soft_hard_signs
-      - morpheme_root_vowels
-      - morpheme_prefixes
-      - morpheme_suffixes
-      - morpheme_n_nn
-      - morpheme_consonants
-      - morpheme_endings
+    - suffix_its_ets
+    - suffix_enn_yan
+    - n_nn_basic
+    - morpheme_hissing_vowels
+    - morpheme_soft_hard_signs
+    - morpheme_root_vowels
+    - morpheme_prefixes
+    - morpheme_suffixes
+    - morpheme_n_nn
+    - morpheme_consonants
+    - morpheme_endings
   rule_layers:
     enabled: true
     root: lexicon/layers
@@ -70,59 +67,58 @@ generation:
       compound_spelling:
         enabled: true
         layers:
-          - compound_spelling
+        - compound_spelling
       morpheme:
         enabled: false
         layers: []
       dictionary_typo:
         enabled: true
         layers:
-          - dictionary_typo
+        - dictionary_typo
       syntax_punctuation:
         enabled: true
         layers:
-          - syntax_punctuation
+        - syntax_punctuation
   grammar:
     max_sentence_words: 28
     min_sentence_words: 3
     reject_ungrammatical: true
     max_generation_retries: 20
     use_pymorphy: true
-
 training:
   mode: online
-  batch_size: 32
-  eval_batch_size: 64
-  epochs: 2
-  learning_rate: 5.0e-5
-  weight_decay: 0.01
-  warmup_ratio: 0.06
+  batch_size: 2
+  eval_batch_size: 2
+  epochs: 1
+  learning_rate: 0.001
+  weight_decay: 0.0
+  warmup_ratio: 0.0
   gradient_accumulation_steps: 1
   max_grad_norm: 1.0
-  mixed_precision: true
+  mixed_precision: false
   num_workers: 0
   save_each_epoch: true
-  validate_each_epoch: true
+  validate_each_epoch: false
   token_edit_loss_weight: 1.0
   gap_punctuation_loss_weight: 1.2
   rule_loss_weight: 0.3
-  smoke_steps: 3
-
+  smoke_steps: 2
+  progress_log_interval_seconds: 0
 runtime:
   max_passes: 2
   deterministic_first: true
   neural_token_edits: true
   neural_punctuation: true
   confidence_thresholds:
-    token_edit: 0.70
-    punctuation: 0.70
+    token_edit: 0.7
+    punctuation: 0.7
   correction_memory:
     enabled: false
     storage_path: data/user/correction_memory.jsonl
-
+  allow_debug_model: true
 paths:
   generated_eval_dir: data/generated_eval
-  checkpoint_output_dir: models/checkpoints
-  adapter_output_dir: models/adapters/latest
-  heads_output_dir: models/heads/latest
+  checkpoint_output_dir: reports/integration_smoke/models/checkpoints
+  adapter_output_dir: reports/integration_smoke/models/adapters
+  heads_output_dir: reports/integration_smoke/models/heads
   lexicon_dir: lexicon

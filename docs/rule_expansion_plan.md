@@ -1,68 +1,58 @@
-# План расширения правил Орфограммки
+# Rule Expansion Plan
 
-Источник классификации: https://orfogrammka.ru/орфография/ и https://orfogrammka.ru/пунктуация/.
+This project expands only Russian spelling and punctuation correction. The
+active architecture is AST-first online generation plus direct edit tagging;
+the old candidate-aware dataset pipeline is not part of the plan.
 
-`configs/rules.yaml` теперь используется как coverage matrix: строка может быть полноценным исполняемым правилом, частичным candidate layer или только честной taxonomy-заглушкой. Статусы `planned`, `model_required`, `syntax_required`, `dictionary_model_required` и `ner_required` не объявляют RuleSpec реализованным.
+## Implemented Controlled Layers
 
-## Уже реализовано
+- `compound_spelling`: controlled split, merge, hyphen, `пол-/полу-`, service
+  word, preposition, pronoun/particle, adverb, noun/adjective, and `не`
+  spelling examples. Runtime application is model-assisted and lexicon-gated;
+  generic span fixes use `SPAN_REPLACE_BY_LEXICON`.
+- `morpheme`: compiler-backed orthographic examples for hissing vowels,
+  hard/soft signs, root vowels, prefixes, suffixes, н/нн, consonants, and
+  endings. Runtime single-token replacements use `DICT_REPLACE` through the
+  orthographic lexicon.
+- `dictionary_typo`: trusted dictionary words, borrowed words, domain terms,
+  curated common misspellings, bounded character noise, keyboard-neighbor noise,
+  and split/glue space noise. It is not a free edit-distance typo corrector.
+- `syntax_punctuation`: controlled punctuation gap examples for final marks,
+  dash syntax, homogeneous members, detached members, comparative turns,
+  introductory/address/interjection cases, complex sentences, BSP, fixed
+  expression guards, and extra punctuation deletion through
+  `DELETE_PUNCTUATION`.
 
-- Орфография: базовые буквенные паттерны после шипящих и ц (`letter_basic_hissing_vowel_patterns`): жи/ши, ча/ща, чу/щу, ци/цы, о/е после шипящих, словарно проверяемые candidates.
-- Орфография: приставки на з-/с- (`consonants_prefix_z_s`): bounded dictionary candidates для `сделать`-подобных форм и приставок без-/бес-, раз-/рас-, из-/ис-, воз-/вос-, вз-/вс-.
-- Орфография: прописная буква в начале текста (`capitalization_sentence_start`): легкий fallback только для первого токена.
-- Пунктуация: финальная точка (`sentence_final_default_dot`): candidate для точки, если в конце нет `.`, `?`, `!` или `...`.
-- Орфография: controlled `compound_spelling_layer` для слитного, дефисного и раздельного написания (`compound_service_words`, `compound_prepositions`, `compound_pronouns_particles`, `compound_adverbs`, `compound_nouns_adjectives`, `compound_ne_spellings`, `compound_pol_polu`). Полная таблица покрытия: `docs/compound_spelling_coverage.md`.
-- Orthography: controlled `dictionary_typo` layer for trusted dictionary words,
-  borrowed words, domain terms, common misspellings, bounded typo noise, Russian
-  keyboard-neighbor noise, and split/glue space noise. Runtime remains
-  model-assisted: no deterministic typo autocorrect, no free edit-distance
-  guessing, and no correction unless the predicted direct label resolves through
-  an unambiguous trusted lexicon entry. Coverage details:
-  `docs/dictionary_typo_coverage.md`.
+`configs/rules.yaml` is the coverage matrix. A row is `implemented` or
+`controlled_implemented` only when the rule is executable by online generation
+and has tests. Broader rows that still require a model, dictionary, or syntax
+analyzer are marked `model_assisted`, `dictionary_required`,
+`syntax_required`, or `planned`.
 
-## Частично реализовано или candidate-only
+## Current Non-Goals
 
-- `dictionary_model_required` spelling layer: есть bounded lexicon-backed candidates для fuzzy/edit-distance, двойных согласных, клавиатурной соседней клавиши, перестановки соседних букв, пропуска и лишней буквы; все требуют model scorer и validator.
-- `ё/е`: policy disabled by default. `yo_e_candidate` генерируется только при явном `dictionary.yo_e.enabled: true`, поддержке обеих форм в lexicon/provider и дальнейшем model scoring.
-- `hard_soft_signs`: есть `ъ` после приставки и замена ошибочного `ь` на `ъ`; остальные функции `ь` требуют морфологии, словаря или модели.
-- `typical_dictionary_words`: есть ограниченный exact whitelist частых ошибок; это не полноценная словарная орфография.
-- `ne_ni_particles`: есть candidates для слитного `не` с глаголами; выбор требует модели, `ни` не покрыто.
-- `solid_hyphen_separate_pronouns_adverbs_particles`: есть candidates для `-то/-либо/-нибудь`, `кое-/кой-`, `по-...` и legacy whitelist.
-- `solid_hyphen_separate_service_words`: есть контекстные пары вроде `также/так же`, `тоже/то же`, `чтобы/что бы`; применять только через scorer.
-- `solid_hyphen_separate_general`: есть bounded candidates для `пол-/полу-`; остальные общие слитные/дефисные случаи остаются roadmap.
-- `punctuation_combinations`: есть удаление очевидных дублей и простых лишних знаков; сложные сочетания остаются отдельной задачей.
+- Casing and capitalization are not an integrated correction layer.
+- Abbreviation handling is not an integrated correction layer.
+- Quotes, brackets, dialogue, direct speech, citations, and paired
+  quote/bracket punctuation are planned outside the current four layers.
+- No seq2seq model, free-form rewrite correction, materialized train CSV, or
+  candidate-aware training path should be added.
 
-## Требуемые зависимости
+## Next Expansion Order
 
-- Syntax: падежные окончания, Н/НН, именные группы со слитным/дефисным/раздельным написанием, `не` с причастиями и противопоставлениями, тире между членами предложения, лишняя запятая в управлении, однородные члены, обособления, сравнительные обороты, ССП/СПП/БСП.
-- Dictionary: корневые, приставочные и суффиксальные гласные, проверяемые/непроверяемые согласные, двойные согласные, аббревиатуры, заимствования, словарные слова, общий edit-distance typo layer, словарь сокращений.
-- NER: личные имена, география, организации, документы, события, награды, инициалы, часть обращений и приложений.
-- Model: `-тся/-ться`, контекстные пары, омонимия вводных слов, прямая речь, кавычки/скобки, сложная пунктуация и нейропунктуация.
+1. Add more controlled layer cases only when the direct labels and runtime
+   realizer already support the operation.
+2. Extend the runtime lexicon for `SPAN_REPLACE_BY_LEXICON` or `DICT_REPLACE`
+   before enabling new span replacements.
+3. Add syntax-backed rules only with explicit hard negatives and tests for
+   false-positive boundaries.
+4. Keep frozen eval JSONL under `data/generated_eval`; do not create train,
+   validation, or test CSV datasets.
 
-## Рекомендуемый порядок
+## Required Test Evidence
 
-1. Укреплять coverage contract: валидный YAML, обязательные `orfogrammka_id` и `parent_group`, реальные registry ids только для implemented/partial/candidate-only групп.
-2. Расширять dictionary generator: частотный лексикон, edit-distance candidates, словари сокращений, заимствований и словарных слов.
-3. Закрывать безопасные deterministic/candidate-only орфограммы только при наличии общего правила, словарной проверки и synthetic corruption.
-4. Подключать syntax и NER для правил, где без структуры предложения высокий риск ложных исправлений.
-5. Подключать model scoring и validator для контекстных пар, сложной пунктуации, прямой речи и нейропунктуации.
-
-## Тесты по группам
-
-- Implemented: registry test, candidate generation test, test markers в `configs/rules.yaml`, synthetic corruption test там, где правило умеет `generate_corruptions`, negative tests против overcorrection.
-- Partial/candidate-only: проверять, что listed `rule_id` существует в `RuleRegistry`, candidates имеют `rule_id`, `mode`, `requires_model/requires_scoring` и не применяются plain corrector без trusted scorer.
-- Metadata-only: `planned`, `model_required`, `syntax_required`, `dictionary_model_required`, `ner_required` могут иметь пустой `rules` или report-only ids, но не считаются implemented.
-- Syntax-required: unit tests с замоканным `src.nlp.syntax.parse_syntax`, затем integration tests с Natasha, если модель доступна локально.
-- Dictionary-model-required: tests на словарные candidates, лимиты, частотную фильтрацию, protected spans и отсутствие частных пар как основного механизма.
-- NER-required: tests на mocked NER spans и негативные примеры для обычных строчных слов.
-- Model-required: scorer/validator tests на принятие trusted candidates и отклонение низкой уверенности.
-## Matrix Eval Findings
-
-- Full matrix audit artifacts are under `reports/matrix_eval/`.
-- Dedicated eval corpus is under `data/processed/matrix_eval/`.
-- Use `reports/matrix_eval/next_dataset_activation_plan.md` for the next dataset cycle.
-## Matrix Eval Matrix Findings
-
-- Matrix artifacts are under `reports/matrix_eval/`.
-- Matrix eval corpus is under `data/processed/matrix_eval/`.
-- Use `reports/matrix_eval/activation_activation_plan.md` and `reports/matrix_eval/rule_expansion_backlog_core.md` for `training_dataset` planning.
-- Planned and metadata-only matrix entries remain backlog items until executable support exists.
+- Layer loader tests for rule ids, modes, sub-rule ids, and invalid specs.
+- Generator audit tests for expected edit counts and source/target contracts.
+- Runtime realizer tests for each direct label used by the rule.
+- Coverage matrix tests proving executable rule ids exist in the direct online
+  generation registry and that implemented rows list pytest coverage.

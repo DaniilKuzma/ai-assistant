@@ -1,0 +1,11 @@
+{
+  "adapter_epoch": 1,
+  "adapter_saved": false,
+  "epoch": 1,
+  "heads_epoch": 1,
+  "validation": {
+    "epoch": 1,
+    "reason": "validate_each_epoch=false",
+    "status": "skipped"
+  }
+}

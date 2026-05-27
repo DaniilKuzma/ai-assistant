@@ -245,6 +245,26 @@ def test_inanimate_masculine_object_adjective_uses_nominative_like_accusative() 
     assert realizer.render_sentence(ast) == "Документ включал чистый факт."
 
 
+def test_inanimate_masculine_object_noun_uses_curated_accusative_with_pymorphy() -> None:
+    lexicon = Lexicon.default()
+    realizer = Realizer(lexicon, MorphologyEngine())
+    ast = SimpleSentence(
+        Clause(
+            subject=_np(lexicon, "больница"),
+            predicate=VerbPhrase(
+                verb_lemma="отменить",
+                object_np=replace(_np(lexicon, "вебинар"), case="accs", adjective_lemmas=("школьный",)),
+                frame_id="cancel_event",
+            ),
+        )
+    )
+
+    rendered = realizer.render_sentence(ast)
+
+    assert rendered == "Больница отменила школьный вебинар."
+    assert not validate_ast_sentence(ast, rendered)
+
+
 def test_present_plural_predicate_agrees_with_plural_subject() -> None:
     lexicon = Lexicon.default()
     realizer = Realizer(lexicon, MorphologyEngine(use_pymorphy=False))

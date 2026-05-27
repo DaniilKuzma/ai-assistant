@@ -1,0 +1,14 @@
+{
+  "adapter_epoch": 1,
+  "adapter_saved": false,
+  "artifact_consistency_check": true,
+  "epoch": 1,
+  "heads_epoch": 1,
+  "selected_checkpoint_dir": "reports\\integration_smoke\\models\\checkpoints\\epoch-1",
+  "selected_epoch": 1,
+  "validation": {
+    "epoch": 1,
+    "reason": "validate_each_epoch=false",
+    "status": "skipped"
+  }
+}

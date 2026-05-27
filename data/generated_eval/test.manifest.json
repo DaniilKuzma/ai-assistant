@@ -1,51 +1,363 @@
 {
   "audit_failure_reasons": {},
   "audit_failures_count": 0,
+  "average_token_count": 5.946,
   "base_seed": 13,
-  "candidate_scan_count": 10127,
-  "count": 5000,
-  "dedupe_indexed_existing_split_examples_count": 5000,
+  "candidate_scan_count": 1531,
+  "count": 500,
+  "dedupe_indexed_existing_split_examples_count": 500,
   "dedupe_indexed_existing_split_paths": [
     "data\\generated_eval\\val.jsonl"
   ],
   "dedupe_indexed_train_examples_count": 100000,
-  "dedupe_skipped_count": 5127,
+  "dedupe_skipped_count": 1031,
   "dedupe_skipped_reasons": {
-    "source_text": 5024,
-    "target_text": 5127
+    "source_text": 1014,
+    "target_text": 1023
   },
+  "duplicate_pair_rate": 0.0,
+  "duplicate_rate_by_rule_id": {
+    "comma_adversative": {
+      "count": 52,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 52
+    },
+    "comma_homogeneous": {
+      "count": 52,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 52
+    },
+    "comma_introductory": {
+      "count": 69,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 69
+    },
+    "comma_subordinate": {
+      "count": 50,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 50
+    },
+    "dash_subject_predicate": {
+      "count": 5,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 5
+    },
+    "final_punctuation": {
+      "count": 51,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 51
+    },
+    "morpheme_n_nn": {
+      "count": 4,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 4
+    },
+    "n_nn_basic": {
+      "count": 8,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 8
+    },
+    "punct_complex_sentences": {
+      "count": 2,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 2
+    },
+    "punct_final_marks": {
+      "count": 15,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 15
+    },
+    "punct_homogeneous_extended": {
+      "count": 16,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 16
+    },
+    "suffix_enn_yan": {
+      "count": 14,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 14
+    },
+    "suffix_its_ets": {
+      "count": 13,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 13
+    },
+    "tsya_ttsya": {
+      "count": 149,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 149
+    }
+  },
+  "duplicate_rate_by_sub_rule_id": {
+    "adversative_document_correction": {
+      "count": 17,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 17
+    },
+    "adversative_education_context": {
+      "count": 18,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 18
+    },
+    "adversative_technical_interface": {
+      "count": 17,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 17
+    },
+    "clean_final_statement": {
+      "count": 2,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 2
+    },
+    "clean_homogeneous_series": {
+      "count": 6,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 6
+    },
+    "clean_ssp_i": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
+    },
+    "common_secondary_member_guard": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
+    },
+    "dash_nominal_verbal_predicate_trap": {
+      "count": 5,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 5
+    },
+    "dependent_word": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
+    },
+    "final_dot": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
+    },
+    "final_ellipsis": {
+      "count": 5,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 5
+    },
+    "final_exclamation": {
+      "count": 5,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 5
+    },
+    "final_question": {
+      "count": 2,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 2
+    },
+    "homogeneous_objects_document_work": {
+      "count": 23,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 23
+    },
+    "homogeneous_objects_education_work": {
+      "count": 13,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 13
+    },
+    "homogeneous_objects_technical_work": {
+      "count": 16,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 16
+    },
+    "introductory_document_review": {
+      "count": 35,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 35
+    },
+    "introductory_safe_clause": {
+      "count": 34,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 34
+    },
+    "n_nn_basic": {
+      "count": 6,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 6
+    },
+    "n_nn_hard_negative": {
+      "count": 3,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 3
+    },
+    "no_conjunction_series": {
+      "count": 5,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 5
+    },
+    "prefixed_participle": {
+      "count": 2,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 2
+    },
+    "repeated_conjunction": {
+      "count": 3,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 3
+    },
+    "repeated_conjunction_technical": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
+    },
+    "simple_final_document_context": {
+      "count": 15,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 15
+    },
+    "simple_final_education_context": {
+      "count": 3,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 3
+    },
+    "simple_final_intransitive_context": {
+      "count": 6,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 6
+    },
+    "simple_final_statement": {
+      "count": 11,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 11
+    },
+    "simple_final_technical_context": {
+      "count": 11,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 11
+    },
+    "simple_final_user_interface_context": {
+      "count": 5,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 5
+    },
+    "single_i_guard": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
+    },
+    "subordinate_that_check_showed_content": {
+      "count": 15,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 15
+    },
+    "subordinate_that_report_content": {
+      "count": 14,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 14
+    },
+    "subordinate_that_technical_observation": {
+      "count": 21,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 21
+    },
+    "suffix_enn_yan": {
+      "count": 14,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 14
+    },
+    "suffix_its_ets": {
+      "count": 13,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 13
+    },
+    "tsya_ttsya_controlled_document": {
+      "count": 69,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 69
+    },
+    "tsya_ttsya_controlled_person": {
+      "count": 80,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 80
+    }
+  },
+  "duplicate_source_rate": 0.0,
+  "duplicate_target_rate": 0.0,
   "first_failed_examples": [],
+  "gap_edit_count_distribution": {
+    "0": 238,
+    "1": 226,
+    "2": 36
+  },
   "mode_distribution": {
-    "clean_identity": 544,
-    "hard_negative": 127,
-    "positive": 4329
+    "clean_identity": 42,
+    "hard_negative": 18,
+    "positive": 440
   },
   "output_path": "data\\generated_eval\\test.jsonl",
   "rule_distribution": {
-    "comma_adversative": 629,
-    "comma_homogeneous": 578,
-    "comma_introductory": 459,
-    "comma_subordinate": 549,
-    "dash_subject_predicate": 20,
-    "final_punctuation": 501,
-    "hyphen_koe": 53,
-    "hyphen_particles": 77,
-    "hyphen_po_adverb": 47,
-    "n_nn_basic": 274,
-    "ne_verb": 211,
-    "suffix_enn_yan": 398,
-    "suffix_its_ets": 260,
-    "takzhe_tak_zhe": 196,
-    "tozhe_to_zhe": 237,
-    "tsya_ttsya": 96,
-    "zato_za_to": 415
+    "comma_adversative": 52,
+    "comma_homogeneous": 52,
+    "comma_introductory": 69,
+    "comma_subordinate": 50,
+    "dash_subject_predicate": 5,
+    "final_punctuation": 51,
+    "morpheme_n_nn": 4,
+    "n_nn_basic": 8,
+    "punct_complex_sentences": 2,
+    "punct_final_marks": 15,
+    "punct_homogeneous_extended": 16,
+    "suffix_enn_yan": 14,
+    "suffix_its_ets": 13,
+    "tsya_ttsya": 149
   },
   "seed": 20000013,
   "seed_offset": 20000000,
   "split": "test",
   "split_seed_overlap_with_train": false,
-  "split_seed_range_end": 20010139,
+  "split_seed_range_end": 20001543,
   "split_seed_range_start": 20000013,
+  "template_distribution": {
+    "adversative_document_correction": 17,
+    "adversative_education_context": 18,
+    "adversative_technical_interface": 17,
+    "clean_final_statement": 2,
+    "clean_homogeneous_series": 6,
+    "clean_ssp_i": 1,
+    "common_secondary_member_guard": 1,
+    "dash_nominal_verbal_predicate_trap": 5,
+    "final_dot": 1,
+    "final_ellipsis": 5,
+    "final_exclamation": 5,
+    "final_question": 2,
+    "homogeneous_objects_document_work": 23,
+    "homogeneous_objects_education_work": 13,
+    "homogeneous_objects_technical_work": 16,
+    "introductory_document_review": 35,
+    "introductory_safe_clause": 34,
+    "no_conjunction_series": 5,
+    "orthography_adjective_safe_context": 26,
+    "orthography_word_quote": 13,
+    "repeated_conjunction": 3,
+    "repeated_conjunction_technical": 1,
+    "simple_final_document_context": 15,
+    "simple_final_education_context": 3,
+    "simple_final_intransitive_context": 6,
+    "simple_final_statement": 11,
+    "simple_final_technical_context": 11,
+    "simple_final_user_interface_context": 5,
+    "single_i_guard": 1,
+    "subordinate_that_check_showed_content": 15,
+    "subordinate_that_report_content": 14,
+    "subordinate_that_technical_observation": 21,
+    "tsya_ttsya_controlled_document": 69,
+    "tsya_ttsya_controlled_person": 80
+  },
+  "token_edit_count_distribution": {
+    "0": 322,
+    "1": 178
+  },
+  "top_duplicate_pairs": [],
   "train_seed_range_end": 100013,
-  "train_seed_range_start": 13
+  "train_seed_range_start": 13,
+  "unique_source_target_pairs": 500
 }

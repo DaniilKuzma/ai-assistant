@@ -1,11 +1,19 @@
 # Rule Authoring Guide
 
-## Create A RuleProgram
+## Choose The Rule Surface
 
-Add a focused `RuleProgram` under `src/grammar_gen/rules/orthography/` or
-`src/grammar_gen/rules/punctuation/`. Keep the rule responsible for one
-orthography or punctuation phenomenon and register it in the appropriate
-registry module.
+Prefer the smallest controlled surface that fits the rule:
+
+- Add a YAML `RuleLayer` spec under `lexicon/layers/compound_spelling/`,
+  `lexicon/layers/dictionary_typo/`, or `lexicon/layers/syntax_punctuation/`
+  when the rule can be expressed as direct token span or punctuation-gap cases.
+- Add morpheme coverage through `src/orthography_gen/` specs and lexeme cards
+  when the rule depends on a controlled orthographic site in a word form.
+- Add a handwritten `RuleProgram` under `src/grammar_gen/rules/orthography/` or
+  `src/grammar_gen/rules/punctuation/` only when the example needs generated AST
+  context that the layer loaders cannot represent.
+
+Keep each rule responsible for one Russian spelling or punctuation phenomenon.
 
 ## Modes
 
@@ -23,6 +31,15 @@ Populate token edit labels and punctuation gap labels directly. Use existing
 labels from `src/schema/labels.py`; add a new label only when the edit cannot be
 represented by the current direct tag set and the runtime realizer can support
 it safely.
+
+Use `SPAN_REPLACE_BY_LEXICON` for bounded token spans whose replacement must be
+resolved through `OrthographicCorrectionLexicon`. It is appropriate for
+controlled split/merge/hyphen and dictionary typo spans, but it must have an
+unambiguous lexicon entry at runtime.
+
+Use `DELETE_PUNCTUATION` only as a gap label when the source text already
+contains the punctuation mark to remove. It must not encode broad punctuation
+rewriting.
 
 ## expected_edit_count
 
@@ -54,6 +71,18 @@ Register the rule in the grammar-generation registry and ensure
 `configs/config.yaml:generation.enabled_rule_groups` can include it through an
 existing or explicit group. Keep `configs/rules.yaml` honest: mark entries as
 implemented only when tests and generator coverage exist.
+
+For layer rules:
+
+- load specs through the existing `src/rule_layers` loader for that family;
+- ensure every executable `rule_id` is present in `src/schema/labels.py`;
+- include positive plus hard-negative or clean-identity cases;
+- add `layer`, `rule_ids`, `sub_rule_ids`, `requires`, and `tests` in
+  `configs/rules.yaml`.
+
+Do not mark casing, abbreviations, quotation, dialogue/direct speech, or broad
+syntax-only taxonomy entries as implemented unless a bounded generator and tests
+exist for them.
 
 ## Audit Command
 

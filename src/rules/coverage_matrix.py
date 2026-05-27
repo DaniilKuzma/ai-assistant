@@ -12,15 +12,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ALLOWED_STATUSES = frozenset(
     {
         "implemented",
-        "partial",
-        "candidate_only",
-        "model_required",
+        "controlled_implemented",
+        "model_assisted",
+        "dictionary_required",
         "syntax_required",
-        "dictionary_model_required",
-        "ner_required",
         "planned",
-        "metadata_only",
-        "disabled",
     }
 )
 ALLOWED_DEPENDENCIES = frozenset(
@@ -34,9 +30,9 @@ ALLOWED_DEPENDENCIES = frozenset(
         "frequency_lexicon",
     }
 )
-EXECUTABLE_STATUSES = frozenset({"implemented", "partial", "candidate_only", "model_required"})
-TESTED_STATUSES = frozenset({"implemented"})
-METADATA_ONLY_STATUSES = frozenset({"planned", "metadata_only", "syntax_required", "dictionary_model_required", "ner_required", "disabled"})
+EXECUTABLE_STATUSES = frozenset({"implemented", "controlled_implemented"})
+TESTED_STATUSES = frozenset({"implemented", "controlled_implemented"})
+METADATA_ONLY_STATUSES = frozenset({"planned", "model_assisted", "dictionary_required", "syntax_required"})
 REQUIRED_COVERAGE_TAGS = frozenset(
     {
         "orthography",
@@ -174,6 +170,8 @@ def normalize_coverage_entry(domain: str, group: str, entry: dict[str, Any]) -> 
         "tags": [str(item) for item in (entry.get("tags") or implementation.get("tags") or [])],
         "tests": [str(item) for item in (entry.get("tests") or implementation.get("tests") or [])],
         "aliases": [str(item) for item in implementation.get("aliases", []) or []],
+        "layer": str(implementation.get("layer") or entry.get("layer") or ""),
+        "sub_rule_ids": [str(item) for item in implementation.get("sub_rule_ids", []) or []],
         "source_section": str(entry.get("source_section") or domain),
         "entry_type": str(entry.get("entry_type") or ""),
         "parent_path": [str(item) for item in entry.get("parent_path", []) or []],
@@ -208,15 +206,13 @@ def validate_rules_coverage(
         _validate_v3_schema(data)
 
     if registry_rule_ids is None:
-        from src.rules.registry import all_rules
-
-        registry_rule_ids = {rule.spec.id for rule in all_rules()}
+        registry_rule_ids = direct_generation_rule_ids()
 
     for domain, group, entry in iter_coverage_entries(data):
         _validate_group(domain, group, entry)
         status = entry["status"]
         rules = entry["rules"]
-        executable = bool(entry.get("executable")) or status in {"implemented", "partial", "candidate_only"}
+        executable = bool(entry.get("executable")) or status in EXECUTABLE_STATUSES
         if status == "implemented" and not rules:
             raise ValueError(f"{domain}.{group} is implemented but has no rule_id")
         if executable and not rules:
@@ -228,6 +224,23 @@ def validate_rules_coverage(
             if executable and rule_id not in registry_rule_ids:
                 raise ValueError(f"{domain}.{group} references unknown rule_id: {rule_id}")
     return data
+
+
+def direct_generation_rule_ids(config_path: str | Path | None = None) -> set[str]:
+    """Return rule ids that the current direct online generator can emit."""
+
+    from src.config.load_config import load_config
+    from src.grammar_gen.factory import online_generator_from_config
+    from src.grammar_gen.rules.registry import default_rule_registry
+
+    rule_ids = {rule.info.rule_id for rule in default_rule_registry().all_rules()}
+    try:
+        config = load_config(config_path or PROJECT_ROOT / "configs" / "config.yaml")
+        generator = online_generator_from_config(config, seed=int(config.get("generation", {}).get("seed", 0)))
+    except Exception:
+        return rule_ids
+    rule_ids.update(rule.info.rule_id for rule in generator.registry.all_rules())
+    return rule_ids
 
 
 def validate_project_rules_coverage(path: str | Path = RULES_COVERAGE_PATH) -> dict[str, Any]:
@@ -307,6 +320,12 @@ def _validate_group(domain: str, group: str, entry: dict[str, Any]) -> None:
         not isinstance(entry["aliases"], list) or not all(isinstance(item, str) and item for item in entry["aliases"])
     ):
         raise ValueError(f"{domain}.{group}.aliases must be a list of rule_id strings")
+    if "layer" in entry and not isinstance(entry["layer"], str):
+        raise ValueError(f"{domain}.{group}.layer must be a string")
+    if "sub_rule_ids" in entry and (
+        not isinstance(entry["sub_rule_ids"], list) or not all(isinstance(item, str) and item for item in entry["sub_rule_ids"])
+    ):
+        raise ValueError(f"{domain}.{group}.sub_rule_ids must be a list of strings")
 
 
 def _validate_required_tags(data: dict[str, Any]) -> None:

@@ -303,7 +303,7 @@ def _generation_mix(config: Mapping[str, Any]) -> dict[str, float]:
     if not isinstance(raw_mix, Mapping) or not raw_mix:
         return {
             "orthography_contextual": 0.35,
-            "orthography_morphemic": 0.25,
+            "morpheme": 0.25,
             "punctuation": 0.40,
             "clean_identity": 0.15,
             "hard_negative": 0.10,
@@ -367,7 +367,7 @@ def _mode_and_family_from_mix_key(key: str) -> tuple[GenerationMode, str | None]
     if normalized == "compound_spelling":
         return GenerationMode.POSITIVE, "compound_spelling"
     if normalized == "morpheme":
-        return GenerationMode.POSITIVE, "morpheme"
+        return GenerationMode.POSITIVE, "orthography_morphemic"
     if normalized == "dictionary_typo":
         return GenerationMode.POSITIVE, "dictionary_typo"
     if normalized == "syntax_punctuation":
