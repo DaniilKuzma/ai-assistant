@@ -97,6 +97,45 @@ def test_tsya_ttsya_realizer_handles_controlled_vowel_change_to_finite() -> None
     ]
 
 
+def test_tsya_ttsya_realizer_uses_controlled_construction_pairs() -> None:
+    cases = (
+        (
+            "Цифровой архив должен сравнивается после загрузки.",
+            ["KEEP", "KEEP", "KEEP", "FIX_TSYA_TO_TTSYA", "KEEP", "KEEP"],
+            "Цифровой архив должен сравниваться после загрузки.",
+        ),
+        (
+            "Скрипт должен открывается по регламенту.",
+            ["KEEP", "KEEP", "FIX_TSYA_TO_TTSYA", "KEEP", "KEEP"],
+            "Скрипт должен открываться по регламенту.",
+        ),
+        (
+            "Инженер интересоваться на семинаре.",
+            ["KEEP", "FIX_TTSYA_TO_TSYA", "KEEP", "KEEP"],
+            "Инженер интересуется на семинаре.",
+        ),
+        (
+            "Писатель планировал тренируется в аудитории.",
+            ["KEEP", "KEEP", "FIX_TSYA_TO_TTSYA", "KEEP", "KEEP"],
+            "Писатель планировал тренироваться в аудитории.",
+        ),
+    )
+
+    for text, labels, expected in cases:
+        tokens = tokenize_runtime_words(text)
+
+        corrected, edits = apply_token_edit_labels(
+            text,
+            tokens,
+            labels,
+            [1.0] * len(tokens),
+            threshold=0.7,
+        )
+
+        assert corrected == expected
+        assert len(edits) == 1
+
+
 def test_gap_comma_insertion_preserves_spaces() -> None:
     text = "Он знал что делать"
     tokens = tokenize_runtime_words(text)

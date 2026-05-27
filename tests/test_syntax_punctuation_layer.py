@@ -179,7 +179,8 @@ def test_final_marks_allow_missing_source_final_mark() -> None:
     ]
     labels = {example.gap_labels[-1] for example in examples}
 
-    assert {"DOT", "QUESTION", "EXCLAMATION", "ELLIPSIS"} <= labels
+    assert labels == {"DOT"}
+    assert all(example.target_text.endswith(".") for example in examples)
     assert all(example.source_text[-1] not in ".!?\u2026" for example in examples)
     assert all(validate_generated_pair(example) == [] for example in examples)
 

@@ -16,6 +16,7 @@ from src.config.load_config import load_config
 from src.grammar_gen.audit import audit_batch
 from src.grammar_gen.diversity import diversity_report
 from src.grammar_gen.factory import online_generator_from_config
+from src.grammar_gen.rules.base import GenerationMode
 from src.schema import GeneratedExample
 from src.schema.serialization import read_jsonl_examples, write_jsonl_examples
 
@@ -79,15 +80,39 @@ def build_frozen_eval(
         )
     effective_seed = base_seed + seed_offset
     split_seed_range_start = effective_seed
-    deduper, dedupe_index = _build_text_deduper(config, base_seed=base_seed, split=split, output_path=output_path)
-
     generator = online_generator_from_config(config, seed=effective_seed)
-    examples, scan_count, skipped_count, skipped_reasons = _sample_unique_examples(
+    coverage_deduper, coverage_index = _build_text_deduper(
+        config,
+        base_seed=base_seed,
+        split=split,
+        output_path=output_path,
+        include_train=False,
+    )
+    coverage_examples, coverage_required, coverage_missing = _sample_coverage_examples(
         generator,
         count=count,
+        deduper=coverage_deduper,
+        seed_start=effective_seed + 500_000,
+    )
+
+    deduper, dedupe_index = _build_text_deduper(
+        config,
+        base_seed=base_seed,
+        split=split,
+        output_path=output_path,
+    )
+    for example in coverage_examples:
+        deduper.add(example)
+    remaining = count - len(coverage_examples)
+    examples, scan_count, skipped_count, skipped_reasons = _sample_unique_examples(
+        generator,
+        count=remaining,
         deduper=deduper,
     )
-    split_seed_range_end = effective_seed + scan_count - 1 if scan_count > 0 else effective_seed - 1
+    examples = [*coverage_examples, *examples]
+    fill_seed_end = effective_seed + scan_count - 1 if scan_count > 0 else effective_seed - 1
+    coverage_seed_end = effective_seed + 500_000 + len(coverage_examples) - 1 if coverage_examples else effective_seed - 1
+    split_seed_range_end = max(fill_seed_end, coverage_seed_end)
     overlaps_train = _ranges_overlap(split_seed_range_start, split_seed_range_end, train_start, train_end)
     audit = audit_batch(examples)
     diversity = diversity_report(examples)
@@ -110,6 +135,10 @@ def build_frozen_eval(
         "dedupe_indexed_train_examples_count": dedupe_index["train_examples_count"],
         "dedupe_indexed_existing_split_examples_count": dedupe_index["existing_split_examples_count"],
         "dedupe_indexed_existing_split_paths": dedupe_index["existing_split_paths"],
+        "coverage_required_rule_ids": coverage_required,
+        "coverage_missing_rule_ids": coverage_missing,
+        "coverage_examples_count": len(coverage_examples),
+        "coverage_train_text_dedupe_bypassed": bool(coverage_examples and coverage_index["train_examples_count"] == 0),
         "rule_distribution": audit["rule_distribution"],
         "mode_distribution": audit["mode_distribution"],
         "duplicate_source_rate": diversity["duplicate_source_rate"],
@@ -158,9 +187,10 @@ def _build_text_deduper(
     base_seed: int,
     split: str,
     output_path: Path,
+    include_train: bool = True,
 ) -> tuple[_TextDeduper, dict[str, Any]]:
     deduper = _TextDeduper()
-    train_examples_count = _train_example_count(config)
+    train_examples_count = _train_example_count(config) if include_train else 0
     if train_examples_count > 0:
         train_generator = online_generator_from_config(config, seed=base_seed)
         for index in range(train_examples_count):
@@ -179,6 +209,96 @@ def _build_text_deduper(
         "existing_split_examples_count": existing_split_examples_count,
         "existing_split_paths": [str(path) for path in existing_split_paths],
     }
+
+
+def _sample_coverage_examples(
+    generator: Any,
+    *,
+    count: int,
+    deduper: _TextDeduper,
+    seed_start: int,
+) -> tuple[list[GeneratedExample], list[str], list[str]]:
+    required = _coverage_rule_ids(generator)
+    if count <= 0 or not required:
+        return [], list(required), list(required)
+
+    quota = _coverage_examples_per_rule(getattr(generator, "config", None), required_count=len(required), count=count)
+    examples: list[GeneratedExample] = []
+    missing: list[str] = []
+    coverage_index = 0
+    for rule_id in required:
+        accepted_for_rule = 0
+        while accepted_for_rule < quota and len(examples) < count:
+            accepted = _sample_unique_rule_example(generator, rule_id, deduper)
+            if accepted is None:
+                break
+            accepted = _with_coverage_metadata(
+                accepted,
+                generation_index=coverage_index,
+                generation_seed=seed_start + coverage_index,
+            )
+            deduper.add(accepted)
+            examples.append(accepted)
+            accepted_for_rule += 1
+            coverage_index += 1
+        if accepted_for_rule == 0:
+            missing.append(rule_id)
+    return examples, list(required), missing
+
+
+def _coverage_rule_ids(generator: Any) -> tuple[str, ...]:
+    registry = getattr(generator, "registry", None)
+    config = getattr(generator, "config", None)
+    if registry is None or config is None or not hasattr(registry, "enabled_rules"):
+        return ()
+    excluded = _sampling_excluded_rule_ids(config)
+    rule_ids = [
+        rule.info.rule_id
+        for rule in registry.enabled_rules(config)
+        if rule.info.rule_id not in excluded and rule.can_generate(GenerationMode.POSITIVE)
+    ]
+    return tuple(sorted(dict.fromkeys(rule_ids)))
+
+
+def _sample_unique_rule_example(
+    generator: Any,
+    rule_id: str,
+    deduper: _TextDeduper,
+) -> GeneratedExample | None:
+    for _ in range(100):
+        example = generator.sample(rule_id=rule_id, mode=GenerationMode.POSITIVE)
+        if deduper.duplicate_reasons(example):
+            continue
+        return example
+    return None
+
+
+def _coverage_examples_per_rule(config: Any, *, required_count: int, count: int) -> int:
+    generation = config.get("generation", {}) if isinstance(config, dict) else {}
+    frozen_eval = generation.get("frozen_eval", {}) if isinstance(generation, dict) else {}
+    raw_quota = frozen_eval.get("coverage_examples_per_rule", 3) if isinstance(frozen_eval, dict) else 3
+    try:
+        quota = int(raw_quota)
+    except (TypeError, ValueError):
+        quota = 3
+    if required_count <= 0:
+        return 0
+    return max(1, min(max(1, quota), max(1, count // required_count)))
+
+
+def _with_coverage_metadata(
+    example: GeneratedExample,
+    *,
+    generation_index: int,
+    generation_seed: int,
+) -> GeneratedExample:
+    data = example.to_dict()
+    metadata = dict(data.get("metadata") or {})
+    metadata["generation_index"] = generation_index
+    metadata["generation_seed"] = generation_seed
+    metadata["coverage_required_rule"] = True
+    data["metadata"] = metadata
+    return GeneratedExample.from_dict(data)
 
 
 def _sample_unique_examples(
@@ -252,6 +372,18 @@ def _train_example_count(config: dict[str, Any]) -> int:
 def _train_seed_range(config: dict[str, Any], base_seed: int) -> tuple[int, int]:
     train_max_index = _train_example_count(config)
     return base_seed, base_seed + train_max_index
+
+
+def _sampling_excluded_rule_ids(config: Any) -> frozenset[str]:
+    generation = config.get("generation", {}) if isinstance(config, dict) else {}
+    raw = generation.get("sampling_exclude_rule_ids", ()) if isinstance(generation, dict) else ()
+    if raw is None:
+        return frozenset()
+    if isinstance(raw, str):
+        return frozenset({raw})
+    if isinstance(raw, (list, tuple, set)):
+        return frozenset(str(item) for item in raw if str(item).strip())
+    return frozenset()
 
 
 def _ranges_overlap(left_start: int, left_end: int, right_start: int, right_end: int) -> bool:

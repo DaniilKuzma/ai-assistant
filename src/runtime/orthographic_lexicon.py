@@ -25,10 +25,13 @@ class CorrectionEntry:
     operation: str = "dict_replace"
     sub_rule_id: str = ""
     confidence: float = 1.0
+    forbidden_contexts: tuple[str, ...] = ()
+    safe_context_patterns: tuple[str, ...] = ()
 
 
 class OrthographicCorrectionLexicon:
     def __init__(self, entries: Iterable[CorrectionEntry]) -> None:
+        entries = _merge_entry_context_guards(tuple(entries))
         mapping: dict[str, list[CorrectionEntry]] = defaultdict(list)
         for entry in entries:
             if not entry.source or not entry.target or entry.source == entry.target:
@@ -57,6 +60,7 @@ class OrthographicCorrectionLexicon:
         if orthography_dir.exists():
             entries.extend(_entries_from_cards(load_lexeme_cards(orthography_dir)))
         entries.extend(_entries_from_layer_corrections(base / "layers"))
+        entries.extend(_entries_from_compound_spelling_specs(base / "layers"))
         entries.extend(_entries_from_dictionary_typo(base / "layers", seed=seed))
         return cls(entries)
 
@@ -116,9 +120,36 @@ def _entries_from_cards(cards: Iterable[LexemeCard]) -> list[CorrectionEntry]:
                         operation="dict_replace",
                         sub_rule_id=card.sub_rule_id,
                         confidence=1.0,
+                        safe_context_patterns=_safe_context_patterns(context, source),
                     )
                 )
     return entries
+
+
+def _merge_entry_context_guards(entries: tuple[CorrectionEntry, ...]) -> tuple[CorrectionEntry, ...]:
+    forbidden_by_key: dict[tuple[str, str, str, str], set[str]] = defaultdict(set)
+    safe_by_key: dict[tuple[str, str, str, str], set[str]] = defaultdict(set)
+    for entry in entries:
+        key = _entry_context_key(entry)
+        forbidden_by_key[key].update(entry.forbidden_contexts)
+        safe_by_key[key].update(entry.safe_context_patterns)
+    return tuple(
+        replace(
+            entry,
+            forbidden_contexts=tuple(sorted(forbidden_by_key[_entry_context_key(entry)])),
+            safe_context_patterns=tuple(sorted(safe_by_key[_entry_context_key(entry)])),
+        )
+        for entry in entries
+    )
+
+
+def _entry_context_key(entry: CorrectionEntry) -> tuple[str, str, str, str]:
+    return (
+        entry.source.casefold(),
+        entry.target.casefold(),
+        entry.rule_id,
+        entry.sub_rule_id,
+    )
 
 
 def _entries_from_layer_corrections(path: str | Path) -> list[CorrectionEntry]:
@@ -167,6 +198,47 @@ def _entries_from_dictionary_typo(path: str | Path, *, seed: int | None = None) 
     return entries
 
 
+def _entries_from_compound_spelling_specs(path: str | Path) -> list[CorrectionEntry]:
+    try:
+        from src.rule_layers.compound_spelling import load_compound_spelling_specs
+    except Exception:
+        return []
+
+    entries: list[CorrectionEntry] = []
+    try:
+        specs = load_compound_spelling_specs(path)
+    except Exception:
+        return []
+    for spec in specs:
+        for case in spec.cases:
+            if case.mode != "positive":
+                continue
+            metadata = dict(case.metadata)
+            source = str(metadata.get("source") or "")
+            target = str(metadata.get("target") or "")
+            if not source or not target:
+                for operation in case.token_operations:
+                    source = source or operation.source_pattern
+                    target = target or operation.target_pattern
+                    if source and target:
+                        break
+            if not source or not target or source == target:
+                continue
+            entries.append(
+                CorrectionEntry(
+                    source=source,
+                    target=target,
+                    rule_id=case.rule_id,
+                    operation=str(metadata.get("operation") or "replace"),
+                    explanation_id=case.rule_id,
+                    sub_rule_id=case.sub_rule_id,
+                    confidence=1.0,
+                    forbidden_contexts=_string_tuple(metadata.get("forbidden_contexts")),
+                )
+            )
+    return entries
+
+
 def _entry_from_layer_mapping(data: Any, path: Path) -> CorrectionEntry:
     if not isinstance(data, Mapping):
         raise ValueError(f"Layer correction entry must be a mapping: {path}")
@@ -183,7 +255,30 @@ def _entry_from_layer_mapping(data: Any, path: Path) -> CorrectionEntry:
         sub_rule_id=str(data.get("sub_rule_id") or ""),
         context_class=str(data.get("context_class") or ""),
         confidence=_confidence(data.get("confidence")),
+        forbidden_contexts=_string_tuple(data.get("forbidden_contexts")),
+        safe_context_patterns=_string_tuple(data.get("safe_context_patterns")),
     )
+
+
+def _safe_context_patterns(context: Mapping[str, Any], source: str) -> tuple[str, ...]:
+    template = str(context.get("template") or "").strip() if isinstance(context, Mapping) else ""
+    if not template:
+        return ()
+    try:
+        rendered = template.format(word=source, variant="")
+    except (KeyError, IndexError, ValueError):
+        return ()
+    return (rendered.strip(),) if rendered.strip() else ()
+
+
+def _string_tuple(value: Any) -> tuple[str, ...]:
+    if value is None:
+        return ()
+    if isinstance(value, str):
+        return (value.strip(),) if value.strip() else ()
+    if isinstance(value, Iterable):
+        return tuple(str(item).strip() for item in value if str(item).strip())
+    return ()
 
 
 def _required_layer_str(data: Mapping[str, Any], key: str, path: Path) -> str:

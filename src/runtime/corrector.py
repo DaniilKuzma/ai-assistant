@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
 from src.config.load_config import load_config
 from src.runtime.deterministic_rules import DeterministicRuleEngine
 from src.runtime.edit_realizer import (
+    MAX_LEXICON_SPAN_TOKENS,
     apply_gap_labels,
     apply_runtime_edits,
     apply_token_edit_labels,
@@ -15,7 +17,7 @@ from src.runtime.edit_realizer import (
 )
 from src.runtime.explanations import attach_explanations
 from src.runtime.neural_backend import DirectNeuralBackend
-from src.runtime.orthographic_lexicon import OrthographicCorrectionLexicon
+from src.runtime.orthographic_lexicon import CorrectionEntry, OrthographicCorrectionLexicon
 from src.runtime.scope_guard import ScopeGuard
 from src.runtime.thresholds import RuntimeThresholds
 from src.runtime.tokenization import tokenize_runtime_words
@@ -78,6 +80,9 @@ class Corrector:
         current, deterministic_edits = self._apply_deterministic(current)
         edits.extend(deterministic_edits)
 
+        current, lexicon_edits = self._apply_deterministic_lexicon(current)
+        edits.extend(lexicon_edits)
+
         if self.neural_backend is not None:
             current, token_edits = self._apply_neural_token_edits(current)
             edits.extend(token_edits)
@@ -128,6 +133,74 @@ class Corrector:
                 break
             current = updated
         return current, accepted
+
+    def _apply_deterministic_lexicon(self, text: str) -> tuple[str, list[RuntimeEdit]]:
+        if not bool(self.runtime_config.get("deterministic_lexicon", False)):
+            return text, []
+
+        current = text
+        accepted: list[RuntimeEdit] = []
+        for _ in range(self.max_passes):
+            proposed = [
+                edit
+                for edit in self._trusted_lexicon_edits(current)
+                if self.scope_guard.validate_edit(current, edit)
+            ]
+            if not proposed:
+                break
+            updated = apply_runtime_edits(current, proposed)
+            accepted.extend(proposed)
+            if updated == current:
+                break
+            current = updated
+        return current, accepted
+
+    def _trusted_lexicon_edits(self, text: str) -> list[RuntimeEdit]:
+        tokens = tokenize_runtime_words(text)
+        edits: list[RuntimeEdit] = []
+        consumed: set[int] = set()
+        for index, token in enumerate(tokens):
+            if index in consumed:
+                continue
+            edit = self._trusted_lexicon_edit_at(text, tokens, index)
+            if edit is None:
+                continue
+            edits.append(edit)
+            for position in range(index, len(tokens)):
+                if tokens[position].start >= edit.start and tokens[position].end <= edit.end:
+                    consumed.add(position)
+        return edits
+
+    def _trusted_lexicon_edit_at(self, text: str, tokens: Sequence[Any], index: int) -> RuntimeEdit | None:
+        max_stop = min(len(tokens), index + MAX_LEXICON_SPAN_TOKENS)
+        for stop in range(max_stop, index, -1):
+            start = int(tokens[index].start)
+            end = int(tokens[stop - 1].end)
+            source = text[start:end]
+            entries = [
+                entry
+                for entry in self.orthographic_lexicon.lookup(source)
+                if _trusted_deterministic_entry(entry, text)
+            ]
+            if not entries:
+                continue
+            targets = {entry.target for entry in entries}
+            if len(targets) != 1:
+                return None
+            entry = entries[0]
+            replacement = _match_case(source, next(iter(targets)))
+            if not replacement or replacement == source:
+                return None
+            return RuntimeEdit(
+                start=start,
+                end=end,
+                source=source,
+                replacement=replacement,
+                edit_type=_edit_type_for_lexicon_operation(entry.operation, source=source, replacement=replacement),
+                rule_id=entry.rule_id,
+                confidence=entry.confidence,
+            )
+        return None
 
     def _apply_neural_token_edits(self, text: str) -> tuple[str, list[RuntimeEdit]]:
         if not bool(self.runtime_config.get("neural_token_edits", True)):
@@ -283,6 +356,96 @@ def _accepted_consumed_indexes(
     if _label_consumes_next(label) and index + 1 < len(tokens):
         return {index, index + 1}
     return {index}
+
+
+DETERMINISTIC_LEXICON_RULE_PREFIXES = ("dictionary_", "typo_", "compound_")
+DETERMINISTIC_MORPHEME_RULE_IDS = frozenset(
+    {
+        "morpheme_hissing_vowels",
+        "morpheme_soft_hard_signs",
+        "morpheme_root_vowels",
+        "morpheme_prefixes",
+        "morpheme_suffixes",
+        "morpheme_consonants",
+        "morpheme_endings",
+    }
+)
+
+
+def _trusted_deterministic_entry(entry: CorrectionEntry, text: str) -> bool:
+    rule_id = str(entry.rule_id)
+    if not (
+        rule_id.startswith(DETERMINISTIC_LEXICON_RULE_PREFIXES)
+        or rule_id in DETERMINISTIC_MORPHEME_RULE_IDS
+    ):
+        return False
+    if rule_id == "morpheme_endings":
+        safe_patterns = entry.safe_context_patterns or ()
+        lowered = text.casefold()
+        if safe_patterns and any(str(item).casefold() in lowered for item in safe_patterns):
+            pass
+        elif not _is_unknown_single_russian_word(entry.source):
+            return False
+    forbidden = entry.forbidden_contexts or ()
+    if forbidden:
+        lowered = text.casefold()
+        if any(str(item).casefold() in lowered for item in forbidden if str(item).strip()):
+            return False
+    return True
+
+
+def _match_case(source: str, replacement: str) -> str:
+    if source[:1].isupper():
+        return replacement[:1].upper() + replacement[1:]
+    return replacement
+
+
+def _edit_type_for_lexicon_operation(operation: str, *, source: str = "", replacement: str = "") -> str:
+    if source and replacement:
+        source_letters = _letters_only(source)
+        replacement_letters = _letters_only(replacement)
+        if source_letters and replacement_letters and source_letters != replacement_letters:
+            return "spelling"
+    if operation in {"split_join", "split", "merge", "join"}:
+        return "split_join"
+    if operation in {"hyphen", "hyphenate", "unhyphen", "unhyphenate", "dehyphen"}:
+        return "hyphen"
+    return "spelling"
+
+
+def _word_count(value: str) -> int:
+    import re
+
+    return len(re.findall(r"[А-Яа-яЁё]+", value))
+
+
+def _letters_only(value: str) -> str:
+    import re
+
+    return "".join(re.findall(r"[А-Яа-яЁё]+", value.casefold())).replace("ё", "е")
+
+
+@lru_cache(maxsize=4096)
+def _is_unknown_single_russian_word(value: str) -> bool:
+    import re
+
+    if not re.fullmatch(r"[А-Яа-яЁё]+", value):
+        return False
+    analyzer = _morph_analyzer()
+    if analyzer is None:
+        return False
+    parses = analyzer.parse(value)
+    return bool(parses) and not any(bool(getattr(parse, "is_known", False)) for parse in parses)
+
+
+@lru_cache(maxsize=1)
+def _morph_analyzer() -> Any | None:
+    try:
+        from pymorphy3 import MorphAnalyzer
+
+        return MorphAnalyzer()
+    except Exception:
+        return None
 
 
 __all__ = ["CorrectionResult", "Corrector", "RuntimeEdit"]

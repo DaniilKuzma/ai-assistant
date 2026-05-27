@@ -13870,8 +13870,8 @@ punctuation:
       requires: &id007
       - syntax
       - model
-      notes: Legacy final_punctuation remains enabled; syntax_punctuation adds controlled DOT/QUESTION/EXCLAMATION/ELLIPSIS
-        gap-label coverage and abbreviation/initial hard negatives.
+      notes: Legacy final_punctuation remains enabled; syntax_punctuation keeps controlled DOT
+        coverage for statement-like missing final marks and abbreviation/initial hard negatives.
       tests: &id008
       - tests/test_syntax_punctuation_layer.py
       layer: syntax_punctuation
@@ -13880,9 +13880,6 @@ punctuation:
       - already_final_guard
       - clean_final_statement
       - final_dot
-      - final_ellipsis
-      - final_exclamation
-      - final_question
       - initials_guard
     dataset:
       eligible_now: true

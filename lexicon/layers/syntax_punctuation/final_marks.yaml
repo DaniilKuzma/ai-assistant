@@ -15,33 +15,6 @@ cases:
       metadata:
         operation: missing_final_dot
         expected_error: missing_final_punctuation
-    - sub_rule_id: final_question
-      source_template: "{actor} {action} {object}"
-      target_template: "{actor} {action} {object}?"
-      gap_operations:
-        - label: QUESTION
-          source_pattern: "{object}"
-      metadata:
-        operation: missing_final_question
-        expected_error: missing_final_punctuation
-    - sub_rule_id: final_exclamation
-      source_template: "{actor} {action} {object}"
-      target_template: "{actor} {action} {object}!"
-      gap_operations:
-        - label: EXCLAMATION
-          source_pattern: "{object}"
-      metadata:
-        operation: missing_final_exclamation
-        expected_error: missing_final_punctuation
-    - sub_rule_id: final_ellipsis
-      source_template: "{actor} {action} {object}"
-      target_template: "{actor} {action} {object}…"
-      gap_operations:
-        - label: ELLIPSIS
-          source_pattern: "{object}"
-      metadata:
-        operation: missing_final_ellipsis
-        expected_error: missing_final_punctuation
   hard_negative:
     - sub_rule_id: abbreviation_guard
       source: "В отчёте указали г. Москву."

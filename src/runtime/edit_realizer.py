@@ -1,8 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import replace
+from functools import lru_cache
+from pathlib import Path
 import re
 from collections.abc import Sequence
+
+import yaml
 
 from src.runtime.orthographic_lexicon import OrthographicCorrectionLexicon
 from src.schema import RuntimeEdit, WordToken
@@ -27,6 +30,7 @@ TSYA_TO_TTSYA_REPLACEMENTS = {
     "\u0432\u043e\u0437\u0432\u0440\u0430\u0449\u0430\u0435\u0442\u0441\u044f": "\u0432\u043e\u0437\u0432\u0440\u0430\u0449\u0430\u0442\u044c\u0441\u044f",
 }
 TTSYA_TO_TSYA_REPLACEMENTS = {value: key for key, value in TSYA_TO_TTSYA_REPLACEMENTS.items()}
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 LABEL_RULE_EDIT_TYPE: dict[str, tuple[str, str]] = {
@@ -262,7 +266,7 @@ def _span_replace_by_lexicon_edit(
         entries = [
             entry
             for entry in orthographic_lexicon.lookup(source, rule_id=rule_id)
-            if entry.operation not in {"dict_replace", "replace"}
+            if entry.operation not in {"dict_replace", "replace"} and _entry_allowed_in_context(entry, text)
         ]
         if not entries:
             continue
@@ -278,7 +282,7 @@ def _span_replace_by_lexicon_edit(
             end=end,
             source=source,
             replacement=replacement,
-            edit_type=_edit_type_for_lexicon_operation(entry.operation),
+            edit_type=_edit_type_for_lexicon_operation(entry.operation, source=source, replacement=replacement),
             rule_id=rule_id,
             confidence=confidence,
         )
@@ -373,14 +377,14 @@ def _split_exact(source: str, lowered: str, replacement: str) -> str | None:
 
 
 def _fix_tsya_to_ttsya(source: str) -> str:
-    mapped = _mapped_replacement(source, TSYA_TO_TTSYA_REPLACEMENTS)
+    mapped = _mapped_replacement(source, _tsya_to_ttsya_replacements())
     if mapped is not None:
         return mapped
     return re.sub(r"тся$", "ться", source, flags=re.IGNORECASE)
 
 
 def _fix_ttsya_to_tsya(source: str) -> str:
-    mapped = _mapped_replacement(source, TTSYA_TO_TSYA_REPLACEMENTS)
+    mapped = _mapped_replacement(source, _ttsya_to_tsya_replacements())
     if mapped is not None:
         return mapped
     return re.sub(r"ться$", "тся", source, flags=re.IGNORECASE)
@@ -392,12 +396,33 @@ def _match_case(source: str, replacement: str) -> str:
     return replacement
 
 
-def _edit_type_for_lexicon_operation(operation: str) -> str:
+def _edit_type_for_lexicon_operation(operation: str, *, source: str = "", replacement: str = "") -> str:
+    if source and replacement:
+        source_letters = _letters_only(source)
+        replacement_letters = _letters_only(replacement)
+        if source_letters and replacement_letters and source_letters != replacement_letters:
+            return "spelling"
     if operation in {"split_join", "split", "merge", "join"}:
         return "split_join"
     if operation in {"hyphen", "hyphenate", "unhyphen", "unhyphenate", "dehyphen"}:
         return "hyphen"
     return "spelling"
+
+
+def _entry_allowed_in_context(entry: object, text: str) -> bool:
+    forbidden = getattr(entry, "forbidden_contexts", ()) or ()
+    if not forbidden:
+        return True
+    lowered = text.casefold()
+    return not any(str(item).casefold() in lowered for item in forbidden if str(item).strip())
+
+
+def _word_count(value: str) -> int:
+    return len(re.findall(r"[А-Яа-яЁё]+", value))
+
+
+def _letters_only(value: str) -> str:
+    return "".join(re.findall(r"[А-Яа-яЁё]+", value.casefold())).replace("ё", "е")
 
 
 def _mapped_replacement(source: str, replacements: dict[str, str]) -> str | None:
@@ -407,6 +432,48 @@ def _mapped_replacement(source: str, replacements: dict[str, str]) -> str | None
     if source[:1].isupper():
         return replacement[:1].upper() + replacement[1:]
     return replacement
+
+
+@lru_cache(maxsize=1)
+def _tsya_to_ttsya_replacements() -> dict[str, str]:
+    replacements = dict(TSYA_TO_TTSYA_REPLACEMENTS)
+    replacements.update(_controlled_tsya_pairs())
+    return replacements
+
+
+@lru_cache(maxsize=1)
+def _ttsya_to_tsya_replacements() -> dict[str, str]:
+    replacements = dict(TTSYA_TO_TSYA_REPLACEMENTS)
+    replacements.update({target: source for source, target in _controlled_tsya_pairs().items()})
+    return replacements
+
+
+@lru_cache(maxsize=1)
+def _controlled_tsya_pairs() -> dict[str, str]:
+    path = PROJECT_ROOT / "lexicon" / "constructions" / "tsya_ttsya.yaml"
+    if not path.exists():
+        return {}
+    try:
+        raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    except (OSError, yaml.YAMLError):
+        return {}
+    patterns = raw.get("patterns", []) if isinstance(raw, dict) else []
+    pairs: dict[str, str] = {}
+    for pattern in patterns:
+        if not isinstance(pattern, dict):
+            continue
+        metadata = pattern.get("metadata", {})
+        verbs = metadata.get("verbs", []) if isinstance(metadata, dict) else []
+        if not isinstance(verbs, list):
+            continue
+        for item in verbs:
+            if not isinstance(item, dict):
+                continue
+            infinitive = str(item.get("infinitive") or "").strip().lower()
+            finite = str(item.get("finite") or "").strip().lower()
+            if finite.endswith("тся") and infinitive.endswith("ться"):
+                pairs[finite] = infinitive
+    return pairs
 
 
 __all__ = [

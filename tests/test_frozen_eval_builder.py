@@ -8,6 +8,8 @@ from pathlib import Path
 import yaml
 
 from src.grammar_gen.audit import audit_batch
+from src.grammar_gen.factory import online_generator_from_config
+from src.grammar_gen.rules.base import GenerationMode
 from src.schema import GeneratedExample, WordToken
 from src.schema.serialization import read_jsonl_examples, write_jsonl_examples
 from scripts import build_frozen_eval as frozen_builder
@@ -131,6 +133,37 @@ def test_build_frozen_eval_filters_train_existing_split_and_current_text_duplica
         "source_text": 3,
         "target_text": 3,
     }
+
+
+def test_build_frozen_eval_covers_all_enabled_positive_rules_when_count_allows(tmp_path: Path) -> None:
+    config_path = _small_config(tmp_path)
+    output = tmp_path / "val.jsonl"
+    config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    generator = online_generator_from_config(config, seed=int(config["generation"]["seed"]))
+    expected_rule_ids = {
+        rule.info.rule_id
+        for rule in generator.registry.enabled_rules(config)
+        if rule.info.rule_id not in set(config["generation"].get("sampling_exclude_rule_ids", ()))
+        and rule.can_generate(GenerationMode.POSITIVE)
+    }
+
+    manifest, examples = build_frozen_eval(
+        config_path=config_path,
+        split="val",
+        count=max(150, len(expected_rule_ids) * 3 + 5),
+        output_path=output,
+    )
+
+    seen_rule_ids = {example.primary_rule_id for example in examples}
+    per_rule_counts = {rule_id: 0 for rule_id in expected_rule_ids}
+    for example in examples:
+        if example.primary_rule_id in per_rule_counts:
+            per_rule_counts[example.primary_rule_id] += 1
+
+    assert expected_rule_ids <= seen_rule_ids
+    assert min(per_rule_counts.values()) >= 3
+    assert set(manifest["coverage_required_rule_ids"]) == expected_rule_ids
+    assert manifest["coverage_missing_rule_ids"] == []
 
 
 def _small_config(

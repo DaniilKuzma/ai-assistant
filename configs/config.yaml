@@ -20,6 +20,7 @@ generation:
     val_examples: 500
     test_examples: 500
     regression_examples: 200
+    coverage_examples_per_rule: 3
     output_dir: data/generated_eval
   enabled_rule_groups:
     - deterministic_orthography
@@ -111,6 +112,8 @@ training:
 runtime:
   max_passes: 2
   deterministic_first: true
+  deterministic_lexicon: true
+  deterministic_final_punctuation: true
   neural_token_edits: true
   neural_punctuation: true
   confidence_thresholds:
