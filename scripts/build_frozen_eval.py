@@ -148,6 +148,7 @@ def build_frozen_eval(
         "top_duplicate_pairs": diversity["top_duplicate_pairs"],
         "duplicate_rate_by_rule_id": diversity["duplicate_rate_by_rule_id"],
         "duplicate_rate_by_sub_rule_id": diversity["duplicate_rate_by_sub_rule_id"],
+        "sub_rule_distribution": diversity["sub_rule_distribution"],
         "average_token_count": diversity["average_token_count"],
         "token_edit_count_distribution": diversity["token_edit_count_distribution"],
         "gap_edit_count_distribution": diversity["gap_edit_count_distribution"],

@@ -127,6 +127,23 @@ def test_morpheme_only_generator_audit_and_duplicate_threshold() -> None:
     assert max(pair_counts.values()) <= 20
 
 
+def test_morpheme_examples_use_varied_natural_contexts_for_finite_cards() -> None:
+    config = load_config(ROOT / "configs" / "config.yaml")
+    config["generation"]["enabled_rule_groups"] = ["orthography_morphemic"]
+    config["generation"]["mix"] = {"orthography_morphemic": 1.0}
+    config["generation"]["grammar"]["max_generation_retries"] = 50
+    generator = online_generator_from_config(config, seed=515)
+
+    examples = [
+        generator.sample(rule_id="morpheme_n_nn", mode=GenerationMode.POSITIVE)
+        for _ in range(180)
+    ]
+    unique_pairs = {(example.source_text, example.target_text) for example in examples}
+
+    assert len(unique_pairs) >= 145
+    assert not any("пример номер" in example.source_text.casefold() for example in examples)
+
+
 def test_config_enabled_morpheme_specs_have_executable_cards() -> None:
     config = load_config(ROOT / "configs" / "config.yaml")
     enabled = set(config["generation"]["orthography_morphemic"]["rules"])

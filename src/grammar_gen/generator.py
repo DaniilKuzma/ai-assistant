@@ -206,11 +206,16 @@ class OnlineExampleGenerator:
             and rule.can_generate(mode)
             and (family is None or rule.info.family == family)
         ]
-        if not rules:
+        weighted_rules = []
+        for rule in rules:
+            weight = _rule_weight(rule, self.config)
+            if weight > 0.0:
+                weighted_rules.append((rule, weight))
+        if not weighted_rules:
             family_detail = f" and family {family!r}" if family is not None else ""
             raise GenerationError(f"No enabled rules support mode {mode.value!r}{family_detail}.")
 
-        return rng.weighted_choice(tuple((rule, rule.info.weight) for rule in rules)), mode
+        return rng.weighted_choice(tuple(weighted_rules)), mode
 
     def _sample_mode_from_mix(self, rng: RandomSource) -> tuple[GenerationMode, str | None]:
         key = rng.weighted_choice(tuple(_generation_mix(self.config).items()))
@@ -320,6 +325,17 @@ def _generation_mix(config: Mapping[str, Any]) -> dict[str, float]:
     if not mix:
         raise ValueError("At least one generation mix weight must be positive.")
     return mix
+
+
+def _rule_weight(rule: RuleProgram, config: Mapping[str, Any]) -> float:
+    weight = float(rule.info.weight)
+    generation = config.get("generation", {}) if isinstance(config, Mapping) else {}
+    raw_overrides = generation.get("rule_weight_overrides", {}) if isinstance(generation, Mapping) else {}
+    if isinstance(raw_overrides, Mapping) and rule.info.rule_id in raw_overrides:
+        weight = float(raw_overrides[rule.info.rule_id])
+    if weight < 0:
+        raise ValueError(f"Rule weight override must be non-negative for {rule.info.rule_id!r}.")
+    return weight
 
 
 def _sampling_excluded_rule_ids(config: Mapping[str, Any]) -> frozenset[str]:

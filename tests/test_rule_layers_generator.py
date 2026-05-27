@@ -4,9 +4,10 @@ from src.grammar_gen import Lexicon, MorphologyEngine
 from src.config.load_config import load_config
 from src.grammar_gen.factory import online_generator_from_config
 from src.grammar_gen.generator import OnlineExampleGenerator, _generation_mix, _mode_and_family_from_mix_key
-from src.grammar_gen.rules.base import GenerationMode
+from src.grammar_gen.rules.base import GenerationMode, RuleInfo, RuleProgram
 from src.grammar_gen.rules.registry import RuleRegistry, default_rule_registry, register_layered_rules
 from src.rule_layers.base import LayerDirectCase, LayerOperation, LayerRuleSpec
+from src.schema import GeneratedExample, WordToken
 
 
 def test_new_family_mix_key_can_sample_layer_rule() -> None:
@@ -95,3 +96,113 @@ def test_default_config_still_generates_with_old_registry() -> None:
     example = generator.sample()
 
     assert example.primary_rule_id in {"comma_subordinate", "comma_introductory", "comma_homogeneous", "comma_adversative", "dash_subject_predicate", "final_punctuation"}
+
+
+def test_rule_weight_overrides_control_rule_sampling() -> None:
+    registry = RuleRegistry()
+    registry.register_rule(_TinyPunctuationRule("comma_subordinate"))
+    registry.register_rule(_TinyPunctuationRule("comma_introductory"))
+    generator = OnlineExampleGenerator(
+        registry,
+        Lexicon.default(),
+        MorphologyEngine(use_pymorphy=False),
+        {
+            "generation": {
+                "enabled_rule_groups": ["punctuation"],
+                "mix": {"punctuation": 1.0},
+                "rule_weight_overrides": {"comma_introductory": 0.0},
+                "grammar": {"max_generation_retries": 3},
+            }
+        },
+        seed=7,
+    )
+
+    sampled = {generator.sample_by_index(index).primary_rule_id for index in range(50)}
+
+    assert sampled == {"comma_subordinate"}
+
+
+def test_direct_layer_generation_varies_natural_contexts_for_small_rules() -> None:
+    config = load_config("configs/config.yaml")
+    config["generation"]["enabled_rule_groups"] = ["syntax_punctuation"]
+    config["generation"]["mix"] = {"syntax_punctuation": 1.0}
+    config["generation"]["grammar"]["max_generation_retries"] = 60
+    config["generation"]["rule_layers"]["groups"]["syntax_punctuation"] = {
+        "enabled": True,
+        "layers": ["syntax_punctuation"],
+    }
+    generator = online_generator_from_config(config, seed=111)
+
+    examples = [
+        generator.sample(rule_id="punct_bsp", mode=GenerationMode.POSITIVE)
+        for _ in range(120)
+    ]
+    unique_pairs = {(example.source_text, example.target_text) for example in examples}
+
+    assert len(unique_pairs) >= 80
+    assert not any("пример номер" in example.source_text.casefold() for example in examples)
+
+
+def test_legacy_dash_subject_predicate_keeps_curated_core_shape() -> None:
+    config = load_config("configs/config.yaml")
+    config["generation"]["enabled_rule_groups"] = ["punctuation"]
+    config["generation"]["mix"] = {"punctuation": 1.0}
+    config["generation"]["rule_weight_overrides"] = {}
+    generator = online_generator_from_config(config, seed=222)
+
+    examples = [
+        generator.sample(rule_id="dash_subject_predicate", mode=GenerationMode.POSITIVE)
+        for _ in range(120)
+    ]
+    unique_pairs = {(example.source_text, example.target_text) for example in examples}
+
+    assert len(unique_pairs) >= 15
+    assert all("—" in example.target_text for example in examples)
+    assert all(
+        len(example.target_text.split("—", 1)[0].split()) == 1
+        and len(example.target_text.split("—", 1)[1].strip(" .").split()) <= 2
+        for example in examples
+    )
+
+
+class _TinyPunctuationRule(RuleProgram):
+    def __init__(self, rule_id: str) -> None:
+        self.info = RuleInfo(
+            rule_id=rule_id,
+            family="punctuation",
+            description=rule_id,
+            explanation=rule_id,
+            deterministic=True,
+            weight=1.0,
+        )
+        self.supported_modes = (GenerationMode.POSITIVE,)
+
+    def generate(self, builder, realizer, rng, mode: GenerationMode) -> GeneratedExample:
+        del builder, realizer, rng
+        return GeneratedExample(
+            source_text="Он знал что делать.",
+            target_text="Он знал, что делать.",
+            source_tokens=[
+                WordToken("Он", 0, 2),
+                WordToken("знал", 3, 7),
+                WordToken("что", 8, 11),
+                WordToken("делать", 12, 18),
+            ],
+            token_edit_labels=["KEEP", "KEEP", "KEEP", "KEEP"],
+            gap_labels=["NONE", "COMMA", "NONE", "DOT"],
+            rule_ids=["none", self.info.rule_id, "none", "none"],
+            primary_rule_id=self.info.rule_id,
+            mode=mode.value,
+            explanation_ids=[self.info.rule_id],
+            metadata={
+                "expected_edit_count": 1,
+                "expected_token_edit_count": 0,
+                "expected_gap_edit_count": 1,
+                "production": False,
+                "uses_construction_bank": True,
+                "construction_id": self.info.rule_id,
+                "construction_family": "punctuation",
+                "uses_safety_clauses": False,
+                "safety_clauses": [],
+            },
+        )

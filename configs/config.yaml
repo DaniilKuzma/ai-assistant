@@ -40,6 +40,16 @@ generation:
     syntax_punctuation: 0.12
     clean_identity: 0.15
     hard_negative: 0.10
+  rule_weight_overrides:
+    dash_subject_predicate: 0.25
+    morpheme_endings: 0.75
+    morpheme_hissing_vowels: 0.80
+    morpheme_soft_hard_signs: 0.80
+    morpheme_consonants: 0.80
+    morpheme_prefixes: 0.85
+    morpheme_n_nn: 0.90
+    punct_bsp: 0.85
+    punct_fixed_expression_guards: 0.85
   sampling_exclude_rule_ids:
     - ne_verb
     - takzhe_tak_zhe

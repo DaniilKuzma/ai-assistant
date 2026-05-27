@@ -13,7 +13,8 @@
 - `src/grammar_gen/` - AST, realizer, morphology, lexicon, safety checks,
   `OnlineExampleGenerator`, and `RuleProgram` implementations.
 - `src/rule_layers/` - YAML-backed `RuleLayer` specs, loaders, coverage helpers,
-  and direct-case builders for controlled generated examples.
+  context variation helpers, and direct-case builders for controlled generated
+  examples.
 - `src/orthography_gen/` - compiler-backed morpheme layer: orthographic rule
   specs, lexeme cards, context wrapping, and safe error injection.
 - `src/schema/` - `GeneratedExample`, runtime edits, labels, and serialization.

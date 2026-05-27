@@ -11,6 +11,7 @@ from src.orthography_gen.context_wrapper import ContextWrapper
 from src.orthography_gen.error_injector import OrthographicErrorInjector
 from src.orthography_gen.lexeme_cards import LexemeCard, load_lexeme_cards
 from src.orthography_gen.rule_specs import DEFAULT_ORTHOGRAPHY_DIR, OrthographyRuleSpec, load_rule_specs
+from src.rule_layers.context_variation import contextualize_example
 from src.schema import GeneratedExample
 
 
@@ -85,7 +86,7 @@ class OrthographicScenarioCompiler:
             form_key,
             expected_edits=1 if generation_mode is GenerationMode.POSITIVE else 0,
         )
-        return GeneratedExample(
+        example = GeneratedExample(
             source_text=wrapped.source_text,
             target_text=wrapped.target_text,
             source_tokens=wrapped.source_tokens,
@@ -97,6 +98,7 @@ class OrthographicScenarioCompiler:
             explanation_ids=[card.explanation_id or self.specs[rule_id].explanation_id],
             metadata=metadata,
         )
+        return contextualize_example(example, rng)
 
     def compile_batch(
         self,

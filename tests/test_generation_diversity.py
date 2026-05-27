@@ -7,6 +7,7 @@ from src.config.load_config import load_config
 from src.grammar_gen.audit import audit_batch
 from src.grammar_gen.diversity import duplicate_pair_rate, sample_diverse_examples
 from src.grammar_gen.factory import online_generator_from_config
+from src.schema import GeneratedExample, WordToken
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -98,6 +99,37 @@ def test_different_seed_changes_diverse_generation_meaningfully() -> None:
     }
 
     assert len(first_ids & second_ids) <= 20
+
+
+def test_audit_rejects_numbered_example_shells() -> None:
+    example = GeneratedExample(
+        source_text="Пример номер 4344: он проверил отчёт.",
+        target_text="Пример номер 4344: он проверил отчёт.",
+        source_tokens=[
+            WordToken("Пример", 0, 6),
+            WordToken("номер", 7, 12),
+            WordToken("он", 19, 21),
+            WordToken("проверил", 22, 30),
+            WordToken("отчёт", 31, 36),
+        ],
+        token_edit_labels=["KEEP", "KEEP", "KEEP", "KEEP", "KEEP"],
+        gap_labels=["NONE", "COLON", "NONE", "NONE", "DOT"],
+        rule_ids=["none", "none", "none", "none", "none"],
+        primary_rule_id="none",
+        mode="clean_identity",
+        explanation_ids=["none"],
+        metadata={
+            "expected_edit_count": 0,
+            "expected_token_edit_count": 0,
+            "expected_gap_edit_count": 0,
+            "uses_safety_clauses": False,
+        },
+    )
+
+    audit = audit_batch([example])
+
+    assert audit["failed_examples_count"] == 1
+    assert audit["failure_reasons"] == {"forbidden_numbered_example_shell": 1}
 
 
 def _layer_marker(example) -> str:

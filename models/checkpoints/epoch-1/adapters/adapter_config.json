@@ -30,10 +30,10 @@
   "rank_pattern": {},
   "revision": null,
   "target_modules": [
-    "value",
-    "query",
     "key",
-    "dense"
+    "dense",
+    "value",
+    "query"
   ],
   "target_parameters": null,
   "task_type": "FEATURE_EXTRACTION",

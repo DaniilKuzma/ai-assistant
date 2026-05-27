@@ -39,7 +39,12 @@ TAKZHE_KAK_RE = re.compile(
     r"\b\u0442\u0430\u043a\u0436\u0435\s*,?\s+\u043a\u0430\u043a\b",
     re.IGNORECASE,
 )
-NUMBERED_EXAMPLE_SHELL_RE = re.compile(r"^\u0412 \u043f\u0440\u0438\u043c\u0435\u0440\u0435 \d+ \u0441\u043a\u0430\u0437\u0430\u043d\u043e:")
+NUMBERED_EXAMPLE_SHELL_RE = re.compile(
+    r"(?:^\u0412 \u043f\u0440\u0438\u043c\u0435\u0440\u0435 \d+ \u0441\u043a\u0430\u0437\u0430\u043d\u043e:|"
+    r"\b\u043f\u0440\u0438\u043c\u0435\u0440\s+\u043d\u043e\u043c\u0435\u0440\s+\d+\b|"
+    r"\b\u043f\u0440\u0438\u043c\u0435\u0440\s+\d+\b)",
+    re.IGNORECASE,
+)
 
 
 def audit_example(example: GeneratedExample) -> list[str]:
