@@ -1,0 +1,15 @@
+rule_id,example_count,exact_match,char_accuracy,changed_when_needed,unchanged_when_clean,overcorrection_rate,edit_precision,edit_recall,edit_f1,rejected_by_threshold,rejected_by_scope_guard
+comma_adversative,52,1.0,1.0,1.0,1.0,0.0,1.0,1.0,1.0,0,0
+comma_homogeneous,52,1.0,1.0,1.0,1.0,0.0,1.0,1.0,1.0,0,0
+comma_introductory,69,1.0,1.0,1.0,1.0,0.0,1.0,1.0,1.0,0,0
+comma_subordinate,50,1.0,1.0,1.0,1.0,0.0,1.0,1.0,1.0,0,0
+dash_subject_predicate,5,1.0,1.0,0.0,1.0,0.0,0.0,0.0,0.0,0,0
+final_punctuation,51,0.9803921568627451,0.9996300406955235,0.975,1.0,0.0,1.0,0.975,0.9873417721518987,1,0
+morpheme_n_nn,4,1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0,0,0
+n_nn_basic,8,1.0,1.0,1.0,1.0,0.0,1.0,1.0,1.0,0,0
+punct_complex_sentences,2,1.0,1.0,0.0,1.0,0.0,0.0,0.0,0.0,0,0
+punct_final_marks,15,0.13333333333333333,0.9826280838396869,0.0,1.0,0.0,0.0,0.0,0.0,13,0
+punct_homogeneous_extended,16,1.0,1.0,1.0,1.0,0.0,1.0,1.0,1.0,0,0
+suffix_enn_yan,14,1.0,1.0,1.0,1.0,0.0,1.0,1.0,1.0,0,0
+suffix_its_ets,13,1.0,1.0,1.0,0.0,0.0,1.0,1.0,1.0,0,0
+tsya_ttsya,149,0.2080536912751678,0.9803070890858593,1.0,1.0,0.0,1.0,1.0,1.0,0,0

@@ -1,0 +1,838 @@
+{
+  "count": 2000,
+  "seed": 20260527,
+  "overall": {
+    "exact": 0.829,
+    "char": 0.9962,
+    "changed_when_needed": 0.9292,
+    "overcorrection": 0.0022,
+    "backend_kind": "direct_neural",
+    "model_loaded": true
+  },
+  "dataset": {
+    "layer_counts": {
+      "<none>": 774,
+      "syntax_punctuation": 393,
+      "dictionary_typo": 297,
+      "compound_spelling": 271,
+      "morpheme": 265
+    },
+    "mode_counts": {
+      "positive": 1554,
+      "clean_identity": 273,
+      "hard_negative": 173
+    },
+    "rules_seen": 43,
+    "top_rules": {
+      "tsya_ttsya": 311,
+      "comma_subordinate": 88,
+      "comma_homogeneous": 88,
+      "dash_subject_predicate": 79,
+      "comma_introductory": 75,
+      "final_punctuation": 68,
+      "comma_adversative": 65,
+      "compound_service_words": 52,
+      "compound_nouns_adjectives": 51,
+      "dictionary_domain_terms": 50,
+      "typo_space_noise": 49,
+      "dictionary_common_misspellings": 49,
+      "punct_final_marks": 48,
+      "dictionary_normative_words": 44,
+      "punct_fixed_expression_guards": 42,
+      "punct_address_interjection": 42,
+      "compound_prepositions": 39,
+      "punct_bsp": 38,
+      "punct_detached_adverbials": 37,
+      "typo_keyboard_neighbor": 37
+    }
+  },
+  "by_layer": [
+    {
+      "layer": "<none>",
+      "count": 774,
+      "exact": 0.7003,
+      "char": 0.9933,
+      "changed_when_needed": 0.9985,
+      "overcorrection": 0.0
+    },
+    {
+      "layer": "dictionary_typo",
+      "count": 297,
+      "exact": 0.8687,
+      "char": 0.9967,
+      "changed_when_needed": 0.8194,
+      "overcorrection": 0.0
+    },
+    {
+      "layer": "compound_spelling",
+      "count": 271,
+      "exact": 0.8856,
+      "char": 0.9975,
+      "changed_when_needed": 0.8421,
+      "overcorrection": 0.0123
+    },
+    {
+      "layer": "syntax_punctuation",
+      "count": 393,
+      "exact": 0.9237,
+      "char": 0.9984,
+      "changed_when_needed": 0.8739,
+      "overcorrection": 0.0
+    },
+    {
+      "layer": "morpheme",
+      "count": 265,
+      "exact": 0.9623,
+      "char": 0.9992,
+      "changed_when_needed": 0.955,
+      "overcorrection": 0.0
+    }
+  ],
+  "weak_rules": [
+    {
+      "rule_id": "tsya_ttsya",
+      "count": 311,
+      "exact": 0.2572,
+      "char": 0.9834,
+      "changed_when_needed": 1.0,
+      "overcorrection": 0.0
+    },
+    {
+      "rule_id": "punct_final_marks",
+      "count": 48,
+      "exact": 0.375,
+      "char": 0.9871,
+      "changed_when_needed": 0.0,
+      "overcorrection": 0.0
+    },
+    {
+      "rule_id": "typo_keyboard_neighbor",
+      "count": 37,
+      "exact": 0.5135,
+      "char": 0.9867,
+      "changed_when_needed": 0.3077,
+      "overcorrection": 0.0
+    },
+    {
+      "rule_id": "compound_pol_polu",
+      "count": 32,
+      "exact": 0.5625,
+      "char": 0.9911,
+      "changed_when_needed": 0.44,
+      "overcorrection": 0.0
+    },
+    {
+      "rule_id": "typo_character_noise",
+      "count": 37,
+      "exact": 0.5676,
+      "char": 0.9906,
+      "changed_when_needed": 0.4074,
+      "overcorrection": 0.0
+    },
+    {
+      "rule_id": "compound_nouns_adjectives",
+      "count": 51,
+      "exact": 0.8235,
+      "char": 0.9958,
+      "changed_when_needed": 0.7568,
+      "overcorrection": 0.0
+    },
+    {
+      "rule_id": "morpheme_prefixes",
+      "count": 23,
+      "exact": 0.8261,
+      "char": 0.9962,
+      "changed_when_needed": 0.75,
+      "overcorrection": 0.0
+    },
+    {
+      "rule_id": "compound_prepositions",
+      "count": 39,
+      "exact": 0.8462,
+      "char": 0.9964,
+      "changed_when_needed": 0.7692,
+      "overcorrection": 0.0
+    },
+    {
+      "rule_id": "morpheme_suffixes",
+      "count": 18,
+      "exact": 0.8889,
+      "char": 0.9977,
+      "changed_when_needed": 0.8667,
+      "overcorrection": 0.0
+    },
+    {
+      "rule_id": "dictionary_normative_words",
+      "count": 44,
+      "exact": 0.9091,
+      "char": 0.9976,
+      "changed_when_needed": 0.875,
+      "overcorrection": 0.0
+    },
+    {
+      "rule_id": "morpheme_endings",
+      "count": 33,
+      "exact": 0.9394,
+      "char": 0.9983,
+      "changed_when_needed": 0.9333,
+      "overcorrection": 0.0
+    },
+    {
+      "rule_id": "morpheme_consonants",
+      "count": 24,
+      "exact": 0.9583,
+      "char": 0.9996,
+      "changed_when_needed": 0.9474,
+      "overcorrection": 0.0
+    },
+    {
+      "rule_id": "morpheme_root_vowels",
+      "count": 34,
+      "exact": 0.9706,
+      "char": 0.9992,
+      "changed_when_needed": 0.963,
+      "overcorrection": 0.0
+    },
+    {
+      "rule_id": "compound_ne_spellings",
+      "count": 35,
+      "exact": 0.9714,
+      "char": 0.9996,
+      "changed_when_needed": 0.9524,
+      "overcorrection": 0.0
+    },
+    {
+      "rule_id": "compound_pronouns_particles",
+      "count": 36,
+      "exact": 0.9722,
+      "char": 0.9993,
+      "changed_when_needed": 1.0,
+      "overcorrection": 0.1667
+    },
+    {
+      "rule_id": "dictionary_domain_terms",
+      "count": 50,
+      "exact": 0.98,
+      "char": 0.9992,
+      "changed_when_needed": 0.9756,
+      "overcorrection": 0.0
+    },
+    {
+      "rule_id": "final_punctuation",
+      "count": 68,
+      "exact": 0.9853,
+      "char": 0.9996,
+      "changed_when_needed": 0.9825,
+      "overcorrection": 0.0
+    },
+    {
+      "rule_id": "comma_homogeneous",
+      "count": 88,
+      "exact": 1.0,
+      "char": 1.0,
+      "changed_when_needed": 1.0,
+      "overcorrection": 0.0
+    },
+    {
+      "rule_id": "comma_subordinate",
+      "count": 88,
+      "exact": 1.0,
+      "char": 1.0,
+      "changed_when_needed": 1.0,
+      "overcorrection": 0.0
+    },
+    {
+      "rule_id": "dash_subject_predicate",
+      "count": 79,
+      "exact": 1.0,
+      "char": 1.0,
+      "changed_when_needed": 1.0,
+      "overcorrection": 0.0
+    }
+  ],
+  "success_examples_by_layer": {
+    "<none>": [
+      {
+        "rule_id": "tsya_ttsya",
+        "source": "Покупатель возвращаться после лекции.",
+        "target": "Покупатель возвращается после лекции.",
+        "predicted": "Покупатель возвращается после лекции.",
+        "edits": [
+          {
+            "source": "возвращаться",
+            "replacement": "возвращается",
+            "rule_id": "tsya_ttsya",
+            "edit_type": "spelling",
+            "confidence": 0.9998
+          }
+        ]
+      },
+      {
+        "rule_id": "tsya_ttsya",
+        "source": "Медсестра хотела ошибается заранее.",
+        "target": "Медсестра хотела ошибаться заранее.",
+        "predicted": "Медсестра хотела ошибаться заранее.",
+        "edits": [
+          {
+            "source": "ошибается",
+            "replacement": "ошибаться",
+            "rule_id": "tsya_ttsya",
+            "edit_type": "spelling",
+            "confidence": 0.9997
+          }
+        ]
+      },
+      {
+        "rule_id": "comma_introductory",
+        "source": "Врач безусловно переслал схему.",
+        "target": "Врач, безусловно, переслал схему.",
+        "predicted": "Врач, безусловно, переслал схему.",
+        "edits": [
+          {
+            "source": "",
+            "replacement": ",",
+            "rule_id": "comma_introductory",
+            "edit_type": "punctuation",
+            "confidence": 0.9996
+          },
+          {
+            "source": "",
+            "replacement": ",",
+            "rule_id": "comma_introductory",
+            "edit_type": "punctuation",
+            "confidence": 0.9999
+          }
+        ]
+      },
+      {
+        "rule_id": "comma_subordinate",
+        "source": "Главный факультет отследил что новая заявка содержит сведения.",
+        "target": "Главный факультет отследил, что новая заявка содержит сведения.",
+        "predicted": "Главный факультет отследил, что новая заявка содержит сведения.",
+        "edits": [
+          {
+            "source": "",
+            "replacement": ",",
+            "rule_id": "comma_subordinate",
+            "edit_type": "punctuation",
+            "confidence": 0.9999
+          }
+        ]
+      }
+    ],
+    "dictionary_typo": [
+      {
+        "rule_id": "dictionary_domain_terms",
+        "source": "Редактор отметил форму «пунтуация».",
+        "target": "Редактор отметил форму «пунктуация».",
+        "predicted": "Редактор отметил форму «пунктуация».",
+        "edits": [
+          {
+            "source": "пунтуация",
+            "replacement": "пунктуация",
+            "rule_id": "dictionary_domain_terms",
+            "edit_type": "spelling",
+            "confidence": 0.9999
+          }
+        ]
+      },
+      {
+        "rule_id": "typo_space_noise",
+        "source": "Студент исправил пример «програм ма».",
+        "target": "Студент исправил пример «программа».",
+        "predicted": "Студент исправил пример «программа».",
+        "edits": [
+          {
+            "source": "програм ма",
+            "replacement": "программа",
+            "rule_id": "typo_space_noise",
+            "edit_type": "split_join",
+            "confidence": 0.9994
+          }
+        ]
+      },
+      {
+        "rule_id": "dictionary_borrowed_words",
+        "source": "В документе встретилось «оффлайн».",
+        "target": "В документе встретилось «офлайн».",
+        "predicted": "В документе встретилось «офлайн».",
+        "edits": [
+          {
+            "source": "оффлайн",
+            "replacement": "офлайн",
+            "rule_id": "dictionary_borrowed_words",
+            "edit_type": "spelling",
+            "confidence": 0.9983
+          }
+        ]
+      },
+      {
+        "rule_id": "dictionary_domain_terms",
+        "source": "В документе встретилось «приложэние».",
+        "target": "В документе встретилось «приложение».",
+        "predicted": "В документе встретилось «приложение».",
+        "edits": [
+          {
+            "source": "приложэние",
+            "replacement": "приложение",
+            "rule_id": "dictionary_domain_terms",
+            "edit_type": "spelling",
+            "confidence": 0.9995
+          }
+        ]
+      }
+    ],
+    "morpheme": [
+      {
+        "rule_id": "morpheme_root_vowels",
+        "source": "Дома на записке было написано «забирёт».",
+        "target": "Дома на записке было написано «заберёт».",
+        "predicted": "Дома на записке было написано «заберёт».",
+        "edits": [
+          {
+            "source": "забирёт",
+            "replacement": "заберёт",
+            "rule_id": "morpheme_root_vowels",
+            "edit_type": "spelling",
+            "confidence": 0.9884
+          }
+        ]
+      },
+      {
+        "rule_id": "morpheme_root_vowels",
+        "source": "Куратор сверил в регламенте написание «вырасший».",
+        "target": "Куратор сверил в регламенте написание «выросший».",
+        "predicted": "Куратор сверил в регламенте написание «выросший».",
+        "edits": [
+          {
+            "source": "вырасший",
+            "replacement": "выросший",
+            "rule_id": "morpheme_root_vowels",
+            "edit_type": "spelling",
+            "confidence": 0.9978
+          }
+        ]
+      },
+      {
+        "rule_id": "morpheme_soft_hard_signs",
+        "source": "В сообщении соседу осталось слово «семя».",
+        "target": "В сообщении соседу осталось слово «семья».",
+        "predicted": "В сообщении соседу осталось слово «семья».",
+        "edits": [
+          {
+            "source": "семя",
+            "replacement": "семья",
+            "rule_id": "morpheme_soft_hard_signs",
+            "edit_type": "spelling",
+            "confidence": 0.9987
+          }
+        ]
+      },
+      {
+        "rule_id": "morpheme_hissing_vowels",
+        "source": "В учебном задании встретилось слово «шопот».",
+        "target": "В учебном задании встретилось слово «шёпот».",
+        "predicted": "В учебном задании встретилось слово «шёпот».",
+        "edits": [
+          {
+            "source": "шопот",
+            "replacement": "шёпот",
+            "rule_id": "morpheme_hissing_vowels",
+            "edit_type": "spelling",
+            "confidence": 0.9884
+          }
+        ]
+      }
+    ],
+    "syntax_punctuation": [
+      {
+        "rule_id": "punct_detached_definitions",
+        "source": "Регламент подготовленный студентом лежал в классе.",
+        "target": "Регламент, подготовленный студентом, лежал в классе.",
+        "predicted": "Регламент, подготовленный студентом, лежал в классе.",
+        "edits": [
+          {
+            "source": "",
+            "replacement": ",",
+            "rule_id": "punct_detached_definitions",
+            "edit_type": "punctuation",
+            "confidence": 1.0
+          },
+          {
+            "source": "",
+            "replacement": ",",
+            "rule_id": "punct_detached_definitions",
+            "edit_type": "punctuation",
+            "confidence": 1.0
+          }
+        ]
+      },
+      {
+        "rule_id": "punct_introductory_extended",
+        "source": "Редактор проверил план конечно.",
+        "target": "Редактор проверил план, конечно.",
+        "predicted": "Редактор проверил план, конечно.",
+        "edits": [
+          {
+            "source": "",
+            "replacement": ",",
+            "rule_id": "punct_introductory_extended",
+            "edit_type": "punctuation",
+            "confidence": 1.0
+          }
+        ]
+      },
+      {
+        "rule_id": "punct_bsp",
+        "source": "Сервер ответил форма открылась.",
+        "target": "Сервер ответил — форма открылась.",
+        "predicted": "Сервер ответил — форма открылась.",
+        "edits": [
+          {
+            "source": "",
+            "replacement": " —",
+            "rule_id": "punct_bsp",
+            "edit_type": "punctuation",
+            "confidence": 0.9978
+          }
+        ]
+      },
+      {
+        "rule_id": "punct_detached_adverbials",
+        "source": "Учитель улыбаясь ответил на вопрос.",
+        "target": "Учитель, улыбаясь, ответил на вопрос.",
+        "predicted": "Учитель, улыбаясь, ответил на вопрос.",
+        "edits": [
+          {
+            "source": "",
+            "replacement": ",",
+            "rule_id": "punct_detached_adverbials",
+            "edit_type": "punctuation",
+            "confidence": 0.9999
+          },
+          {
+            "source": "",
+            "replacement": ",",
+            "rule_id": "punct_detached_adverbials",
+            "edit_type": "punctuation",
+            "confidence": 1.0
+          }
+        ]
+      }
+    ],
+    "compound_spelling": [
+      {
+        "rule_id": "compound_prepositions",
+        "source": "Секретарь вышел на встречу гостям.",
+        "target": "Секретарь вышел навстречу гостям.",
+        "predicted": "Секретарь вышел навстречу гостям.",
+        "edits": [
+          {
+            "source": "на встречу",
+            "replacement": "навстречу",
+            "rule_id": "compound_prepositions",
+            "edit_type": "split_join",
+            "confidence": 0.9992
+          }
+        ]
+      },
+      {
+        "rule_id": "compound_pronouns_particles",
+        "source": "Утром кто то отправил письмо.",
+        "target": "Утром кто-то отправил письмо.",
+        "predicted": "Утром кто-то отправил письмо.",
+        "edits": [
+          {
+            "source": "кто то",
+            "replacement": "кто-то",
+            "rule_id": "hyphen_particles",
+            "edit_type": "hyphen",
+            "confidence": 1.0
+          }
+        ]
+      },
+      {
+        "rule_id": "compound_service_words",
+        "source": "Редактор задержался, за то исправил ошибку.",
+        "target": "Редактор задержался, зато исправил ошибку.",
+        "predicted": "Редактор задержался, зато исправил ошибку.",
+        "edits": [
+          {
+            "source": "за то",
+            "replacement": "зато",
+            "rule_id": "compound_service_words",
+            "edit_type": "split_join",
+            "confidence": 0.9828
+          }
+        ]
+      },
+      {
+        "rule_id": "compound_service_words",
+        "source": "Автор то же прочитал заключение перед встречей.",
+        "target": "Автор тоже прочитал заключение перед встречей.",
+        "predicted": "Автор тоже прочитал заключение перед встречей.",
+        "edits": [
+          {
+            "source": "то же",
+            "replacement": "тоже",
+            "rule_id": "compound_service_words",
+            "edit_type": "split_join",
+            "confidence": 0.9777
+          }
+        ]
+      }
+    ]
+  },
+  "failures_by_layer": {
+    "morpheme": [
+      {
+        "rule_id": "morpheme_prefixes",
+        "mode": "positive",
+        "source": "Учитель подчеркнул в диктанте форму «безкровный».",
+        "target": "Учитель подчеркнул в диктанте форму «бескровный».",
+        "predicted": "Учитель подчеркнул в диктанте форму «безкровный».",
+        "edits": []
+      },
+      {
+        "rule_id": "morpheme_suffixes",
+        "mode": "positive",
+        "source": "В разговорной заметке встретилась форма «чашочка».",
+        "target": "В разговорной заметке встретилась форма «чашечка».",
+        "predicted": "В разговорной заметке встретилась форма «чашочка».",
+        "edits": []
+      },
+      {
+        "rule_id": "morpheme_prefixes",
+        "mode": "positive",
+        "source": "Редактор быстро исправил слово «расбудить».",
+        "target": "Редактор быстро исправил слово «разбудить».",
+        "predicted": "Редактор быстро исправил слово «расбудить».",
+        "edits": []
+      },
+      {
+        "rule_id": "morpheme_endings",
+        "mode": "positive",
+        "source": "В учебном задании встретилось слово «ранний».",
+        "target": "В учебном задании встретилось слово «ранней».",
+        "predicted": "В учебном задании встретилось слово «ранний».",
+        "edits": []
+      },
+      {
+        "rule_id": "morpheme_suffixes",
+        "mode": "positive",
+        "source": "В журнале настройки записали слово «клеющий».",
+        "target": "В журнале настройки записали слово «клеящий».",
+        "predicted": "В журнале настройки записали слово «клеющий».",
+        "edits": []
+      }
+    ],
+    "<none>": [
+      {
+        "rule_id": "tsya_ttsya",
+        "mode": "positive",
+        "source": "Цифровой архив должен сравнивается после загрузки.",
+        "target": "Цифровой архив должен сравниваться после загрузки.",
+        "predicted": "Цифровой архив должен сравниваеться после загрузки.",
+        "edits": [
+          {
+            "source": "сравнивается",
+            "replacement": "сравниваеться",
+            "rule_id": "tsya_ttsya",
+            "edit_type": "spelling",
+            "confidence": 0.9998
+          }
+        ]
+      },
+      {
+        "rule_id": "tsya_ttsya",
+        "mode": "positive",
+        "source": "Скрипт должен открывается по регламенту.",
+        "target": "Скрипт должен открываться по регламенту.",
+        "predicted": "Скрипт должен открываеться по регламенту.",
+        "edits": [
+          {
+            "source": "открывается",
+            "replacement": "открываеться",
+            "rule_id": "tsya_ttsya",
+            "edit_type": "spelling",
+            "confidence": 0.9998
+          }
+        ]
+      },
+      {
+        "rule_id": "tsya_ttsya",
+        "mode": "positive",
+        "source": "Инженер интересоваться на семинаре.",
+        "target": "Инженер интересуется на семинаре.",
+        "predicted": "Инженер интересоватся на семинаре.",
+        "edits": [
+          {
+            "source": "интересоваться",
+            "replacement": "интересоватся",
+            "rule_id": "tsya_ttsya",
+            "edit_type": "spelling",
+            "confidence": 0.9998
+          }
+        ]
+      },
+      {
+        "rule_id": "tsya_ttsya",
+        "mode": "positive",
+        "source": "Внимательная сотрудница встречаться без ошибок.",
+        "target": "Внимательная сотрудница встречается без ошибок.",
+        "predicted": "Внимательная сотрудница встречатся без ошибок.",
+        "edits": [
+          {
+            "source": "встречаться",
+            "replacement": "встречатся",
+            "rule_id": "tsya_ttsya",
+            "edit_type": "spelling",
+            "confidence": 0.9995
+          }
+        ]
+      },
+      {
+        "rule_id": "tsya_ttsya",
+        "mode": "positive",
+        "source": "Писатель планировал тренируется в аудитории.",
+        "target": "Писатель планировал тренироваться в аудитории.",
+        "predicted": "Писатель планировал тренируеться в аудитории.",
+        "edits": [
+          {
+            "source": "тренируется",
+            "replacement": "тренируеться",
+            "rule_id": "tsya_ttsya",
+            "edit_type": "spelling",
+            "confidence": 0.9996
+          }
+        ]
+      }
+    ],
+    "compound_spelling": [
+      {
+        "rule_id": "compound_nouns_adjectives",
+        "mode": "positive",
+        "source": "Пользователь открыл веб интерфейс.",
+        "target": "Пользователь открыл веб-интерфейс.",
+        "predicted": "Пользователь открыл веб интерфейс.",
+        "edits": []
+      },
+      {
+        "rule_id": "compound_pol_polu",
+        "mode": "positive",
+        "source": "Географ описал пол Урала в докладе.",
+        "target": "Географ описал пол-Урала в докладе.",
+        "predicted": "Географ описал пол Урала в докладе.",
+        "edits": []
+      },
+      {
+        "rule_id": "compound_pol_polu",
+        "mode": "positive",
+        "source": "Отдел подвёл итоги за полу годие.",
+        "target": "Отдел подвёл итоги за полугодие.",
+        "predicted": "Отдел подвёл итоги за полу годие.",
+        "edits": []
+      },
+      {
+        "rule_id": "compound_prepositions",
+        "mode": "positive",
+        "source": "Комиссия слушала доклад в продолжении заседания.",
+        "target": "Комиссия слушала доклад в продолжение заседания.",
+        "predicted": "Комиссия слушала доклад в продолжении заседания.",
+        "edits": []
+      },
+      {
+        "rule_id": "compound_nouns_adjectives",
+        "mode": "positive",
+        "source": "Институт опубликовал научно технический отчёт.",
+        "target": "Институт опубликовал научно-технический отчёт.",
+        "predicted": "Институт опубликовал научно технический отчёт.",
+        "edits": []
+      }
+    ],
+    "syntax_punctuation": [
+      {
+        "rule_id": "punct_final_marks",
+        "mode": "positive",
+        "source": "Секретарь уточнил текст",
+        "target": "Секретарь уточнил текст.",
+        "predicted": "Секретарь уточнил текст",
+        "edits": []
+      },
+      {
+        "rule_id": "punct_final_marks",
+        "mode": "positive",
+        "source": "Куратор проверил интерфейс",
+        "target": "Куратор проверил интерфейс…",
+        "predicted": "Куратор проверил интерфейс",
+        "edits": []
+      },
+      {
+        "rule_id": "punct_final_marks",
+        "mode": "positive",
+        "source": "Аналитик исправил план",
+        "target": "Аналитик исправил план!",
+        "predicted": "Аналитик исправил план",
+        "edits": []
+      },
+      {
+        "rule_id": "punct_final_marks",
+        "mode": "positive",
+        "source": "Студент загрузил файл",
+        "target": "Студент загрузил файл…",
+        "predicted": "Студент загрузил файл",
+        "edits": []
+      },
+      {
+        "rule_id": "punct_final_marks",
+        "mode": "positive",
+        "source": "Аналитик отправил план",
+        "target": "Аналитик отправил план.",
+        "predicted": "Аналитик отправил план",
+        "edits": []
+      }
+    ],
+    "dictionary_typo": [
+      {
+        "rule_id": "typo_character_noise",
+        "mode": "positive",
+        "source": "В документе встретилось «фреймворт».",
+        "target": "В документе встретилось «фреймворк».",
+        "predicted": "В документе встретилось «фреймворт».",
+        "edits": []
+      },
+      {
+        "rule_id": "typo_character_noise",
+        "mode": "positive",
+        "source": "Пользователь загрузил строку «ресурд».",
+        "target": "Пользователь загрузил строку «ресурс».",
+        "predicted": "Пользователь загрузил строку «ресурд».",
+        "edits": []
+      },
+      {
+        "rule_id": "typo_character_noise",
+        "mode": "positive",
+        "source": "В документе встретилось «блогерс».",
+        "target": "В документе встретилось «блогер».",
+        "predicted": "В документе встретилось «блогерс».",
+        "edits": []
+      },
+      {
+        "rule_id": "typo_keyboard_neighbor",
+        "mode": "positive",
+        "source": "Эксперт сравнил вариант «ресырс».",
+        "target": "Эксперт сравнил вариант «ресурс».",
+        "predicted": "Эксперт сравнил вариант «ресырс».",
+        "edits": []
+      },
+      {
+        "rule_id": "typo_keyboard_neighbor",
+        "mode": "positive",
+        "source": "Редактор отметил форму «менедхмент».",
+        "target": "Редактор отметил форму «менеджмент».",
+        "predicted": "Редактор отметил форму «менедхмент».",
+        "edits": []
+      }
+    ]
+  }
+}
