@@ -9,7 +9,9 @@ from src.rule_layers.base import LayerDirectCase
 from src.schema import GeneratedExample, WordToken
 
 
-VARIED_FAMILIES = frozenset({"compound_spelling", "dictionary_typo", "syntax_punctuation"})
+VARIED_FAMILIES = frozenset(
+    {"compound_spelling", "dictionary_typo", "syntax_punctuation", "quotation_dialogue", "casing", "semantic"}
+)
 
 STYLE_EVERYDAY = "everyday"
 STYLE_SCHOOL = "school"
@@ -79,18 +81,14 @@ VERBS: tuple[str, ...] = (
     "вынес в список",
 )
 PEOPLE: tuple[str, ...] = (
-    "мама",
     "папа",
-    "бабушка",
     "дедушка",
     "брат",
-    "сестра",
     "сосед",
-    "соседка",
     "друг",
-    "подруга",
     "сын",
-    "дочь",
+    "отец",
+    "дядя",
 )
 ITEMS: tuple[str, ...] = (
     "список покупок",
@@ -179,12 +177,16 @@ def contextualize_case(case: LayerDirectCase, rng: RandomSource) -> LayerDirectC
         target_text=target_text,
         token_operations=case.token_operations,
         gap_operations=case.gap_operations,
+        boundary_operations=case.boundary_operations,
         expected_token_edit_count=case.expected_token_edit_count,
         expected_gap_edit_count=case.expected_gap_edit_count,
         metadata=metadata,
         weight=case.weight,
         direct_token_labels=case.direct_token_labels,
         direct_gap_labels=case.direct_gap_labels,
+        direct_boundary_before_labels=case.direct_boundary_before_labels,
+        direct_boundary_after_labels=case.direct_boundary_after_labels,
+        expected_boundary_edit_count=case.expected_boundary_edit_count,
     )
 
 
@@ -228,6 +230,8 @@ def _contextualize_example_once(example: GeneratedExample, rng: RandomSource) ->
         source_tokens=[*prefix_tokens, *shifted_tokens],
         token_edit_labels=["KEEP"] * len(prefix_tokens) + list(example.token_edit_labels),
         gap_labels=gap_labels_from_text(prefix, prefix_tokens) + list(example.gap_labels),
+        boundary_before_labels=["NONE"] * len(prefix_tokens) + list(example.boundary_before_labels),
+        boundary_after_labels=["NONE"] * len(prefix_tokens) + list(example.boundary_after_labels),
         rule_ids=["none"] * len(prefix_tokens) + list(example.rule_ids),
         primary_rule_id=example.primary_rule_id,
         mode=example.mode,
@@ -247,7 +251,12 @@ def _should_contextualize(case: LayerDirectCase) -> bool:
         return False
     if _truthy(case.metadata.get("disable_context_variation")):
         return False
-    return not case.direct_token_labels and not case.direct_gap_labels
+    return (
+        not case.direct_token_labels
+        and not case.direct_gap_labels
+        and not case.direct_boundary_before_labels
+        and not case.direct_boundary_after_labels
+    )
 
 
 def _render_shell(context: RenderContext, *, text: str) -> str:

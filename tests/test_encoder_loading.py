@@ -6,7 +6,13 @@ from pathlib import Path
 import pytest
 
 from src.model.encoder import EncoderLoadConfig, PRIMARY_ENCODER, load_encoder, load_tokenizer
-from src.schema.labels import GAP_ID_TO_LABEL, RULE_ID_TO_LABEL, TOKEN_ID_TO_LABEL
+from src.schema.labels import (
+    BOUNDARY_AFTER_ID_TO_LABEL,
+    BOUNDARY_BEFORE_ID_TO_LABEL,
+    GAP_ID_TO_LABEL,
+    RULE_ID_TO_LABEL,
+    TOKEN_ID_TO_LABEL,
+)
 
 
 def _write_label_maps(path: Path) -> None:
@@ -15,6 +21,8 @@ def _write_label_maps(path: Path) -> None:
             {
                 "token_id_to_label": list(TOKEN_ID_TO_LABEL),
                 "gap_id_to_label": list(GAP_ID_TO_LABEL),
+                "boundary_before_id_to_label": list(BOUNDARY_BEFORE_ID_TO_LABEL),
+                "boundary_after_id_to_label": list(BOUNDARY_AFTER_ID_TO_LABEL),
                 "rule_id_to_label": list(RULE_ID_TO_LABEL),
             },
             ensure_ascii=False,
@@ -29,6 +37,8 @@ def _write_legacy_rule_prefix_label_maps(path: Path) -> None:
             {
                 "token_id_to_label": list(TOKEN_ID_TO_LABEL),
                 "gap_id_to_label": list(GAP_ID_TO_LABEL),
+                "boundary_before_id_to_label": list(BOUNDARY_BEFORE_ID_TO_LABEL),
+                "boundary_after_id_to_label": list(BOUNDARY_AFTER_ID_TO_LABEL),
                 "rule_id_to_label": list(RULE_ID_TO_LABEL[:-3]),
             },
             ensure_ascii=False,
@@ -416,10 +426,13 @@ def test_direct_neural_backend_partially_loads_legacy_token_and_gap_heads(monkey
 
     state = loaded_state["state"]
     assert backend.rule_head_loaded is True
+    assert backend.boundary_heads_loaded is False
     assert loaded_state["strict"] is False
     assert torch.equal(state["token_edit.weight"][:-1], legacy_state["token_edit.weight"])
     assert torch.equal(state["gap_punctuation.weight"][:-1], legacy_state["gap_punctuation.weight"])
     assert torch.equal(state["rule.weight"], legacy_state["rule.weight"])
+    assert "boundary_before.weight" not in legacy_state
+    assert "boundary_after.weight" not in legacy_state
     assert state["token_edit.bias"][-1].item() <= -1000.0
     assert state["gap_punctuation.bias"][-1].item() <= -1000.0
 

@@ -49,12 +49,16 @@ class LayerDirectCase:
     target_text: str
     token_operations: tuple[LayerOperation, ...] = ()
     gap_operations: tuple[LayerOperation, ...] = ()
+    boundary_operations: tuple[LayerOperation, ...] = ()
     expected_token_edit_count: int = 0
     expected_gap_edit_count: int = 0
     metadata: Mapping[str, Any] = field(default_factory=dict)
     weight: float = 1.0
     direct_token_labels: tuple[str, ...] = ()
     direct_gap_labels: tuple[str, ...] = ()
+    direct_boundary_before_labels: tuple[str, ...] = ()
+    direct_boundary_after_labels: tuple[str, ...] = ()
+    expected_boundary_edit_count: int = 0
 
     def __post_init__(self) -> None:
         rule_id = self.rule_id.strip()
@@ -77,6 +81,8 @@ class LayerDirectCase:
             raise ValueError("expected_token_edit_count must be non-negative.")
         if self.expected_gap_edit_count < 0:
             raise ValueError("expected_gap_edit_count must be non-negative.")
+        if self.expected_boundary_edit_count < 0:
+            raise ValueError("expected_boundary_edit_count must be non-negative.")
         if self.weight < 0:
             raise ValueError("LayerDirectCase weight must be non-negative.")
         object.__setattr__(self, "rule_id", rule_id)
@@ -85,9 +91,12 @@ class LayerDirectCase:
         object.__setattr__(self, "mode", mode)
         object.__setattr__(self, "token_operations", tuple(self.token_operations))
         object.__setattr__(self, "gap_operations", tuple(self.gap_operations))
+        object.__setattr__(self, "boundary_operations", tuple(self.boundary_operations))
         object.__setattr__(self, "metadata", dict(self.metadata))
         object.__setattr__(self, "direct_token_labels", tuple(self.direct_token_labels))
         object.__setattr__(self, "direct_gap_labels", tuple(self.direct_gap_labels))
+        object.__setattr__(self, "direct_boundary_before_labels", tuple(self.direct_boundary_before_labels))
+        object.__setattr__(self, "direct_boundary_after_labels", tuple(self.direct_boundary_after_labels))
 
 
 @dataclass(frozen=True)

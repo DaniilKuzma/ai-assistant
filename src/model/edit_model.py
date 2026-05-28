@@ -5,7 +5,13 @@ from typing import Any
 
 from src.model.encoder import EncoderLoadConfig, ensure_pytorch_transformers_backend, load_encoder
 from src.model.heads import build_direct_edit_heads
-from src.schema.labels import GAP_PUNCTUATION_LABELS, RULE_LABELS, TOKEN_EDIT_LABELS
+from src.schema.labels import (
+    BOUNDARY_AFTER_LABELS,
+    BOUNDARY_BEFORE_LABELS,
+    GAP_PUNCTUATION_LABELS,
+    RULE_LABELS,
+    TOKEN_EDIT_LABELS,
+)
 
 
 @dataclass(frozen=True)
@@ -14,6 +20,8 @@ class DirectEditModelConfig:
     fallback_model_name: str = "ai-forever/ruRoberta-large"
     token_label_count: int = len(TOKEN_EDIT_LABELS)
     gap_label_count: int = len(GAP_PUNCTUATION_LABELS)
+    boundary_before_label_count: int = len(BOUNDARY_BEFORE_LABELS)
+    boundary_after_label_count: int = len(BOUNDARY_AFTER_LABELS)
     rule_tag_count: int = len(RULE_LABELS)
     local_files_only: bool = False
     lora_enabled: bool = True
@@ -72,11 +80,15 @@ class DirectEditTaggerModel:
                     word_token_indices = torch.zeros((batch_size, 0), dtype=torch.long, device=hidden.device)
                 word_representations = _gather_hidden(hidden, word_token_indices)
                 token_edit_logits = self.heads["token_edit"](word_representations)
+                boundary_before_logits = self.heads["boundary_before"](word_representations)
+                boundary_after_logits = self.heads["boundary_after"](word_representations)
                 token_confidence_logits = self.heads["token_confidence"](word_representations).squeeze(-1)
                 rule_logits = self.heads["rule"](word_representations)
 
                 word_token_mask = _mask_or_ones(word_token_mask, word_token_indices, hidden.device)
                 token_edit_logits = _zero_masked(token_edit_logits, word_token_mask)
+                boundary_before_logits = _zero_masked(boundary_before_logits, word_token_mask)
+                boundary_after_logits = _zero_masked(boundary_after_logits, word_token_mask)
                 token_confidence_logits = token_confidence_logits.masked_fill(~word_token_mask, 0.0)
                 rule_logits = _zero_masked(rule_logits, word_token_mask)
 
@@ -93,6 +105,8 @@ class DirectEditTaggerModel:
                 return {
                     "hidden_states": hidden,
                     "token_edit_logits": token_edit_logits,
+                    "boundary_before_logits": boundary_before_logits,
+                    "boundary_after_logits": boundary_after_logits,
                     "token_confidence_logits": token_confidence_logits,
                     "gap_punctuation_logits": gap_punctuation_logits,
                     "gap_confidence_logits": gap_confidence_logits,
@@ -106,6 +120,8 @@ class DirectEditTaggerModel:
                 hidden_size,
                 config.token_label_count,
                 config.gap_label_count,
+                config.boundary_before_label_count,
+                config.boundary_after_label_count,
                 config.rule_tag_count,
             ),
         )

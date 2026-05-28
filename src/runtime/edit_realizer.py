@@ -20,10 +20,17 @@ PUNCTUATION_BY_LABEL = {
     "QUESTION": "?",
     "EXCLAMATION": "!",
     "ELLIPSIS": "…",
+    "COMMA_DASH": ", —",
 }
 PUNCTUATION_CHARS = set(",;:\u2014-.!?\u2026")
 DELETE_PUNCTUATION_CHARS = PUNCTUATION_CHARS
 MAX_LEXICON_SPAN_TOKENS = 4
+OPEN_QUOTE_DELETE_CHARS = frozenset({"«", '"', "“", "„"})
+OPEN_QUOTE_NORMALIZE_CHARS = frozenset({'"', "“", "„"})
+CLOSE_QUOTE_DELETE_CHARS = frozenset({"»", '"', "”"})
+CLOSE_QUOTE_NORMALIZE_CHARS = frozenset({'"', "”"})
+CLOSING_WRAPPER_CHARS = frozenset({"»", '"', "”", ")", "]"})
+WRAPPER_AWARE_GAP_LABELS = frozenset({"COMMA", "DOT", "QUESTION", "EXCLAMATION", "ELLIPSIS", "COMMA_DASH"})
 
 TSYA_TO_TTSYA_REPLACEMENTS = {
     "\u043e\u0448\u0438\u0431\u0430\u0435\u0442\u0441\u044f": "\u043e\u0448\u0438\u0431\u0430\u0442\u044c\u0441\u044f",
@@ -37,6 +44,7 @@ LABEL_RULE_EDIT_TYPE: dict[str, tuple[str, str]] = {
     "DELETE": ("delete", "spelling"),
     "LOWERCASE": ("casing", "casing"),
     "UPPERCASE": ("casing", "casing"),
+    "CAPITALIZE": ("casing", "casing"),
     "SPLIT_NE_VERB": ("ne_verb", "split_join"),
     "MERGE_TAK_ZHE_TO_TAKZHE": ("takzhe_tak_zhe", "split_join"),
     "SPLIT_TAKZHE_TO_TAK_ZHE": ("takzhe_tak_zhe", "split_join"),
@@ -51,6 +59,19 @@ LABEL_RULE_EDIT_TYPE: dict[str, tuple[str, str]] = {
     "HYPHENATE_PO_ADVERB": ("hyphen_po_adverb", "hyphen"),
     "FIX_TSYA_TO_TTSYA": ("tsya_ttsya", "spelling"),
     "FIX_TTSYA_TO_TSYA": ("tsya_ttsya", "spelling"),
+}
+
+BOUNDARY_LABEL_RULE_EDIT_TYPE: dict[str, tuple[str, str]] = {
+    "INSERT_OPEN_QUOTE": ("quotation_dialogue", "punctuation"),
+    "DELETE_OPEN_QUOTE": ("quotation_dialogue", "punctuation"),
+    "NORMALIZE_OPEN_QUOTE": ("quotation_dialogue", "punctuation"),
+    "INSERT_CLOSE_QUOTE": ("quotation_dialogue", "punctuation"),
+    "DELETE_CLOSE_QUOTE": ("quotation_dialogue", "punctuation"),
+    "NORMALIZE_CLOSE_QUOTE": ("quotation_dialogue", "punctuation"),
+    "INSERT_OPEN_BRACKET": ("quotation_dialogue", "punctuation"),
+    "DELETE_OPEN_BRACKET": ("quotation_dialogue", "punctuation"),
+    "INSERT_CLOSE_BRACKET": ("quotation_dialogue", "punctuation"),
+    "DELETE_CLOSE_BRACKET": ("quotation_dialogue", "punctuation"),
 }
 
 
@@ -93,6 +114,96 @@ def apply_token_edit_labels(
         consumed.update(_consumed_indexes(tokens, index, label, edit))
 
     return apply_runtime_edits(text, edits), edits
+
+
+def apply_boundary_and_token_edit_labels(
+    text: str,
+    tokens: Sequence[WordToken],
+    labels: Sequence[str],
+    confidences: Sequence[float],
+    threshold: float,
+    *,
+    boundary_before_labels: Sequence[str] | None = None,
+    boundary_after_labels: Sequence[str] | None = None,
+    boundary_before_confidences: Sequence[float] | None = None,
+    boundary_after_confidences: Sequence[float] | None = None,
+    rule_ids: Sequence[str] | None = None,
+    orthographic_lexicon: OrthographicCorrectionLexicon | None = None,
+) -> tuple[str, list[RuntimeEdit]]:
+    edits: list[RuntimeEdit] = []
+    consumed: set[int] = set()
+    count = min(len(tokens), len(labels), len(confidences))
+    before_labels = _padded_labels(boundary_before_labels, len(tokens), "NONE")
+    after_labels = _padded_labels(boundary_after_labels, len(tokens), "NONE")
+    before_confidences = _padded_confidences(boundary_before_confidences, len(tokens), 1.0)
+    after_confidences = _padded_confidences(boundary_after_confidences, len(tokens), 1.0)
+
+    for index in range(len(tokens)):
+        before_edit = _boundary_before_edit_for_label(
+            text,
+            tokens[index],
+            before_labels[index],
+            float(before_confidences[index]),
+            threshold,
+            _boundary_rule_id_for(index, rule_ids, before_labels[index]),
+        )
+        if before_edit is not None:
+            edits.append(before_edit)
+
+        if index < count and index not in consumed:
+            label = str(labels[index])
+            if label not in {"KEEP", "SKIP_MERGED"}:
+                confidence = float(confidences[index])
+                if confidence >= threshold:
+                    edit = _token_edit_for_label(
+                        text,
+                        tokens,
+                        index,
+                        label,
+                        confidence,
+                        _rule_id_for(index, rule_ids, label),
+                        orthographic_lexicon,
+                    )
+                    if edit is not None:
+                        edits.append(edit)
+                        consumed.update(_consumed_indexes(tokens, index, label, edit))
+
+        after_edit = _boundary_after_edit_for_label(
+            text,
+            tokens[index],
+            after_labels[index],
+            float(after_confidences[index]),
+            threshold,
+            _boundary_rule_id_for(index, rule_ids, after_labels[index]),
+        )
+        if after_edit is not None:
+            edits.append(after_edit)
+
+    return apply_runtime_edits(text, edits), edits
+
+
+def apply_boundary_labels(
+    text: str,
+    tokens: Sequence[WordToken],
+    boundary_before_labels: Sequence[str],
+    boundary_after_labels: Sequence[str],
+    confidences: Sequence[float],
+    threshold: float,
+    *,
+    rule_ids: Sequence[str] | None = None,
+) -> tuple[str, list[RuntimeEdit]]:
+    return apply_boundary_and_token_edit_labels(
+        text,
+        tokens,
+        ["KEEP"] * len(tokens),
+        [1.0] * len(tokens),
+        threshold,
+        boundary_before_labels=boundary_before_labels,
+        boundary_after_labels=boundary_after_labels,
+        boundary_before_confidences=confidences,
+        boundary_after_confidences=confidences,
+        rule_ids=rule_ids,
+    )
 
 
 def apply_gap_labels(
@@ -158,6 +269,24 @@ def gap_edit_type_for_label(label: str) -> str:
     return "punctuation" if label != "NONE" else "none"
 
 
+def boundary_edit_type_for_label(label: str) -> str:
+    return BOUNDARY_LABEL_RULE_EDIT_TYPE.get(label, ("none", "none"))[1]
+
+
+def _padded_labels(labels: Sequence[str] | None, count: int, default: str) -> list[str]:
+    result = [str(label) for label in (labels or [])[:count]]
+    if len(result) < count:
+        result.extend([default] * (count - len(result)))
+    return result
+
+
+def _padded_confidences(confidences: Sequence[float] | None, count: int, default: float) -> list[float]:
+    result = [float(value) for value in (confidences or [])[:count]]
+    if len(result) < count:
+        result.extend([default] * (count - len(result)))
+    return result
+
+
 def _token_edit_for_label(
     text: str,
     tokens: Sequence[WordToken],
@@ -179,6 +308,8 @@ def _token_edit_for_label(
         replacement = source.lower()
     elif label == "UPPERCASE":
         replacement = source.upper()
+    elif label == "CAPITALIZE":
+        replacement = source[:1].upper() + source[1:].lower()
     elif label == "SPLIT_NE_VERB":
         if not source.lower().startswith("не") or len(source) <= 2:
             return None
@@ -247,6 +378,66 @@ def _token_edit_for_label(
     )
 
 
+def _boundary_before_edit_for_label(
+    text: str,
+    token: WordToken,
+    label: str,
+    confidence: float,
+    threshold: float,
+    rule_id: str,
+) -> RuntimeEdit | None:
+    if label == "NONE" or confidence < threshold:
+        return None
+    position = token.start
+    if label == "INSERT_OPEN_QUOTE":
+        return RuntimeEdit(position, position, "", "«", "punctuation", rule_id, confidence)
+    if label == "INSERT_OPEN_BRACKET":
+        return RuntimeEdit(position, position, "", "(", "punctuation", rule_id, confidence)
+    if position <= 0:
+        return None
+    previous = text[position - 1]
+    if label == "DELETE_OPEN_QUOTE" and previous in OPEN_QUOTE_DELETE_CHARS:
+        return RuntimeEdit(position - 1, position, previous, "", "punctuation", rule_id, confidence)
+    if label == "DELETE_OPEN_BRACKET" and previous == "(":
+        return RuntimeEdit(position - 1, position, previous, "", "punctuation", rule_id, confidence)
+    if label == "NORMALIZE_OPEN_QUOTE":
+        if previous == "«":
+            return None
+        if previous in OPEN_QUOTE_NORMALIZE_CHARS:
+            return RuntimeEdit(position - 1, position, previous, "«", "punctuation", rule_id, confidence)
+    return None
+
+
+def _boundary_after_edit_for_label(
+    text: str,
+    token: WordToken,
+    label: str,
+    confidence: float,
+    threshold: float,
+    rule_id: str,
+) -> RuntimeEdit | None:
+    if label == "NONE" or confidence < threshold:
+        return None
+    position = token.end
+    if label == "INSERT_CLOSE_QUOTE":
+        return RuntimeEdit(position, position, "", "»", "punctuation", rule_id, confidence)
+    if label == "INSERT_CLOSE_BRACKET":
+        return RuntimeEdit(position, position, "", ")", "punctuation", rule_id, confidence)
+    if position >= len(text):
+        return None
+    following = text[position]
+    if label == "DELETE_CLOSE_QUOTE" and following in CLOSE_QUOTE_DELETE_CHARS:
+        return RuntimeEdit(position, position + 1, following, "", "punctuation", rule_id, confidence)
+    if label == "DELETE_CLOSE_BRACKET" and following == ")":
+        return RuntimeEdit(position, position + 1, following, "", "punctuation", rule_id, confidence)
+    if label == "NORMALIZE_CLOSE_QUOTE":
+        if following == "»":
+            return None
+        if following in CLOSE_QUOTE_NORMALIZE_CHARS:
+            return RuntimeEdit(position, position + 1, following, "»", "punctuation", rule_id, confidence)
+    return None
+
+
 def _span_replace_by_lexicon_edit(
     text: str,
     tokens: Sequence[WordToken],
@@ -266,7 +457,7 @@ def _span_replace_by_lexicon_edit(
         entries = [
             entry
             for entry in orthographic_lexicon.lookup(source, rule_id=rule_id)
-            if entry.operation not in {"dict_replace", "replace"} and _entry_allowed_in_context(entry, text)
+            if _entry_allowed_for_span_replace(entry, text)
         ]
         if not entries:
             continue
@@ -297,17 +488,20 @@ def _gap_edit_for_label(
     confidence: float,
     rule_id: str,
 ) -> RuntimeEdit | None:
-    scan = token.end
+    anchor = _gap_anchor(text, token, label)
+    scan = anchor
     while scan < len(text) and text[scan].isspace():
         scan += 1
 
-    if scan < len(text) and text[scan] in PUNCTUATION_CHARS:
-        if text[scan] == punctuation:
+    existing = _punctuation_span_at(text, scan)
+    if existing is not None:
+        start, end, source = existing
+        if source == punctuation:
             return None
-        return RuntimeEdit(scan, scan + 1, text[scan], punctuation, "punctuation", rule_id, confidence)
+        return RuntimeEdit(start, end, source, punctuation, "punctuation", rule_id, confidence)
 
     replacement = f" {punctuation}" if label == "DASH" else punctuation
-    return RuntimeEdit(token.end, token.end, "", replacement, "punctuation", rule_id, confidence)
+    return RuntimeEdit(anchor, anchor, "", replacement, "punctuation", rule_id, confidence)
 
 
 def _delete_punctuation_edit(
@@ -316,17 +510,40 @@ def _delete_punctuation_edit(
     confidence: float,
     rule_id: str,
 ) -> RuntimeEdit | None:
-    scan = token.end
+    anchor = _gap_anchor(text, token, "COMMA_DASH")
+    scan = anchor
     while scan < len(text) and text[scan].isspace():
         scan += 1
+
+    if text.startswith(", \u2014", scan):
+        return RuntimeEdit(scan, scan + 3, text[scan : scan + 3], "", "punctuation", rule_id, confidence)
+
     if scan >= len(text) or text[scan] not in DELETE_PUNCTUATION_CHARS:
         return None
     if text[scan] in {"-", "\u2014"}:
         end = scan + 1
         while end < len(text) and text[end].isspace():
             end += 1
-        return RuntimeEdit(token.end, end, text[token.end : end], " ", "punctuation", rule_id, confidence)
+        return RuntimeEdit(anchor, end, text[anchor:end], " ", "punctuation", rule_id, confidence)
     return RuntimeEdit(scan, scan + 1, text[scan], "", "punctuation", rule_id, confidence)
+
+
+def _gap_anchor(text: str, token: WordToken, label: str) -> int:
+    if label in WRAPPER_AWARE_GAP_LABELS and token.end < len(text) and text[token.end] in CLOSING_WRAPPER_CHARS:
+        return token.end + 1
+    return token.end
+
+
+def _punctuation_span_at(text: str, index: int) -> tuple[int, int, str] | None:
+    if index >= len(text):
+        return None
+    if text.startswith(", \u2014", index):
+        return (index, index + 3, text[index : index + 3])
+    if text.startswith("...", index):
+        return (index, index + 3, text[index : index + 3])
+    if text[index] in PUNCTUATION_CHARS:
+        return (index, index + 1, text[index])
+    return None
 
 
 def _rule_id_for(index: int, rule_ids: Sequence[str] | None, label: str) -> str:
@@ -345,6 +562,12 @@ def _gap_rule_id_for(index: int, rule_ids: Sequence[str] | None, label: str) -> 
     if label == "COMMA":
         return "comma_subordinate"
     return "punctuation"
+
+
+def _boundary_rule_id_for(index: int, rule_ids: Sequence[str] | None, label: str) -> str:
+    if rule_ids is not None and index < len(rule_ids) and rule_ids[index] not in {"", "none"}:
+        return str(rule_ids[index])
+    return BOUNDARY_LABEL_RULE_EDIT_TYPE.get(label, ("none", "none"))[0]
 
 
 def _consumed_indexes(tokens: Sequence[WordToken], index: int, label: str, edit: RuntimeEdit) -> set[int]:
@@ -417,6 +640,14 @@ def _entry_allowed_in_context(entry: object, text: str) -> bool:
     return not any(str(item).casefold() in lowered for item in forbidden if str(item).strip())
 
 
+def _entry_allowed_for_span_replace(entry: object, text: str) -> bool:
+    operation = str(getattr(entry, "operation", "") or "")
+    rule_id = str(getattr(entry, "rule_id", "") or "")
+    if operation in {"dict_replace", "replace"} and not rule_id.startswith("semantic_"):
+        return False
+    return _entry_allowed_in_context(entry, text)
+
+
 def _word_count(value: str) -> int:
     return len(re.findall(r"[А-Яа-яЁё]+", value))
 
@@ -477,9 +708,12 @@ def _controlled_tsya_pairs() -> dict[str, str]:
 
 
 __all__ = [
+    "apply_boundary_and_token_edit_labels",
+    "apply_boundary_labels",
     "apply_gap_labels",
     "apply_runtime_edits",
     "apply_token_edit_labels",
+    "boundary_edit_type_for_label",
     "gap_edit_type_for_label",
     "token_edit_type_for_label",
 ]

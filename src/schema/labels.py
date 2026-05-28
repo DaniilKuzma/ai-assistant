@@ -27,6 +27,7 @@ class TokenEditLabel(str, Enum):
     FIX_TTSYA_TO_TSYA = "FIX_TTSYA_TO_TSYA"
     DICT_REPLACE = "DICT_REPLACE"
     SPAN_REPLACE_BY_LEXICON = "SPAN_REPLACE_BY_LEXICON"
+    CAPITALIZE = "CAPITALIZE"
 
 
 class GapPunctuationLabel(str, Enum):
@@ -40,6 +41,25 @@ class GapPunctuationLabel(str, Enum):
     EXCLAMATION = "EXCLAMATION"
     ELLIPSIS = "ELLIPSIS"
     DELETE_PUNCTUATION = "DELETE_PUNCTUATION"
+    COMMA_DASH = "COMMA_DASH"
+
+
+class BoundaryBeforeLabel(str, Enum):
+    NONE = "NONE"
+    INSERT_OPEN_QUOTE = "INSERT_OPEN_QUOTE"
+    DELETE_OPEN_QUOTE = "DELETE_OPEN_QUOTE"
+    NORMALIZE_OPEN_QUOTE = "NORMALIZE_OPEN_QUOTE"
+    INSERT_OPEN_BRACKET = "INSERT_OPEN_BRACKET"
+    DELETE_OPEN_BRACKET = "DELETE_OPEN_BRACKET"
+
+
+class BoundaryAfterLabel(str, Enum):
+    NONE = "NONE"
+    INSERT_CLOSE_QUOTE = "INSERT_CLOSE_QUOTE"
+    DELETE_CLOSE_QUOTE = "DELETE_CLOSE_QUOTE"
+    NORMALIZE_CLOSE_QUOTE = "NORMALIZE_CLOSE_QUOTE"
+    INSERT_CLOSE_BRACKET = "INSERT_CLOSE_BRACKET"
+    DELETE_CLOSE_BRACKET = "DELETE_CLOSE_BRACKET"
 
 
 class RuleLabel(str, Enum):
@@ -95,6 +115,25 @@ class RuleLabel(str, Enum):
     PUNCT_COMPLEX_SENTENCES = "punct_complex_sentences"
     PUNCT_BSP = "punct_bsp"
     PUNCT_FIXED_EXPRESSION_GUARDS = "punct_fixed_expression_guards"
+    QUOTE_PAIRING = "quote_pairing"
+    QUOTE_NORMALIZATION = "quote_normalization"
+    QUOTE_EXTRA_MARKS = "quote_extra_marks"
+    DIALOGUE_AUTHOR_BEFORE = "dialogue_author_before"
+    DIALOGUE_SPEECH_BEFORE_AUTHOR = "dialogue_speech_before_author"
+    DIALOGUE_AUTHOR_INSIDE_SPEECH = "dialogue_author_inside_speech"
+    DIALOGUE_BRACKET_GUARDS = "dialogue_bracket_guards"
+    CASING_SENTENCE_START = "casing_sentence_start"
+    CASING_PERSON_NAMES = "casing_person_names"
+    CASING_GEO_NAMES = "casing_geo_names"
+    CASING_ORGANIZATIONS = "casing_organizations"
+    CASING_DOCUMENTS_EVENTS = "casing_documents_events"
+    CASING_COMMON_LOWERCASE = "casing_common_lowercase"
+    CASING_FORMAL_YOU_GUARD = "casing_formal_you_guard"
+    SEMANTIC_SERVICE_WORDS = "semantic_service_words"
+    SEMANTIC_DERIVED_PREPOSITIONS = "semantic_derived_prepositions"
+    SEMANTIC_NE_NI = "semantic_ne_ni"
+    SEMANTIC_INTRODUCTORY_CONTEXT = "semantic_introductory_context"
+    SEMANTIC_COMPARATIVE_CONTEXT = "semantic_comparative_context"
 
 
 TOKEN_EDIT_LABELS: tuple[str, ...] = (
@@ -119,6 +158,7 @@ TOKEN_EDIT_LABELS: tuple[str, ...] = (
     "FIX_TTSYA_TO_TSYA",
     "DICT_REPLACE",
     "SPAN_REPLACE_BY_LEXICON",
+    "CAPITALIZE",
 )
 
 GAP_PUNCTUATION_LABELS: tuple[str, ...] = (
@@ -132,6 +172,25 @@ GAP_PUNCTUATION_LABELS: tuple[str, ...] = (
     "EXCLAMATION",
     "ELLIPSIS",
     "DELETE_PUNCTUATION",
+    "COMMA_DASH",
+)
+
+BOUNDARY_BEFORE_LABELS: tuple[str, ...] = (
+    "NONE",
+    "INSERT_OPEN_QUOTE",
+    "DELETE_OPEN_QUOTE",
+    "NORMALIZE_OPEN_QUOTE",
+    "INSERT_OPEN_BRACKET",
+    "DELETE_OPEN_BRACKET",
+)
+
+BOUNDARY_AFTER_LABELS: tuple[str, ...] = (
+    "NONE",
+    "INSERT_CLOSE_QUOTE",
+    "DELETE_CLOSE_QUOTE",
+    "NORMALIZE_CLOSE_QUOTE",
+    "INSERT_CLOSE_BRACKET",
+    "DELETE_CLOSE_BRACKET",
 )
 
 RULE_LABELS: tuple[str, ...] = (
@@ -187,6 +246,25 @@ RULE_LABELS: tuple[str, ...] = (
     "punct_complex_sentences",
     "punct_bsp",
     "punct_fixed_expression_guards",
+    "quote_pairing",
+    "quote_normalization",
+    "quote_extra_marks",
+    "dialogue_author_before",
+    "dialogue_speech_before_author",
+    "dialogue_author_inside_speech",
+    "dialogue_bracket_guards",
+    "casing_sentence_start",
+    "casing_person_names",
+    "casing_geo_names",
+    "casing_organizations",
+    "casing_documents_events",
+    "casing_common_lowercase",
+    "casing_formal_you_guard",
+    "semantic_service_words",
+    "semantic_derived_prepositions",
+    "semantic_ne_ni",
+    "semantic_introductory_context",
+    "semantic_comparative_context",
 )
 
 TOKEN_LABEL_TO_ID: Mapping[str, int] = MappingProxyType(
@@ -198,6 +276,16 @@ GAP_LABEL_TO_ID: Mapping[str, int] = MappingProxyType(
     {label: index for index, label in enumerate(GAP_PUNCTUATION_LABELS)}
 )
 GAP_ID_TO_LABEL: tuple[str, ...] = GAP_PUNCTUATION_LABELS
+
+BOUNDARY_BEFORE_LABEL_TO_ID: Mapping[str, int] = MappingProxyType(
+    {label: index for index, label in enumerate(BOUNDARY_BEFORE_LABELS)}
+)
+BOUNDARY_BEFORE_ID_TO_LABEL: tuple[str, ...] = BOUNDARY_BEFORE_LABELS
+
+BOUNDARY_AFTER_LABEL_TO_ID: Mapping[str, int] = MappingProxyType(
+    {label: index for index, label in enumerate(BOUNDARY_AFTER_LABELS)}
+)
+BOUNDARY_AFTER_ID_TO_LABEL: tuple[str, ...] = BOUNDARY_AFTER_LABELS
 
 RULE_LABEL_TO_ID: Mapping[str, int] = MappingProxyType(
     {label: index for index, label in enumerate(RULE_LABELS)}
@@ -231,6 +319,32 @@ def gap_id_to_label(id_: int) -> str:
     return GAP_ID_TO_LABEL[id_]
 
 
+def boundary_before_label_to_id(label: str) -> int:
+    try:
+        return BOUNDARY_BEFORE_LABEL_TO_ID[label]
+    except KeyError as exc:
+        raise ValueError(f"Unknown boundary-before label: {label!r}.") from exc
+
+
+def boundary_before_id_to_label(id_: int) -> str:
+    if not isinstance(id_, int) or id_ < 0 or id_ >= len(BOUNDARY_BEFORE_ID_TO_LABEL):
+        raise ValueError(f"Unknown boundary-before id: {id_!r}.")
+    return BOUNDARY_BEFORE_ID_TO_LABEL[id_]
+
+
+def boundary_after_label_to_id(label: str) -> int:
+    try:
+        return BOUNDARY_AFTER_LABEL_TO_ID[label]
+    except KeyError as exc:
+        raise ValueError(f"Unknown boundary-after label: {label!r}.") from exc
+
+
+def boundary_after_id_to_label(id_: int) -> str:
+    if not isinstance(id_, int) or id_ < 0 or id_ >= len(BOUNDARY_AFTER_ID_TO_LABEL):
+        raise ValueError(f"Unknown boundary-after id: {id_!r}.")
+    return BOUNDARY_AFTER_ID_TO_LABEL[id_]
+
+
 def rule_tag_to_id(label: str) -> int:
     try:
         return RULE_LABEL_TO_ID[label]
@@ -245,6 +359,14 @@ def rule_id_to_label(id_: int) -> str:
 
 
 __all__ = [
+    "BOUNDARY_AFTER_ID_TO_LABEL",
+    "BOUNDARY_AFTER_LABELS",
+    "BOUNDARY_AFTER_LABEL_TO_ID",
+    "BOUNDARY_BEFORE_ID_TO_LABEL",
+    "BOUNDARY_BEFORE_LABELS",
+    "BOUNDARY_BEFORE_LABEL_TO_ID",
+    "BoundaryAfterLabel",
+    "BoundaryBeforeLabel",
     "GAP_ID_TO_LABEL",
     "GAP_LABEL_TO_ID",
     "GAP_PUNCTUATION_LABELS",
@@ -257,6 +379,10 @@ __all__ = [
     "TOKEN_ID_TO_LABEL",
     "TOKEN_LABEL_TO_ID",
     "TokenEditLabel",
+    "boundary_after_id_to_label",
+    "boundary_after_label_to_id",
+    "boundary_before_id_to_label",
+    "boundary_before_label_to_id",
     "gap_id_to_label",
     "gap_label_to_id",
     "rule_id_to_label",
@@ -264,4 +390,3 @@ __all__ = [
     "token_id_to_label",
     "token_label_to_id",
 ]
-

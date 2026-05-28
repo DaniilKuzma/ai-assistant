@@ -33,8 +33,9 @@ The current generator has two controlled rule surfaces:
 - `RuleLayer` specs loaded from `lexicon/layers/` and compiled into direct
   `RuleProgram` instances by `src/rule_layers/direct_cases.py`.
 
-`compound_spelling`, `dictionary_typo`, and `syntax_punctuation` are YAML-backed
-RuleLayer families. `morpheme` is a controlled compiler-backed layer under
+`compound_spelling`, `dictionary_typo`, `syntax_punctuation`,
+`quotation_dialogue`, and `casing` are YAML-backed RuleLayer families.
+`morpheme` is a controlled compiler-backed layer under
 `src/orthography_gen/`; it uses lexeme cards and orthographic scenario specs,
 but presents the same `GeneratedExample` contract to training.
 
@@ -68,6 +69,11 @@ character after a token as removable; it is a gap label, not a token rewrite.
 
 ## Explicitly Out Of Scope
 
-The current integrated layers do not implement casing, abbreviation expansion or
-protection as a correction layer, quotation marks, dialogue/direct speech,
-paired bracket/quote punctuation, or free-form rewrite correction.
+The current integrated layers do not implement broad NER-backed casing,
+abbreviation expansion as a correction layer, nested quotation marks, broad
+dialogue/direct speech, general paired bracket/quote punctuation, or free-form
+rewrite correction. The bounded `quotation_dialogue` layer covers only curated
+quote and direct-speech cases with direct boundary, token, and gap labels. The
+bounded `casing` layer covers only controlled Russian orthographic casing cases
+with `CAPITALIZE` and `LOWERCASE`; formal `Вы`/`Ваш` correction is guard-only
+unless a future explicit opt-in policy enables it.

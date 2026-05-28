@@ -6,7 +6,13 @@ import torch
 
 import src.model as model_exports
 from src.model.edit_model import DirectEditModelConfig, DirectEditTaggerModel
-from src.schema.labels import GAP_PUNCTUATION_LABELS, RULE_LABELS, TOKEN_EDIT_LABELS
+from src.schema.labels import (
+    BOUNDARY_AFTER_LABELS,
+    BOUNDARY_BEFORE_LABELS,
+    GAP_PUNCTUATION_LABELS,
+    RULE_LABELS,
+    TOKEN_EDIT_LABELS,
+)
 
 
 class FakeEncoder(torch.nn.Module):
@@ -27,6 +33,8 @@ def test_direct_edit_model_outputs_expected_shapes_and_masks_do_not_crash() -> N
     hidden_size = 16
     token_label_count = 7
     gap_label_count = 4
+    boundary_before_label_count = 5
+    boundary_after_label_count = 6
     rule_tag_count = 3
 
     model = DirectEditTaggerModel.from_encoder(
@@ -34,6 +42,8 @@ def test_direct_edit_model_outputs_expected_shapes_and_masks_do_not_crash() -> N
         DirectEditModelConfig(
             token_label_count=token_label_count,
             gap_label_count=gap_label_count,
+            boundary_before_label_count=boundary_before_label_count,
+            boundary_after_label_count=boundary_after_label_count,
             rule_tag_count=rule_tag_count,
             lora_enabled=False,
         ),
@@ -83,12 +93,16 @@ def test_direct_edit_model_outputs_expected_shapes_and_masks_do_not_crash() -> N
     assert outputs["token_edit_logits"].shape == torch.Size([batch_size, word_count, token_label_count])
     assert outputs["token_confidence_logits"].shape == torch.Size([batch_size, word_count])
     assert outputs["gap_punctuation_logits"].shape == torch.Size([batch_size, gap_count, gap_label_count])
+    assert outputs["boundary_before_logits"].shape == torch.Size([batch_size, word_count, boundary_before_label_count])
+    assert outputs["boundary_after_logits"].shape == torch.Size([batch_size, word_count, boundary_after_label_count])
     assert outputs["gap_confidence_logits"].shape == torch.Size([batch_size, gap_count])
     assert outputs["rule_logits"].shape == torch.Size([batch_size, word_count, rule_tag_count])
 
     assert torch.equal(outputs["token_edit_logits"][0, 4], torch.zeros(token_label_count))
     assert outputs["token_confidence_logits"][0, 4].item() == 0.0
     assert torch.equal(outputs["rule_logits"][1, 1], torch.zeros(rule_tag_count))
+    assert torch.equal(outputs["boundary_before_logits"][0, 4], torch.zeros(boundary_before_label_count))
+    assert torch.equal(outputs["boundary_after_logits"][1, 1], torch.zeros(boundary_after_label_count))
     assert torch.equal(outputs["gap_punctuation_logits"][0, 3], torch.zeros(gap_label_count))
     assert outputs["gap_confidence_logits"][1, 1].item() == 0.0
 
@@ -98,6 +112,8 @@ def test_direct_model_config_defaults_use_schema_label_counts() -> None:
 
     assert config.token_label_count == len(TOKEN_EDIT_LABELS)
     assert config.gap_label_count == len(GAP_PUNCTUATION_LABELS)
+    assert config.boundary_before_label_count == len(BOUNDARY_BEFORE_LABELS)
+    assert config.boundary_after_label_count == len(BOUNDARY_AFTER_LABELS)
     assert config.rule_tag_count == len(RULE_LABELS)
 
 

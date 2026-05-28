@@ -8,7 +8,13 @@ from typing import Any
 
 from src.model.edit_model import DirectEditModelConfig, DirectEditTaggerModel
 from src.model.encoder import EncoderLoadConfig, ensure_pytorch_transformers_backend, load_tokenizer
-from src.schema.labels import GAP_ID_TO_LABEL, RULE_ID_TO_LABEL, TOKEN_ID_TO_LABEL
+from src.schema.labels import (
+    BOUNDARY_AFTER_ID_TO_LABEL,
+    BOUNDARY_BEFORE_ID_TO_LABEL,
+    GAP_ID_TO_LABEL,
+    RULE_ID_TO_LABEL,
+    TOKEN_ID_TO_LABEL,
+)
 from src.runtime.tokenization import tokenize_runtime_words
 
 
@@ -24,6 +30,12 @@ class DirectPrediction:
     rule_ids: list[str]
     token_margins: list[float]
     gap_margins: list[float]
+    boundary_before_labels: list[str]
+    boundary_before_confidences: list[float]
+    boundary_before_margins: list[float]
+    boundary_after_labels: list[str]
+    boundary_after_confidences: list[float]
+    boundary_after_margins: list[float]
 
 
 class DirectNeuralBackend:
@@ -38,6 +50,7 @@ class DirectNeuralBackend:
         heads_path: str | Path | None = None,
         selected_epoch: int | None = None,
         rule_head_loaded: bool = True,
+        boundary_heads_loaded: bool = True,
     ) -> None:
         import torch
 
@@ -49,6 +62,7 @@ class DirectNeuralBackend:
         self.heads_path = str(heads_path or "")
         self.selected_epoch = selected_epoch
         self.rule_head_loaded = bool(rule_head_loaded)
+        self.boundary_heads_loaded = bool(boundary_heads_loaded)
 
     @classmethod
     def from_config(cls, config: Mapping[str, Any]) -> "DirectNeuralBackend":
@@ -86,7 +100,7 @@ class DirectNeuralBackend:
         import torch
 
         state = torch.load(heads_path, map_location="cpu")
-        rule_head_loaded = _load_heads_state(direct.heads, state, label_compatibility)
+        loaded_heads = _load_heads_state(direct.heads, state, label_compatibility)
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         if hasattr(direct, "to"):
             direct.to(device)
@@ -99,7 +113,8 @@ class DirectNeuralBackend:
             adapter_path=adapter_dir if lora_enabled else "",
             heads_path=heads_path,
             selected_epoch=_selected_epoch(heads_dir) or _selected_epoch(heads_artifact_dir),
-            rule_head_loaded=rule_head_loaded,
+            rule_head_loaded=bool(loaded_heads["rule"]),
+            boundary_heads_loaded=bool(loaded_heads["boundary_before"] and loaded_heads["boundary_after"]),
         )
 
     def predict(self, text: str) -> DirectPrediction:
@@ -134,6 +149,16 @@ class DirectNeuralBackend:
 
         token_probs = functional.softmax(outputs["token_edit_logits"][0], dim=-1)
         gap_probs = functional.softmax(outputs["gap_punctuation_logits"][0], dim=-1)
+        if self.boundary_heads_loaded:
+            boundary_before_probs = functional.softmax(outputs["boundary_before_logits"][0], dim=-1)
+            boundary_after_probs = functional.softmax(outputs["boundary_after_logits"][0], dim=-1)
+            boundary_before_top = boundary_before_probs.topk(k=min(2, boundary_before_probs.shape[-1]), dim=-1)
+            boundary_after_top = boundary_after_probs.topk(k=min(2, boundary_after_probs.shape[-1]), dim=-1)
+        else:
+            boundary_before_probs = None
+            boundary_after_probs = None
+            boundary_before_top = None
+            boundary_after_top = None
         rule_ids = outputs["rule_logits"][0].argmax(dim=-1).tolist() if self.rule_head_loaded else []
         token_top = token_probs.topk(k=min(2, token_probs.shape[-1]), dim=-1)
         gap_top = gap_probs.topk(k=min(2, gap_probs.shape[-1]), dim=-1)
@@ -149,6 +174,34 @@ class DirectNeuralBackend:
             else ["none"] * token_count,
             token_margins=_margins(token_top.values.tolist(), token_count),
             gap_margins=_margins(gap_top.values.tolist(), token_count),
+            boundary_before_labels=[
+                BOUNDARY_BEFORE_ID_TO_LABEL[int(index)]
+                for index in boundary_before_probs.argmax(dim=-1).tolist()[:token_count]
+            ]
+            if boundary_before_probs is not None
+            else ["NONE"] * token_count,
+            boundary_before_confidences=[
+                float(value) for value in boundary_before_top.values[:, 0].tolist()[:token_count]
+            ]
+            if boundary_before_top is not None
+            else [0.0] * token_count,
+            boundary_before_margins=_margins(boundary_before_top.values.tolist(), token_count)
+            if boundary_before_top is not None
+            else [1.0] * token_count,
+            boundary_after_labels=[
+                BOUNDARY_AFTER_ID_TO_LABEL[int(index)]
+                for index in boundary_after_probs.argmax(dim=-1).tolist()[:token_count]
+            ]
+            if boundary_after_probs is not None
+            else ["NONE"] * token_count,
+            boundary_after_confidences=[
+                float(value) for value in boundary_after_top.values[:, 0].tolist()[:token_count]
+            ]
+            if boundary_after_top is not None
+            else [0.0] * token_count,
+            boundary_after_margins=_margins(boundary_after_top.values.tolist(), token_count)
+            if boundary_after_top is not None
+            else [1.0] * token_count,
         )
 
 
@@ -252,12 +305,18 @@ def _validate_label_maps(heads_dir: Path) -> dict[str, bool]:
     expected = {
         "token_id_to_label": list(TOKEN_ID_TO_LABEL),
         "gap_id_to_label": list(GAP_ID_TO_LABEL),
+        "boundary_before_id_to_label": list(BOUNDARY_BEFORE_ID_TO_LABEL),
+        "boundary_after_id_to_label": list(BOUNDARY_AFTER_ID_TO_LABEL),
         "rule_id_to_label": list(RULE_ID_TO_LABEL),
     }
     saved_token_ids = labels.get("token_id_to_label")
     token_head_compatible = saved_token_ids == expected["token_id_to_label"]
     saved_gap_ids = labels.get("gap_id_to_label")
     gap_head_compatible = saved_gap_ids == expected["gap_id_to_label"]
+    saved_boundary_before_ids = labels.get("boundary_before_id_to_label")
+    boundary_before_head_compatible = saved_boundary_before_ids == expected["boundary_before_id_to_label"]
+    saved_boundary_after_ids = labels.get("boundary_after_id_to_label")
+    boundary_after_head_compatible = saved_boundary_after_ids == expected["boundary_after_id_to_label"]
     saved_rule_ids = labels.get("rule_id_to_label")
     rule_head_compatible = saved_rule_ids == expected["rule_id_to_label"]
 
@@ -266,6 +325,24 @@ def _validate_label_maps(heads_dir: Path) -> dict[str, bool]:
         mismatches.append("token_id_to_label")
     if not gap_head_compatible and not _has_compatible_saved_label_prefix(saved_gap_ids, expected["gap_id_to_label"]):
         mismatches.append("gap_id_to_label")
+    if (
+        saved_boundary_before_ids is not None
+        and not boundary_before_head_compatible
+        and not _has_compatible_saved_label_prefix(
+            saved_boundary_before_ids,
+            expected["boundary_before_id_to_label"],
+        )
+    ):
+        mismatches.append("boundary_before_id_to_label")
+    if (
+        saved_boundary_after_ids is not None
+        and not boundary_after_head_compatible
+        and not _has_compatible_saved_label_prefix(
+            saved_boundary_after_ids,
+            expected["boundary_after_id_to_label"],
+        )
+    ):
+        mismatches.append("boundary_after_id_to_label")
     if not rule_head_compatible and not _has_compatible_saved_label_prefix(saved_rule_ids, expected["rule_id_to_label"]):
         mismatches.append("rule_id_to_label")
     if mismatches:
@@ -279,6 +356,14 @@ def _validate_label_maps(heads_dir: Path) -> dict[str, bool]:
         "token_saved_label_count": len(saved_token_ids) if isinstance(saved_token_ids, list) else 0,
         "gap_head_compatible": gap_head_compatible,
         "gap_saved_label_count": len(saved_gap_ids) if isinstance(saved_gap_ids, list) else 0,
+        "boundary_before_head_compatible": boundary_before_head_compatible,
+        "boundary_before_saved_label_count": len(saved_boundary_before_ids)
+        if isinstance(saved_boundary_before_ids, list)
+        else 0,
+        "boundary_after_head_compatible": boundary_after_head_compatible,
+        "boundary_after_saved_label_count": len(saved_boundary_after_ids)
+        if isinstance(saved_boundary_after_ids, list)
+        else 0,
         "rule_head_compatible": rule_head_compatible,
     }
 
@@ -287,16 +372,22 @@ def _has_compatible_saved_label_prefix(saved: Any, expected: list[str]) -> bool:
     return isinstance(saved, list) and len(saved) < len(expected) and saved == expected[: len(saved)]
 
 
-def _load_heads_state(heads: Any, state: Mapping[str, Any], label_compatibility: Mapping[str, bool]) -> bool:
+def _load_heads_state(heads: Any, state: Mapping[str, Any], label_compatibility: Mapping[str, bool]) -> dict[str, bool]:
     token_compatible = bool(label_compatibility.get("token_head_compatible", True))
     gap_compatible = bool(label_compatibility.get("gap_head_compatible", True))
+    boundary_before_compatible = bool(label_compatibility.get("boundary_before_head_compatible", True))
+    boundary_after_compatible = bool(label_compatibility.get("boundary_after_head_compatible", True))
     rule_compatible = bool(label_compatibility.get("rule_head_compatible", True))
-    if token_compatible and gap_compatible and rule_compatible:
+    if token_compatible and gap_compatible and boundary_before_compatible and boundary_after_compatible and rule_compatible:
         heads.load_state_dict(state)
-        return True
+        return {
+            "rule": True,
+            "boundary_before": _state_has_head(state, "boundary_before"),
+            "boundary_after": _state_has_head(state, "boundary_after"),
+        }
 
     compatible_state = dict(state)
-    if not token_compatible or not gap_compatible:
+    if not token_compatible or not gap_compatible or not boundary_before_compatible or not boundary_after_compatible:
         compatible_state = _partial_label_head_state(heads, compatible_state, label_compatibility)
     if not rule_compatible:
         compatible_state = {
@@ -305,7 +396,11 @@ def _load_heads_state(heads: Any, state: Mapping[str, Any], label_compatibility:
             if not str(key).startswith("rule.")
         }
     heads.load_state_dict(compatible_state, strict=False)
-    return rule_compatible
+    return {
+        "rule": rule_compatible,
+        "boundary_before": boundary_before_compatible and _state_has_head(state, "boundary_before"),
+        "boundary_after": boundary_after_compatible and _state_has_head(state, "boundary_after"),
+    }
 
 
 def _partial_label_head_state(
@@ -331,7 +426,25 @@ def _partial_label_head_state(
             "gap_punctuation",
             int(label_compatibility.get("gap_saved_label_count", 0) or 0),
         )
+    if not bool(label_compatibility.get("boundary_before_head_compatible", True)):
+        _copy_prefix_head_rows(
+            result,
+            current,
+            "boundary_before",
+            int(label_compatibility.get("boundary_before_saved_label_count", 0) or 0),
+        )
+    if not bool(label_compatibility.get("boundary_after_head_compatible", True)):
+        _copy_prefix_head_rows(
+            result,
+            current,
+            "boundary_after",
+            int(label_compatibility.get("boundary_after_saved_label_count", 0) or 0),
+        )
     return result
+
+
+def _state_has_head(state: Mapping[str, Any], prefix: str) -> bool:
+    return f"{prefix}.weight" in state and f"{prefix}.bias" in state
 
 
 def _copy_prefix_head_rows(

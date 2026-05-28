@@ -9,10 +9,13 @@ from src.config.load_config import load_config
 from src.runtime.deterministic_rules import DeterministicRuleEngine
 from src.runtime.edit_realizer import (
     MAX_LEXICON_SPAN_TOKENS,
+    apply_boundary_and_token_edit_labels,
+    apply_boundary_labels,
     apply_gap_labels,
     apply_runtime_edits,
     apply_token_edit_labels,
     gap_edit_type_for_label,
+    boundary_edit_type_for_label,
     token_edit_type_for_label,
 )
 from src.runtime.explanations import attach_explanations
@@ -210,14 +213,42 @@ class Corrector:
         labels = _list_attr(prediction, "token_labels", len(tokens), "KEEP")
         confidences = _float_list_attr(prediction, "token_confidences", len(tokens), 0.0)
         margins = _float_list_attr(prediction, "token_margins", len(tokens), 1.0)
+        boundary_before_labels = _list_attr(prediction, "boundary_before_labels", len(tokens), "NONE")
+        boundary_before_confidences = _float_list_attr(prediction, "boundary_before_confidences", len(tokens), 0.0)
+        boundary_before_margins = _float_list_attr(prediction, "boundary_before_margins", len(tokens), 1.0)
+        boundary_after_labels = _list_attr(prediction, "boundary_after_labels", len(tokens), "NONE")
+        boundary_after_confidences = _float_list_attr(prediction, "boundary_after_confidences", len(tokens), 0.0)
+        boundary_after_margins = _float_list_attr(prediction, "boundary_after_margins", len(tokens), 1.0)
         rule_ids = _list_attr(prediction, "rule_ids", len(tokens), "none")
         accepted_labels = self._gate_token_labels(text, tokens, labels, confidences, margins, rule_ids)
-        return apply_token_edit_labels(
+        accepted_boundary_before_labels = self._gate_boundary_labels(
+            text,
+            tokens,
+            boundary_before_labels,
+            boundary_before_confidences,
+            boundary_before_margins,
+            rule_ids,
+            side="before",
+        )
+        accepted_boundary_after_labels = self._gate_boundary_labels(
+            text,
+            tokens,
+            boundary_after_labels,
+            boundary_after_confidences,
+            boundary_after_margins,
+            rule_ids,
+            side="after",
+        )
+        return apply_boundary_and_token_edit_labels(
             text,
             tokens,
             accepted_labels,
             confidences,
             threshold=0.0,
+            boundary_before_labels=accepted_boundary_before_labels,
+            boundary_after_labels=accepted_boundary_after_labels,
+            boundary_before_confidences=boundary_before_confidences,
+            boundary_after_confidences=boundary_after_confidences,
             rule_ids=rule_ids,
             orthographic_lexicon=self.orthographic_lexicon,
         )
@@ -297,6 +328,44 @@ class Corrector:
                 text,
                 tokens,
                 candidate_labels,
+                [1.0] * len(tokens),
+                threshold=0.0,
+                rule_ids=rule_ids,
+            )
+            if candidate_edits and all(self.scope_guard.validate_edit(text, edit) for edit in candidate_edits):
+                accepted[index] = label
+        return accepted
+
+    def _gate_boundary_labels(
+        self,
+        text: str,
+        tokens: Sequence[Any],
+        labels: Sequence[str],
+        confidences: Sequence[float],
+        margins: Sequence[float],
+        rule_ids: Sequence[str],
+        *,
+        side: str,
+    ) -> list[str]:
+        accepted = ["NONE"] * len(tokens)
+        for index, label in enumerate(labels[: len(tokens)]):
+            if label == "NONE":
+                continue
+            rule_id = _rule_id(rule_ids, index)
+            edit_type = boundary_edit_type_for_label(label)
+            if not self.thresholds.should_apply(float(confidences[index]), float(margins[index]), rule_id, edit_type):
+                continue
+            before = ["NONE"] * len(tokens)
+            after = ["NONE"] * len(tokens)
+            if side == "before":
+                before[index] = label
+            else:
+                after[index] = label
+            _candidate_text, candidate_edits = apply_boundary_labels(
+                text,
+                tokens,
+                before,
+                after,
                 [1.0] * len(tokens),
                 threshold=0.0,
                 rule_ids=rule_ids,

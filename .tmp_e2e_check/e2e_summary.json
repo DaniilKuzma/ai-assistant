@@ -1,0 +1,38 @@
+{
+  "config_path": "configs\\config.yaml",
+  "count": 10,
+  "frozen_eval": {
+    "audit_failures_count": 0,
+    "dataset_path": ".tmp_e2e_check\\val.jsonl",
+    "example_count": 10,
+    "manifest_path": ".tmp_e2e_check\\val.manifest.json",
+    "status": "ok"
+  },
+  "generator_audit": {
+    "audit_failures_count": 0,
+    "example_count": 10,
+    "mode_distribution": {
+      "clean_identity": 1,
+      "hard_negative": 2,
+      "positive": 7
+    },
+    "rule_distribution": {
+      "compound_prepositions": 1,
+      "dash_subject_predicate": 1,
+      "dictionary_normative_words": 1,
+      "morpheme_root_vowels": 1,
+      "morpheme_suffixes": 2,
+      "punct_comparative_turns": 1,
+      "punct_fixed_expression_guards": 1,
+      "tsya_ttsya": 2
+    },
+    "status": "ok"
+  },
+  "output_dir": ".tmp_e2e_check",
+  "steps": 1,
+  "training_smoke": {
+    "error": "[Errno 22] Invalid argument",
+    "error_type": "OSError",
+    "status": "failed"
+  }
+}

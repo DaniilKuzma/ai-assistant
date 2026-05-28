@@ -6,7 +6,13 @@ import re
 from typing import Any
 
 from src.schema import GeneratedExample
-from src.schema.labels import gap_label_to_id, rule_tag_to_id, token_label_to_id
+from src.schema.labels import (
+    boundary_after_label_to_id,
+    boundary_before_label_to_id,
+    gap_label_to_id,
+    rule_tag_to_id,
+    token_label_to_id,
+)
 
 
 IGNORE_INDEX = -100
@@ -26,6 +32,8 @@ class DirectTrainingFeature:
     gap_mask: list[bool]
     token_edit_label_ids: list[int]
     gap_label_ids: list[int]
+    boundary_before_label_ids: list[int]
+    boundary_after_label_ids: list[int]
     rule_tag_ids: list[int]
     sample_weight: float = 1.0
 
@@ -113,6 +121,8 @@ def build_direct_training_feature(
     word_token_indices = [0] * max_words
     word_token_mask = [False] * max_words
     token_edit_label_ids = [IGNORE_INDEX] * max_words
+    boundary_before_label_ids = [IGNORE_INDEX] * max_words
+    boundary_after_label_ids = [IGNORE_INDEX] * max_words
     rule_tag_ids = [IGNORE_INDEX] * max_words
 
     source_tokens = example.source_tokens[:max_words]
@@ -123,6 +133,8 @@ def build_direct_training_feature(
         word_token_indices[index] = token_index
         word_token_mask[index] = True
         token_edit_label_ids[index] = token_label_to_id(example.token_edit_labels[index])
+        boundary_before_label_ids[index] = boundary_before_label_to_id(example.boundary_before_labels[index])
+        boundary_after_label_ids[index] = boundary_after_label_to_id(example.boundary_after_labels[index])
         rule_tag_ids[index] = rule_tag_to_id(example.rule_ids[index])
 
     gap_left_indices = [0] * max_words
@@ -154,6 +166,8 @@ def build_direct_training_feature(
         gap_mask=gap_mask,
         token_edit_label_ids=token_edit_label_ids,
         gap_label_ids=gap_label_ids,
+        boundary_before_label_ids=boundary_before_label_ids,
+        boundary_after_label_ids=boundary_after_label_ids,
         rule_tag_ids=rule_tag_ids,
         sample_weight=_sample_weight(example),
     )
@@ -190,6 +204,14 @@ class DirectBatchCollator:
                 ),
                 "gap_label_ids": torch.tensor(
                     [feature.gap_label_ids for feature in features],
+                    dtype=torch.long,
+                ),
+                "boundary_before_label_ids": torch.tensor(
+                    [feature.boundary_before_label_ids for feature in features],
+                    dtype=torch.long,
+                ),
+                "boundary_after_label_ids": torch.tensor(
+                    [feature.boundary_after_label_ids for feature in features],
                     dtype=torch.long,
                 ),
                 "rule_tag_ids": torch.tensor(

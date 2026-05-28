@@ -1,0 +1,82 @@
+rule_id: casing_person_names
+description: Controlled person-name capitalization cases.
+slots:
+  person_prefix:
+    - В списке указан
+    - В протоколе указан
+    - В журнале отмечен
+    - В документе записан
+    - В отчёте назван
+    - В ведомости указан
+  person_prefix_fem:
+    - В списке указана
+    - В протоколе указана
+    - В журнале отмечена
+    - В документе записана
+    - В отчёте названа
+    - В ведомости указана
+cases:
+  positive:
+    - sub_rule_id: person_ivan_petrov
+      source_template: "{person_prefix} иван петров."
+      target_template: "{person_prefix} Иван Петров."
+      expected_token_edit_count: 2
+      token_operations:
+        - label: CAPITALIZE
+          source_pattern: иван
+          target_pattern: Иван
+        - label: CAPITALIZE
+          source_pattern: петров
+          target_pattern: Петров
+      metadata:
+        phenomenon: person_name
+        operation: capitalize_person_name
+        casing_class: person_name
+    - sub_rule_id: person_maria_ivanova
+      source_template: "{person_prefix_fem} мария иванова."
+      target_template: "{person_prefix_fem} Мария Иванова."
+      expected_token_edit_count: 2
+      token_operations:
+        - label: CAPITALIZE
+          source_pattern: мария
+          target_pattern: Мария
+        - label: CAPITALIZE
+          source_pattern: иванова
+          target_pattern: Иванова
+      metadata:
+        phenomenon: person_name
+        operation: capitalize_person_name
+        casing_class: person_name
+    - sub_rule_id: person_anna_kuznetsova
+      source_template: "{person_prefix_fem} анна кузнецова."
+      target_template: "{person_prefix_fem} Анна Кузнецова."
+      expected_token_edit_count: 2
+      token_operations:
+        - label: CAPITALIZE
+          source_pattern: анна
+          target_pattern: Анна
+        - label: CAPITALIZE
+          source_pattern: кузнецова
+          target_pattern: Кузнецова
+      metadata:
+        phenomenon: person_name
+        operation: capitalize_person_name
+        casing_class: person_name
+  hard_negative:
+    - sub_rule_id: person_already_correct_guard
+      source: "В списке указан Иван Петров."
+      target: "В списке указан Иван Петров."
+      expected_token_edit_count: 0
+      metadata:
+        phenomenon: person_name
+        operation: identity_guard
+        casing_class: person_name
+  clean_identity:
+    - sub_rule_id: person_already_correct_guard
+      source: "В ведомости указана Мария Иванова."
+      target: "В ведомости указана Мария Иванова."
+      expected_token_edit_count: 0
+      metadata:
+        phenomenon: person_name
+        operation: clean_identity
+        casing_class: person_name

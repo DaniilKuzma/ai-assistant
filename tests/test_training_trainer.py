@@ -17,6 +17,8 @@ class TinyDirectModel(torch.nn.Module):
         super().__init__()
         self.token_logits = torch.nn.Parameter(torch.zeros(3))
         self.gap_logits = torch.nn.Parameter(torch.zeros(3))
+        self.boundary_before_logits = torch.nn.Parameter(torch.zeros(3))
+        self.boundary_after_logits = torch.nn.Parameter(torch.zeros(3))
         self.rule_logits = torch.nn.Parameter(torch.zeros(3))
 
     def forward(
@@ -33,6 +35,8 @@ class TinyDirectModel(torch.nn.Module):
         return {
             "token_edit_logits": self.token_logits.expand(batch_size, word_count, -1),
             "gap_punctuation_logits": self.gap_logits.expand(batch_size, word_count, -1),
+            "boundary_before_logits": self.boundary_before_logits.expand(batch_size, word_count, -1),
+            "boundary_after_logits": self.boundary_after_logits.expand(batch_size, word_count, -1),
             "rule_logits": self.rule_logits.expand(batch_size, word_count, -1),
         }
 
@@ -65,6 +69,8 @@ def test_direct_trainer_steps_final_partial_gradient_accumulation_batch() -> Non
             "max_grad_norm": 1.0,
             "token_edit_loss_weight": 1.0,
             "gap_punctuation_loss_weight": 1.0,
+            "boundary_before_loss_weight": 1.0,
+            "boundary_after_loss_weight": 1.0,
             "rule_loss_weight": 1.0,
         },
         steps_per_epoch=3,
@@ -95,6 +101,8 @@ def test_train_epoch_emits_progress_lines() -> None:
             "max_grad_norm": 1.0,
             "token_edit_loss_weight": 1.0,
             "gap_punctuation_loss_weight": 1.0,
+            "boundary_before_loss_weight": 1.0,
+            "boundary_after_loss_weight": 1.0,
             "rule_loss_weight": 1.0,
         },
         steps_per_epoch=2,
@@ -207,6 +215,8 @@ def _batch() -> dict[str, object]:
         "labels": {
             "token_edit_label_ids": torch.tensor([[0, 1, -100, -100]], dtype=torch.long),
             "gap_label_ids": torch.tensor([[0, 1, -100, -100]], dtype=torch.long),
+            "boundary_before_label_ids": torch.tensor([[0, 1, -100, -100]], dtype=torch.long),
+            "boundary_after_label_ids": torch.tensor([[0, 1, -100, -100]], dtype=torch.long),
             "rule_tag_ids": torch.tensor([[0, 1, -100, -100]], dtype=torch.long),
             "sample_weight": torch.tensor([1.0], dtype=torch.float),
         },

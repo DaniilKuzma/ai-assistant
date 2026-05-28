@@ -1,0 +1,262 @@
+rules:
+  - rule_id: quote_pairing
+    description: Controlled missing Russian quote pairs around terms and titles.
+    weight: 0.60
+    slots:
+      quoted_term:
+        - машинное обучение
+        - проверка текста
+        - синтаксический анализ
+        - пользовательский интерфейс
+        - тестовый набор
+      speakers:
+        - Редактор
+        - Мария
+        - Эксперт
+        - Преподаватель
+        - Студент
+        - Руководитель
+        - Пользователь
+        - Ассистент
+      speech_verbs:
+        - сказал
+        - сказала
+        - сообщил
+        - сообщила
+        - ответил
+        - ответила
+        - спросил
+        - спросила
+        - написал
+        - написала
+      speech_short:
+        - проект готов
+        - отчёт проверен
+        - текст исправлен
+        - файл загружен
+        - задача выполнена
+        - ошибка найдена
+        - документ принят
+      contexts:
+        - В статье упомянут термин {quoted_term}.
+        - Редактор открыл раздел {quoted_term}.
+        - Преподаватель объяснил тему {quoted_term}.
+    cases:
+      positive:
+        - sub_rule_id: missing_quote_pair_simple
+          slot_groups:
+            term_contexts:
+              - quote_source: В статье упомянут термин {quoted_term}.
+                quote_target: В статье упомянут термин «{quoted_term}».
+              - quote_source: Автор пояснил термин {quoted_term}.
+                quote_target: Автор пояснил термин «{quoted_term}».
+              - quote_source: Эксперт разобрал понятие {quoted_term}.
+                quote_target: Эксперт разобрал понятие «{quoted_term}».
+              - quote_source: Преподаватель объяснил тему {quoted_term}.
+                quote_target: Преподаватель объяснил тему «{quoted_term}».
+              - quote_source: В словаре добавили термин {quoted_term}.
+                quote_target: В словаре добавили термин «{quoted_term}».
+              - quote_source: Докладчик назвал понятие {quoted_term}.
+                quote_target: Докладчик назвал понятие «{quoted_term}».
+          source_template: "{quote_source}"
+          target_template: "{quote_target}"
+          boundary_operations:
+            - label: INSERT_OPEN_QUOTE_BEFORE
+              source_pattern: "{quoted_term}"
+            - label: INSERT_CLOSE_QUOTE_AFTER
+              source_pattern: "{quoted_term}"
+          metadata:
+            phenomenon: quote_pairing
+            operation: insert_quote_pair
+        - sub_rule_id: missing_quote_pair_title
+          slot_groups:
+            title_contexts:
+              - quote_source: Редактор открыл раздел {quoted_term}.
+                quote_target: Редактор открыл раздел «{quoted_term}».
+              - quote_source: Автор обновил раздел {quoted_term}.
+                quote_target: Автор обновил раздел «{quoted_term}».
+              - quote_source: Студент прочитал главу {quoted_term}.
+                quote_target: Студент прочитал главу «{quoted_term}».
+              - quote_source: Методист проверил модуль {quoted_term}.
+                quote_target: Методист проверил модуль «{quoted_term}».
+          source_template: "{quote_source}"
+          target_template: "{quote_target}"
+          boundary_operations:
+            - label: INSERT_OPEN_QUOTE_BEFORE
+              source_pattern: "{quoted_term}"
+            - label: INSERT_CLOSE_QUOTE_AFTER
+              source_pattern: "{quoted_term}"
+          metadata:
+            phenomenon: quote_pairing
+            operation: insert_title_quote_pair
+      hard_negative:
+        - sub_rule_id: already_quoted_term_guard
+          source: В статье упомянут термин «машинное обучение».
+          target: В статье упомянут термин «машинное обучение».
+          metadata:
+            phenomenon: quote_pairing
+            operation: already_quoted_guard
+        - sub_rule_id: ordinary_object_no_quotes_guard
+          source: Редактор проверил отчёт утром.
+          target: Редактор проверил отчёт утром.
+          metadata:
+            phenomenon: quote_pairing
+            operation: ordinary_object_guard
+      clean_identity:
+        - sub_rule_id: clean_quoted_term
+          source: Преподаватель объяснил тему «проверка текста».
+          target: Преподаватель объяснил тему «проверка текста».
+          metadata:
+            phenomenon: quote_pairing
+            operation: clean_quoted_term
+
+  - rule_id: quote_normalization
+    description: Controlled straight quote normalization to Russian guillemets.
+    weight: 0.40
+    slots:
+      quoted_term:
+        - машинное обучение
+        - проверка текста
+        - синтаксический анализ
+        - пользовательский интерфейс
+        - тестовый набор
+    slot_groups:
+      normalization_contexts:
+        - quote_source: В статье упомянут термин "{quoted_term}".
+          quote_target: В статье упомянут термин «{quoted_term}».
+        - quote_source: Автор пояснил термин "{quoted_term}".
+          quote_target: Автор пояснил термин «{quoted_term}».
+        - quote_source: Эксперт разобрал понятие "{quoted_term}".
+          quote_target: Эксперт разобрал понятие «{quoted_term}».
+        - quote_source: Преподаватель объяснил тему "{quoted_term}".
+          quote_target: Преподаватель объяснил тему «{quoted_term}».
+        - quote_source: В словаре добавили термин "{quoted_term}".
+          quote_target: В словаре добавили термин «{quoted_term}».
+        - quote_source: Докладчик назвал понятие "{quoted_term}".
+          quote_target: Докладчик назвал понятие «{quoted_term}».
+        - quote_source: Редактор открыл раздел "{quoted_term}".
+          quote_target: Редактор открыл раздел «{quoted_term}».
+        - quote_source: Автор обновил раздел "{quoted_term}".
+          quote_target: Автор обновил раздел «{quoted_term}».
+        - quote_source: Студент прочитал главу "{quoted_term}".
+          quote_target: Студент прочитал главу «{quoted_term}».
+        - quote_source: Методист проверил модуль "{quoted_term}".
+          quote_target: Методист проверил модуль «{quoted_term}».
+    cases:
+      positive:
+        - sub_rule_id: normalize_straight_quotes
+          source_template: "{quote_source}"
+          target_template: "{quote_target}"
+          boundary_operations:
+            - label: NORMALIZE_OPEN_QUOTE_BEFORE
+              source_pattern: "{quoted_term}"
+            - label: NORMALIZE_CLOSE_QUOTE_AFTER
+              source_pattern: "{quoted_term}"
+          metadata:
+            phenomenon: quote_normalization
+            operation: normalize_straight_quotes
+      hard_negative:
+        - sub_rule_id: already_normalized_quotes_guard
+          source: В статье упомянут термин «машинное обучение».
+          target: В статье упомянут термин «машинное обучение».
+          metadata:
+            phenomenon: quote_normalization
+            operation: already_normalized_guard
+      clean_identity:
+        - sub_rule_id: clean_normalized_quotes
+          source: Редактор открыл раздел «проверка текста».
+          target: Редактор открыл раздел «проверка текста».
+          metadata:
+            phenomenon: quote_normalization
+            operation: clean_normalized_quotes
+
+  - rule_id: quote_extra_marks
+    description: Controlled deletion of clearly extra quotes around ordinary words.
+    weight: 0.40
+    slots:
+      ordinary_object:
+        - отчёт
+        - файл
+        - текст
+        - план
+        - журнал
+    slot_groups:
+      extra_quote_contexts:
+        - quote_source: Редактор проверил «{ordinary_object}» утром.
+          quote_target: Редактор проверил {ordinary_object} утром.
+        - quote_source: Эксперт открыл «{ordinary_object}» утром.
+          quote_target: Эксперт открыл {ordinary_object} утром.
+        - quote_source: Ассистент сохранил «{ordinary_object}» вечером.
+          quote_target: Ассистент сохранил {ordinary_object} вечером.
+        - quote_source: Пользователь загрузил «{ordinary_object}» сегодня.
+          quote_target: Пользователь загрузил {ordinary_object} сегодня.
+        - quote_source: Руководитель согласовал «{ordinary_object}» вчера.
+          quote_target: Руководитель согласовал {ordinary_object} вчера.
+        - quote_source: Студент прочитал «{ordinary_object}» дома.
+          quote_target: Студент прочитал {ordinary_object} дома.
+        - quote_source: Преподаватель открыл «{ordinary_object}» на уроке.
+          quote_target: Преподаватель открыл {ordinary_object} на уроке.
+        - quote_source: Мария проверила «{ordinary_object}» утром.
+          quote_target: Мария проверила {ordinary_object} утром.
+        - quote_source: Корректор просмотрел «{ordinary_object}» быстро.
+          quote_target: Корректор просмотрел {ordinary_object} быстро.
+        - quote_source: Автор отправил «{ordinary_object}» в архив.
+          quote_target: Автор отправил {ordinary_object} в архив.
+    cases:
+      positive:
+        - sub_rule_id: delete_extra_quotes
+          source_template: "{quote_source}"
+          target_template: "{quote_target}"
+          boundary_operations:
+            - label: DELETE_OPEN_QUOTE_BEFORE
+              source_pattern: "{ordinary_object}"
+            - label: DELETE_CLOSE_QUOTE_AFTER
+              source_pattern: "{ordinary_object}"
+          metadata:
+            phenomenon: quote_normalization
+            operation: delete_extra_quotes
+      hard_negative:
+        - sub_rule_id: title_quotes_must_stay_guard
+          source: Редактор открыл раздел «проверка текста».
+          target: Редактор открыл раздел «проверка текста».
+          metadata:
+            phenomenon: quote_normalization
+            operation: quoted_title_guard
+        - sub_rule_id: object_without_quotes_guard
+          source: Редактор проверил отчёт утром.
+          target: Редактор проверил отчёт утром.
+          metadata:
+            phenomenon: quote_normalization
+            operation: unquoted_object_guard
+      clean_identity:
+        - sub_rule_id: clean_unquoted_object
+          source: Эксперт открыл файл утром.
+          target: Эксперт открыл файл утром.
+          metadata:
+            phenomenon: quote_normalization
+            operation: clean_unquoted_object
+
+  - rule_id: dialogue_bracket_guards
+    description: Guard-only bracket examples for quotation dialogue boundaries.
+    weight: 0.20
+    cases:
+      hard_negative:
+        - sub_rule_id: bracket_guard_simple
+          source: Редактор проверил план (черновик) утром.
+          target: Редактор проверил план (черновик) утром.
+          metadata:
+            phenomenon: bracket_guard
+            operation: bracket_guard_simple
+        - sub_rule_id: bracket_guard_section
+          source: Автор обновил раздел (пример) сегодня.
+          target: Автор обновил раздел (пример) сегодня.
+          metadata:
+            phenomenon: bracket_guard
+            operation: bracket_guard_section
+      clean_identity:
+        - sub_rule_id: clean_bracket_text
+          source: Преподаватель проверил ответ (вариант) утром.
+          target: Преподаватель проверил ответ (вариант) утром.
+          metadata:
+            phenomenon: bracket_guard
+            operation: clean_bracket_text

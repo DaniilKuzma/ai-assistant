@@ -19,8 +19,9 @@ from src.evaluation.direct_metrics import (
 )
 from src.progress import ProgressReporter
 from src.runtime.corrector import Corrector
-from src.runtime.edit_realizer import apply_gap_labels, apply_token_edit_labels
+from src.runtime.edit_realizer import apply_boundary_and_token_edit_labels, apply_gap_labels
 from src.runtime.orthographic_lexicon import OrthographicCorrectionLexicon
+from src.runtime.tokenization import tokenize_runtime_words
 from src.schema import GeneratedExample, RuntimeEdit
 from src.schema.serialization import read_jsonl_examples
 
@@ -205,12 +206,16 @@ def gold_runtime_edits(
         "KEEP" if str(label) == "DICT_REPLACE" else str(label)
         for label in example.token_edit_labels
     ]
-    _token_text, token_edits = apply_token_edit_labels(
+    _token_text, token_edits = apply_boundary_and_token_edit_labels(
         example.source_text,
         example.source_tokens,
         token_labels,
         confidences,
         threshold=0.0,
+        boundary_before_labels=example.boundary_before_labels,
+        boundary_after_labels=example.boundary_after_labels,
+        boundary_before_confidences=confidences,
+        boundary_after_confidences=confidences,
         rule_ids=example.rule_ids,
         orthographic_lexicon=orthographic_lexicon,
     )
@@ -221,15 +226,23 @@ def gold_runtime_edits(
         for edit in [_gold_dict_replace_edit(example, index, orthographic_lexicon)]
         if edit is not None
     )
+    gap_source_text = _token_text if _has_boundary_edits(example) else example.source_text
+    gap_tokens = tokenize_runtime_words(gap_source_text) if _has_boundary_edits(example) else example.source_tokens
     _gap_text, gap_edits = apply_gap_labels(
-        example.source_text,
-        example.source_tokens,
+        gap_source_text,
+        gap_tokens,
         example.gap_labels,
         confidences,
         threshold=0.0,
         rule_ids=example.rule_ids,
     )
     return [*token_edits, *gap_edits]
+
+
+def _has_boundary_edits(example: GeneratedExample) -> bool:
+    return any(label != "NONE" for label in example.boundary_before_labels) or any(
+        label != "NONE" for label in example.boundary_after_labels
+    )
 
 
 def _gold_dict_replace_edit(

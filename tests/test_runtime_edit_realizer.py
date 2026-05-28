@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from src.runtime.edit_realizer import apply_gap_labels, apply_token_edit_labels
+from src.runtime.edit_realizer import (
+    apply_boundary_and_token_edit_labels,
+    apply_gap_labels,
+    apply_token_edit_labels,
+)
 from src.runtime.orthographic_lexicon import CorrectionEntry, OrthographicCorrectionLexicon
 from src.runtime.tokenization import tokenize_runtime_words
 
@@ -41,6 +45,159 @@ def test_split_ne_verb_applies_to_token_span() -> None:
     assert [(edit.source, edit.replacement, edit.rule_id) for edit in edits] == [
         ("незнал", "не знал", "ne_verb")
     ]
+
+
+def test_capitalize_applies_first_letter_only() -> None:
+    text = "москва"
+    tokens = tokenize_runtime_words(text)
+
+    corrected, edits = apply_token_edit_labels(
+        text,
+        tokens,
+        ["CAPITALIZE"],
+        [0.99],
+        threshold=0.7,
+    )
+
+    assert corrected == "Москва"
+    assert [(edit.source, edit.replacement, edit.edit_type, edit.rule_id) for edit in edits] == [
+        ("москва", "Москва", "casing", "casing")
+    ]
+
+
+def test_boundary_quote_insertion_wraps_multi_token_span() -> None:
+    text = "Проект готов."
+    tokens = tokenize_runtime_words(text)
+
+    corrected, edits = apply_boundary_and_token_edit_labels(
+        text,
+        tokens,
+        ["KEEP", "KEEP"],
+        [1.0, 1.0],
+        threshold=0.7,
+        boundary_before_labels=["INSERT_OPEN_QUOTE", "NONE"],
+        boundary_after_labels=["NONE", "INSERT_CLOSE_QUOTE"],
+        boundary_before_confidences=[0.99, 1.0],
+        boundary_after_confidences=[1.0, 0.99],
+    )
+
+    assert corrected == "«Проект готов»."
+    assert [(edit.source, edit.replacement, edit.edit_type) for edit in edits] == [
+        ("", "«", "punctuation"),
+        ("", "»", "punctuation"),
+    ]
+
+
+def test_boundary_quote_insertion_wraps_single_token() -> None:
+    text = "Готов."
+    tokens = tokenize_runtime_words(text)
+
+    corrected, edits = apply_boundary_and_token_edit_labels(
+        text,
+        tokens,
+        ["KEEP"],
+        [1.0],
+        threshold=0.7,
+        boundary_before_labels=["INSERT_OPEN_QUOTE"],
+        boundary_after_labels=["INSERT_CLOSE_QUOTE"],
+        boundary_before_confidences=[0.99],
+        boundary_after_confidences=[0.99],
+    )
+
+    assert corrected == "«Готов»."
+    assert [edit.replacement for edit in edits] == ["«", "»"]
+
+
+def test_boundary_quote_normalization_replaces_straight_quotes() -> None:
+    text = '"Проект готов".'
+    tokens = tokenize_runtime_words(text)
+
+    corrected, edits = apply_boundary_and_token_edit_labels(
+        text,
+        tokens,
+        ["KEEP", "KEEP"],
+        [1.0, 1.0],
+        threshold=0.7,
+        boundary_before_labels=["NORMALIZE_OPEN_QUOTE", "NONE"],
+        boundary_after_labels=["NONE", "NORMALIZE_CLOSE_QUOTE"],
+        boundary_before_confidences=[0.99, 1.0],
+        boundary_after_confidences=[1.0, 0.99],
+    )
+
+    assert corrected == "«Проект готов»."
+    assert [(edit.source, edit.replacement) for edit in edits] == [('"', "«"), ('"', "»")]
+
+
+def test_boundary_quote_deletion_removes_immediate_quotes_only() -> None:
+    text = "«Проект» готов."
+    tokens = tokenize_runtime_words(text)
+
+    corrected, edits = apply_boundary_and_token_edit_labels(
+        text,
+        tokens,
+        ["KEEP", "KEEP"],
+        [1.0, 1.0],
+        threshold=0.7,
+        boundary_before_labels=["DELETE_OPEN_QUOTE", "NONE"],
+        boundary_after_labels=["DELETE_CLOSE_QUOTE", "NONE"],
+        boundary_before_confidences=[0.99, 1.0],
+        boundary_after_confidences=[0.99, 1.0],
+    )
+
+    assert corrected == "Проект готов."
+    assert [(edit.source, edit.replacement) for edit in edits] == [("«", ""), ("»", "")]
+
+
+def test_comma_dash_gap_inserts_after_closing_quote() -> None:
+    text = "«Проект готов» сказал редактор."
+    tokens = tokenize_runtime_words(text)
+
+    corrected, edits = apply_gap_labels(
+        text,
+        tokens,
+        ["NONE", "COMMA_DASH", "NONE", "NONE"],
+        [1.0, 0.99, 1.0, 1.0],
+        threshold=0.7,
+    )
+
+    assert corrected == "«Проект готов», — сказал редактор."
+    assert [(edit.source, edit.replacement, edit.rule_id) for edit in edits] == [
+        ("", ", —", "punctuation")
+    ]
+
+
+def test_dot_gap_inserts_after_closing_quote() -> None:
+    text = "Автор сказал: «Проект готов»"
+    tokens = tokenize_runtime_words(text)
+
+    corrected, edits = apply_gap_labels(
+        text,
+        tokens,
+        ["NONE", "NONE", "NONE", "DOT"],
+        [1.0, 1.0, 1.0, 0.99],
+        threshold=0.7,
+    )
+
+    assert corrected == "Автор сказал: «Проект готов»."
+    assert [(edit.source, edit.replacement, edit.rule_id) for edit in edits] == [
+        ("", ".", "final_punctuation")
+    ]
+
+
+def test_delete_punctuation_removes_comma_dash_after_closing_quote() -> None:
+    text = "«Проект готов», — сказал редактор."
+    tokens = tokenize_runtime_words(text)
+
+    corrected, edits = apply_gap_labels(
+        text,
+        tokens,
+        ["NONE", "DELETE_PUNCTUATION", "NONE", "NONE"],
+        [1.0, 0.99, 1.0, 1.0],
+        threshold=0.7,
+    )
+
+    assert corrected == "«Проект готов» сказал редактор."
+    assert [(edit.source, edit.replacement) for edit in edits] == [(", —", "")]
 
 
 def test_merge_tak_zhe_consumes_second_token() -> None:

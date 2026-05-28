@@ -1,0 +1,16 @@
+# Runtime correction lexicon for semantic RuleLayer cases.
+# These entries are lexicon-gated and require a semantic_* neural rule label;
+# deterministic lexicon correction must not auto-apply semantic_* entries.
+corrections:
+  - {source: "что бы", target: "чтобы", rule_id: semantic_service_words, sub_rule_id: chtoby_conjunction_merge, operation: merge}
+  - {source: "по тому что", target: "потому что", rule_id: semantic_service_words, sub_rule_id: potomu_chto_merge, operation: merge}
+  - {source: "от того", target: "оттого", rule_id: semantic_service_words, sub_rule_id: ottogo_merge, operation: merge}
+  - {source: "от чего", target: "отчего", rule_id: semantic_service_words, sub_rule_id: otchego_merge, operation: merge}
+  - {source: "за чем", target: "зачем", rule_id: semantic_service_words, sub_rule_id: zachem_merge, operation: merge}
+
+  - {source: "в течении", target: "в течение", rule_id: semantic_derived_prepositions, sub_rule_id: v_techenie_temporal, operation: split_join}
+  - {source: "вследствии", target: "вследствие", rule_id: semantic_derived_prepositions, sub_rule_id: vsledstvie_causal, operation: dict_replace}
+  - {source: "в следствии", target: "вследствие", rule_id: semantic_derived_prepositions, sub_rule_id: vsledstvie_causal, operation: merge}
+  - {source: "на счёт", target: "насчёт", rule_id: semantic_derived_prepositions, sub_rule_id: naschet_about, operation: merge}
+  - {source: "в виду", target: "ввиду", rule_id: semantic_derived_prepositions, sub_rule_id: vvidu_causal, operation: merge}
+  - {source: "не смотря на", target: "несмотря на", rule_id: semantic_derived_prepositions, sub_rule_id: nesmotrya_concessive, operation: merge}

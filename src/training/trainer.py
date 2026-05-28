@@ -15,6 +15,10 @@ from src.config.load_config import load_config
 from src.model.edit_model import DirectEditModelConfig, DirectEditTaggerModel
 from src.progress import ProgressReporter
 from src.schema.labels import (
+    BOUNDARY_AFTER_ID_TO_LABEL,
+    BOUNDARY_AFTER_LABEL_TO_ID,
+    BOUNDARY_BEFORE_ID_TO_LABEL,
+    BOUNDARY_BEFORE_LABEL_TO_ID,
     GAP_ID_TO_LABEL,
     GAP_LABEL_TO_ID,
     RULE_ID_TO_LABEL,
@@ -186,6 +190,8 @@ def _train_epoch(
         "loss": 0.0,
         "token_edit_loss": 0.0,
         "gap_punctuation_loss": 0.0,
+        "boundary_before_loss": 0.0,
+        "boundary_after_loss": 0.0,
         "rule_loss": 0.0,
     }
     gradient_accumulation_steps = max(1, int(training.get("gradient_accumulation_steps", 1)))
@@ -222,6 +228,8 @@ def _train_epoch(
                 "loss": totals["loss"] / max(1, steps),
                 "token": totals["token_edit_loss"] / max(1, steps),
                 "gap": totals["gap_punctuation_loss"] / max(1, steps),
+                "before": totals["boundary_before_loss"] / max(1, steps),
+                "after": totals["boundary_after_loss"] / max(1, steps),
                 "rule": totals["rule_loss"] / max(1, steps),
                 "lr": _current_lr(optimizer),
             },
@@ -240,6 +248,8 @@ def _train_epoch(
             "loss": totals["loss"] / denominator,
             "token": totals["token_edit_loss"] / denominator,
             "gap": totals["gap_punctuation_loss"] / denominator,
+            "before": totals["boundary_before_loss"] / denominator,
+            "after": totals["boundary_after_loss"] / denominator,
             "rule": totals["rule_loss"] / denominator,
             "lr": _current_lr(optimizer),
         }
@@ -249,6 +259,8 @@ def _train_epoch(
         "loss": totals["loss"] / denominator,
         "token_edit_loss": totals["token_edit_loss"] / denominator,
         "gap_punctuation_loss": totals["gap_punctuation_loss"] / denominator,
+        "boundary_before_loss": totals["boundary_before_loss"] / denominator,
+        "boundary_after_loss": totals["boundary_after_loss"] / denominator,
         "rule_loss": totals["rule_loss"] / denominator,
     }
 
@@ -333,6 +345,18 @@ def _direct_losses(
         labels["gap_label_ids"],
         labels.get("sample_weight"),
     )
+    boundary_before_loss = _optional_cross_entropy_ignore(
+        outputs,
+        labels,
+        "boundary_before_logits",
+        "boundary_before_label_ids",
+    )
+    boundary_after_loss = _optional_cross_entropy_ignore(
+        outputs,
+        labels,
+        "boundary_after_logits",
+        "boundary_after_label_ids",
+    )
     rule_loss = _cross_entropy_ignore(
         outputs["rule_logits"],
         labels["rule_tag_ids"],
@@ -341,13 +365,33 @@ def _direct_losses(
     total = (
         float(training.get("token_edit_loss_weight", 1.0)) * token_edit_loss
         + float(training.get("gap_punctuation_loss_weight", 1.0)) * gap_loss
+        + float(training.get("boundary_before_loss_weight", 1.0)) * boundary_before_loss
+        + float(training.get("boundary_after_loss_weight", 1.0)) * boundary_after_loss
         + float(training.get("rule_loss_weight", 1.0)) * rule_loss
     )
     return total, {
         "token_edit_loss": token_edit_loss,
         "gap_punctuation_loss": gap_loss,
+        "boundary_before_loss": boundary_before_loss,
+        "boundary_after_loss": boundary_after_loss,
         "rule_loss": rule_loss,
     }
+
+
+def _optional_cross_entropy_ignore(
+    outputs: Mapping[str, Any],
+    labels: Mapping[str, Any],
+    logits_key: str,
+    labels_key: str,
+) -> Any:
+    logits = outputs.get(logits_key)
+    target = labels.get(labels_key)
+    if logits is None:
+        reference = next(iter(outputs.values()))
+        return reference.new_tensor(0.0) if hasattr(reference, "new_tensor") else 0.0
+    if target is None:
+        return logits.new_tensor(0.0)
+    return _cross_entropy_ignore(logits, target, labels.get("sample_weight"))
 
 
 def _cross_entropy_ignore(logits: Any, labels: Any, sample_weight: Any | None) -> Any:
@@ -374,8 +418,21 @@ def _cross_entropy_ignore(logits: Any, labels: Any, sample_weight: Any | None) -
 def _batch_exact_matches(outputs: Mapping[str, Any], labels: Mapping[str, Any]) -> Any:
     token_exact = _head_exact(outputs["token_edit_logits"], labels["token_edit_label_ids"])
     gap_exact = _head_exact(outputs["gap_punctuation_logits"], labels["gap_label_ids"])
+    boundary_before_exact = _optional_head_exact(outputs, labels, "boundary_before_logits", "boundary_before_label_ids")
+    boundary_after_exact = _optional_head_exact(outputs, labels, "boundary_after_logits", "boundary_after_label_ids")
     rule_exact = _head_exact(outputs["rule_logits"], labels["rule_tag_ids"])
-    return token_exact & gap_exact & rule_exact
+    return token_exact & gap_exact & boundary_before_exact & boundary_after_exact & rule_exact
+
+
+def _optional_head_exact(outputs: Mapping[str, Any], labels: Mapping[str, Any], logits_key: str, labels_key: str) -> Any:
+    logits = outputs.get(logits_key)
+    target = labels.get(labels_key)
+    if logits is None or target is None:
+        reference = next(iter(outputs.values()))
+        import torch
+
+        return torch.ones(reference.shape[0], dtype=torch.bool, device=reference.device)
+    return _head_exact(logits, target)
 
 
 def _head_exact(logits: Any, labels: Any) -> Any:
@@ -803,6 +860,10 @@ def _label_maps() -> dict[str, Any]:
         "token_id_to_label": list(TOKEN_ID_TO_LABEL),
         "gap_label_to_id": dict(GAP_LABEL_TO_ID),
         "gap_id_to_label": list(GAP_ID_TO_LABEL),
+        "boundary_before_label_to_id": dict(BOUNDARY_BEFORE_LABEL_TO_ID),
+        "boundary_before_id_to_label": list(BOUNDARY_BEFORE_ID_TO_LABEL),
+        "boundary_after_label_to_id": dict(BOUNDARY_AFTER_LABEL_TO_ID),
+        "boundary_after_id_to_label": list(BOUNDARY_AFTER_ID_TO_LABEL),
         "rule_tag_to_id": dict(RULE_LABEL_TO_ID),
         "rule_id_to_label": list(RULE_ID_TO_LABEL),
     }

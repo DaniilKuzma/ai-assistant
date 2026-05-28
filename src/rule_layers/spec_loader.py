@@ -169,10 +169,20 @@ def _case_from_mapping(
         gap_operations=gap_operations,
         expected_token_edit_count=_count(data.get("expected_token_edit_count"), token_operations),
         expected_gap_edit_count=_count(data.get("expected_gap_edit_count"), gap_operations),
+        expected_boundary_edit_count=_count(
+            data.get("expected_boundary_edit_count"),
+            (),
+        ),
         metadata=dict(data.get("metadata") or {}),
         weight=_weight(data.get("weight"), path, default=1.0),
         direct_token_labels=tuple(str(label) for label in _string_list(data.get("direct_token_labels"))),
         direct_gap_labels=tuple(str(label) for label in _string_list(data.get("direct_gap_labels"))),
+        direct_boundary_before_labels=tuple(
+            str(label) for label in _string_list(data.get("direct_boundary_before_labels"))
+        ),
+        direct_boundary_after_labels=tuple(
+            str(label) for label in _string_list(data.get("direct_boundary_after_labels"))
+        ),
     )
 
 

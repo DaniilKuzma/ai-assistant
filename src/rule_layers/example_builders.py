@@ -6,7 +6,12 @@ from typing import Any
 from src.grammar_gen.realizer import Realizer
 from src.grammar_gen.rules.common import gap_labels_from_text
 from src.schema import GeneratedExample, WordToken
-from src.schema.labels import gap_label_to_id, token_label_to_id
+from src.schema.labels import (
+    boundary_after_label_to_id,
+    boundary_before_label_to_id,
+    gap_label_to_id,
+    token_label_to_id,
+)
 from src.rule_layers.base import LayerDirectCase, LayerOperation
 
 
@@ -58,6 +63,8 @@ def build_generated_example_from_case(
 
     token_labels = _initial_token_labels(case, tokens)
     gap_labels = _initial_gap_labels(case, tokens)
+    boundary_before_labels = _initial_boundary_before_labels(case, tokens)
+    boundary_after_labels = _initial_boundary_after_labels(case, tokens)
     rule_ids = ["none"] * len(tokens)
 
     operation_names: list[str] = []
@@ -76,7 +83,21 @@ def build_generated_example_from_case(
         source_patterns.append(operation.source_pattern)
         target_patterns.append(operation.target_pattern)
 
-    _apply_direct_rule_ids(case, token_labels, gap_labels, rule_ids)
+    for operation in case.boundary_operations:
+        _apply_boundary_operation(
+            operation,
+            case,
+            realizer,
+            tokens,
+            boundary_before_labels,
+            boundary_after_labels,
+            rule_ids,
+        )
+        operation_names.append(operation.kind)
+        source_patterns.append(operation.source_pattern)
+        target_patterns.append(operation.target_pattern)
+
+    _apply_direct_rule_ids(case, token_labels, gap_labels, boundary_before_labels, boundary_after_labels, rule_ids)
     if case.rule_id not in rule_ids:
         rule_ids[0] = case.rule_id
 
@@ -95,6 +116,8 @@ def build_generated_example_from_case(
         source_tokens=list(tokens),
         token_edit_labels=list(token_labels),
         gap_labels=list(gap_labels),
+        boundary_before_labels=list(boundary_before_labels),
+        boundary_after_labels=list(boundary_after_labels),
         rule_ids=list(rule_ids),
         primary_rule_id=case.rule_id,
         mode=case.mode,
@@ -122,6 +145,28 @@ def _initial_gap_labels(case: LayerDirectCase, tokens: Sequence[WordToken]) -> l
         labels = gap_labels_from_text(case.source_text, tokens)
     for label in labels:
         gap_label_to_id(label)
+    return labels
+
+
+def _initial_boundary_before_labels(case: LayerDirectCase, tokens: Sequence[WordToken]) -> list[str]:
+    if case.direct_boundary_before_labels:
+        labels = list(case.direct_boundary_before_labels)
+        _require_length("direct_boundary_before_labels", labels, tokens)
+    else:
+        labels = ["NONE"] * len(tokens)
+    for label in labels:
+        boundary_before_label_to_id(label)
+    return labels
+
+
+def _initial_boundary_after_labels(case: LayerDirectCase, tokens: Sequence[WordToken]) -> list[str]:
+    if case.direct_boundary_after_labels:
+        labels = list(case.direct_boundary_after_labels)
+        _require_length("direct_boundary_after_labels", labels, tokens)
+    else:
+        labels = ["NONE"] * len(tokens)
+    for label in labels:
+        boundary_after_label_to_id(label)
     return labels
 
 
@@ -164,6 +209,36 @@ def _apply_gap_operation(
         raise ValueError(f"DELETE_PUNCTUATION source_pattern has no source punctuation: {operation.source_pattern!r}.")
     labels[index] = operation.label
     rule_ids[index] = case.rule_id
+
+
+def _apply_boundary_operation(
+    operation: LayerOperation,
+    case: LayerDirectCase,
+    realizer: Realizer,
+    tokens: Sequence[WordToken],
+    before_labels: MutableSequence[str],
+    after_labels: MutableSequence[str],
+    rule_ids: MutableSequence[str],
+) -> None:
+    before_label, after_label = _boundary_label(operation)
+    start, end = _operation_span(operation, case.source_text, realizer, tokens)
+    if before_label is not None:
+        before_labels[start] = before_label
+        rule_ids[start] = case.rule_id
+    if after_label is not None:
+        index = end - 1
+        after_labels[index] = after_label
+        rule_ids[index] = case.rule_id
+
+
+def _boundary_label(operation: LayerOperation) -> tuple[str | None, str | None]:
+    if operation.kind == "boundary_before":
+        boundary_before_label_to_id(operation.label)
+        return operation.label, None
+    if operation.kind == "boundary_after":
+        boundary_after_label_to_id(operation.label)
+        return None, operation.label
+    raise ValueError(f"Unsupported boundary operation kind: {operation.kind!r}.")
 
 
 def _operation_span(
@@ -211,6 +286,8 @@ def _apply_direct_rule_ids(
     case: LayerDirectCase,
     token_labels: Sequence[str],
     gap_labels: Sequence[str],
+    boundary_before_labels: Sequence[str],
+    boundary_after_labels: Sequence[str],
     rule_ids: MutableSequence[str],
 ) -> None:
     if case.direct_token_labels:
@@ -219,6 +296,14 @@ def _apply_direct_rule_ids(
                 rule_ids[index] = case.rule_id
     if case.direct_gap_labels:
         for index, label in enumerate(gap_labels):
+            if label != "NONE":
+                rule_ids[index] = case.rule_id
+    if case.direct_boundary_before_labels:
+        for index, label in enumerate(boundary_before_labels):
+            if label != "NONE":
+                rule_ids[index] = case.rule_id
+    if case.direct_boundary_after_labels:
+        for index, label in enumerate(boundary_after_labels):
             if label != "NONE":
                 rule_ids[index] = case.rule_id
 
@@ -241,7 +326,17 @@ def _metadata(
             "operation": operation,
             "expected_token_edit_count": case.expected_token_edit_count,
             "expected_gap_edit_count": case.expected_gap_edit_count,
-            "expected_edit_count": case.expected_token_edit_count + case.expected_gap_edit_count,
+            "expected_boundary_edit_count": case.expected_boundary_edit_count,
+            "expected_edit_count": (
+                case.expected_token_edit_count
+                + case.expected_gap_edit_count
+                + case.expected_boundary_edit_count
+            ),
+            "expected_total_edit_count": (
+                case.expected_token_edit_count
+                + case.expected_gap_edit_count
+                + case.expected_boundary_edit_count
+            ),
             "source_pattern": _first_non_empty(source_patterns),
             "target_pattern": _first_non_empty(target_patterns),
             "production": False,

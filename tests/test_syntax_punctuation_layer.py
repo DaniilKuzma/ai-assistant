@@ -204,6 +204,21 @@ def test_scope_guard_accepts_punctuation_only_insertions_and_deletions() -> None
     )
 
 
+def test_scope_guard_accepts_boundary_punctuation_and_capitalize_without_word_delta() -> None:
+    source = "проект готов"
+    guard = ScopeGuard()
+    edits = [
+        RuntimeEdit(0, 0, "", "«", "punctuation", "quotation_dialogue", 0.99),
+        RuntimeEdit(6, 6, "", "»", "punctuation", "quotation_dialogue", 0.99),
+        RuntimeEdit(0, 6, "проект", "Проект", "casing", "casing", 0.99),
+    ]
+
+    corrected = "«Проект» готов"
+
+    assert all(guard.validate_edit(source, edit) for edit in edits)
+    assert guard.validate_result(source, corrected, edits) == (True, [])
+
+
 def test_1000_syntax_punctuation_examples_have_reasonable_duplicate_rate_and_clean_audit() -> None:
     generator = _syntax_generator()
     examples = [generator.sample_by_index(index) for index in range(1000)]

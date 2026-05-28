@@ -1,0 +1,45 @@
+# Guard-only semantic contexts for introductory-word homonyms.
+rule_id: semantic_introductory_context
+description: Semantic guards for introductory words versus ordinary sentence members.
+cases:
+  hard_negative:
+    - sub_rule_id: introductory_homonym_guard
+      source: "Задача кажется простой."
+      target: "Задача кажется простой."
+      metadata: &intro_homonym_meta
+        semantic_case_type: guard
+        ambiguity_pair: "вводное_слово/член_предложения"
+        semantic_signal: "омонимичное слово является сказуемым или обстоятельством"
+        operation: gap_guard
+        source: "кажется"
+        target: "кажется"
+        legacy_overlap: false
+        compound_overlap: false
+    - sub_rule_id: introductory_homonym_guard
+      source: "Решение возможно при хорошем тестировании."
+      target: "Решение возможно при хорошем тестировании."
+      metadata:
+        <<: *intro_homonym_meta
+        source: "возможно"
+        target: "возможно"
+    - sub_rule_id: introductory_homonym_guard
+      source: "Он относится к счастью спокойно."
+      target: "Он относится к счастью спокойно."
+      metadata:
+        <<: *intro_homonym_meta
+        source: "к счастью"
+        target: "к счастью"
+    - sub_rule_id: introductory_homonym_guard
+      source: "Документ действительно содержит факт."
+      target: "Документ действительно содержит факт."
+      metadata:
+        <<: *intro_homonym_meta
+        source: "действительно"
+        target: "действительно"
+    - sub_rule_id: introductory_homonym_guard
+      source: "Система точно показала результат."
+      target: "Система точно показала результат."
+      metadata:
+        <<: *intro_homonym_meta
+        source: "точно"
+        target: "точно"

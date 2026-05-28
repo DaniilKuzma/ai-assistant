@@ -1,0 +1,67 @@
+rule_id: casing_documents_events
+description: Controlled historical event and holiday capitalization cases.
+slots:
+  event_prefix_fem:
+    - В тексте упомянута
+    - В учебнике названа
+    - В справке указана
+    - В отчёте отмечена
+    - В документе упомянута
+    - В лекции названа
+  event_prefix_masc:
+    - В календаре отмечен
+    - В списке указан
+    - В документе назван
+    - В отчёте упомянут
+    - В плане отмечен
+    - В расписании указан
+cases:
+  positive:
+    - sub_rule_id: event_great_patriotic_war
+      source_template: "{event_prefix_fem} великая отечественная война."
+      target_template: "{event_prefix_fem} Великая Отечественная война."
+      expected_token_edit_count: 2
+      token_operations:
+        - label: CAPITALIZE
+          source_pattern: великая
+          target_pattern: Великая
+        - label: CAPITALIZE
+          source_pattern: отечественная
+          target_pattern: Отечественная
+      metadata:
+        phenomenon: historical_event
+        operation: capitalize_event_title
+        casing_class: historical_event
+    - sub_rule_id: event_victory_day
+      source_template: "{event_prefix_masc} день победы."
+      target_template: "{event_prefix_masc} День Победы."
+      expected_token_edit_count: 2
+      token_operations:
+        - label: CAPITALIZE
+          source_pattern: день
+          target_pattern: День
+        - label: CAPITALIZE
+          source_pattern: победы
+          target_pattern: Победы
+      metadata:
+        phenomenon: holiday_title
+        operation: capitalize_event_title
+        casing_class: holiday_title
+  hard_negative:
+    - sub_rule_id: ordinary_event_words_guard
+      source: "В тексте слова день, война и победа остаются строчными."
+      target: "В тексте слова день, война и победа остаются строчными."
+      expected_token_edit_count: 0
+      metadata:
+        phenomenon: common_noun_guard
+        operation: identity_guard
+        casing_class: common_word
+  clean_identity:
+    - sub_rule_id: ordinary_event_words_guard
+      source: "Автор написал обычный день и обычная война строчными."
+      target: "Автор написал обычный день и обычная война строчными."
+      expected_token_edit_count: 0
+      metadata:
+        phenomenon: common_noun_guard
+        operation: clean_identity
+        casing_class: common_word

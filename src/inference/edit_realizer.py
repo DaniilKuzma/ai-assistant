@@ -1,6 +1,12 @@
 from __future__ import annotations
 
-from src.runtime.edit_realizer import apply_gap_labels, apply_runtime_edits, apply_token_edit_labels
+from src.runtime.edit_realizer import (
+    apply_boundary_and_token_edit_labels,
+    apply_boundary_labels,
+    apply_gap_labels,
+    apply_runtime_edits,
+    apply_token_edit_labels,
+)
 
 
 CLOSING_FINAL_WRAPPERS = frozenset("\"'»”)]}")
@@ -20,4 +26,11 @@ def _has_sentence_final_punctuation(text: str) -> bool:
     return bool(stripped and stripped[-1] in ".!?…")
 
 
-__all__ = ["apply_gap_labels", "apply_runtime_edits", "apply_token_edit_labels", "ensure_final_punctuation"]
+__all__ = [
+    "apply_boundary_and_token_edit_labels",
+    "apply_boundary_labels",
+    "apply_gap_labels",
+    "apply_runtime_edits",
+    "apply_token_edit_labels",
+    "ensure_final_punctuation",
+]

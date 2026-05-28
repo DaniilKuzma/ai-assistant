@@ -9,7 +9,13 @@ from src.grammar_gen.rules.base import GenerationMode
 from src.grammar_gen.diversity import diversity_report
 from src.grammar_gen.safety import allowed_source_surface_failures, validate_generated_pair, validate_surface
 from src.schema import GeneratedExample
-from src.schema.labels import gap_label_to_id, rule_tag_to_id, token_label_to_id
+from src.schema.labels import (
+    boundary_after_label_to_id,
+    boundary_before_label_to_id,
+    gap_label_to_id,
+    rule_tag_to_id,
+    token_label_to_id,
+)
 
 
 LATIN_RE = re.compile(r"[A-Za-z]")
@@ -135,6 +141,16 @@ def _label_reasons(example: GeneratedExample) -> list[str]:
             gap_label_to_id(label)
         except ValueError:
             reasons.append(f"unknown_gap_label:{label}")
+    for label in example.boundary_before_labels:
+        try:
+            boundary_before_label_to_id(label)
+        except ValueError:
+            reasons.append(f"unknown_boundary_before_label:{label}")
+    for label in example.boundary_after_labels:
+        try:
+            boundary_after_label_to_id(label)
+        except ValueError:
+            reasons.append(f"unknown_boundary_after_label:{label}")
     for rule_id in example.rule_ids + [example.primary_rule_id]:
         try:
             rule_tag_to_id(rule_id)
@@ -148,8 +164,11 @@ def _mode_reasons(example: GeneratedExample) -> list[str]:
     if example.mode == GenerationMode.POSITIVE.value:
         if example.source_text == example.target_text:
             reasons.append("positive_source_equals_target")
-        if all(label == "KEEP" for label in example.token_edit_labels) and all(
-            label == "NONE" for label in example.gap_labels
+        if (
+            all(label == "KEEP" for label in example.token_edit_labels)
+            and all(label == "NONE" for label in example.gap_labels)
+            and all(label == "NONE" for label in example.boundary_before_labels)
+            and all(label == "NONE" for label in example.boundary_after_labels)
         ):
             reasons.append("positive_has_no_active_labels")
     elif example.mode in {GenerationMode.HARD_NEGATIVE.value, GenerationMode.CLEAN_IDENTITY.value}:

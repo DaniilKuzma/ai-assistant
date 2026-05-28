@@ -5,7 +5,13 @@ import hashlib
 import json
 from typing import Any, Mapping
 
-from src.schema.labels import gap_label_to_id, rule_tag_to_id, token_label_to_id
+from src.schema.labels import (
+    boundary_after_label_to_id,
+    boundary_before_label_to_id,
+    gap_label_to_id,
+    rule_tag_to_id,
+    token_label_to_id,
+)
 
 
 @dataclass
@@ -30,6 +36,8 @@ class GeneratedExample:
     mode: str
     explanation_ids: list[str]
     metadata: dict[str, Any]
+    boundary_before_labels: list[str] = field(default_factory=list)
+    boundary_after_labels: list[str] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         if not self.source_text.strip():
@@ -43,11 +51,21 @@ class GeneratedExample:
         _require_length("token_edit_labels", self.token_edit_labels, token_count)
         _require_length("gap_labels", self.gap_labels, token_count)
         _require_length("rule_ids", self.rule_ids, token_count)
+        if not self.boundary_before_labels:
+            self.boundary_before_labels = ["NONE"] * token_count
+        if not self.boundary_after_labels:
+            self.boundary_after_labels = ["NONE"] * token_count
+        _require_length("boundary_before_labels", self.boundary_before_labels, token_count)
+        _require_length("boundary_after_labels", self.boundary_after_labels, token_count)
 
         for label in self.token_edit_labels:
             token_label_to_id(label)
         for label in self.gap_labels:
             gap_label_to_id(label)
+        for label in self.boundary_before_labels:
+            boundary_before_label_to_id(label)
+        for label in self.boundary_after_labels:
+            boundary_after_label_to_id(label)
         for rule_id in self.rule_ids:
             rule_tag_to_id(rule_id)
         rule_tag_to_id(self.primary_rule_id)
@@ -62,6 +80,8 @@ class GeneratedExample:
             "source_tokens": [asdict(token) for token in self.source_tokens],
             "token_edit_labels": list(self.token_edit_labels),
             "gap_labels": list(self.gap_labels),
+            "boundary_before_labels": list(self.boundary_before_labels),
+            "boundary_after_labels": list(self.boundary_after_labels),
             "rule_ids": list(self.rule_ids),
             "primary_rule_id": self.primary_rule_id,
             "mode": self.mode,
@@ -85,6 +105,8 @@ class GeneratedExample:
             mode=str(data["mode"]),
             explanation_ids=list(data["explanation_ids"]),
             metadata=dict(data["metadata"]),
+            boundary_before_labels=list(data.get("boundary_before_labels") or []),
+            boundary_after_labels=list(data.get("boundary_after_labels") or []),
         )
 
     def to_json(self) -> str:

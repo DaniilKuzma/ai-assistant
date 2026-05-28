@@ -68,6 +68,24 @@ def test_generation_mix_preserves_old_config_aliases() -> None:
     assert family == "orthography_contextual"
 
 
+def test_casing_mix_key_samples_casing_family() -> None:
+    mix = _generation_mix({"generation": {"mix": {"casing": 1.0}}})
+    mode, family = _mode_and_family_from_mix_key("casing")
+
+    assert mix == {"casing": 1.0}
+    assert mode is GenerationMode.POSITIVE
+    assert family == "casing"
+
+
+def test_semantic_mix_key_samples_semantic_family() -> None:
+    mix = _generation_mix({"generation": {"mix": {"semantic": 1.0}}})
+    mode, family = _mode_and_family_from_mix_key("semantic")
+
+    assert mix == {"semantic": 1.0}
+    assert mode is GenerationMode.POSITIVE
+    assert family == "semantic"
+
+
 def test_canonical_morpheme_mix_key_samples_morphemic_rules() -> None:
     config = load_config("configs/config.yaml")
     config["generation"]["enabled_rule_groups"] = ["morpheme"]

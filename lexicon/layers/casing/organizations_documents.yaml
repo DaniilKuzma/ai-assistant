@@ -1,0 +1,112 @@
+rules:
+  - rule_id: casing_organizations
+    description: Controlled organization-name capitalization cases.
+    slots:
+      org_prefix_masc:
+        - В справке указан
+        - В документе указан
+        - В отчёте назван
+        - В каталоге указан
+        - В письме упомянут
+        - В списке отмечен
+      org_prefix_neut:
+        - В справке упомянуто
+        - В документе указано
+        - В отчёте названо
+        - В каталоге записано
+        - В письме упомянуто
+        - В списке отмечено
+    cases:
+      positive:
+        - sub_rule_id: organization_rgrtu
+          source_template: "{org_prefix_masc} рязанский государственный радиотехнический университет."
+          target_template: "{org_prefix_masc} Рязанский государственный радиотехнический университет."
+          expected_token_edit_count: 1
+          token_operations:
+            - label: CAPITALIZE
+              source_pattern: рязанский
+              target_pattern: Рязанский
+          metadata:
+            phenomenon: organization_name
+            operation: capitalize_organization_name
+            casing_class: organization_name
+        - sub_rule_id: organization_ministry
+          source_template: "{org_prefix_neut} министерство науки и высшего образования."
+          target_template: "{org_prefix_neut} Министерство науки и высшего образования."
+          expected_token_edit_count: 1
+          token_operations:
+            - label: CAPITALIZE
+              source_pattern: министерство
+              target_pattern: Министерство
+          metadata:
+            phenomenon: organization_name
+            operation: capitalize_organization_name
+            casing_class: organization_name
+      hard_negative:
+        - sub_rule_id: ordinary_ministry_guard
+          source: "В городе работает обычное министерство."
+          target: "В городе работает обычное министерство."
+          expected_token_edit_count: 0
+          metadata:
+            phenomenon: common_noun_guard
+            operation: identity_guard
+            casing_class: common_word
+        - sub_rule_id: ordinary_university_guard
+          source: "В городе открылся обычный университет."
+          target: "В городе открылся обычный университет."
+          expected_token_edit_count: 0
+          metadata:
+            phenomenon: common_noun_guard
+            operation: identity_guard
+            casing_class: common_word
+      clean_identity:
+        - sub_rule_id: ordinary_ministry_guard
+          source: "В тексте слово министерство осталось строчным."
+          target: "В тексте слово министерство осталось строчным."
+          expected_token_edit_count: 0
+          metadata:
+            phenomenon: common_noun_guard
+            operation: clean_identity
+            casing_class: common_word
+  - rule_id: casing_documents_events
+    description: Controlled document and law title capitalization cases.
+    slots:
+      law_prefix:
+        - В тексте указан
+        - В документе указан
+        - В справке упомянут
+        - В отчёте назван
+        - В протоколе указан
+        - В списке отмечен
+    cases:
+      positive:
+        - sub_rule_id: document_federal_law_numbered
+          source_template: "{law_prefix} федеральный закон № 44-ФЗ."
+          target_template: "{law_prefix} Федеральный закон № 44-ФЗ."
+          expected_token_edit_count: 1
+          token_operations:
+            - label: CAPITALIZE
+              source_pattern: федеральный
+              target_pattern: Федеральный
+          metadata:
+            phenomenon: document_title
+            operation: capitalize_document_title
+            casing_class: document_title
+      hard_negative:
+        - sub_rule_id: ordinary_law_guard
+          source: "В тексте упомянут обычный закон без номера."
+          target: "В тексте упомянут обычный закон без номера."
+          expected_token_edit_count: 0
+          metadata:
+            phenomenon: common_noun_guard
+            operation: identity_guard
+            casing_class: common_word
+      clean_identity:
+        - sub_rule_id: ordinary_law_guard
+          source: "Редактор оставил слово закон строчным."
+          target: "Редактор оставил слово закон строчным."
+          expected_token_edit_count: 0
+          metadata:
+            phenomenon: common_noun_guard
+            operation: clean_identity
+            casing_class: common_word

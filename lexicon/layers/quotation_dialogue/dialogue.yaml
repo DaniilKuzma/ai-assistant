@@ -1,0 +1,591 @@
+rules:
+  - rule_id: dialogue_author_before
+    description: Author words before direct speech with bounded quote and punctuation edits.
+    weight: 2.00
+    slots:
+      speakers:
+        - Редактор
+        - Мария
+        - Эксперт
+        - Преподаватель
+        - Студент
+        - Руководитель
+        - Пользователь
+        - Ассистент
+      speech_verbs:
+        - сказал
+        - сказала
+        - сообщил
+        - сообщила
+        - ответил
+        - ответила
+        - спросил
+        - спросила
+        - написал
+        - написала
+      speech_short:
+        - проект готов
+        - отчёт проверен
+        - текст исправлен
+        - файл загружен
+        - задача выполнена
+        - ошибка найдена
+        - документ принят
+    slot_groups:
+      author_forms:
+        - speaker: Редактор
+          author_after: редактор
+          speech_verb: сказал
+        - speaker: Редактор
+          author_after: редактор
+          speech_verb: сообщил
+        - speaker: Редактор
+          author_after: редактор
+          speech_verb: ответил
+        - speaker: Редактор
+          author_after: редактор
+          speech_verb: спросил
+        - speaker: Редактор
+          author_after: редактор
+          speech_verb: написал
+        - speaker: Мария
+          author_after: Мария
+          speech_verb: сказала
+        - speaker: Мария
+          author_after: Мария
+          speech_verb: сообщила
+        - speaker: Мария
+          author_after: Мария
+          speech_verb: ответила
+        - speaker: Мария
+          author_after: Мария
+          speech_verb: спросила
+        - speaker: Мария
+          author_after: Мария
+          speech_verb: написала
+        - speaker: Эксперт
+          author_after: эксперт
+          speech_verb: сказал
+        - speaker: Эксперт
+          author_after: эксперт
+          speech_verb: сообщил
+        - speaker: Эксперт
+          author_after: эксперт
+          speech_verb: ответил
+        - speaker: Эксперт
+          author_after: эксперт
+          speech_verb: спросил
+        - speaker: Эксперт
+          author_after: эксперт
+          speech_verb: написал
+        - speaker: Преподаватель
+          author_after: преподаватель
+          speech_verb: сказал
+        - speaker: Преподаватель
+          author_after: преподаватель
+          speech_verb: сообщил
+        - speaker: Преподаватель
+          author_after: преподаватель
+          speech_verb: ответил
+        - speaker: Преподаватель
+          author_after: преподаватель
+          speech_verb: спросил
+        - speaker: Преподаватель
+          author_after: преподаватель
+          speech_verb: написал
+        - speaker: Студент
+          author_after: студент
+          speech_verb: сказал
+        - speaker: Студент
+          author_after: студент
+          speech_verb: сообщил
+        - speaker: Студент
+          author_after: студент
+          speech_verb: ответил
+        - speaker: Студент
+          author_after: студент
+          speech_verb: спросил
+        - speaker: Студент
+          author_after: студент
+          speech_verb: написал
+        - speaker: Руководитель
+          author_after: руководитель
+          speech_verb: сказал
+        - speaker: Руководитель
+          author_after: руководитель
+          speech_verb: сообщил
+        - speaker: Руководитель
+          author_after: руководитель
+          speech_verb: ответил
+        - speaker: Руководитель
+          author_after: руководитель
+          speech_verb: спросил
+        - speaker: Руководитель
+          author_after: руководитель
+          speech_verb: написал
+        - speaker: Пользователь
+          author_after: пользователь
+          speech_verb: сказал
+        - speaker: Пользователь
+          author_after: пользователь
+          speech_verb: сообщил
+        - speaker: Пользователь
+          author_after: пользователь
+          speech_verb: ответил
+        - speaker: Пользователь
+          author_after: пользователь
+          speech_verb: спросил
+        - speaker: Пользователь
+          author_after: пользователь
+          speech_verb: написал
+        - speaker: Ассистент
+          author_after: ассистент
+          speech_verb: сказал
+        - speaker: Ассистент
+          author_after: ассистент
+          speech_verb: сообщил
+        - speaker: Ассистент
+          author_after: ассистент
+          speech_verb: ответил
+        - speaker: Ассистент
+          author_after: ассистент
+          speech_verb: спросил
+        - speaker: Ассистент
+          author_after: ассистент
+          speech_verb: написал
+      speech_phrases:
+        - speech_lower: проект готов
+          speech_cap: Проект готов
+          speech_last: готов
+        - speech_lower: отчёт проверен
+          speech_cap: Отчёт проверен
+          speech_last: проверен
+        - speech_lower: текст исправлен
+          speech_cap: Текст исправлен
+          speech_last: исправлен
+        - speech_lower: файл загружен
+          speech_cap: Файл загружен
+          speech_last: загружен
+        - speech_lower: задача выполнена
+          speech_cap: Задача выполнена
+          speech_last: выполнена
+        - speech_lower: ошибка найдена
+          speech_cap: Ошибка найдена
+          speech_last: найдена
+        - speech_lower: документ принят
+          speech_cap: Документ принят
+          speech_last: принят
+    cases:
+      positive:
+        - sub_rule_id: author_before_missing_colon_quotes
+          source_template: "{speaker} {speech_verb} {speech_lower}"
+          target_template: "{speaker} {speech_verb}: «{speech_cap}»."
+          token_operations:
+            - label: CAPITALIZE
+              source_pattern: "{speech_lower}"
+          gap_operations:
+            - label: COLON
+              source_pattern: "{speech_verb}"
+            - label: DOT
+              source_pattern: "{speech_last}"
+          boundary_operations:
+            - label: INSERT_OPEN_QUOTE_BEFORE
+              source_pattern: "{speech_lower}"
+            - label: INSERT_CLOSE_QUOTE_AFTER
+              source_pattern: "{speech_last}"
+          metadata:
+            phenomenon: dialogue
+            operation: author_before_missing_colon_quotes
+        - sub_rule_id: author_before_normalize_quotes
+          source_template: "{speaker} {speech_verb}: \"{speech_cap}\"."
+          target_template: "{speaker} {speech_verb}: «{speech_cap}»."
+          boundary_operations:
+            - label: NORMALIZE_OPEN_QUOTE_BEFORE
+              source_pattern: "{speech_lower}"
+            - label: NORMALIZE_CLOSE_QUOTE_AFTER
+              source_pattern: "{speech_last}"
+          metadata:
+            phenomenon: quote_normalization
+            operation: author_before_normalize_quotes
+      hard_negative:
+        - sub_rule_id: author_before_already_correct_guard
+          source: "Редактор сказал: «Проект готов»."
+          target: "Редактор сказал: «Проект готов»."
+          metadata:
+            phenomenon: dialogue
+            operation: already_correct_author_before
+        - sub_rule_id: ordinary_said_phrase_guard
+          source: Редактор сказал важную мысль.
+          target: Редактор сказал важную мысль.
+          metadata:
+            phenomenon: dialogue
+            operation: ordinary_said_phrase_guard
+      clean_identity:
+        - sub_rule_id: clean_author_before_dialogue
+          source: "Мария сообщила: «Отчёт проверен»."
+          target: "Мария сообщила: «Отчёт проверен»."
+          metadata:
+            phenomenon: dialogue
+            operation: clean_author_before_dialogue
+
+  - rule_id: dialogue_speech_before_author
+    description: Direct speech before author words with bounded quote and comma-dash edits.
+    weight: 2.00
+    slot_groups:
+      author_forms:
+        - speaker: Редактор
+          author_after: редактор
+          speech_verb: сказал
+        - speaker: Редактор
+          author_after: редактор
+          speech_verb: сообщил
+        - speaker: Редактор
+          author_after: редактор
+          speech_verb: ответил
+        - speaker: Редактор
+          author_after: редактор
+          speech_verb: спросил
+        - speaker: Редактор
+          author_after: редактор
+          speech_verb: написал
+        - speaker: Мария
+          author_after: Мария
+          speech_verb: сказала
+        - speaker: Мария
+          author_after: Мария
+          speech_verb: сообщила
+        - speaker: Мария
+          author_after: Мария
+          speech_verb: ответила
+        - speaker: Мария
+          author_after: Мария
+          speech_verb: спросила
+        - speaker: Мария
+          author_after: Мария
+          speech_verb: написала
+        - speaker: Эксперт
+          author_after: эксперт
+          speech_verb: сказал
+        - speaker: Эксперт
+          author_after: эксперт
+          speech_verb: сообщил
+        - speaker: Эксперт
+          author_after: эксперт
+          speech_verb: ответил
+        - speaker: Эксперт
+          author_after: эксперт
+          speech_verb: спросил
+        - speaker: Эксперт
+          author_after: эксперт
+          speech_verb: написал
+        - speaker: Преподаватель
+          author_after: преподаватель
+          speech_verb: сказал
+        - speaker: Преподаватель
+          author_after: преподаватель
+          speech_verb: сообщил
+        - speaker: Преподаватель
+          author_after: преподаватель
+          speech_verb: ответил
+        - speaker: Преподаватель
+          author_after: преподаватель
+          speech_verb: спросил
+        - speaker: Преподаватель
+          author_after: преподаватель
+          speech_verb: написал
+        - speaker: Студент
+          author_after: студент
+          speech_verb: сказал
+        - speaker: Студент
+          author_after: студент
+          speech_verb: сообщил
+        - speaker: Студент
+          author_after: студент
+          speech_verb: ответил
+        - speaker: Студент
+          author_after: студент
+          speech_verb: спросил
+        - speaker: Студент
+          author_after: студент
+          speech_verb: написал
+        - speaker: Руководитель
+          author_after: руководитель
+          speech_verb: сказал
+        - speaker: Руководитель
+          author_after: руководитель
+          speech_verb: сообщил
+        - speaker: Руководитель
+          author_after: руководитель
+          speech_verb: ответил
+        - speaker: Руководитель
+          author_after: руководитель
+          speech_verb: спросил
+        - speaker: Руководитель
+          author_after: руководитель
+          speech_verb: написал
+        - speaker: Пользователь
+          author_after: пользователь
+          speech_verb: сказал
+        - speaker: Пользователь
+          author_after: пользователь
+          speech_verb: сообщил
+        - speaker: Пользователь
+          author_after: пользователь
+          speech_verb: ответил
+        - speaker: Пользователь
+          author_after: пользователь
+          speech_verb: спросил
+        - speaker: Пользователь
+          author_after: пользователь
+          speech_verb: написал
+        - speaker: Ассистент
+          author_after: ассистент
+          speech_verb: сказал
+        - speaker: Ассистент
+          author_after: ассистент
+          speech_verb: сообщил
+        - speaker: Ассистент
+          author_after: ассистент
+          speech_verb: ответил
+        - speaker: Ассистент
+          author_after: ассистент
+          speech_verb: спросил
+        - speaker: Ассистент
+          author_after: ассистент
+          speech_verb: написал
+      speech_phrases:
+        - speech_lower: проект готов
+          speech_cap: Проект готов
+          speech_last: готов
+        - speech_lower: отчёт проверен
+          speech_cap: Отчёт проверен
+          speech_last: проверен
+        - speech_lower: текст исправлен
+          speech_cap: Текст исправлен
+          speech_last: исправлен
+        - speech_lower: файл загружен
+          speech_cap: Файл загружен
+          speech_last: загружен
+        - speech_lower: задача выполнена
+          speech_cap: Задача выполнена
+          speech_last: выполнена
+        - speech_lower: ошибка найдена
+          speech_cap: Ошибка найдена
+          speech_last: найдена
+        - speech_lower: документ принят
+          speech_cap: Документ принят
+          speech_last: принят
+    cases:
+      positive:
+        - sub_rule_id: speech_before_author_missing_quotes_comma_dash
+          source_template: "{speech_cap} {speech_verb} {author_after}."
+          target_template: "«{speech_cap}», — {speech_verb} {author_after}."
+          gap_operations:
+            - label: COMMA_DASH
+              source_pattern: "{speech_last}"
+          boundary_operations:
+            - label: INSERT_OPEN_QUOTE_BEFORE
+              source_pattern: "{speech_lower}"
+            - label: INSERT_CLOSE_QUOTE_AFTER
+              source_pattern: "{speech_last}"
+          metadata:
+            phenomenon: dialogue
+            operation: speech_before_author_missing_quotes_comma_dash
+        - sub_rule_id: speech_before_author_missing_comma_dash_only
+          source_template: "«{speech_cap}» {speech_verb} {author_after}."
+          target_template: "«{speech_cap}», — {speech_verb} {author_after}."
+          gap_operations:
+            - label: COMMA_DASH
+              source_pattern: "{speech_last}"
+          metadata:
+            phenomenon: dialogue
+            operation: speech_before_author_missing_comma_dash_only
+      hard_negative:
+        - sub_rule_id: speech_before_author_already_correct_guard
+          source: «Проект готов», — сказал редактор.
+          target: «Проект готов», — сказал редактор.
+          metadata:
+            phenomenon: dialogue
+            operation: already_correct_speech_before_author
+      clean_identity:
+        - sub_rule_id: clean_speech_before_author
+          source: «Отчёт проверен», — сообщила Мария.
+          target: «Отчёт проверен», — сообщила Мария.
+          metadata:
+            phenomenon: dialogue
+            operation: clean_speech_before_author
+
+  - rule_id: dialogue_author_inside_speech
+    description: Limited author-inside-speech pattern with two comma-dash gaps.
+    weight: 1.00
+    slot_groups:
+      author_forms:
+        - speaker: Редактор
+          author_after: редактор
+          speech_verb: сказал
+        - speaker: Редактор
+          author_after: редактор
+          speech_verb: сообщил
+        - speaker: Редактор
+          author_after: редактор
+          speech_verb: ответил
+        - speaker: Редактор
+          author_after: редактор
+          speech_verb: спросил
+        - speaker: Редактор
+          author_after: редактор
+          speech_verb: написал
+        - speaker: Мария
+          author_after: Мария
+          speech_verb: сказала
+        - speaker: Мария
+          author_after: Мария
+          speech_verb: сообщила
+        - speaker: Мария
+          author_after: Мария
+          speech_verb: ответила
+        - speaker: Мария
+          author_after: Мария
+          speech_verb: спросила
+        - speaker: Мария
+          author_after: Мария
+          speech_verb: написала
+        - speaker: Эксперт
+          author_after: эксперт
+          speech_verb: сказал
+        - speaker: Эксперт
+          author_after: эксперт
+          speech_verb: сообщил
+        - speaker: Эксперт
+          author_after: эксперт
+          speech_verb: ответил
+        - speaker: Эксперт
+          author_after: эксперт
+          speech_verb: спросил
+        - speaker: Эксперт
+          author_after: эксперт
+          speech_verb: написал
+        - speaker: Преподаватель
+          author_after: преподаватель
+          speech_verb: сказал
+        - speaker: Преподаватель
+          author_after: преподаватель
+          speech_verb: сообщил
+        - speaker: Преподаватель
+          author_after: преподаватель
+          speech_verb: ответил
+        - speaker: Преподаватель
+          author_after: преподаватель
+          speech_verb: спросил
+        - speaker: Преподаватель
+          author_after: преподаватель
+          speech_verb: написал
+        - speaker: Студент
+          author_after: студент
+          speech_verb: сказал
+        - speaker: Студент
+          author_after: студент
+          speech_verb: сообщил
+        - speaker: Студент
+          author_after: студент
+          speech_verb: ответил
+        - speaker: Студент
+          author_after: студент
+          speech_verb: спросил
+        - speaker: Студент
+          author_after: студент
+          speech_verb: написал
+        - speaker: Руководитель
+          author_after: руководитель
+          speech_verb: сказал
+        - speaker: Руководитель
+          author_after: руководитель
+          speech_verb: сообщил
+        - speaker: Руководитель
+          author_after: руководитель
+          speech_verb: ответил
+        - speaker: Руководитель
+          author_after: руководитель
+          speech_verb: спросил
+        - speaker: Руководитель
+          author_after: руководитель
+          speech_verb: написал
+        - speaker: Пользователь
+          author_after: пользователь
+          speech_verb: сказал
+        - speaker: Пользователь
+          author_after: пользователь
+          speech_verb: сообщил
+        - speaker: Пользователь
+          author_after: пользователь
+          speech_verb: ответил
+        - speaker: Пользователь
+          author_after: пользователь
+          speech_verb: спросил
+        - speaker: Пользователь
+          author_after: пользователь
+          speech_verb: написал
+        - speaker: Ассистент
+          author_after: ассистент
+          speech_verb: сказал
+        - speaker: Ассистент
+          author_after: ассистент
+          speech_verb: сообщил
+        - speaker: Ассистент
+          author_after: ассистент
+          speech_verb: ответил
+        - speaker: Ассистент
+          author_after: ассистент
+          speech_verb: спросил
+        - speaker: Ассистент
+          author_after: ассистент
+          speech_verb: написал
+      interrupted_speech:
+        - speech_first_cap: Проект
+          speech_tail: готов
+        - speech_first_cap: Отчёт
+          speech_tail: проверен
+        - speech_first_cap: Текст
+          speech_tail: исправлен
+        - speech_first_cap: Файл
+          speech_tail: загружен
+        - speech_first_cap: Задача
+          speech_tail: выполнена
+        - speech_first_cap: Ошибка
+          speech_tail: найдена
+        - speech_first_cap: Документ
+          speech_tail: принят
+    cases:
+      positive:
+        - sub_rule_id: author_inside_speech_basic
+          source_template: "{speech_first_cap} {speech_verb} {author_after} {speech_tail}."
+          target_template: "«{speech_first_cap}, — {speech_verb} {author_after}, — {speech_tail}»."
+          gap_operations:
+            - label: COMMA_DASH
+              source_pattern: "{speech_first_cap}"
+            - label: COMMA_DASH
+              source_pattern: "{author_after}"
+            - label: DOT
+              source_pattern: "{speech_tail}"
+          boundary_operations:
+            - label: INSERT_OPEN_QUOTE_BEFORE
+              source_pattern: "{speech_first_cap}"
+            - label: INSERT_CLOSE_QUOTE_AFTER
+              source_pattern: "{speech_tail}"
+          metadata:
+            phenomenon: dialogue
+            operation: author_inside_speech_basic
+      hard_negative:
+        - sub_rule_id: author_inside_speech_already_correct_guard
+          source: «Проект, — сказал редактор, — готов».
+          target: «Проект, — сказал редактор, — готов».
+          metadata:
+            phenomenon: dialogue
+            operation: already_correct_author_inside_speech
+      clean_identity:
+        - sub_rule_id: clean_author_inside_speech
+          source: «Отчёт, — сообщила Мария, — проверен».
+          target: «Отчёт, — сообщила Мария, — проверен».
+          metadata:
+            phenomenon: dialogue
+            operation: clean_author_inside_speech

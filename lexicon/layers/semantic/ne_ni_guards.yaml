@@ -1,0 +1,104 @@
+# Guard-only semantic cases for не/ни contrasts.
+rule_id: semantic_ne_ni
+description: Guard-only semantic disambiguation for fixed не/ни constructions.
+cases:
+  hard_negative:
+    - sub_rule_id: ne_kto_inoy_guard
+      source: "Не кто иной, как редактор, проверил отчёт."
+      target: "Не кто иной, как редактор, проверил отчёт."
+      metadata: &ne_kto_meta
+        semantic_case_type: guard
+        ambiguity_pair: "не_кто_иной/никто_иной"
+        semantic_signal: "усилительная конструкция с обязательным «как» уже корректна"
+        operation: gap_guard
+        source: "не кто иной, как"
+        target: "не кто иной, как"
+        legacy_overlap: false
+        compound_overlap: false
+    - sub_rule_id: ne_kto_inoy_guard
+      source: "Не кто иной, как преподаватель, заметил ошибку."
+      target: "Не кто иной, как преподаватель, заметил ошибку."
+      metadata: *ne_kto_meta
+    - sub_rule_id: ne_kto_inoy_guard
+      source: "Документ подписал не кто иной, как директор."
+      target: "Документ подписал не кто иной, как директор."
+      metadata: *ne_kto_meta
+    - sub_rule_id: ne_kto_inoy_guard
+      source: "Файл исправил не кто иной, как ассистент."
+      target: "Файл исправил не кто иной, как ассистент."
+      metadata: *ne_kto_meta
+
+    - sub_rule_id: nikto_inoy_guard
+      source: "Никто иной не проверил отчёт."
+      target: "Никто иной не проверил отчёт."
+      metadata: &nikto_meta
+        semantic_case_type: guard
+        ambiguity_pair: "никто_иной/не_кто_иной"
+        semantic_signal: "отрицательное местоимение уже написано слитно"
+        operation: gap_guard
+        source: "никто иной"
+        target: "никто иной"
+        legacy_overlap: false
+        compound_overlap: false
+    - sub_rule_id: nikto_inoy_guard
+      source: "Никто иной не заметил опечатку."
+      target: "Никто иной не заметил опечатку."
+      metadata: *nikto_meta
+    - sub_rule_id: nikto_inoy_guard
+      source: "Никто иной не открыл файл."
+      target: "Никто иной не открыл файл."
+      metadata: *nikto_meta
+    - sub_rule_id: nikto_inoy_guard
+      source: "Никто иной не изменил результат."
+      target: "Никто иной не изменил результат."
+      metadata: *nikto_meta
+
+    - sub_rule_id: ne_chto_inoe_guard
+      source: "Не что иное, как ошибка, изменило результат."
+      target: "Не что иное, как ошибка, изменило результат."
+      metadata: &ne_chto_meta
+        semantic_case_type: guard
+        ambiguity_pair: "не_что_иное/ничто_иное"
+        semantic_signal: "усилительная конструкция с обязательным «как» уже корректна"
+        operation: gap_guard
+        source: "не что иное, как"
+        target: "не что иное, как"
+        legacy_overlap: false
+        compound_overlap: false
+    - sub_rule_id: ne_chto_inoe_guard
+      source: "Не что иное, как задержка, сорвало проверку."
+      target: "Не что иное, как задержка, сорвало проверку."
+      metadata: *ne_chto_meta
+    - sub_rule_id: ne_chto_inoe_guard
+      source: "Причиной стало не что иное, как неверное число."
+      target: "Причиной стало не что иное, как неверное число."
+      metadata: *ne_chto_meta
+    - sub_rule_id: ne_chto_inoe_guard
+      source: "Ответ изменило не что иное, как новое правило."
+      target: "Ответ изменило не что иное, как новое правило."
+      metadata: *ne_chto_meta
+
+    - sub_rule_id: nichto_inoe_guard
+      source: "Ничто иное не изменило результат."
+      target: "Ничто иное не изменило результат."
+      metadata: &nichto_meta
+        semantic_case_type: guard
+        ambiguity_pair: "ничто_иное/не_что_иное"
+        semantic_signal: "отрицательное местоимение уже написано слитно"
+        operation: gap_guard
+        source: "ничто иное"
+        target: "ничто иное"
+        legacy_overlap: false
+        compound_overlap: false
+    - sub_rule_id: nichto_inoe_guard
+      source: "Ничто иное не повлияло на срок."
+      target: "Ничто иное не повлияло на срок."
+      metadata: *nichto_meta
+    - sub_rule_id: nichto_inoe_guard
+      source: "Ничто иное не испортило отчёт."
+      target: "Ничто иное не испортило отчёт."
+      metadata: *nichto_meta
+    - sub_rule_id: nichto_inoe_guard
+      source: "Ничто иное не объяснило ошибку."
+      target: "Ничто иное не объяснило ошибку."
+      metadata: *nichto_meta

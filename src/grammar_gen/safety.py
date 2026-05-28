@@ -163,6 +163,7 @@ SINGLE_TOKEN_EDIT_LABELS = frozenset(
         "DELETE",
         "LOWERCASE",
         "UPPERCASE",
+        "CAPITALIZE",
         "SPLIT_NE_VERB",
         "SPLIT_TAKZHE_TO_TAK_ZHE",
         "SPLIT_TOZHE_TO_TO_ZHE",
@@ -187,7 +188,7 @@ def validate_surface(text: str) -> list[str]:
         reasons.append("latin_letters")
     if _has_bad_vo_phrase(text.lower()):
         reasons.append("bad_vo_phrase")
-    if text and not text[0].isupper():
+    if text and not _starts_with_uppercase_after_opening_wrappers(text):
         reasons.append("sentence_start_not_uppercase")
     if not FINAL_PUNCTUATION_RE.search(text):
         reasons.append("missing_final_punctuation")
@@ -288,6 +289,23 @@ def allowed_source_surface_failures(example: GeneratedExample) -> set[str]:
         and _is_valid_final_punctuation_positive_source(example)
     ):
         return {"missing_final_punctuation"}
+    if (
+        example.primary_rule_id.startswith("dialogue_")
+        and example.mode == "positive"
+        and "missing_final_punctuation" in validate_surface(example.source_text)
+        and "missing_final_punctuation" not in validate_surface(example.target_text)
+        and example.gap_labels
+        and "DOT" in example.gap_labels
+        and int(example.metadata.get("expected_gap_edit_count") or 0) > 0
+    ):
+        return {"missing_final_punctuation"}
+    if (
+        example.primary_rule_id == "casing_sentence_start"
+        and example.mode == "positive"
+        and validate_surface(example.source_text) == ["sentence_start_not_uppercase"]
+        and "sentence_start_not_uppercase" not in validate_surface(example.target_text)
+    ):
+        return {"sentence_start_not_uppercase"}
     return set()
 
 
@@ -660,15 +678,38 @@ def _validate_token_edit_counts(example: GeneratedExample) -> list[str]:
     if expected_gap is None and "expected_gap_edit_count" in example.metadata:
         reasons.append("invalid_expected_gap_edit_count")
 
+    boundary_edits = _logical_boundary_edit_count(example)
+    expected_boundary = _optional_int(example.metadata.get("expected_boundary_edit_count"))
+    if expected_boundary is None and "expected_boundary_edit_count" in example.metadata:
+        reasons.append("invalid_expected_boundary_edit_count")
+    elif expected_boundary is not None and expected_boundary != boundary_edits:
+        reasons.append("expected_boundary_edit_count_mismatch")
+
     expected_total = _optional_int(example.metadata.get("expected_edit_count"))
     if expected_total is None and "expected_edit_count" in example.metadata:
         reasons.append("invalid_expected_edit_count")
     elif expected_total is not None:
         gap_component = expected_gap if expected_gap is not None else 0
-        if expected_total != logical_token_edits + gap_component:
+        boundary_component = expected_boundary if expected_boundary is not None else 0
+        if expected_total != logical_token_edits + gap_component + boundary_component:
             reasons.append("expected_edit_count_mismatch")
 
+    expected_total_alias = _optional_int(example.metadata.get("expected_total_edit_count"))
+    if expected_total_alias is None and "expected_total_edit_count" in example.metadata:
+        reasons.append("invalid_expected_total_edit_count")
+    elif expected_total_alias is not None:
+        gap_component = expected_gap if expected_gap is not None else 0
+        boundary_component = expected_boundary if expected_boundary is not None else 0
+        if expected_total_alias != logical_token_edits + gap_component + boundary_component:
+            reasons.append("expected_total_edit_count_mismatch")
+
     return reasons
+
+
+def _logical_boundary_edit_count(example: GeneratedExample) -> int:
+    return sum(1 for label in example.boundary_before_labels if label != "NONE") + sum(
+        1 for label in example.boundary_after_labels if label != "NONE"
+    )
 
 
 def _optional_int(value: Any) -> int | None:
@@ -946,6 +987,13 @@ def _has_bad_vo_phrase(text: str) -> bool:
         if not any(_starts_with_whitelist_phrase(suffix, phrase) for phrase in VO_WHITELIST):
             return True
     return False
+
+
+def _starts_with_uppercase_after_opening_wrappers(text: str) -> bool:
+    stripped = text.lstrip()
+    while stripped and stripped[0] in "«\"'“„([":
+        stripped = stripped[1:].lstrip()
+    return bool(stripped and (stripped[0].isupper() or stripped[0].isdigit()))
 
 
 def _is_valid_final_punctuation_positive_source(example: GeneratedExample) -> bool:

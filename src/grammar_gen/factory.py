@@ -10,8 +10,11 @@ from src.grammar_gen.morphology import MorphologyEngine
 from src.grammar_gen.rules.registry import RuleRegistry, default_rule_registry
 from src.grammar_gen.rules.registry import register_layered_rules
 from src.grammar_gen.randomness import RandomSource
+from src.rule_layers.casing import load_casing_specs
 from src.rule_layers.compound_spelling import load_compound_spelling_specs
 from src.rule_layers.dictionary_typo import load_dictionary_typo_specs
+from src.rule_layers.quotation_dialogue import load_quotation_dialogue_specs
+from src.rule_layers.semantic import load_semantic_specs
 from src.rule_layers.spec_loader import load_layer_specs
 from src.rule_layers.syntax_punctuation import load_syntax_punctuation_specs
 
@@ -82,6 +85,12 @@ def _load_layer_specs(layer_name: str, *, root: Path, rng: RandomSource, seed: i
         return load_dictionary_typo_specs(root, seed=seed)
     if layer_name == "syntax_punctuation":
         return load_syntax_punctuation_specs(root)
+    if layer_name == "quotation_dialogue":
+        return load_quotation_dialogue_specs(root)
+    if layer_name == "casing":
+        return load_casing_specs(root)
+    if layer_name == "semantic":
+        return load_semantic_specs(root)
     return load_layer_specs(layer_name, root=root, rng=rng)
 
 

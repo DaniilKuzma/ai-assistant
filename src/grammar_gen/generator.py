@@ -364,6 +364,9 @@ def _normalize_mix_key(key: str) -> str:
         "morpheme",
         "dictionary_typo",
         "syntax_punctuation",
+        "quotation_dialogue",
+        "casing",
+        "semantic",
         "clean_identity",
         "hard_negative",
     }
@@ -388,6 +391,12 @@ def _mode_and_family_from_mix_key(key: str) -> tuple[GenerationMode, str | None]
         return GenerationMode.POSITIVE, "dictionary_typo"
     if normalized == "syntax_punctuation":
         return GenerationMode.POSITIVE, "syntax_punctuation"
+    if normalized == "quotation_dialogue":
+        return GenerationMode.POSITIVE, "quotation_dialogue"
+    if normalized == "casing":
+        return GenerationMode.POSITIVE, "casing"
+    if normalized == "semantic":
+        return GenerationMode.POSITIVE, "semantic"
     if normalized == "clean_identity":
         return GenerationMode.CLEAN_IDENTITY, None
     if normalized == "hard_negative":

@@ -1,0 +1,132 @@
+rule_id: casing_sentence_start
+description: Controlled sentence-start capitalization cases.
+weight: 0.55
+slot_groups:
+  sentence_subjects:
+    - subject_source: редактор
+      subject_target: Редактор
+    - subject_source: корректор
+      subject_target: Корректор
+    - subject_source: методист
+      subject_target: Методист
+    - subject_source: эксперт
+      subject_target: Эксперт
+    - subject_source: автор
+      subject_target: Автор
+    - subject_source: студент
+      subject_target: Студент
+    - subject_source: преподаватель
+      subject_target: Преподаватель
+    - subject_source: пользователь
+      subject_target: Пользователь
+    - subject_source: инженер
+      subject_target: Инженер
+    - subject_source: комиссия
+      subject_target: Комиссия
+    - subject_source: программа
+      subject_target: Программа
+    - subject_source: система
+      subject_target: Система
+    - subject_source: архив
+      subject_target: Архив
+    - subject_source: модуль
+      subject_target: Модуль
+    - subject_source: секретарь
+      subject_target: Секретарь
+    - subject_source: куратор
+      subject_target: Куратор
+    - subject_source: аналитик
+      subject_target: Аналитик
+    - subject_source: руководитель
+      subject_target: Руководитель
+    - subject_source: специалист
+      subject_target: Специалист
+    - subject_source: администратор
+      subject_target: Администратор
+  predicates:
+    - predicate: проверил
+      object: отчёт
+    - predicate: сверил
+      object: текст
+    - predicate: подготовил
+      object: документ
+    - predicate: открыл
+      object: файл
+    - predicate: сохранил
+      object: пример
+    - predicate: обновил
+      object: запись
+    - predicate: загрузил
+      object: справку
+    - predicate: исправил
+      object: ошибку
+    - predicate: отметил
+      object: строку
+    - predicate: согласовал
+      object: план
+cases:
+  positive:
+    - sub_rule_id: sentence_start_basic
+      source_template: "{subject_source} {predicate} {object}."
+      target_template: "{subject_target} {predicate} {object}."
+      expected_token_edit_count: 1
+      token_operations:
+        - label: CAPITALIZE
+          source_pattern: "{subject_source}"
+          target_pattern: "{subject_target}"
+      metadata:
+        phenomenon: sentence_start
+        operation: capitalize_sentence_start
+        casing_class: sentence_start
+        disable_context_variation: true
+    - sub_rule_id: sentence_after_period_basic
+      source_template: "Отчёт готов. {subject_source} {predicate} {object}."
+      target_template: "Отчёт готов. {subject_target} {predicate} {object}."
+      expected_token_edit_count: 1
+      token_operations:
+        - label: CAPITALIZE
+          source_pattern: "{subject_source}"
+          target_pattern: "{subject_target}"
+      metadata:
+        phenomenon: sentence_start_after_period
+        operation: capitalize_after_period
+        casing_class: sentence_start
+        disable_context_variation: true
+  hard_negative:
+    - sub_rule_id: already_correct_start_guard
+      source: "Редактор проверил отчёт."
+      target: "Редактор проверил отчёт."
+      expected_token_edit_count: 0
+      metadata:
+        phenomenon: sentence_start
+        operation: identity_guard
+        casing_class: sentence_start
+        disable_context_variation: true
+    - sub_rule_id: abbreviation_start_guard
+      source: "РФ утвердила порядок."
+      target: "РФ утвердила порядок."
+      expected_token_edit_count: 0
+      metadata:
+        phenomenon: abbreviation_guard
+        operation: identity_guard
+        casing_class: abbreviation
+        disable_context_variation: true
+    - sub_rule_id: numeric_start_guard
+      source: "2026 год начался спокойно."
+      target: "2026 год начался спокойно."
+      expected_token_edit_count: 0
+      metadata:
+        phenomenon: numeric_start_guard
+        operation: identity_guard
+        casing_class: numeric_start
+        disable_context_variation: true
+  clean_identity:
+    - sub_rule_id: already_correct_start_guard
+      source: "Корректор сверил текст."
+      target: "Корректор сверил текст."
+      expected_token_edit_count: 0
+      metadata:
+        phenomenon: sentence_start
+        operation: clean_identity
+        casing_class: sentence_start
+        disable_context_variation: true

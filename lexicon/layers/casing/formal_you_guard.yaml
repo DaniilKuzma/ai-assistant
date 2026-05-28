@@ -1,0 +1,37 @@
+rule_id: casing_formal_you_guard
+description: Guard-only formal-you casing examples; no automatic correction is enabled.
+cases:
+  hard_negative:
+    - sub_rule_id: formal_you_uppercase_guard
+      source: "Вы можете загрузить документ."
+      target: "Вы можете загрузить документ."
+      expected_token_edit_count: 0
+      metadata:
+        phenomenon: formal_you_guard
+        operation: identity_guard
+        casing_class: formal_you
+    - sub_rule_id: formal_your_lowercase_acceptable_guard
+      source: "Пожалуйста, проверьте ваш документ."
+      target: "Пожалуйста, проверьте ваш документ."
+      expected_token_edit_count: 0
+      metadata:
+        phenomenon: formal_you_guard
+        operation: identity_guard
+        casing_class: formal_you
+    - sub_rule_id: formal_dative_lowercase_acceptable_guard
+      source: "Мы отправили вам отчёт."
+      target: "Мы отправили вам отчёт."
+      expected_token_edit_count: 0
+      metadata:
+        phenomenon: formal_you_guard
+        operation: identity_guard
+        casing_class: formal_you
+  clean_identity:
+    - sub_rule_id: formal_your_lowercase_acceptable_guard
+      source: "Пожалуйста, проверьте ваш документ."
+      target: "Пожалуйста, проверьте ваш документ."
+      expected_token_edit_count: 0
+      metadata:
+        phenomenon: formal_you_guard
+        operation: clean_identity
+        casing_class: formal_you

@@ -82,12 +82,23 @@ Current token edit labels are:
 `SPLIT_ZATO_TO_ZA_TO`, `HYPHENATE_PARTICLE_TO`,
 `HYPHENATE_PARTICLE_LIBO`, `HYPHENATE_PARTICLE_NIBUD`,
 `HYPHENATE_KOE`, `HYPHENATE_PO_ADVERB`, `FIX_TSYA_TO_TTSYA`,
-`FIX_TTSYA_TO_TSYA`, `DICT_REPLACE`, and `SPAN_REPLACE_BY_LEXICON`.
+`FIX_TTSYA_TO_TSYA`, `DICT_REPLACE`, `SPAN_REPLACE_BY_LEXICON`,
+and `CAPITALIZE`.
 
 Current gap punctuation labels are:
 
 `NONE`, `COMMA`, `DASH`, `COLON`, `SEMICOLON`, `DOT`, `QUESTION`,
-`EXCLAMATION`, `ELLIPSIS`, and `DELETE_PUNCTUATION`.
+`EXCLAMATION`, `ELLIPSIS`, `DELETE_PUNCTUATION`, and `COMMA_DASH`.
+
+Current boundary wrapper labels are separate per-token channels, not token edit
+labels:
+
+- `boundary_before_labels`: `NONE`, `INSERT_OPEN_QUOTE`,
+  `DELETE_OPEN_QUOTE`, `NORMALIZE_OPEN_QUOTE`, `INSERT_OPEN_BRACKET`,
+  `DELETE_OPEN_BRACKET`;
+- `boundary_after_labels`: `NONE`, `INSERT_CLOSE_QUOTE`,
+  `DELETE_CLOSE_QUOTE`, `NORMALIZE_CLOSE_QUOTE`, `INSERT_CLOSE_BRACKET`,
+  `DELETE_CLOSE_BRACKET`.
 
 Current rule label families are:
 
@@ -109,11 +120,10 @@ added to the schema until a bounded generator and runtime behavior exist.
 
 ## Quotation And Dialogue Labels
 
-Quotation and dialogue cannot be represented safely by the current gap-only
-punctuation surface. Existing gap labels attach one punctuation action after an
-existing word token. That works for comma, dash, colon, semicolon, final marks,
-ellipsis, and deletion of punctuation already present after a token, but it does
-not model every boundary needed by quotation and dialogue.
+Quotation and dialogue cannot be represented safely by the gap-only punctuation
+surface or by overloading `token_edit_labels`. Gap labels attach one punctuation
+action after an existing word token. Token edit labels modify the word token
+itself. Wrappers therefore use the dedicated boundary channels listed above.
 
 The future layer needs token-boundary punctuation labels because it must
 represent cases such as:
@@ -125,29 +135,32 @@ represent cases such as:
 - normalization between quote characters without broad punctuation rewriting.
 
 A single after-token gap label cannot encode both sides of a quote pair or a
-pre-token opening mark. Adding quotation/dialogue should therefore introduce a
-bounded token-boundary punctuation surface, plus hard negatives for unmatched
-pairs, citations, nested quotes, abbreviations, and ordinary dash punctuation.
+pre-token opening mark, and a single token edit label cannot safely encode two
+wrapper operations around one token. Adding quotation/dialogue should therefore
+emit boundary labels plus hard negatives for unmatched pairs, citations, nested
+quotes, abbreviations, and ordinary dash punctuation.
 
 ## Casing Labels
 
-The current `UPPERCASE` token label is not suitable for proper-name casing. In
+The `UPPERCASE` token label is not suitable for proper-name casing. In
 `src/runtime/edit_realizer.py`, `UPPERCASE` uppercases the whole source token.
-Russian proper-name correction usually requires first-letter capitalization or a
-lexicon-exact casing replacement, not all-caps conversion.
+Russian proper-name correction requires first-letter capitalization, not
+all-caps conversion.
 
-Future casing should use direct labels that match safe runtime behavior, for
-example:
+The implemented `casing` layer therefore permits only:
 
-- `CAPITALIZE_TOKEN` for first-letter capitalization when the lowercase token is
+- `CAPITALIZE` for first-letter capitalization when the lowercase token is
   otherwise unchanged;
-- `DECAPITALIZE_TOKEN` for bounded lowercase normalization;
-- `CASE_REPLACE_BY_LEXICON` for trusted names, titles, abbreviations, or
-  orthographic exceptions whose exact casing must come from a lexicon.
+- `LOWERCASE` for bounded lowercase normalization of ordinary words.
 
-Casing remains in scope only when it is part of Russian orthographic norm. It
-must not become named-entity rewriting, title normalization, style correction,
-or semantic content insertion.
+The layer covers only controlled sentence-start, person-name, geographic-name,
+organization/document/event title, and ordinary lowercase cases from
+`lexicon/layers/casing`. It must not become broad named-entity rewriting, title
+normalization, style correction, or semantic content insertion.
+
+Formal `Вы`/`Ваш` correction is not automatic. `casing_formal_you_guard` is
+guard-only and emits hard-negative/clean-identity examples until a future
+explicit opt-in policy exists.
 
 ## Semantic Layer Boundary
 
@@ -178,6 +191,25 @@ include:
 These existing rules should not be deleted or replaced. New semantic expansion
 should use grouped rule ids and direct labels while preserving the legacy
 `RuleProgram` ids and the current compound subrule coverage.
+
+## Implemented Bounded Quotation Layer
+
+The follow-up implementation adds `quotation_dialogue` as a controlled
+YAML-backed layer. It covers only safe quote pairing, quote normalization, extra
+quote deletion, and limited direct speech patterns through boundary, token, and
+gap labels. Nested quotes, broad citation handling, complex interrupted direct
+speech, and general bracket correction remain outside the implemented runtime
+surface.
+
+## Implemented Bounded Casing Layer
+
+The follow-up implementation adds `casing` as a controlled YAML-backed layer.
+It covers only orthographic casing with direct token labels: `CAPITALIZE` and
+`LOWERCASE`. It forbids `UPPERCASE`, gap operations, boundary operations,
+seq2seq correction, free-form rewrite correction, and candidate-aware data
+preparation. Its examples include hard negatives for abbreviations, numeric
+sentence starts, ordinary common nouns, proper names that must stay capitalized,
+and formal-you policy traps.
 
 ## Conflict Avoidance
 

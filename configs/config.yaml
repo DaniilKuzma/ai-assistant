@@ -31,6 +31,9 @@ generation:
     - dictionary_typo
     - punctuation
     - syntax_punctuation
+    - quotation_dialogue
+    - casing
+    - semantic
   mix:
     orthography_contextual: 0.16
     morpheme: 0.12
@@ -38,6 +41,9 @@ generation:
     dictionary_typo: 0.12
     punctuation: 0.22
     syntax_punctuation: 0.12
+    quotation_dialogue: 0.08
+    casing: 0.06
+    semantic: 0.08
     clean_identity: 0.15
     hard_negative: 0.10
   rule_weight_overrides:
@@ -52,6 +58,7 @@ generation:
     punct_address_interjection: 1.20
     punct_bsp: 0.85
     punct_fixed_expression_guards: 0.85
+    dialogue_author_inside_speech: 0.35
   sampling_exclude_rule_ids:
     - ne_verb
     - takzhe_tak_zhe
@@ -95,6 +102,18 @@ generation:
         enabled: true
         layers:
           - syntax_punctuation
+      quotation_dialogue:
+        enabled: true
+        layers:
+          - quotation_dialogue
+      casing:
+        enabled: true
+        layers:
+          - casing
+      semantic:
+        enabled: true
+        layers:
+          - semantic
   grammar:
     max_sentence_words: 28
     min_sentence_words: 3
@@ -120,6 +139,8 @@ training:
   validate_each_epoch: true
   token_edit_loss_weight: 1.0
   gap_punctuation_loss_weight: 1.2
+  boundary_before_loss_weight: 1.0
+  boundary_after_loss_weight: 1.0
   rule_loss_weight: 0.3
   smoke_steps: 3
 

@@ -3,7 +3,13 @@ from __future__ import annotations
 from dataclasses import fields
 
 from src.schema import GeneratedExample, WordToken
-from src.schema.labels import gap_label_to_id, rule_tag_to_id, token_label_to_id
+from src.schema.labels import (
+    boundary_after_label_to_id,
+    boundary_before_label_to_id,
+    gap_label_to_id,
+    rule_tag_to_id,
+    token_label_to_id,
+)
 from src.training.tensorization import (
     DebugTokenizer,
     DirectTrainingFeature,
@@ -25,6 +31,8 @@ def test_generated_example_builds_direct_feature_shapes() -> None:
     assert len(feature.gap_mask) == 8
     assert len(feature.token_edit_label_ids) == 8
     assert len(feature.gap_label_ids) == 8
+    assert len(feature.boundary_before_label_ids) == 8
+    assert len(feature.boundary_after_label_ids) == 8
     assert len(feature.rule_tag_ids) == 8
     assert feature.word_token_mask[:3] == [True, True, True]
     assert feature.word_token_mask[3:] == [False] * 5
@@ -45,6 +53,16 @@ def test_direct_feature_maps_schema_labels_to_ids() -> None:
         gap_label_to_id("NONE"),
         gap_label_to_id("DOT"),
     ]
+    assert feature.boundary_before_label_ids[:3] == [
+        boundary_before_label_to_id("INSERT_OPEN_QUOTE"),
+        boundary_before_label_to_id("NONE"),
+        boundary_before_label_to_id("NONE"),
+    ]
+    assert feature.boundary_after_label_ids[:3] == [
+        boundary_after_label_to_id("NONE"),
+        boundary_after_label_to_id("INSERT_CLOSE_QUOTE"),
+        boundary_after_label_to_id("NONE"),
+    ]
     assert feature.rule_tag_ids[:3] == [
         rule_tag_to_id("clean_identity"),
         rule_tag_to_id("ne_verb"),
@@ -52,6 +70,8 @@ def test_direct_feature_maps_schema_labels_to_ids() -> None:
     ]
     assert feature.token_edit_label_ids[3:] == [-100] * 5
     assert feature.gap_label_ids[3:] == [-100] * 5
+    assert feature.boundary_before_label_ids[3:] == [-100] * 5
+    assert feature.boundary_after_label_ids[3:] == [-100] * 5
     assert feature.rule_tag_ids[3:] == [-100] * 5
     assert feature.gap_left_indices[:3] == feature.word_token_indices[:3]
     assert feature.gap_right_indices[0] == feature.word_token_indices[1]
@@ -85,5 +105,6 @@ def _example() -> GeneratedExample:
         mode="positive",
         explanation_ids=["ne_verb"],
         metadata={"unit": True},
+        boundary_before_labels=["INSERT_OPEN_QUOTE", "NONE", "NONE"],
+        boundary_after_labels=["NONE", "INSERT_CLOSE_QUOTE", "NONE"],
     )
-

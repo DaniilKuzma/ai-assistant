@@ -1,4 +1,36 @@
 {
+  "boundary_after_id_to_label": [
+    "NONE",
+    "INSERT_CLOSE_QUOTE",
+    "DELETE_CLOSE_QUOTE",
+    "NORMALIZE_CLOSE_QUOTE",
+    "INSERT_CLOSE_BRACKET",
+    "DELETE_CLOSE_BRACKET"
+  ],
+  "boundary_after_label_to_id": {
+    "DELETE_CLOSE_BRACKET": 5,
+    "DELETE_CLOSE_QUOTE": 2,
+    "INSERT_CLOSE_BRACKET": 4,
+    "INSERT_CLOSE_QUOTE": 1,
+    "NONE": 0,
+    "NORMALIZE_CLOSE_QUOTE": 3
+  },
+  "boundary_before_id_to_label": [
+    "NONE",
+    "INSERT_OPEN_QUOTE",
+    "DELETE_OPEN_QUOTE",
+    "NORMALIZE_OPEN_QUOTE",
+    "INSERT_OPEN_BRACKET",
+    "DELETE_OPEN_BRACKET"
+  ],
+  "boundary_before_label_to_id": {
+    "DELETE_OPEN_BRACKET": 5,
+    "DELETE_OPEN_QUOTE": 2,
+    "INSERT_OPEN_BRACKET": 4,
+    "INSERT_OPEN_QUOTE": 1,
+    "NONE": 0,
+    "NORMALIZE_OPEN_QUOTE": 3
+  },
   "gap_id_to_label": [
     "NONE",
     "COMMA",
@@ -9,11 +41,13 @@
     "QUESTION",
     "EXCLAMATION",
     "ELLIPSIS",
-    "DELETE_PUNCTUATION"
+    "DELETE_PUNCTUATION",
+    "COMMA_DASH"
   ],
   "gap_label_to_id": {
     "COLON": 3,
     "COMMA": 1,
+    "COMMA_DASH": 10,
     "DASH": 2,
     "DELETE_PUNCTUATION": 9,
     "DOT": 5,
@@ -152,9 +186,11 @@
     "FIX_TSYA_TO_TTSYA",
     "FIX_TTSYA_TO_TSYA",
     "DICT_REPLACE",
-    "SPAN_REPLACE_BY_LEXICON"
+    "SPAN_REPLACE_BY_LEXICON",
+    "CAPITALIZE"
   ],
   "token_label_to_id": {
+    "CAPITALIZE": 21,
     "DELETE": 1,
     "DICT_REPLACE": 19,
     "FIX_TSYA_TO_TTSYA": 17,

@@ -1,0 +1,97 @@
+rule_id: casing_geo_names
+description: Controlled geographic-name capitalization cases.
+slots:
+  geo_prefix_fem:
+    - На карте отмечена
+    - В справочнике указана
+    - В таблице названа
+    - В маршруте записана
+    - В документе упомянута
+    - В отчёте отмечена
+cases:
+  positive:
+    - sub_rule_id: geo_city_single
+      source_template: "{geo_prefix_fem} москва."
+      target_template: "{geo_prefix_fem} Москва."
+      expected_token_edit_count: 1
+      token_operations:
+        - label: CAPITALIZE
+          source_pattern: москва
+          target_pattern: Москва
+      metadata:
+        phenomenon: geo_name
+        operation: capitalize_geo_name
+        casing_class: geo_name
+    - sub_rule_id: geo_city_single
+      source_template: "{geo_prefix_fem} рязань."
+      target_template: "{geo_prefix_fem} Рязань."
+      expected_token_edit_count: 1
+      token_operations:
+        - label: CAPITALIZE
+          source_pattern: рязань
+          target_pattern: Рязань
+      metadata:
+        phenomenon: geo_name
+        operation: capitalize_geo_name
+        casing_class: geo_name
+    - sub_rule_id: geo_country_single
+      source_template: "{geo_prefix_fem} россия."
+      target_template: "{geo_prefix_fem} Россия."
+      expected_token_edit_count: 1
+      token_operations:
+        - label: CAPITALIZE
+          source_pattern: россия
+          target_pattern: Россия
+      metadata:
+        phenomenon: geo_name
+        operation: capitalize_geo_name
+        casing_class: country_name
+    - sub_rule_id: geo_country_multiword
+      source_template: "{geo_prefix_fem} российская федерация."
+      target_template: "{geo_prefix_fem} Российская Федерация."
+      expected_token_edit_count: 2
+      token_operations:
+        - label: CAPITALIZE
+          source_pattern: российская
+          target_pattern: Российская
+        - label: CAPITALIZE
+          source_pattern: федерация
+          target_pattern: Федерация
+      metadata:
+        phenomenon: geo_name
+        operation: capitalize_geo_name
+        casing_class: country_name
+  hard_negative:
+    - sub_rule_id: geo_already_correct_guard
+      source: "В маршруте указан город Москва."
+      target: "В маршруте указан город Москва."
+      expected_token_edit_count: 0
+      metadata:
+        phenomenon: geo_name_guard
+        operation: identity_guard
+        casing_class: geo_name
+    - sub_rule_id: geo_already_correct_guard
+      source: "В тексте указана река Ока."
+      target: "В тексте указана река Ока."
+      expected_token_edit_count: 0
+      metadata:
+        phenomenon: geo_name_guard
+        operation: identity_guard
+        casing_class: geo_name
+    - sub_rule_id: geo_common_noun_guard
+      source: "В тексте слова город и страна остаются строчными."
+      target: "В тексте слова город и страна остаются строчными."
+      expected_token_edit_count: 0
+      metadata:
+        phenomenon: common_noun_guard
+        operation: identity_guard
+        casing_class: common_word
+  clean_identity:
+    - sub_rule_id: geo_common_noun_guard
+      source: "В отчёте слово страна написано строчными."
+      target: "В отчёте слово страна написано строчными."
+      expected_token_edit_count: 0
+      metadata:
+        phenomenon: common_noun_guard
+        operation: clean_identity
+        casing_class: common_word
