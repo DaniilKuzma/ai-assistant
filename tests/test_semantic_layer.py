@@ -130,6 +130,7 @@ def test_semantic_specs_cover_required_rules_subrules_and_metadata() -> None:
     by_sub_rule = Counter(case.sub_rule_id for case in cases)
     positive_counts = Counter(case.sub_rule_id for case in cases if case.mode == "positive")
     guard_counts = Counter(case.sub_rule_id for case in cases if case.mode == "hard_negative")
+    clean_counts = Counter(case.sub_rule_id for case in cases if case.mode == "clean_identity")
 
     assert EXPECTED_RULE_IDS == {spec.rule_id for spec in specs}
     assert EXPECTED_SUB_RULE_IDS <= set(by_sub_rule)
@@ -137,6 +138,14 @@ def test_semantic_specs_cover_required_rules_subrules_and_metadata() -> None:
         assert positive_counts[sub_rule_id] >= 5, sub_rule_id
     for sub_rule_id in GUARD_SUB_RULE_IDS:
         assert guard_counts[sub_rule_id] >= 4, sub_rule_id
+    for sub_rule_id in {
+        "ne_kto_inoy_guard",
+        "nikto_inoy_guard",
+        "ne_chto_inoe_guard",
+        "nichto_inoe_guard",
+        "introductory_homonym_guard",
+    }:
+        assert clean_counts[sub_rule_id] >= 1, sub_rule_id
 
     for case in cases:
         assert REQUIRED_METADATA_KEYS <= set(case.metadata), case.sub_rule_id
@@ -162,7 +171,12 @@ def test_semantic_positive_examples_validate_and_use_expected_labels() -> None:
 
 def test_semantic_hard_negatives_are_identity_guards() -> None:
     realizer = _realizer()
-    hard_negatives = [case for spec in _specs() for case in spec.cases if case.mode == "hard_negative"]
+    hard_negatives = [
+        case
+        for spec in _specs()
+        for case in spec.cases
+        if case.mode in {"hard_negative", "clean_identity"}
+    ]
 
     for case in hard_negatives:
         example = build_generated_example_from_case(case, realizer, layer="semantic")

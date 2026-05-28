@@ -30,6 +30,34 @@ BANNED_TERMS = (
     _join("candidate", "_recall"),
 )
 
+ACTIVE_LAYER_SCAN_PATHS = (
+    Path("src") / "rule_layers",
+    Path("lexicon") / "layers" / "quotation_dialogue",
+    Path("lexicon") / "layers" / "casing",
+    Path("lexicon") / "layers" / "semantic",
+    Path("lexicon") / "layers" / "compound_spelling",
+    Path("lexicon") / "layers" / "dictionary_typo",
+    Path("lexicon") / "layers" / "syntax_punctuation",
+    Path("configs") / "config.yaml",
+)
+
+ACTIVE_LAYER_BANNED_TERMS = (
+    _join("Candidate", "Generator"),
+    _join("candidate", "-", "aware"),
+    _join("candidate", "_aware"),
+    _join("dataset", "_builder"),
+    _join("train", ".", "csv"),
+    _join("val", ".", "csv"),
+    _join("test", ".", "csv"),
+    _join("seq", "2", "seq"),
+    _join("Seq", "2", "Seq"),
+    _join("Auto", "Model", "For", "Seq", "2", "Seq", "LM"),
+    _join("encoder", "_decoder"),
+    _join("clean", "_sentence", "_pool"),
+    _join("clean", " ", "sentence", " ", "pool"),
+    _join("rule", "_lab"),
+)
+
 DELETED_PATHS = (
     Path("src") / "candidates",
     Path("src") / "training" / "feature_cache.py",
@@ -109,6 +137,28 @@ def test_src_training_has_no_old_candidate_feature_fields() -> None:
     assert offenders == []
 
 
+def test_active_rule_layers_do_not_use_legacy_candidate_dataset_or_seq2seq_paths() -> None:
+    offenders: list[str] = []
+    for path in _active_layer_text_files():
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        for term in ACTIVE_LAYER_BANNED_TERMS:
+            if term.lower() in text.lower():
+                offenders.append(f"{path.relative_to(ROOT)}: {term}")
+
+    assert offenders == []
+
+
+def test_materialized_train_val_test_csv_pipeline_is_absent() -> None:
+    generated_csvs = [
+        path.relative_to(ROOT)
+        for directory in (ROOT / "data" / "processed", ROOT / "data" / "generated_eval")
+        if directory.exists()
+        for path in directory.rglob("*.csv")
+    ]
+
+    assert generated_csvs == []
+
+
 def _text_files() -> list[Path]:
     files: list[Path] = []
     for dirname in SCAN_DIRS:
@@ -118,4 +168,15 @@ def _text_files() -> list[Path]:
         for path in root.rglob("*"):
             if path.is_file() and path.suffix in TEXT_SUFFIXES:
                 files.append(path)
+    return files
+
+
+def _active_layer_text_files() -> list[Path]:
+    files: list[Path] = []
+    for relative_path in ACTIVE_LAYER_SCAN_PATHS:
+        path = ROOT / relative_path
+        if path.is_file() and path.suffix in TEXT_SUFFIXES:
+            files.append(path)
+        elif path.is_dir():
+            files.extend(item for item in path.rglob("*") if item.is_file() and item.suffix in TEXT_SUFFIXES)
     return files

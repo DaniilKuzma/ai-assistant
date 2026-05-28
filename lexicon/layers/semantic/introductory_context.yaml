@@ -43,3 +43,15 @@ cases:
         <<: *intro_homonym_meta
         source: "точно"
         target: "точно"
+  clean_identity:
+    - sub_rule_id: introductory_homonym_guard
+      source: "Решение кажется верным."
+      target: "Решение кажется верным."
+      metadata: *intro_homonym_meta
+    - sub_rule_id: introductory_homonym_guard
+      source: "Документ действительно содержит данные."
+      target: "Документ действительно содержит данные."
+      metadata:
+        <<: *intro_homonym_meta
+        source: "действительно"
+        target: "действительно"

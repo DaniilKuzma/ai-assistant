@@ -254,6 +254,25 @@ def test_new_layers_duplicate_pair_rate_stays_below_threshold() -> None:
     assert set(report["layer_distribution"]) == {"casing", "quotation_dialogue", "semantic"}
 
 
+@pytest.mark.parametrize(
+    ("family", "max_duplicate_pair_rate"),
+    (
+        ("quotation_dialogue", 0.20),
+        ("casing", 0.15),
+        ("semantic", 0.15),
+    ),
+)
+def test_each_new_layer_2000_example_duplicate_pair_rate_stays_below_threshold(
+    family: str,
+    max_duplicate_pair_rate: float,
+) -> None:
+    generator = online_generator_from_config(_new_family_config(family), seed=404)
+    examples = [generator.sample_by_index(index) for index in range(2000)]
+    report = diversity_report(examples)
+
+    assert report["duplicate_pair_rate"] <= max_duplicate_pair_rate
+
+
 def test_generation_diversity_audit_prints_layer_family_rule_and_subrule_sections() -> None:
     result = subprocess.run(
         [

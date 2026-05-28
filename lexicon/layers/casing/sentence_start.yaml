@@ -21,16 +21,6 @@ slot_groups:
       subject_target: Пользователь
     - subject_source: инженер
       subject_target: Инженер
-    - subject_source: комиссия
-      subject_target: Комиссия
-    - subject_source: программа
-      subject_target: Программа
-    - subject_source: система
-      subject_target: Система
-    - subject_source: архив
-      subject_target: Архив
-    - subject_source: модуль
-      subject_target: Модуль
     - subject_source: секретарь
       subject_target: Секретарь
     - subject_source: куратор
@@ -43,6 +33,20 @@ slot_groups:
       subject_target: Специалист
     - subject_source: администратор
       subject_target: Администратор
+    - subject_source: инспектор
+      subject_target: Инспектор
+    - subject_source: консультант
+      subject_target: Консультант
+    - subject_source: дизайнер
+      subject_target: Дизайнер
+    - subject_source: менеджер
+      subject_target: Менеджер
+    - subject_source: оператор
+      subject_target: Оператор
+    - subject_source: тестировщик
+      subject_target: Тестировщик
+    - subject_source: разработчик
+      subject_target: Разработчик
   predicates:
     - predicate: проверил
       object: отчёт

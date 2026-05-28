@@ -96,7 +96,16 @@ def _spec_from_mapping(data: Mapping[str, Any], path: Path) -> LayerRuleSpec:
         explanation=str(data.get("explanation") or rule_id),
         enabled=bool(data.get("enabled", True)),
         weight=_weight(data.get("weight"), path, default=1.0),
-        metadata={"source_file": path.name, "layer": LAYER, "family": FAMILY, **dict(data.get("metadata") or {})},
+        metadata={
+            "source_file": path.name,
+            "layer": LAYER,
+            "family": FAMILY,
+            "supports_positive": any(case.mode == "positive" for case in cases),
+            "supports_hard_negative": any(case.mode == "hard_negative" for case in cases),
+            "supports_clean_identity": any(case.mode == "clean_identity" for case in cases),
+            "rule_kind": _rule_kind(cases),
+            **dict(data.get("metadata") or {}),
+        },
     )
 
 
@@ -246,6 +255,7 @@ def _metadata(
         {
             "layer": LAYER,
             "family": FAMILY,
+            "rule_id": rule_id,
             "source_file": path.name,
             "case_id": sub_rule_id,
             "sub_rule_id": sub_rule_id,
@@ -262,6 +272,8 @@ def _metadata(
             "safety_clauses": [],
         }
     )
+    if rule_id.startswith("dialogue_") and target_patterns_missing_final_punctuation(rendered):
+        rendered["allowed_source_surface_failures"] = ["missing_final_punctuation"]
     return rendered
 
 
@@ -530,6 +542,17 @@ def _default_phenomenon(rule_id: str) -> str:
     if rule_id == "dialogue_bracket_guards":
         return "bracket_guard"
     return "dialogue"
+
+
+def target_patterns_missing_final_punctuation(metadata: Mapping[str, Any]) -> bool:
+    return (
+        int(metadata.get("expected_gap_edit_count") or 0) > 0
+        and str(metadata.get("operation") or "").find("missing") >= 0
+    )
+
+
+def _rule_kind(cases: Sequence[LayerDirectCase]) -> str:
+    return "correction" if any(case.mode == "positive" for case in cases) else "guard"
 
 
 __all__ = ["load_quotation_dialogue_specs"]

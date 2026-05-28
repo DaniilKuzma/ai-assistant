@@ -40,11 +40,20 @@ EXPECTED_SUB_RULE_IDS = {
         "person_ivan_petrov",
         "person_maria_ivanova",
         "person_anna_kuznetsova",
+        "person_sergey_smirnov",
+        "person_elena_morozova",
+        "person_alexey_orlov",
+        "person_olga_sokolova",
         "person_already_correct_guard",
     },
     "casing_geo_names": {
         "geo_city_single",
+        "geo_city_kazan",
+        "geo_city_samara",
+        "geo_city_tula",
+        "geo_city_nizhny_novgorod",
         "geo_country_single",
+        "geo_country_belarus",
         "geo_country_multiword",
         "geo_already_correct_guard",
         "geo_common_noun_guard",
@@ -52,13 +61,22 @@ EXPECTED_SUB_RULE_IDS = {
     "casing_organizations": {
         "organization_rgrtu",
         "organization_ministry",
+        "organization_state_duma",
+        "organization_constitutional_court",
+        "organization_central_bank",
         "ordinary_ministry_guard",
         "ordinary_university_guard",
     },
     "casing_documents_events": {
         "document_federal_law_numbered",
+        "document_constitution_rf",
+        "document_civil_code",
+        "document_tax_code",
         "event_great_patriotic_war",
         "event_victory_day",
+        "event_new_year",
+        "event_constitution_day",
+        "event_russia_day",
         "ordinary_law_guard",
         "ordinary_event_words_guard",
     },
@@ -244,7 +262,7 @@ def test_representative_casing_runtime_targets_are_exact() -> None:
 
 def test_casing_examples_have_low_duplicate_rate() -> None:
     generator = _casing_generator()
-    examples = [generator.sample_by_index(index) for index in range(1000)]
+    examples = [generator.sample_by_index(index) for index in range(2000)]
     unique = {
         (example.source_text, example.target_text, example.primary_rule_id, example.mode)
         for example in examples
@@ -254,7 +272,7 @@ def test_casing_examples_have_low_duplicate_rate() -> None:
 
     assert set(distribution) <= set(CORRECTION_CAPABLE_RULE_IDS)
     assert set(distribution) >= set(CORRECTION_CAPABLE_RULE_IDS)
-    assert duplicate_rate <= 0.20
+    assert duplicate_rate <= 0.15
     assert all(validate_generated_pair(example) == [] for example in examples)
 
 

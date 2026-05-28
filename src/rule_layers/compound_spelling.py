@@ -67,7 +67,15 @@ def load_compound_spelling_specs(
             explanation=rule_id,
             enabled=True,
             weight=1.0,
-            metadata={"source_files": tuple(dict.fromkeys(source_files[rule_id]))},
+            metadata={
+                "source_files": tuple(dict.fromkeys(source_files[rule_id])),
+                "layer": LAYER,
+                "family": FAMILY,
+                "supports_positive": any(case.mode == "positive" for case in cases),
+                "supports_hard_negative": any(case.mode == "hard_negative" for case in cases),
+                "supports_clean_identity": any(case.mode == "clean_identity" for case in cases),
+                "rule_kind": _rule_kind(cases),
+            },
         )
         for rule_id, cases in sorted(grouped.items())
     )
@@ -167,6 +175,8 @@ def _positive_case(
     target_text = _render_template(template, correct=correct, wrong=correct)
     label = _label_for(sub_rule_id, operation, source=wrong, target=correct)
     metadata = _metadata(
+        rule_id=rule_id,
+        sub_rule_id=sub_rule_id,
         operation=operation,
         source=wrong,
         target=correct,
@@ -216,6 +226,8 @@ def _identity_case(
         expected_token_edit_count=0,
         expected_gap_edit_count=0,
         metadata=_metadata(
+            rule_id=rule_id,
+            sub_rule_id=sub_rule_id,
             operation=operation,
             source=source,
             target=target,
@@ -263,6 +275,8 @@ def _particle_suffix_label(source: str, target: str) -> str | None:
 
 def _metadata(
     *,
+    rule_id: str,
+    sub_rule_id: str,
     operation: str,
     source: str,
     target: str,
@@ -270,13 +284,20 @@ def _metadata(
     forbidden_contexts: tuple[str, ...],
 ) -> dict[str, Any]:
     return {
+        "layer": LAYER,
         "family": FAMILY,
+        "rule_id": rule_id,
+        "sub_rule_id": sub_rule_id,
         "operation": operation,
         "source": source,
         "target": target,
         "semantic_hint": semantic_hint,
         "forbidden_contexts": list(forbidden_contexts),
     }
+
+
+def _rule_kind(cases: Sequence[LayerDirectCase]) -> str:
+    return "correction" if any(case.mode == "positive" for case in cases) else "guard"
 
 
 def _compound_dir(root: str | Path) -> Path:

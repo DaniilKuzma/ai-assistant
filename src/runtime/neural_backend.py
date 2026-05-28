@@ -372,7 +372,7 @@ def _has_compatible_saved_label_prefix(saved: Any, expected: list[str]) -> bool:
     return isinstance(saved, list) and len(saved) < len(expected) and saved == expected[: len(saved)]
 
 
-def _load_heads_state(heads: Any, state: Mapping[str, Any], label_compatibility: Mapping[str, bool]) -> dict[str, bool]:
+def _load_heads_state(heads: Any, state: Mapping[str, Any], label_compatibility: Mapping[str, Any]) -> dict[str, bool]:
     token_compatible = bool(label_compatibility.get("token_head_compatible", True))
     gap_compatible = bool(label_compatibility.get("gap_head_compatible", True))
     boundary_before_compatible = bool(label_compatibility.get("boundary_before_head_compatible", True))
@@ -396,10 +396,16 @@ def _load_heads_state(heads: Any, state: Mapping[str, Any], label_compatibility:
             if not str(key).startswith("rule.")
         }
     heads.load_state_dict(compatible_state, strict=False)
+    boundary_before_loadable = boundary_before_compatible or int(
+        label_compatibility.get("boundary_before_saved_label_count", 0) or 0
+    ) > 0
+    boundary_after_loadable = boundary_after_compatible or int(
+        label_compatibility.get("boundary_after_saved_label_count", 0) or 0
+    ) > 0
     return {
         "rule": rule_compatible,
-        "boundary_before": boundary_before_compatible and _state_has_head(state, "boundary_before"),
-        "boundary_after": boundary_after_compatible and _state_has_head(state, "boundary_after"),
+        "boundary_before": boundary_before_loadable and _state_has_head(state, "boundary_before"),
+        "boundary_after": boundary_after_loadable and _state_has_head(state, "boundary_after"),
     }
 
 

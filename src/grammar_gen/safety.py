@@ -26,6 +26,8 @@ LATIN_RE = re.compile(r"[A-Za-z]")
 CONTENT_WORD_RE = re.compile(r"[А-Яа-яЁё-]+")
 REPEATED_PUNCTUATION_RE = re.compile(r"([,!?;:])\1+|\.{2}(?!\.)|\.{4,}")
 BROKEN_PUNCTUATION_SPACING_RE = re.compile(r"\s+[,.!?;:]|[,;:](?=\S)|[.!?](?=[А-Яа-яЁё])")
+BROKEN_QUOTE_SPACING_RE = re.compile(r"«\s+|\s+»")
+BROKEN_DIRECT_SPEECH_PUNCTUATION_RE = re.compile(r"»,[—-]")
 FINAL_PUNCTUATION_RE = re.compile(r"(\.\.\.|[.!?\u2026])$")
 FINAL_PUNCTUATION_LABELS = {
     ".": "DOT",
@@ -182,6 +184,10 @@ def validate_surface(text: str) -> list[str]:
         reasons.append("template_brace")
     if "  " in text:
         reasons.append("double_space")
+    if BROKEN_QUOTE_SPACING_RE.search(text):
+        reasons.append("broken_quote_spacing")
+    if BROKEN_DIRECT_SPEECH_PUNCTUATION_RE.search(text):
+        reasons.append("broken_direct_speech_punctuation")
     if BROKEN_PUNCTUATION_SPACING_RE.search(text):
         reasons.append("broken_punctuation_spacing")
     if LATIN_RE.search(text):
@@ -198,6 +204,24 @@ def validate_surface(text: str) -> list[str]:
     reasons.extend(check_known_bad_phrases(text))
 
     return _dedupe(reasons)
+
+
+def validate_surface_quality(
+    text: str,
+    *,
+    role: str,
+    example: GeneratedExample | None = None,
+    allowed_failures: set[str] | frozenset[str] | None = None,
+) -> list[str]:
+    reasons = validate_surface(text)
+    if role == "target":
+        return reasons
+    if role != "source":
+        raise ValueError("role must be 'source' or 'target'.")
+    allowed = set(allowed_failures or ())
+    if example is not None:
+        allowed.update(allowed_source_surface_failures(example))
+    return [reason for reason in reasons if reason not in allowed]
 
 
 def check_known_bad_phrases(text: str) -> list[str]:
@@ -280,6 +304,7 @@ def count_logical_token_edits(token_labels: list[str] | tuple[str, ...]) -> int:
 
 
 def allowed_source_surface_failures(example: GeneratedExample) -> set[str]:
+    explicit = _explicit_allowed_source_surface_failures(example)
     if (
         example.primary_rule_id in {"final_punctuation", "punct_final_marks"}
         and example.mode == "positive"
@@ -288,7 +313,7 @@ def allowed_source_surface_failures(example: GeneratedExample) -> set[str]:
         and validate_surface(example.target_text) == []
         and _is_valid_final_punctuation_positive_source(example)
     ):
-        return {"missing_final_punctuation"}
+        return { *explicit, "missing_final_punctuation" }
     if (
         example.primary_rule_id.startswith("dialogue_")
         and example.mode == "positive"
@@ -298,14 +323,25 @@ def allowed_source_surface_failures(example: GeneratedExample) -> set[str]:
         and "DOT" in example.gap_labels
         and int(example.metadata.get("expected_gap_edit_count") or 0) > 0
     ):
-        return {"missing_final_punctuation"}
+        return { *explicit, "missing_final_punctuation" }
     if (
         example.primary_rule_id == "casing_sentence_start"
         and example.mode == "positive"
         and validate_surface(example.source_text) == ["sentence_start_not_uppercase"]
         and "sentence_start_not_uppercase" not in validate_surface(example.target_text)
     ):
-        return {"sentence_start_not_uppercase"}
+        return { *explicit, "sentence_start_not_uppercase" }
+    return explicit
+
+
+def _explicit_allowed_source_surface_failures(example: GeneratedExample) -> set[str]:
+    raw = example.metadata.get("allowed_source_surface_failures")
+    if raw is None:
+        return set()
+    if isinstance(raw, str):
+        return {raw}
+    if isinstance(raw, Sequence) and not isinstance(raw, (bytes, bytearray)):
+        return {str(item) for item in raw if str(item).strip()}
     return set()
 
 

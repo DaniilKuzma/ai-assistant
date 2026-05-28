@@ -71,6 +71,8 @@ def load_casing_specs(root: str | Path = DEFAULT_LAYERS_DIR) -> tuple[LayerRuleS
                 "family": FAMILY,
                 "rule_kind": _rule_kind(cases),
                 "supports_positive": any(case.mode == "positive" for case in cases),
+                "supports_hard_negative": any(case.mode == "hard_negative" for case in cases),
+                "supports_clean_identity": any(case.mode == "clean_identity" for case in cases),
             },
         )
         for rule_id, cases in sorted(grouped_cases.items())
@@ -258,6 +260,8 @@ def _metadata(
             "safety_clauses": [],
         }
     )
+    if rule_id == "casing_sentence_start" and mode == "positive":
+        rendered["allowed_source_surface_failures"] = ["sentence_start_not_uppercase"]
     return rendered
 
 

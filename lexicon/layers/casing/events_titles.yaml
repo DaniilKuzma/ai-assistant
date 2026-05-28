@@ -47,6 +47,48 @@ cases:
         phenomenon: holiday_title
         operation: capitalize_event_title
         casing_class: holiday_title
+    - sub_rule_id: event_new_year
+      source_template: "{event_prefix_masc} новый год."
+      target_template: "{event_prefix_masc} Новый год."
+      expected_token_edit_count: 1
+      token_operations:
+        - label: CAPITALIZE
+          source_pattern: новый
+          target_pattern: Новый
+      metadata:
+        phenomenon: holiday_title
+        operation: capitalize_event_title
+        casing_class: holiday_title
+    - sub_rule_id: event_constitution_day
+      source_template: "{event_prefix_masc} день конституции."
+      target_template: "{event_prefix_masc} День Конституции."
+      expected_token_edit_count: 2
+      token_operations:
+        - label: CAPITALIZE
+          source_pattern: день
+          target_pattern: День
+        - label: CAPITALIZE
+          source_pattern: конституции
+          target_pattern: Конституции
+      metadata:
+        phenomenon: holiday_title
+        operation: capitalize_event_title
+        casing_class: holiday_title
+    - sub_rule_id: event_russia_day
+      source_template: "{event_prefix_masc} день россии."
+      target_template: "{event_prefix_masc} День России."
+      expected_token_edit_count: 2
+      token_operations:
+        - label: CAPITALIZE
+          source_pattern: день
+          target_pattern: День
+        - label: CAPITALIZE
+          source_pattern: россии
+          target_pattern: России
+      metadata:
+        phenomenon: holiday_title
+        operation: capitalize_event_title
+        casing_class: holiday_title
   hard_negative:
     - sub_rule_id: ordinary_event_words_guard
       source: "В тексте слова день, война и победа остаются строчными."

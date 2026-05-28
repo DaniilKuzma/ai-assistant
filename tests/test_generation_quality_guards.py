@@ -18,10 +18,13 @@ from src.grammar_gen.rules.base import GenerationMode, RuleInfo, RuleProgram
 from src.grammar_gen.rules.common import gap_labels_from_text, token_labels_all_keep
 from src.grammar_gen.rules.registry import RuleRegistry, default_rule_registry
 from src.grammar_gen.safety import (
+    allowed_source_surface_failures,
     assert_json_safe_metadata,
     count_logical_token_edits,
     validate_generated_pair,
+    validate_surface_quality,
 )
+from src.grammar_gen.semantic_safety import reject_semantic_nonsense
 from src.schema import GeneratedExample
 
 
@@ -413,6 +416,62 @@ def test_online_generator_5000_examples_have_no_semantic_audit_failures() -> Non
         if validate_generated_pair(example)
     ]
 
+    assert failures == []
+
+
+def test_validate_surface_quality_allows_only_declared_source_failures() -> None:
+    casing_source = _manual_example(
+        "проект готов.",
+        metadata={
+            "uses_safety_clauses": False,
+            "allowed_source_surface_failures": ["sentence_start_not_uppercase"],
+        },
+    )
+    missing_final_source = _manual_example(
+        "Проект готов",
+        metadata={
+            "uses_safety_clauses": False,
+            "allowed_source_surface_failures": ["missing_final_punctuation"],
+        },
+    )
+    undeclared_source = _manual_example(
+        "проект готов.",
+        metadata={"uses_safety_clauses": False},
+    )
+
+    assert validate_surface_quality(casing_source.source_text, role="source", example=casing_source) == []
+    assert validate_surface_quality(missing_final_source.source_text, role="source", example=missing_final_source) == []
+    assert validate_surface_quality(undeclared_source.source_text, role="source", example=undeclared_source) == [
+        "sentence_start_not_uppercase"
+    ]
+    assert validate_surface_quality(casing_source.source_text, role="target", example=casing_source) == [
+        "sentence_start_not_uppercase"
+    ]
+
+
+def test_mixed_5000_examples_have_strict_surface_quality_and_no_semantic_safety_nonsense() -> None:
+    generator = _generator()
+    examples = [generator.sample_by_index(index) for index in range(5000)]
+    audit = audit_batch(examples)
+
+    failures: list[tuple[int, str, str, str, str, list[str]]] = []
+    for index, example in enumerate(examples):
+        for role, text in (("source", example.source_text), ("target", example.target_text)):
+            reasons = validate_surface_quality(text, role=role, example=example)
+            semantic_reasons = reject_semantic_nonsense(text)
+            if reasons or semantic_reasons:
+                failures.append(
+                    (
+                        index,
+                        role,
+                        example.primary_rule_id,
+                        example.mode,
+                        text,
+                        [*reasons, *(f"semantic:{reason}" for reason in semantic_reasons)],
+                    )
+                )
+
+    assert audit["failed_examples_count"] == 0
     assert failures == []
 
 

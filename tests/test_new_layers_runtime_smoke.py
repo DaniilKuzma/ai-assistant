@@ -38,6 +38,28 @@ def test_fake_neural_backend_keeps_semantic_hard_negative_and_formal_you_guard_u
     )
 
 
+def test_deterministic_fallback_does_not_overcorrect_semantic_ambiguous_or_quote_free_text() -> None:
+    config = _runtime_config()
+    config["runtime"] = {
+        **config["runtime"],
+        "deterministic_lexicon": True,
+        "neural_token_edits": False,
+        "neural_punctuation": False,
+    }
+    corrector = Corrector(neural_backend=None, config=config)
+
+    for text in (
+        "Студент положил деньги на счёт.",
+        "В течении реки заметили мусор.",
+        "Студент сделал так же, как преподаватель.",
+        "Пожалуйста, проверьте ваш документ.",
+        "Редактор проверил отчёт утром.",
+    ):
+        result = corrector.correct(text)
+        assert result.corrected_text == text
+        assert result.edits == []
+
+
 def test_scope_guard_accepts_punctuation_and_casing_but_rejects_semantic_word_insertion() -> None:
     guard = ScopeGuard()
 

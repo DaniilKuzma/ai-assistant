@@ -34,6 +34,57 @@ cases:
         phenomenon: geo_name
         operation: capitalize_geo_name
         casing_class: geo_name
+    - sub_rule_id: geo_city_kazan
+      source_template: "{geo_prefix_fem} казань."
+      target_template: "{geo_prefix_fem} Казань."
+      expected_token_edit_count: 1
+      token_operations:
+        - label: CAPITALIZE
+          source_pattern: казань
+          target_pattern: Казань
+      metadata:
+        phenomenon: geo_name
+        operation: capitalize_geo_name
+        casing_class: geo_name
+    - sub_rule_id: geo_city_samara
+      source_template: "{geo_prefix_fem} самара."
+      target_template: "{geo_prefix_fem} Самара."
+      expected_token_edit_count: 1
+      token_operations:
+        - label: CAPITALIZE
+          source_pattern: самара
+          target_pattern: Самара
+      metadata:
+        phenomenon: geo_name
+        operation: capitalize_geo_name
+        casing_class: geo_name
+    - sub_rule_id: geo_city_tula
+      source_template: "{geo_prefix_fem} тула."
+      target_template: "{geo_prefix_fem} Тула."
+      expected_token_edit_count: 1
+      token_operations:
+        - label: CAPITALIZE
+          source_pattern: тула
+          target_pattern: Тула
+      metadata:
+        phenomenon: geo_name
+        operation: capitalize_geo_name
+        casing_class: geo_name
+    - sub_rule_id: geo_city_nizhny_novgorod
+      source_template: "{geo_prefix_fem} нижний новгород."
+      target_template: "{geo_prefix_fem} Нижний Новгород."
+      expected_token_edit_count: 2
+      token_operations:
+        - label: CAPITALIZE
+          source_pattern: нижний
+          target_pattern: Нижний
+        - label: CAPITALIZE
+          source_pattern: новгород
+          target_pattern: Новгород
+      metadata:
+        phenomenon: geo_name
+        operation: capitalize_geo_name
+        casing_class: geo_name
     - sub_rule_id: geo_country_single
       source_template: "{geo_prefix_fem} россия."
       target_template: "{geo_prefix_fem} Россия."
@@ -42,6 +93,18 @@ cases:
         - label: CAPITALIZE
           source_pattern: россия
           target_pattern: Россия
+      metadata:
+        phenomenon: geo_name
+        operation: capitalize_geo_name
+        casing_class: country_name
+    - sub_rule_id: geo_country_belarus
+      source_template: "{geo_prefix_fem} беларусь."
+      target_template: "{geo_prefix_fem} Беларусь."
+      expected_token_edit_count: 1
+      token_operations:
+        - label: CAPITALIZE
+          source_pattern: беларусь
+          target_pattern: Беларусь
       metadata:
         phenomenon: geo_name
         operation: capitalize_geo_name

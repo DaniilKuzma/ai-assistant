@@ -90,7 +90,16 @@ def _spec_from_mapping(data: Mapping[str, Any], path: Path) -> LayerRuleSpec:
         explanation=str(data.get("explanation") or rule_id),
         enabled=bool(data.get("enabled", True)),
         weight=_weight(data.get("weight"), path, default=1.0),
-        metadata={"source_file": path.name, **dict(data.get("metadata") or {})},
+        metadata={
+            "source_file": path.name,
+            "layer": LAYER,
+            "family": FAMILY,
+            "supports_positive": any(case.mode == "positive" for case in cases),
+            "supports_hard_negative": any(case.mode == "hard_negative" for case in cases),
+            "supports_clean_identity": any(case.mode == "clean_identity" for case in cases),
+            "rule_kind": _rule_kind(cases),
+            **dict(data.get("metadata") or {}),
+        },
     )
 
 
@@ -138,7 +147,7 @@ def _expanded_cases(
                 gap_operations=gap_operations,
                 expected_token_edit_count=expected_token_count,
                 expected_gap_edit_count=expected_gap_count,
-                metadata=_metadata(data, path, sub_rule_id, value_map),
+                metadata=_metadata(data, path, rule_id, sub_rule_id, value_map, mode, source_text, target_text),
                 weight=_weight(data.get("weight"), path, default=1.0),
             )
         )
@@ -168,13 +177,28 @@ def _operation_from_mapping(
 def _metadata(
     data: Mapping[str, Any],
     path: Path,
+    rule_id: str,
     sub_rule_id: str,
     values: Mapping[str, str],
+    mode: str,
+    source_text: str,
+    target_text: str,
 ) -> dict[str, Any]:
     raw = dict(data.get("metadata") or {})
     rendered = _render_metadata(raw, values, path)
     rendered.setdefault("case_id", sub_rule_id)
     rendered["source_file"] = path.name
+    rendered["layer"] = LAYER
+    rendered["family"] = FAMILY
+    rendered["rule_id"] = rule_id
+    rendered["sub_rule_id"] = sub_rule_id
+    if (
+        rule_id == "punct_final_marks"
+        and mode == "positive"
+        and not _has_final_punctuation(source_text)
+        and _has_final_punctuation(target_text)
+    ):
+        rendered["allowed_source_surface_failures"] = ["missing_final_punctuation"]
     return rendered
 
 
@@ -371,6 +395,15 @@ def _optional_int(value: Any) -> int | None:
     if isinstance(value, bool):
         raise ValueError("Syntax punctuation token indexes must be integers.")
     return int(value)
+
+
+def _has_final_punctuation(text: str) -> bool:
+    stripped = text.rstrip()
+    return stripped.endswith((".", "?", "!", "...", "…"))
+
+
+def _rule_kind(cases: Sequence[LayerDirectCase]) -> str:
+    return "correction" if any(case.mode == "positive" for case in cases) else "guard"
 
 
 __all__ = ["load_syntax_punctuation_specs"]

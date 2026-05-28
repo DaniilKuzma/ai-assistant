@@ -16,6 +16,13 @@ rules:
         - В каталоге записано
         - В письме упомянуто
         - В списке отмечено
+      org_prefix_fem:
+        - В справке указана
+        - В документе указана
+        - В отчёте названа
+        - В каталоге указана
+        - В письме упомянута
+        - В списке отмечена
     cases:
       positive:
         - sub_rule_id: organization_rgrtu
@@ -38,6 +45,60 @@ rules:
             - label: CAPITALIZE
               source_pattern: министерство
               target_pattern: Министерство
+          metadata:
+            phenomenon: organization_name
+            operation: capitalize_organization_name
+            casing_class: organization_name
+        - sub_rule_id: organization_state_duma
+          source_template: "{org_prefix_fem} государственная дума."
+          target_template: "{org_prefix_fem} Государственная Дума."
+          expected_token_edit_count: 2
+          token_operations:
+            - label: CAPITALIZE
+              source_pattern: государственная
+              target_pattern: Государственная
+            - label: CAPITALIZE
+              source_pattern: дума
+              target_pattern: Дума
+          metadata:
+            phenomenon: organization_name
+            operation: capitalize_organization_name
+            casing_class: organization_name
+        - sub_rule_id: organization_constitutional_court
+          source_template: "{org_prefix_masc} конституционный суд российской федерации."
+          target_template: "{org_prefix_masc} Конституционный Суд Российской Федерации."
+          expected_token_edit_count: 4
+          token_operations:
+            - label: CAPITALIZE
+              source_pattern: конституционный
+              target_pattern: Конституционный
+            - label: CAPITALIZE
+              source_pattern: суд
+              target_pattern: Суд
+            - label: CAPITALIZE
+              source_pattern: российской
+              target_pattern: Российской
+            - label: CAPITALIZE
+              source_pattern: федерации
+              target_pattern: Федерации
+          metadata:
+            phenomenon: organization_name
+            operation: capitalize_organization_name
+            casing_class: organization_name
+        - sub_rule_id: organization_central_bank
+          source_template: "{org_prefix_masc} центральный банк российской федерации."
+          target_template: "{org_prefix_masc} Центральный банк Российской Федерации."
+          expected_token_edit_count: 3
+          token_operations:
+            - label: CAPITALIZE
+              source_pattern: центральный
+              target_pattern: Центральный
+            - label: CAPITALIZE
+              source_pattern: российской
+              target_pattern: Российской
+            - label: CAPITALIZE
+              source_pattern: федерации
+              target_pattern: Федерации
           metadata:
             phenomenon: organization_name
             operation: capitalize_organization_name
@@ -78,6 +139,13 @@ rules:
         - В отчёте назван
         - В протоколе указан
         - В списке отмечен
+      law_prefix_fem:
+        - В тексте указана
+        - В документе указана
+        - В справке упомянута
+        - В отчёте названа
+        - В протоколе указана
+        - В списке отмечена
     cases:
       positive:
         - sub_rule_id: document_federal_law_numbered
@@ -88,6 +156,48 @@ rules:
             - label: CAPITALIZE
               source_pattern: федеральный
               target_pattern: Федеральный
+          metadata:
+            phenomenon: document_title
+            operation: capitalize_document_title
+            casing_class: document_title
+        - sub_rule_id: document_constitution_rf
+          source_template: "{law_prefix_fem} конституция российской федерации."
+          target_template: "{law_prefix_fem} Конституция Российской Федерации."
+          expected_token_edit_count: 3
+          token_operations:
+            - label: CAPITALIZE
+              source_pattern: конституция
+              target_pattern: Конституция
+            - label: CAPITALIZE
+              source_pattern: российской
+              target_pattern: Российской
+            - label: CAPITALIZE
+              source_pattern: федерации
+              target_pattern: Федерации
+          metadata:
+            phenomenon: document_title
+            operation: capitalize_document_title
+            casing_class: document_title
+        - sub_rule_id: document_civil_code
+          source_template: "{law_prefix} гражданский кодекс."
+          target_template: "{law_prefix} Гражданский кодекс."
+          expected_token_edit_count: 1
+          token_operations:
+            - label: CAPITALIZE
+              source_pattern: гражданский
+              target_pattern: Гражданский
+          metadata:
+            phenomenon: document_title
+            operation: capitalize_document_title
+            casing_class: document_title
+        - sub_rule_id: document_tax_code
+          source_template: "{law_prefix} налоговый кодекс."
+          target_template: "{law_prefix} Налоговый кодекс."
+          expected_token_edit_count: 1
+          token_operations:
+            - label: CAPITALIZE
+              source_pattern: налоговый
+              target_pattern: Налоговый
           metadata:
             phenomenon: document_title
             operation: capitalize_document_title

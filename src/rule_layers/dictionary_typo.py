@@ -135,7 +135,15 @@ def load_dictionary_typo_specs(
             explanation=rule_id,
             enabled=True,
             weight=1.0,
-            metadata={"source": "lexicon/layers/dictionary_typo"},
+            metadata={
+                "source": "lexicon/layers/dictionary_typo",
+                "layer": LAYER,
+                "family": FAMILY,
+                "supports_positive": any(case.mode == "positive" for case in cases),
+                "supports_hard_negative": any(case.mode == "hard_negative" for case in cases),
+                "supports_clean_identity": any(case.mode == "clean_identity" for case in cases),
+                "rule_kind": _rule_kind(cases),
+            },
         )
         for rule_id, cases in sorted(grouped.items())
         if cases
@@ -383,6 +391,7 @@ def _case_metadata(
     metadata.update(
         {
             "family": FAMILY,
+            "layer": LAYER,
             "rule_id": rule_id,
             "sub_rule_id": sub_rule_id,
             "source": source,
@@ -766,6 +775,10 @@ def _description_for(rule_id: str) -> str:
         "typo_keyboard_neighbor": "Russian keyboard-neighbor typo examples with trusted targets.",
         "typo_space_noise": "Trusted split-word and glued-word typo examples.",
     }.get(rule_id, f"Dictionary typo examples for {rule_id}.")
+
+
+def _rule_kind(cases: Sequence[LayerDirectCase]) -> str:
+    return "correction" if any(case.mode == "positive" for case in cases) else "guard"
 
 
 __all__ = [

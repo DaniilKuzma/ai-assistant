@@ -80,6 +80,50 @@ _CONTENT_VERBS = {
     "описывали",
 }
 _CONTENT_VERBS.update({"содержат", "включают", "показывают", "описывают", "требуют"})
+_CONTENT_VERBS.update(
+    {
+        "готов",
+        "готова",
+        "готово",
+        "готовы",
+        "обновляется",
+        "обновляются",
+        "обновлялся",
+        "обновлялась",
+        "обновлялись",
+        "обновляться",
+        "загружается",
+        "загружаются",
+        "загружался",
+        "загружалась",
+        "загружались",
+        "загружаться",
+        "отображается",
+        "отображаются",
+        "отображался",
+        "отображалась",
+        "отображались",
+        "отображаться",
+        "проверяется",
+        "проверяются",
+        "проверялся",
+        "проверялась",
+        "проверялись",
+        "проверяться",
+        "сравнивается",
+        "сравниваются",
+        "сравнивался",
+        "сравнивалась",
+        "сравнивались",
+        "сравниваться",
+        "описывается",
+        "описываются",
+        "описывался",
+        "описывалась",
+        "описывались",
+        "описываться",
+    }
+)
 
 _ADVERB_SKIP = {
     "быстро",
@@ -220,7 +264,12 @@ def reject_semantic_nonsense(text: str) -> list[str]:
         if subject_class == "software_agent" and action_lemma in {"купить", "съесть"}:
             reasons.append("software_agent_cannot_buy_or_eat")
 
-    if subject_class in {"document", "report", "text"} and verb not in _CONTENT_VERBS and verb not in _LOCATION_VERBS:
+    if (
+        subject_class in {"document", "report", "text"}
+        and action_lemma is not None
+        and verb not in _CONTENT_VERBS
+        and verb not in _LOCATION_VERBS
+    ):
         reasons.append("content_source_used_as_agent")
 
     if subject_class == "building" and verb not in _LOCATION_VERBS and verb not in _CONTENT_VERBS:

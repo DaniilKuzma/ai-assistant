@@ -62,6 +62,66 @@ cases:
         phenomenon: person_name
         operation: capitalize_person_name
         casing_class: person_name
+    - sub_rule_id: person_sergey_smirnov
+      source_template: "{person_prefix} сергей смирнов."
+      target_template: "{person_prefix} Сергей Смирнов."
+      expected_token_edit_count: 2
+      token_operations:
+        - label: CAPITALIZE
+          source_pattern: сергей
+          target_pattern: Сергей
+        - label: CAPITALIZE
+          source_pattern: смирнов
+          target_pattern: Смирнов
+      metadata:
+        phenomenon: person_name
+        operation: capitalize_person_name
+        casing_class: person_name
+    - sub_rule_id: person_elena_morozova
+      source_template: "{person_prefix_fem} елена морозова."
+      target_template: "{person_prefix_fem} Елена Морозова."
+      expected_token_edit_count: 2
+      token_operations:
+        - label: CAPITALIZE
+          source_pattern: елена
+          target_pattern: Елена
+        - label: CAPITALIZE
+          source_pattern: морозова
+          target_pattern: Морозова
+      metadata:
+        phenomenon: person_name
+        operation: capitalize_person_name
+        casing_class: person_name
+    - sub_rule_id: person_alexey_orlov
+      source_template: "{person_prefix} алексей орлов."
+      target_template: "{person_prefix} Алексей Орлов."
+      expected_token_edit_count: 2
+      token_operations:
+        - label: CAPITALIZE
+          source_pattern: алексей
+          target_pattern: Алексей
+        - label: CAPITALIZE
+          source_pattern: орлов
+          target_pattern: Орлов
+      metadata:
+        phenomenon: person_name
+        operation: capitalize_person_name
+        casing_class: person_name
+    - sub_rule_id: person_olga_sokolova
+      source_template: "{person_prefix_fem} ольга соколова."
+      target_template: "{person_prefix_fem} Ольга Соколова."
+      expected_token_edit_count: 2
+      token_operations:
+        - label: CAPITALIZE
+          source_pattern: ольга
+          target_pattern: Ольга
+        - label: CAPITALIZE
+          source_pattern: соколова
+          target_pattern: Соколова
+      metadata:
+        phenomenon: person_name
+        operation: capitalize_person_name
+        casing_class: person_name
   hard_negative:
     - sub_rule_id: person_already_correct_guard
       source: "В списке указан Иван Петров."

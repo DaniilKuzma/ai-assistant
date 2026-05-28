@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from collections.abc import Iterable
 
 from src.rule_layers.base import LayerRuleSpec
+from src.schema.labels import rule_tag_to_id
 
 
 LayerCoverage = dict[str, dict[str, dict[str, dict[str, int]]]]
@@ -47,13 +48,44 @@ def validate_layer_coverage(
         if spec is None:
             warnings.append(f"Enabled layer rule {rule_id!r} has no loaded spec.")
             continue
+        try:
+            rule_tag_to_id(rule_id)
+        except ValueError:
+            errors.append(f"Layer rule {rule_id!r} is missing from schema labels.")
+        if not spec.metadata:
+            errors.append(f"Layer rule {rule_id!r} must have non-empty metadata.")
         if not spec.cases:
             warnings.append(f"Layer spec {rule_id!r} has no cases.")
             continue
         modes = {case.mode for case in spec.cases}
-        if "positive" not in modes:
+        supports_positive = bool(spec.metadata.get("supports_positive", "positive" in modes))
+        supports_hard_negative = bool(spec.metadata.get("supports_hard_negative", "hard_negative" in modes))
+        supports_clean_identity = bool(spec.metadata.get("supports_clean_identity", "clean_identity" in modes))
+        expected_rule_kind = "guard" if not supports_positive else "correction"
+        if spec.metadata.get("supports_positive") is not None and supports_positive is not ("positive" in modes):
+            errors.append(f"Layer rule {rule_id!r} supports_positive metadata does not match cases.")
+        if spec.metadata.get("supports_hard_negative") is not None and supports_hard_negative is not ("hard_negative" in modes):
+            errors.append(f"Layer rule {rule_id!r} supports_hard_negative metadata does not match cases.")
+        if spec.metadata.get("supports_clean_identity") is not None and supports_clean_identity is not ("clean_identity" in modes):
+            errors.append(f"Layer rule {rule_id!r} supports_clean_identity metadata does not match cases.")
+        if spec.metadata.get("rule_kind") is not None and spec.metadata.get("rule_kind") != expected_rule_kind:
+            errors.append(f"Layer rule {rule_id!r} rule_kind metadata does not match capabilities.")
+
+        for case in spec.cases:
+            if not case.metadata:
+                errors.append(f"Layer rule {rule_id!r} case {case.sub_rule_id!r} must have non-empty metadata.")
+            if case.metadata.get("rule_id") != rule_id:
+                errors.append(f"Layer rule {rule_id!r} case {case.sub_rule_id!r} metadata rule_id mismatch.")
+            if case.metadata.get("sub_rule_id") != case.sub_rule_id:
+                errors.append(f"Layer rule {rule_id!r} case {case.sub_rule_id!r} metadata sub_rule_id mismatch.")
+
+        if supports_positive and "positive" not in modes:
             errors.append(f"Layer rule {rule_id!r} must have positive coverage.")
-        if not ({"hard_negative", "clean_identity"} & modes):
+        if not supports_positive and "positive" in modes:
+            errors.append(f"Guard-only layer rule {rule_id!r} must not have positive coverage.")
+        if not supports_positive and not {"hard_negative", "clean_identity"} <= modes:
+            errors.append(f"Guard-only layer rule {rule_id!r} must have hard_negative and clean_identity coverage.")
+        elif not ({"hard_negative", "clean_identity"} & modes):
             errors.append(f"Layer rule {rule_id!r} must have hard_negative or clean_identity coverage.")
 
     return LayerCoverageReport(coverage=coverage, warnings=warnings, errors=errors)

@@ -102,3 +102,20 @@ cases:
       source: "Ничто иное не объяснило ошибку."
       target: "Ничто иное не объяснило ошибку."
       metadata: *nichto_meta
+  clean_identity:
+    - sub_rule_id: ne_kto_inoy_guard
+      source: "Не кто иной, как редактор, подписал протокол."
+      target: "Не кто иной, как редактор, подписал протокол."
+      metadata: *ne_kto_meta
+    - sub_rule_id: nikto_inoy_guard
+      source: "Никто иной не открыл документ."
+      target: "Никто иной не открыл документ."
+      metadata: *nikto_meta
+    - sub_rule_id: ne_chto_inoe_guard
+      source: "Не что иное, как правило, изменило ответ."
+      target: "Не что иное, как правило, изменило ответ."
+      metadata: *ne_chto_meta
+    - sub_rule_id: nichto_inoe_guard
+      source: "Ничто иное не нарушило порядок."
+      target: "Ничто иное не нарушило порядок."
+      metadata: *nichto_meta
