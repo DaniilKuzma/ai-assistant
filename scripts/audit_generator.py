@@ -80,6 +80,10 @@ def main() -> int:
     examples_per_sec = args.count / elapsed if elapsed > 0 else 0.0
 
     print(f"examples/sec: {examples_per_sec:.2f}")
+    print("layer distribution:")
+    print(json.dumps(audit["layer_distribution"], ensure_ascii=False, sort_keys=True))
+    print("family distribution:")
+    print(json.dumps(audit["family_distribution"], ensure_ascii=False, sort_keys=True))
     print("rule distribution:")
     print(json.dumps(audit["rule_distribution"], ensure_ascii=False, sort_keys=True))
     print("mode distribution:")

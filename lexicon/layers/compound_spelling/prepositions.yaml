@@ -60,7 +60,7 @@ entries:
     correct: насчёт
     wrong_variants: [на счёт]
     semantic_hint: derived preposition meaning "about".
-    forbidden_contexts: ["на счёт в банке", "на банковский счёт", "на счёт клиента"]
+    forbidden_contexts: ["деньги на счёт", "на счёт в банке", "на банковский счёт", "на счёт клиента"]
     positive_templates:
       - "Редактор спросил {wrong} оплаты."
       - "Комиссия договорилась {wrong} сроков."

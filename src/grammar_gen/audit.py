@@ -101,13 +101,17 @@ def audit_batch(examples: Iterable[GeneratedExample]) -> dict[str, Any]:
                 }
             )
 
+    diversity = diversity_report(example_list)
+
     return {
         "count": len(example_list),
         "failed_examples_count": failed_examples_count,
         "failure_reasons": dict(sorted(failure_reasons.items())),
         "rule_distribution": dict(sorted(Counter(example.primary_rule_id for example in example_list).items())),
+        "layer_distribution": diversity["layer_distribution"],
+        "family_distribution": diversity["family_distribution"],
         "mode_distribution": dict(sorted(Counter(example.mode for example in example_list).items())),
-        "diversity": diversity_report(example_list),
+        "diversity": diversity,
         "first_failed_examples": first_failed_examples,
     }
 

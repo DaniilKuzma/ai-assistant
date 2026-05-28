@@ -10,6 +10,8 @@ import yaml
 RULES_PATH = Path("configs/rules.yaml")
 STRICT_STATUSES = {
     "implemented",
+    "implemented_limited",
+    "guard_only",
     "controlled_implemented",
     "model_assisted",
     "dictionary_required",
@@ -152,7 +154,7 @@ def test_implemented_rule_ids_exist_in_registry():
     implemented_entries = [
         (domain, group, entry)
         for domain, group, entry in iter_coverage_entries(data)
-        if entry["status"] in {"implemented", "controlled_implemented"}
+        if entry["status"] in {"implemented", "implemented_limited", "guard_only", "controlled_implemented"}
     ]
 
     assert implemented_entries
@@ -169,7 +171,7 @@ def test_implemented_groups_have_test_markers():
     implemented_entries = [
         (domain, group, entry)
         for domain, group, entry in iter_coverage_entries(data)
-        if entry["status"] in {"implemented", "controlled_implemented"}
+        if entry["status"] in {"implemented", "implemented_limited", "guard_only", "controlled_implemented"}
     ]
 
     assert implemented_entries

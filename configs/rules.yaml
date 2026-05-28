@@ -8767,8 +8767,6 @@ orthography:
       status: controlled_implemented
       executable: true
       rule_ids:
-      - compound_service_words
-      - compound_prepositions
       - semantic_service_words
       - semantic_derived_prepositions
       aliases:
@@ -8777,28 +8775,10 @@ orthography:
       - context_vsledstvie
       - context_nesmotrya
       requires: *id003
-      notes: syntax_orthography_candidate_backed; compound_spelling_layer adds controlled service-word and preposition
-        examples; semantic layer adds contextual positives and hard negatives for ambiguous service words and derived
+      notes: semantic layer adds contextual positives and hard negatives for ambiguous service words and derived
         prepositions.
-      layer: compound_spelling
+      layer: semantic
       sub_rule_ids:
-      - chto_by_chto_bi
-      - otchego_ot_chego
-      - ottogo_ot_togo
-      - potomu_chto_po_tomu_chto
-      - takzhe_tak_zhe
-      - tozhe_to_zhe
-      - zachem_za_chem
-      - zato_za_to
-      - napodobie_na_podobie
-      - naschet_na_schet
-      - navstrechu_na_vstrechu
-      - nesmotrya_na_ne_smotrya_na
-      - nevziraya_na_ne_vziraya_na
-      - v_prodolzhenie_v_prodolzhenii
-      - v_techenie_v_techenii
-      - vsledstvie_v_sledstvii
-      - vvidu_v_vidu
       - takzhe_additive_merge
       - takzhe_comparison_split
       - takzhe_comparison_guard
@@ -8829,7 +8809,6 @@ orthography:
       - nesmotrya_concessive
       - nesmotrya_literal_guard
       tests:
-      - tests/test_compound_spelling_layer.py
       - tests/test_semantic_layer.py
     dataset:
       eligible_now: true
@@ -8867,25 +8846,16 @@ orthography:
       status: controlled_implemented
       executable: true
       rule_ids:
-      - compound_service_words
       - semantic_service_words
       aliases:
       - context_tak_zhe
       - context_to_zhe
       - context_chto_by
       requires: *id003
-      notes: Existing bounded path remains; compound_spelling_layer adds controlled также/тоже/чтобы examples; semantic
-        layer adds real additive, comparison, demonstrative, conjunction, and guard contexts.
-      layer: compound_spelling
+      notes: semantic layer adds real additive, comparison, demonstrative, conjunction,
+        and guard contexts.
+      layer: semantic
       sub_rule_ids:
-      - chto_by_chto_bi
-      - otchego_ot_chego
-      - ottogo_ot_togo
-      - potomu_chto_po_tomu_chto
-      - takzhe_tak_zhe
-      - tozhe_to_zhe
-      - zachem_za_chem
-      - zato_za_to
       - takzhe_additive_merge
       - takzhe_comparison_split
       - takzhe_comparison_guard
@@ -8906,7 +8876,6 @@ orthography:
       - zachem_merge
       - zachem_guard
       tests:
-      - tests/test_compound_spelling_layer.py
       - tests/test_semantic_layer.py
     dataset:
       eligible_now: true
@@ -17250,26 +17219,16 @@ punctuation:
       status: controlled_implemented
       executable: true
       rule_ids:
-      - punct_comparative_turns
       - semantic_comparative_context
       aliases: []
       requires: *id007
-      notes: syntax_punctuation covers controlled comparative как contexts; semantic layer adds appositive positives and
+      notes: semantic layer adds appositive positives and
         role/quality hard negatives for bare «как».
-      layer: syntax_punctuation
+      layer: semantic
       sub_rule_ids:
       - comparative_kak_appositive
       - comparative_kak_role_guard
-      - clean_comparison
-      - kak_budto_comparison
-      - kak_comparison
-      - kak_never_guard
-      - kak_quality_guard
-      - slovno_comparison
-      - stable_kak_chasy_guard
-      - tochno_comparison
       tests:
-      - tests/test_syntax_punctuation_layer.py
       - tests/test_semantic_layer.py
     dataset:
       eligible_now: true
@@ -17585,29 +17544,18 @@ punctuation:
     order: 78
     source_url: https://orfogrammka.ru/пунктуация/вводные_слова_омонимичные_членам_предложения_или_союзам/
     implementation:
-      status: controlled_implemented
+      status: guard_only
       executable: true
       rule_ids:
-      - punct_introductory_extended
       - semantic_introductory_context
       aliases:
       - introductory_comma
       requires: *id007
-      notes: syntax_candidate_backed syntax_punctuation supplies controlled online GeneratedExample coverage; semantic layer
-        adds homonym hard negatives where the word is an ordinary sentence member.
-      layer: syntax_punctuation
+      notes: semantic layer adds homonym hard negatives where the word is an ordinary sentence member.
+      layer: semantic
       sub_rule_ids:
       - introductory_homonym_guard
-      - clean_introductory_medial
-      - expanded_introductory
-      - introductory_final
-      - introductory_initial
-      - introductory_medial
-      - normal_adverb_guard
-      - normal_manner_guard
-      - znachit_verb_guard
       tests:
-      - tests/test_syntax_punctuation_layer.py
       - tests/test_semantic_layer.py
     dataset:
       eligible_now: true
@@ -17616,14 +17564,14 @@ punctuation:
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_CONTROLLED_GENERATION
-      training_eligibility_reason: online GeneratedExample support with tests and audit coverage
+      training_eligibility_decision: INCLUDE_GUARD_ONLY
+      training_eligibility_reason: guard-only semantic identity examples with tests
       current_candidate_path: false
       current_synthetic_support: true
       current_hard_negative_support: true
       current_validator_support: true
       current_eval_coverage: 1.0
-      current_gap_coverage: 1.0
+      current_gap_coverage: 0.0
       risk_level: high
       needs_before_training:
       - none
@@ -17692,29 +17640,18 @@ punctuation:
     order: 80
     source_url: https://orfogrammka.ru/пунктуация/cлова_не_являющиеся_вводными/
     implementation:
-      status: controlled_implemented
+      status: guard_only
       executable: true
       rule_ids:
-      - punct_introductory_extended
       - semantic_introductory_context
       aliases:
       - introductory_comma
       requires: *id007
-      notes: syntax_candidate_backed syntax_punctuation supplies controlled online GeneratedExample coverage; semantic layer
-        adds non-introductory homonym guards.
-      layer: syntax_punctuation
+      notes: semantic layer adds non-introductory homonym guards.
+      layer: semantic
       sub_rule_ids:
       - introductory_homonym_guard
-      - clean_introductory_medial
-      - expanded_introductory
-      - introductory_final
-      - introductory_initial
-      - introductory_medial
-      - normal_adverb_guard
-      - normal_manner_guard
-      - znachit_verb_guard
       tests:
-      - tests/test_syntax_punctuation_layer.py
       - tests/test_semantic_layer.py
     dataset:
       eligible_now: true
@@ -17723,14 +17660,14 @@ punctuation:
       last_known_eval_count: null
       production_ready_now: false
       training_eligible_now: true
-      training_eligibility_decision: INCLUDE_CONTROLLED_GENERATION
-      training_eligibility_reason: online GeneratedExample support with tests and audit coverage
+      training_eligibility_decision: INCLUDE_GUARD_ONLY
+      training_eligibility_reason: guard-only semantic identity examples with tests
       current_candidate_path: false
       current_synthetic_support: true
       current_hard_negative_support: true
       current_validator_support: true
       current_eval_coverage: 1.0
-      current_gap_coverage: 1.0
+      current_gap_coverage: 0.0
       risk_level: high
       needs_before_training:
       - none
@@ -19236,7 +19173,7 @@ punctuation:
       current_hard_negative_support: true
       current_validator_support: true
       current_eval_coverage: 1.0
-      current_gap_coverage: 1.0
+      current_gap_coverage: 0.0
       risk_level: high
       needs_before_training:
       - none

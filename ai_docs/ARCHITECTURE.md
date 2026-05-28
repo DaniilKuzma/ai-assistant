@@ -34,7 +34,8 @@ The current generator has two controlled rule surfaces:
   `RuleProgram` instances by `src/rule_layers/direct_cases.py`.
 
 `compound_spelling`, `dictionary_typo`, `syntax_punctuation`,
-`quotation_dialogue`, and `casing` are YAML-backed RuleLayer families.
+`quotation_dialogue`, `casing`, and `semantic` are YAML-backed RuleLayer
+families.
 `morpheme` is a controlled compiler-backed layer under
 `src/orthography_gen/`; it uses lexeme cards and orthographic scenario specs,
 but presents the same `GeneratedExample` contract to training.
@@ -43,6 +44,12 @@ Layer examples must emit direct token or gap labels. `SPAN_REPLACE_BY_LEXICON`
 marks a token span whose replacement is resolved only through the trusted
 runtime orthographic lexicon. `DELETE_PUNCTUATION` marks an existing punctuation
 character after a token as removable; it is a gap label, not a token rewrite.
+Quotation and dialogue examples use the boundary-before and boundary-after
+channels for quote/bracket wrappers, plus `COMMA_DASH` for the direct-speech
+comma-dash gap. Casing examples use `CAPITALIZE` and bounded `LOWERCASE`.
+Semantic examples use grouped `semantic_*` rule ids; they may request existing
+specialized service-word labels, punctuation-gap labels, or
+`SPAN_REPLACE_BY_LEXICON`, but they do not register legacy `RuleProgram` ids.
 
 ## Model
 
@@ -65,6 +72,12 @@ character after a token as removable; it is a gap label, not a token rewrite.
   are no-ops.
 - Extra punctuation deletion uses `DELETE_PUNCTUATION` and only removes a
   punctuation character that is already present in the source text.
+- Wrapper-aware quote/bracket realization can insert, delete, and normalize
+  immediate wrappers around token spans. A punctuation gap after a closing quote
+  or bracket is inserted outside the wrapper.
+- Semantic span replacements are neural/model requested and lexicon-gated. The
+  runtime must not insert unrelated Russian words or apply semantic entries as
+  deterministic typo fixes.
 - GUI behavior remains stable and user-facing workflow is unchanged.
 
 ## Explicitly Out Of Scope
@@ -77,3 +90,7 @@ quote and direct-speech cases with direct boundary, token, and gap labels. The
 bounded `casing` layer covers only controlled Russian orthographic casing cases
 with `CAPITALIZE` and `LOWERCASE`; formal `Вы`/`Ваш` correction is guard-only
 unless a future explicit opt-in policy enables it.
+The bounded `semantic` layer covers contextual orthographic and punctuation
+disambiguation only. Introductory-word homonyms and some ne/ni contrasts are
+guard-only; service words, derived prepositions, and comparative `как` cases are
+implemented only where direct labels and runtime lexicon entries already exist.

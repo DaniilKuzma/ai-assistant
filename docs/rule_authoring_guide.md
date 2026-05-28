@@ -5,8 +5,10 @@
 Prefer the smallest controlled surface that fits the rule:
 
 - Add a YAML `RuleLayer` spec under `lexicon/layers/compound_spelling/`,
-  `lexicon/layers/dictionary_typo/`, or `lexicon/layers/syntax_punctuation/`
-  when the rule can be expressed as direct token span or punctuation-gap cases.
+  `lexicon/layers/dictionary_typo/`, `lexicon/layers/syntax_punctuation/`,
+  `lexicon/layers/quotation_dialogue/`, `lexicon/layers/casing/`, or
+  `lexicon/layers/semantic/` when the rule can be expressed as direct token
+  span, punctuation-gap, boundary-wrapper, or lexicon-gated semantic cases.
 - Add morpheme coverage through `src/orthography_gen/` specs and lexeme cards
   when the rule depends on a controlled orthographic site in a word form.
 - Add a handwritten `RuleProgram` under `src/grammar_gen/rules/orthography/` or
@@ -41,6 +43,13 @@ Use `DELETE_PUNCTUATION` only as a gap label when the source text already
 contains the punctuation mark to remove. It must not encode broad punctuation
 rewriting.
 
+Use quote/bracket boundary labels only for immediate wrappers around a bounded
+token span. Use `COMMA_DASH` for the direct-speech comma-dash gap. Use
+`CAPITALIZE` for proper first-letter capitalization; do not use `UPPERCASE` for
+proper names. Semantic cases must use grouped `semantic_*` rule ids and existing
+direct labels or `SPAN_REPLACE_BY_LEXICON`; do not register legacy
+`RuleProgram` ids as semantic layer specs.
+
 ## expected_edit_count
 
 Set `metadata["expected_edit_count"]` when the rule has a known logical edit
@@ -53,6 +62,11 @@ Generated pairs must preserve meaning and stay within Russian spelling and
 punctuation. Add metadata for allowed surface differences where the safety layer
 needs rule-specific context. Avoid examples that require semantic rewriting,
 style changes, or broad grammar correction.
+
+Runtime support is deliberately narrower than generation support. `ScopeGuard`
+accepts bounded punctuation and casing edits, but rejects semantic word
+insertion and unrelated Russian word replacement. Semantic span replacements
+must have a trusted lexicon entry and a matching neural rule label.
 
 ## Tests
 
@@ -84,12 +98,22 @@ Do not mark casing, abbreviations, quotation, dialogue/direct speech, or broad
 syntax-only taxonomy entries as implemented unless a bounded generator and tests
 exist for them.
 
+For `configs/rules.yaml`, use `implemented_limited` for bounded positive
+coverage and `guard_only` for identity-only hard-negative coverage. Guard-only
+rows still need real rule ids, sub-rule ids, and tests.
+
 ## Audit Command
 
 Run:
 
 ```bash
 python scripts/audit_generator.py configs/config.yaml --count 1000
+```
+
+For layer/family/rule/sub-rule distribution and duplicate diagnostics, run:
+
+```bash
+python scripts/audit_generation_diversity.py configs/config.yaml --count 1000
 ```
 
 For performance-sensitive rules, also run:

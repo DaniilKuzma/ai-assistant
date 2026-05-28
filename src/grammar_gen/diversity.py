@@ -42,6 +42,8 @@ def diversity_report(examples: Iterable[GeneratedExample]) -> dict[str, Any]:
     pair_keys = [source_target_pair_key(example) for example in example_list]
     pair_counts = Counter(pair_keys)
     rule_distribution = Counter(example.primary_rule_id for example in example_list)
+    layer_distribution = Counter(_layer_id(example) for example in example_list)
+    family_distribution = Counter(_family_id(example) for example in example_list)
     sub_rule_distribution = Counter(_sub_rule_id(example) for example in example_list)
     template_distribution = Counter(_template_id(example) for example in example_list)
     context_style_distribution = Counter(
@@ -54,6 +56,9 @@ def diversity_report(examples: Iterable[GeneratedExample]) -> dict[str, Any]:
 
     duplicate_by_rule = _duplicate_rates_by_bucket(
         ((example.primary_rule_id, source_target_pair_key(example)) for example in example_list)
+    )
+    duplicate_by_layer = _duplicate_rates_by_bucket(
+        ((_layer_id(example), source_target_pair_key(example)) for example in example_list)
     )
     duplicate_by_sub_rule = _duplicate_rates_by_bucket(
         ((_sub_rule_id(example), source_target_pair_key(example)) for example in example_list)
@@ -69,6 +74,7 @@ def diversity_report(examples: Iterable[GeneratedExample]) -> dict[str, Any]:
     ]
     duplicate_diagnostics = {
         "top_duplicate_pairs": top_duplicate_pairs[:10],
+        "top_duplicate_layers": _top_duplicate_rates(duplicate_by_layer),
         "top_duplicate_rule_ids": _top_duplicate_rates(duplicate_by_rule),
         "top_duplicate_sub_rule_ids": _top_duplicate_rates(duplicate_by_sub_rule),
     }
@@ -82,6 +88,7 @@ def diversity_report(examples: Iterable[GeneratedExample]) -> dict[str, Any]:
         "duplicate_target_rate": _duplicate_rate(target_keys),
         "duplicate_pair_rate": _duplicate_rate(pair_keys),
         "top_duplicate_pairs": top_duplicate_pairs,
+        "duplicate_rate_by_layer": duplicate_by_layer,
         "duplicate_rate_by_rule_id": duplicate_by_rule,
         "duplicate_rate_by_sub_rule_id": duplicate_by_sub_rule,
         "average_token_count": _average(len(example.source_tokens) for example in example_list),
@@ -91,6 +98,8 @@ def diversity_report(examples: Iterable[GeneratedExample]) -> dict[str, Any]:
         "context_style_bucket_distribution": dict(sorted(context_style_distribution.items())),
         "context_style_bucket_shares": _share_distribution(context_style_distribution),
         "rule_distribution": dict(sorted(rule_distribution.items())),
+        "layer_distribution": dict(sorted(layer_distribution.items())),
+        "family_distribution": dict(sorted(family_distribution.items())),
         "sub_rule_distribution": dict(sorted(sub_rule_distribution.items())),
         "duplicate_diagnostics": duplicate_diagnostics,
     }
@@ -197,6 +206,24 @@ def _top_duplicate_rates(stats: dict[str, dict[str, Any]], limit: int = 10) -> l
 def _sub_rule_id(example: GeneratedExample) -> str:
     metadata = example.metadata
     for key in ("sub_rule_id", "case_id", "construction_id"):
+        value = str(metadata.get(key) or "").strip()
+        if value:
+            return value
+    return example.primary_rule_id
+
+
+def _layer_id(example: GeneratedExample) -> str:
+    metadata = example.metadata
+    for key in ("layer", "construction_family"):
+        value = str(metadata.get(key) or "").strip()
+        if value:
+            return value
+    return example.primary_rule_id
+
+
+def _family_id(example: GeneratedExample) -> str:
+    metadata = example.metadata
+    for key in ("family", "construction_family", "layer"):
         value = str(metadata.get(key) or "").strip()
         if value:
             return value

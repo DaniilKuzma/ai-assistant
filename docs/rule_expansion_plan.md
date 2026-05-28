@@ -22,6 +22,18 @@ the old candidate-aware dataset pipeline is not part of the plan.
   introductory/address/interjection cases, complex sentences, BSP, fixed
   expression guards, and extra punctuation deletion through
   `DELETE_PUNCTUATION`.
+- `quotation_dialogue`: bounded quote pairing, quote normalization, extra quote
+  deletion, direct-speech author/speech templates, bracket guards, boundary
+  wrapper labels, and `COMMA_DASH`. Nested quotes, broad citations, and general
+  bracket correction are not deterministic.
+- `casing`: bounded `CAPITALIZE` and `LOWERCASE` cases for sentence starts,
+  proper names, geo names, organizations, document/event titles, ordinary common
+  lowercase normalization, and formal-you guards. Broad NER casing is not
+  deterministic by default.
+- `semantic`: grouped `semantic_*` contextual disambiguation for service words,
+  derived prepositions, ne/ni guards, introductory-word homonyms, and
+  comparative `как` cases. It is model-assisted and lexicon/direct-label gated,
+  not a free-form semantic rewrite layer.
 
 `configs/rules.yaml` is the coverage matrix. A row is `implemented` or
 `controlled_implemented` only when the rule is executable by online generation
@@ -31,10 +43,12 @@ analyzer are marked `model_assisted`, `dictionary_required`,
 
 ## Current Non-Goals
 
-- Casing and capitalization are not an integrated correction layer.
-- Abbreviation handling is not an integrated correction layer.
-- Quotes, brackets, dialogue, direct speech, citations, and paired
-  quote/bracket punctuation are planned outside the current four layers.
+- Broad NER casing, title/style normalization, and abbreviation handling are not
+  integrated correction layers.
+- Nested quotes, broad citations, complex interrupted direct speech, and general
+  bracket correction remain outside deterministic runtime correction.
+- Semantic rows may disambiguate bounded spelling/punctuation cases only; they
+  must not add absent words or change meaning.
 - No seq2seq model, free-form rewrite correction, materialized train CSV, or
   candidate-aware training path should be added.
 
@@ -48,6 +62,9 @@ analyzer are marked `model_assisted`, `dictionary_required`,
    false-positive boundaries.
 4. Keep frozen eval JSONL under `data/generated_eval`; do not create train,
    validation, or test CSV datasets.
+5. Keep `configs/rules.yaml` honest: `implemented_limited` means bounded
+   positive generation exists, `guard_only` means identity hard negatives only,
+   and each executable row must list concrete rule ids, sub-rule ids, and tests.
 
 ## Required Test Evidence
 
@@ -56,3 +73,7 @@ analyzer are marked `model_assisted`, `dictionary_required`,
 - Runtime realizer tests for each direct label used by the rule.
 - Coverage matrix tests proving executable rule ids exist in the direct online
   generation registry and that implemented rows list pytest coverage.
+- Integration tests proving new layers sample by mix, declared rule ids sample
+  in supported modes, mixed examples validate, diversity audit exposes
+  layer/family/sub-rule distributions, frozen eval manifests include the new
+  layers, and smoke training tensorizes the current label schema.

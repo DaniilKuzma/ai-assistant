@@ -12,6 +12,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ALLOWED_STATUSES = frozenset(
     {
         "implemented",
+        "implemented_limited",
+        "guard_only",
         "controlled_implemented",
         "model_assisted",
         "dictionary_required",
@@ -28,10 +30,13 @@ ALLOWED_DEPENDENCIES = frozenset(
         "model",
         "validator",
         "frequency_lexicon",
+        "quotation_dialogue",
+        "casing",
+        "semantic",
     }
 )
-EXECUTABLE_STATUSES = frozenset({"implemented", "controlled_implemented"})
-TESTED_STATUSES = frozenset({"implemented", "controlled_implemented"})
+EXECUTABLE_STATUSES = frozenset({"implemented", "implemented_limited", "guard_only", "controlled_implemented"})
+TESTED_STATUSES = EXECUTABLE_STATUSES
 METADATA_ONLY_STATUSES = frozenset({"planned", "model_assisted", "dictionary_required", "syntax_required"})
 REQUIRED_COVERAGE_TAGS = frozenset(
     {

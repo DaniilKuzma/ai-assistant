@@ -56,11 +56,49 @@ def test_build_frozen_eval_writes_valid_val_jsonl_and_manifest(tmp_path: Path) -
     assert manifest["duplicate_pair_rate"] <= 0.12
     assert "duplicate_rate_by_rule_id" in manifest
     assert "duplicate_rate_by_sub_rule_id" in manifest
+    assert "layer_distribution" in manifest
+    assert "family_distribution" in manifest
+    assert "duplicate_rate_by_layer" in manifest
     assert "sub_rule_distribution" in manifest
     assert "context_style_bucket_distribution" in manifest
     assert "context_style_bucket_shares" in manifest
     assert "top_duplicate_pairs" in manifest
     assert audit_batch(examples)["failed_examples_count"] == 0
+
+
+def test_build_frozen_eval_config_only_cli_builds_all_configured_splits(tmp_path: Path) -> None:
+    config_path = _small_config(tmp_path)
+    config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    output_dir = tmp_path / "generated_eval"
+    config["generation"]["frozen_eval"] = {
+        **config["generation"].get("frozen_eval", {}),
+        "val_examples": 30,
+        "test_examples": 30,
+        "regression_examples": 20,
+        "coverage_examples_per_rule": 1,
+        "output_dir": str(output_dir),
+    }
+    config_path.write_text(yaml.safe_dump(config, allow_unicode=True, sort_keys=False), encoding="utf-8")
+
+    result = subprocess.run(
+        [sys.executable, "scripts/build_frozen_eval.py", str(config_path)],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    for split, expected_count in {"val": 30, "test": 30, "regression": 20}.items():
+        output = output_dir / f"{split}.jsonl"
+        manifest_path = output_dir / f"{split}.manifest.json"
+        assert output.exists(), split
+        assert manifest_path.exists(), split
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        assert manifest["count"] == expected_count
+        assert manifest["audit_failures_count"] == 0
+        assert {"quotation_dialogue", "casing", "semantic"} & set(manifest["layer_distribution"])
+        assert {"quotation_dialogue", "casing", "semantic"} & set(manifest["family_distribution"])
 
 
 def test_frozen_eval_split_seeds_do_not_overlap_training_range(tmp_path: Path) -> None:

@@ -5,7 +5,7 @@ from collections import Counter
 import json
 from pathlib import Path
 import sys
-from typing import Any
+from typing import Any, Mapping
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -33,21 +33,56 @@ MIN_DEDUP_SCAN_BUDGET = 10_000
 def main() -> int:
     parser = argparse.ArgumentParser(description="Build frozen generated evaluation JSONL.")
     parser.add_argument("config")
-    parser.add_argument("--split", required=True, choices=tuple(SPLIT_SEED_OFFSETS))
-    parser.add_argument("--count", required=True, type=int)
-    parser.add_argument("--output", required=True)
+    parser.add_argument("--split", choices=tuple(SPLIT_SEED_OFFSETS))
+    parser.add_argument("--count", type=int)
+    parser.add_argument("--output")
     args = parser.parse_args()
 
-    if args.count < 0:
+    explicit_args = (args.split, args.count, args.output)
+    if any(value is not None for value in explicit_args) and not all(value is not None for value in explicit_args):
+        parser.error("--split, --count, and --output must be provided together")
+
+    if args.count is not None and args.count < 0:
         parser.error("--count must be non-negative")
 
+    if all(value is not None for value in explicit_args):
+        return _build_and_write_split(
+            config_path=Path(args.config),
+            split=str(args.split),
+            count=int(args.count),
+            output_path=Path(str(args.output)),
+        )
+
+    config = load_config(args.config)
+    outputs = _configured_split_outputs(config)
+    failed = False
+    for split, count, output_path in outputs:
+        if count < 0:
+            parser.error(f"configured {split}_examples must be non-negative")
+        result = _build_and_write_split(
+            config_path=Path(args.config),
+            split=split,
+            count=count,
+            output_path=output_path,
+        )
+        failed = failed or result != 0
+    return 1 if failed else 0
+
+
+def _build_and_write_split(
+    *,
+    config_path: Path,
+    split: str,
+    count: int,
+    output_path: Path,
+) -> int:
     manifest, examples = build_frozen_eval(
-        config_path=Path(args.config),
-        split=args.split,
-        count=args.count,
-        output_path=Path(args.output),
+        config_path=config_path,
+        split=split,
+        count=count,
+        output_path=output_path,
     )
-    manifest_path = _manifest_path(Path(args.output))
+    manifest_path = _manifest_path(output_path)
     _write_manifest(manifest_path, manifest)
 
     if manifest["audit_failures_count"] > 0:
@@ -55,8 +90,8 @@ def main() -> int:
         print(f"manifest: {manifest_path}")
         return 1
 
-    write_jsonl_examples(args.output, examples)
-    print(f"wrote: {args.output}")
+    write_jsonl_examples(output_path, examples)
+    print(f"wrote: {output_path}")
     print(f"manifest: {manifest_path}")
     return 0
 
@@ -140,12 +175,15 @@ def build_frozen_eval(
         "coverage_examples_count": len(coverage_examples),
         "coverage_train_text_dedupe_bypassed": bool(coverage_examples and coverage_index["train_examples_count"] == 0),
         "rule_distribution": audit["rule_distribution"],
+        "layer_distribution": audit["layer_distribution"],
+        "family_distribution": audit["family_distribution"],
         "mode_distribution": audit["mode_distribution"],
         "duplicate_source_rate": diversity["duplicate_source_rate"],
         "duplicate_target_rate": diversity["duplicate_target_rate"],
         "duplicate_pair_rate": diversity["duplicate_pair_rate"],
         "unique_source_target_pairs": diversity["unique_source_target_pairs"],
         "top_duplicate_pairs": diversity["top_duplicate_pairs"],
+        "duplicate_rate_by_layer": diversity["duplicate_rate_by_layer"],
         "duplicate_rate_by_rule_id": diversity["duplicate_rate_by_rule_id"],
         "duplicate_rate_by_sub_rule_id": diversity["duplicate_rate_by_sub_rule_id"],
         "sub_rule_distribution": diversity["sub_rule_distribution"],
@@ -160,6 +198,32 @@ def build_frozen_eval(
         "first_failed_examples": audit["first_failed_examples"],
     }
     return manifest, examples
+
+
+def _configured_split_outputs(config: Mapping[str, Any]) -> list[tuple[str, int, Path]]:
+    generation = config.get("generation", {}) if isinstance(config, Mapping) else {}
+    frozen_eval = generation.get("frozen_eval", {}) if isinstance(generation, Mapping) else {}
+    if not isinstance(frozen_eval, Mapping):
+        frozen_eval = {}
+    output_dir = _configured_output_dir(config, frozen_eval)
+    return [
+        ("val", int(frozen_eval.get("val_examples", 0) or 0), output_dir / "val.jsonl"),
+        ("test", int(frozen_eval.get("test_examples", 0) or 0), output_dir / "test.jsonl"),
+        (
+            "regression",
+            int(frozen_eval.get("regression_examples", 0) or 0),
+            output_dir / "regression.jsonl",
+        ),
+    ]
+
+
+def _configured_output_dir(config: Mapping[str, Any], frozen_eval: Mapping[str, Any]) -> Path:
+    raw = frozen_eval.get("output_dir")
+    if raw is None:
+        paths = config.get("paths", {}) if isinstance(config, Mapping) else {}
+        raw = paths.get("generated_eval_dir", "data/generated_eval") if isinstance(paths, Mapping) else "data/generated_eval"
+    path = Path(str(raw))
+    return path if path.is_absolute() else PROJECT_ROOT / path
 
 
 def _manifest_path(output_path: Path) -> Path:

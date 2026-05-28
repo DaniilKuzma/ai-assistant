@@ -32,9 +32,9 @@
 
 - `python scripts/audit_generator.py configs/config.yaml`
 - `python scripts/benchmark_generation.py configs/config.yaml`
+- `python scripts/audit_generation_diversity.py configs/config.yaml --count 2000`
+- `python scripts/build_frozen_eval.py configs/config.yaml`
 - `python scripts/build_frozen_eval.py configs/config.yaml --split val --count 500 --output data/generated_eval/val.jsonl`
-- `python scripts/build_frozen_eval.py configs/config.yaml --split test --count 500 --output data/generated_eval/test.jsonl`
-- `python scripts/build_frozen_eval.py configs/config.yaml --split regression --count 200 --output data/generated_eval/regression.jsonl`
 - `python -m src.training.train configs/config.yaml --smoke --debug-model --steps 2`
 - `python scripts/evaluate_model.py configs/config.yaml --dataset data/generated_eval/val.jsonl --output reports/eval_val`
 - `streamlit run src/app/streamlit_app.py`
@@ -51,6 +51,15 @@
   space-noise examples.
 - `lexicon/layers/syntax_punctuation/` - controlled punctuation gap examples,
   including `DELETE_PUNCTUATION`.
+- `lexicon/layers/quotation_dialogue/` - controlled quote/dialogue wrappers,
+  quote normalization/deletion, bracket guards, and direct-speech `COMMA_DASH`
+  examples.
+- `lexicon/layers/casing/` - bounded `CAPITALIZE`/`LOWERCASE` examples for
+  sentence starts, proper names, geo names, organizations, document/event
+  titles, common lowercase normalization, and formal-you guards.
+- `lexicon/layers/semantic/` - grouped `semantic_*` contextual examples and
+  hard negatives for service words, derived prepositions, ne/ni guards,
+  introductory-word homonyms, and comparative `как` cases.
 
 ## Artifact Policy
 

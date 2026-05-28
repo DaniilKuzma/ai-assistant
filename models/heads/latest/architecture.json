@@ -1,6 +1,6 @@
 {
   "architecture": "direct_edit_tagger_v1",
-  "debug_model": false,
-  "epoch": 4,
-  "selected_epoch": 4
+  "debug_model": true,
+  "epoch": 1,
+  "selected_epoch": 1
 }
