@@ -17,10 +17,10 @@ generation:
   seed: 13
   samples_per_epoch: 50000
   frozen_eval:
-    val_examples: 500
-    test_examples: 500
-    regression_examples: 200
-    coverage_examples_per_rule: 3
+    val_examples: 2000
+    test_examples: 2000
+    regression_examples: 500
+    coverage_examples_per_rule: 5
     output_dir: data/generated_eval
   enabled_rule_groups:
     - deterministic_orthography
@@ -48,6 +48,8 @@ generation:
     morpheme_consonants: 0.80
     morpheme_prefixes: 0.85
     morpheme_n_nn: 0.90
+    punct_detached_adverbials: 1.25
+    punct_address_interjection: 1.20
     punct_bsp: 0.85
     punct_fixed_expression_guards: 0.85
   sampling_exclude_rule_ids:
@@ -104,7 +106,7 @@ training:
   mode: online
   batch_size: 32
   eval_batch_size: 64
-  epochs: 2
+  epochs: 4
   learning_rate: 5.0e-5
   weight_decay: 0.01
   warmup_ratio: 0.06
@@ -112,6 +114,8 @@ training:
   max_grad_norm: 1.0
   mixed_precision: true
   num_workers: 0
+  progress_log_interval_seconds: 300
+  progress_log_interval_steps: 1000000
   save_each_epoch: true
   validate_each_epoch: true
   token_edit_loss_weight: 1.0
@@ -128,10 +132,7 @@ runtime:
   neural_punctuation: true
   confidence_thresholds:
     token_edit: 0.70
-    punctuation: 0.70
-  correction_memory:
-    enabled: false
-    storage_path: data/user/correction_memory.jsonl
+    punctuation: 0.60
 
 paths:
   generated_eval_dir: data/generated_eval

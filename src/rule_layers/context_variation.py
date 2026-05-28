@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from src.grammar_gen.randomness import RandomSource
 from src.grammar_gen.rules.common import gap_labels_from_text
 from src.runtime.tokenization import tokenize_runtime_words
@@ -8,6 +10,25 @@ from src.schema import GeneratedExample, WordToken
 
 
 VARIED_FAMILIES = frozenset({"compound_spelling", "dictionary_typo", "syntax_punctuation"})
+
+STYLE_EVERYDAY = "everyday"
+STYLE_SCHOOL = "school"
+STYLE_TECH = "tech"
+STYLE_BUSINESS = "business"
+STYLE_OFFICIAL = "editorial_official"
+
+
+@dataclass(frozen=True)
+class ContextShell:
+    template: str
+    style_bucket: str
+
+
+@dataclass(frozen=True)
+class RenderContext:
+    shell: ContextShell
+    values: dict[str, str]
+
 
 DOCUMENTS: tuple[str, ...] = (
     "черновике",
@@ -57,45 +78,98 @@ VERBS: tuple[str, ...] = (
     "заметил",
     "вынес в список",
 )
-SHELLS: tuple[str, ...] = (
-    "В {doc} {actor} оставил строку: {text}",
-    "{actor_cap} сверил фразу в {doc}: {text}",
-    "На полях {doc_gen} осталась запись: {text}",
-    "После проверки {doc_gen} сохранилась строка: {text}",
-    "В рабочей версии {doc_gen} указали фразу: {text}",
-    "{actor_cap} {verb} такой фрагмент: {text}",
-    "В карточке задания записали: {text}",
-    "Для редакторской проверки оставили: {text}",
+PEOPLE: tuple[str, ...] = (
+    "мама",
+    "папа",
+    "бабушка",
+    "дедушка",
+    "брат",
+    "сестра",
+    "сосед",
+    "соседка",
+    "друг",
+    "подруга",
+    "сын",
+    "дочь",
 )
+ITEMS: tuple[str, ...] = (
+    "список покупок",
+    "напоминание",
+    "заметку",
+    "сообщение",
+    "записку",
+    "план на вечер",
+    "адрес",
+    "расписание",
+)
+SCHOOL_ITEMS: tuple[str, ...] = (
+    "тетради",
+    "дневнике",
+    "расписании",
+    "задании",
+    "конспекте",
+    "плане кружка",
+)
+TECH_ITEMS: tuple[str, ...] = (
+    "приложении",
+    "настройках телефона",
+    "чате поддержки",
+    "уведомлении",
+    "форме заказа",
+)
+BUSINESS_ITEMS: tuple[str, ...] = (
+    "рабочем чате",
+    "заявке",
+    "письме клиенту",
+    "таблице задач",
+    "коротком отчёте",
+)
+SHELL_SPECS: tuple[ContextShell, ...] = (
+    ContextShell("{person_cap} оставил на холодильнике {item}: {text}", STYLE_EVERYDAY),
+    ContextShell("В телефоне сохранилось напоминание: {text}", STYLE_EVERYDAY),
+    ContextShell("Дома в блокноте записали: {text}", STYLE_EVERYDAY),
+    ContextShell("В семейном чате появилось сообщение: {text}", STYLE_EVERYDAY),
+    ContextShell("{person_cap} перед выходом написал: {text}", STYLE_EVERYDAY),
+    ContextShell("После прогулки {person} добавил в заметку: {text}", STYLE_EVERYDAY),
+    ContextShell("У подъезда на листке осталось: {text}", STYLE_EVERYDAY),
+    ContextShell("В списке покупок рядом с хлебом написали: {text}", STYLE_EVERYDAY),
+    ContextShell("Перед поездкой в телефоне сохранили: {text}", STYLE_EVERYDAY),
+    ContextShell("На кухне утром записали: {text}", STYLE_EVERYDAY),
+    ContextShell("В {school_item} ученик написал: {text}", STYLE_SCHOOL),
+    ContextShell("На уроке в задании осталось: {text}", STYLE_SCHOOL),
+    ContextShell("После кружка в дневнике записали: {text}", STYLE_SCHOOL),
+    ContextShell("В школьном чате появилось задание: {text}", STYLE_SCHOOL),
+    ContextShell("На полях конспекта осталось: {text}", STYLE_SCHOOL),
+    ContextShell("В {tech_item} видно сообщение: {text}", STYLE_TECH),
+    ContextShell("На экране телефона появилось: {text}", STYLE_TECH),
+    ContextShell("В приложении доставки сохранили строку: {text}", STYLE_TECH),
+    ContextShell("В чате поддержки оставили сообщение: {text}", STYLE_TECH),
+    ContextShell("В настройках профиля написали: {text}", STYLE_TECH),
+    ContextShell("В {business_item} оставили строку: {text}", STYLE_BUSINESS),
+    ContextShell("Перед созвоном в списке задач указали: {text}", STYLE_BUSINESS),
+    ContextShell("В коротком письме клиенту написали: {text}", STYLE_BUSINESS),
+    ContextShell("В рабочей заметке сохранили: {text}", STYLE_BUSINESS),
+    ContextShell("В {doc} {actor} оставил строку: {text}", STYLE_OFFICIAL),
+    ContextShell("{actor_cap} сверил фразу в {doc}: {text}", STYLE_OFFICIAL),
+    ContextShell("На полях {doc_gen} осталась запись: {text}", STYLE_OFFICIAL),
+    ContextShell("После проверки {doc_gen} сохранилась строка: {text}", STYLE_OFFICIAL),
+    ContextShell("В рабочей версии {doc_gen} указали фразу: {text}", STYLE_OFFICIAL),
+    ContextShell("{actor_cap} {verb} такой фрагмент: {text}", STYLE_OFFICIAL),
+)
+SHELLS: tuple[str, ...] = tuple(shell.template for shell in SHELL_SPECS)
 
 
 def contextualize_case(case: LayerDirectCase, rng: RandomSource) -> LayerDirectCase:
     if not _should_contextualize(case):
         return case
 
-    doc_index = rng.randint(0, len(DOCUMENTS) - 1)
-    actor = rng.choice(ACTORS)
-    shell = rng.choice(SHELLS)
-    verb = rng.choice(VERBS)
-    source_text = _render_shell(
-        shell,
-        text=case.source_text,
-        doc=DOCUMENTS[doc_index],
-        doc_gen=DOCUMENTS_GEN[doc_index],
-        actor=actor,
-        verb=verb,
-    )
-    target_text = _render_shell(
-        shell,
-        text=case.target_text,
-        doc=DOCUMENTS[doc_index],
-        doc_gen=DOCUMENTS_GEN[doc_index],
-        actor=actor,
-        verb=verb,
-    )
+    context = _sample_context(rng)
+    source_text = _render_shell(context, text=case.source_text)
+    target_text = _render_shell(context, text=case.target_text)
     metadata = dict(case.metadata)
     metadata["context_variation"] = True
-    metadata["context_shell"] = shell.replace("{text}", "").strip()
+    metadata["context_shell"] = context.shell.template.replace("{text}", "").strip()
+    metadata["context_style_bucket"] = context.shell.style_bucket
     return LayerDirectCase(
         rule_id=case.rule_id,
         family=case.family,
@@ -128,7 +202,7 @@ def contextualize_example(example: GeneratedExample, rng: RandomSource) -> Gener
 
 
 def _contextualize_example_once(example: GeneratedExample, rng: RandomSource) -> GeneratedExample:
-    prefix, shell_id = _sample_prefix(rng)
+    prefix, shell_id, style_bucket = _sample_prefix(rng)
     prefix_tokens = tokenize_runtime_words(prefix)
     if not prefix_tokens:
         return example
@@ -147,6 +221,7 @@ def _contextualize_example_once(example: GeneratedExample, rng: RandomSource) ->
     metadata = dict(example.metadata)
     metadata["context_variation"] = True
     metadata["context_shell"] = shell_id
+    metadata["context_style_bucket"] = style_bucket
     return GeneratedExample(
         source_text=f"{prefix}{example.source_text}",
         target_text=f"{prefix}{example.target_text}",
@@ -175,39 +250,36 @@ def _should_contextualize(case: LayerDirectCase) -> bool:
     return not case.direct_token_labels and not case.direct_gap_labels
 
 
-def _render_shell(
-    shell: str,
-    *,
-    text: str,
-    doc: str,
-    doc_gen: str,
-    actor: str,
-    verb: str,
-) -> str:
-    return shell.format(
-        text=text,
-        doc=doc,
-        doc_gen=doc_gen,
-        actor=actor,
-        actor_cap=actor.capitalize(),
-        verb=verb,
-    )
+def _render_shell(context: RenderContext, *, text: str) -> str:
+    return context.shell.template.format(text=text, **context.values)
 
 
-def _sample_prefix(rng: RandomSource) -> tuple[str, str]:
+def _sample_prefix(rng: RandomSource) -> tuple[str, str, str]:
+    context = _sample_context(rng)
+    prefix = _render_shell(context, text="")
+    return prefix, context.shell.template.replace("{text}", "").strip(), context.shell.style_bucket
+
+
+def _sample_context(rng: RandomSource) -> RenderContext:
     doc_index = rng.randint(0, len(DOCUMENTS) - 1)
     actor = rng.choice(ACTORS)
-    shell = rng.choice(SHELLS)
+    person = rng.choice(PEOPLE)
+    shell = rng.choice(SHELL_SPECS)
     verb = rng.choice(VERBS)
-    prefix = _render_shell(
-        shell,
-        text="",
-        doc=DOCUMENTS[doc_index],
-        doc_gen=DOCUMENTS_GEN[doc_index],
-        actor=actor,
-        verb=verb,
-    )
-    return prefix, shell.replace("{text}", "").strip()
+    values = {
+        "doc": DOCUMENTS[doc_index],
+        "doc_gen": DOCUMENTS_GEN[doc_index],
+        "actor": actor,
+        "actor_cap": actor.capitalize(),
+        "verb": verb,
+        "person": person,
+        "person_cap": person.capitalize(),
+        "item": rng.choice(ITEMS),
+        "school_item": rng.choice(SCHOOL_ITEMS),
+        "tech_item": rng.choice(TECH_ITEMS),
+        "business_item": rng.choice(BUSINESS_ITEMS),
+    }
+    return RenderContext(shell=shell, values=values)
 
 
 def _truthy(value: object) -> bool:

@@ -100,10 +100,114 @@ def test_tune_thresholds_writes_yaml_and_penalizes_overcorrection(monkeypatch, t
     assert low_trial["combined_score"] < selected_trial["combined_score"]
 
 
+def test_per_rule_tuning_writes_only_thresholds_that_improve_score(monkeypatch, tmp_path: Path) -> None:
+    config_path = tmp_path / "config.yaml"
+    dataset_path = tmp_path / "val.jsonl"
+    output_path = tmp_path / "runtime_thresholds.yaml"
+    report_path = tmp_path / "reports" / "threshold_tuning.json"
+
+    config_path.write_text(
+        yaml.safe_dump(
+            {
+                "runtime": {
+                    "confidence_thresholds": {
+                        "token_edit": 0.7,
+                        "punctuation": 0.7,
+                    }
+                }
+            },
+            allow_unicode=True,
+        ),
+        encoding="utf-8",
+    )
+    write_jsonl_examples(dataset_path, _examples_for_per_rule_tuning())
+
+    class FakeCorrector:
+        def __init__(self, config):
+            thresholds = config["runtime"]["confidence_thresholds"]
+            self.global_threshold = float(thresholds["token_edit"])
+            self.rule_thresholds = {
+                str(rule_id): float(value)
+                for rule_id, value in thresholds.get("rule_thresholds", {}).items()
+            }
+
+        @classmethod
+        def from_config(cls, config):
+            return cls(config)
+
+        def _threshold_for(self, rule_id: str) -> float:
+            return self.rule_thresholds.get(rule_id, self.global_threshold)
+
+        def correct(self, text: str) -> CorrectionResult:
+            if text == "low source" and self._threshold_for("compound_pronouns_particles") <= 0.3:
+                return CorrectionResult(source_text=text, corrected_text="low target", edits=[])
+            if text == "stable source" and self._threshold_for("morpheme_endings") <= 0.5:
+                return CorrectionResult(source_text=text, corrected_text="stable target", edits=[])
+            if text == "clean text" and self.global_threshold <= 0.3:
+                return CorrectionResult(source_text=text, corrected_text="clean changed", edits=[])
+            return CorrectionResult(source_text=text, corrected_text=text, edits=[])
+
+    monkeypatch.setattr("scripts.tune_thresholds.Corrector", FakeCorrector)
+
+    tune_thresholds(
+        config_path=config_path,
+        dataset_path=dataset_path,
+        output_path=output_path,
+        report_path=report_path,
+        threshold_grid=[0.3, 0.5, 0.7],
+        sweep_per_rule=True,
+    )
+
+    selected = yaml.safe_load(output_path.read_text(encoding="utf-8"))
+    rule_thresholds = selected["runtime"]["confidence_thresholds"]["rule_thresholds"]
+    assert rule_thresholds == {"compound_pronouns_particles": 0.3}
+
+
 def _examples_for_overcorrection_penalty() -> list[GeneratedExample]:
     examples = [_dirty_example(), _dirty_example(), _dirty_example()]
     examples.append(_clean_example())
     return examples
+
+
+def _examples_for_per_rule_tuning() -> list[GeneratedExample]:
+    return [
+        _positive_example("low source", "low target", "compound_pronouns_particles"),
+        _positive_example("stable source", "stable target", "morpheme_endings"),
+        _positive_example("stable source", "stable target", "morpheme_endings"),
+        _clean_text_example(),
+        _clean_text_example(),
+    ]
+
+
+def _positive_example(source: str, target: str, rule_id: str) -> GeneratedExample:
+    return GeneratedExample(
+        source_text=source,
+        target_text=target,
+        source_tokens=_tokens(source),
+        token_edit_labels=["KEEP"] * len(_tokens(source)),
+        gap_labels=["NONE"] * len(_tokens(source)),
+        rule_ids=["none", rule_id],
+        primary_rule_id=rule_id,
+        mode="positive",
+        explanation_ids=[rule_id],
+        metadata={},
+    )
+
+
+def _clean_text_example() -> GeneratedExample:
+    text = "clean text"
+    return GeneratedExample(
+        source_text=text,
+        target_text=text,
+        source_tokens=_tokens(text),
+        token_edit_labels=["KEEP"] * len(_tokens(text)),
+        gap_labels=["NONE"] * len(_tokens(text)),
+        rule_ids=["none", "clean_identity"],
+        primary_rule_id="clean_identity",
+        mode="clean_identity",
+        explanation_ids=[],
+        metadata={},
+    )
 
 
 def _dirty_example() -> GeneratedExample:

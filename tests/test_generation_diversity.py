@@ -8,6 +8,7 @@ from src.grammar_gen.audit import audit_batch
 from src.grammar_gen.diversity import duplicate_pair_rate, sample_diverse_examples
 from src.grammar_gen.factory import online_generator_from_config
 from src.schema import GeneratedExample, WordToken
+from scripts.audit_generator import quality_gate_reasons
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -71,6 +72,21 @@ def test_generated_2000_examples_stay_under_duplicate_pair_threshold_and_cover_l
     assert len(Counter(example.primary_rule_id for example in examples)) >= 35
 
 
+def test_context_variation_reports_everyday_style_without_official_dominance() -> None:
+    config = load_config(ROOT / "configs" / "config.yaml")
+    generator = online_generator_from_config(config, seed=23)
+
+    examples = [generator.sample_by_index(index) for index in range(2000)]
+    audit = audit_batch(examples)
+    buckets = audit["diversity"]["context_style_bucket_distribution"]
+    contextualized_count = sum(buckets.values())
+
+    assert audit["failed_examples_count"] == 0
+    assert contextualized_count > 0
+    assert buckets.get("everyday", 0) / contextualized_count >= 0.20
+    assert buckets.get("editorial_official", 0) / contextualized_count <= 0.50
+
+
 def test_diverse_generation_is_deterministic_without_mutating_sample_by_index() -> None:
     config = load_config(ROOT / "configs" / "config.yaml")
     first_generator = online_generator_from_config(config, seed=31)
@@ -130,6 +146,25 @@ def test_audit_rejects_numbered_example_shells() -> None:
 
     assert audit["failed_examples_count"] == 1
     assert audit["failure_reasons"] == {"forbidden_numbered_example_shell": 1}
+
+
+def test_audit_quality_gate_rejects_duplicate_and_style_regressions() -> None:
+    audit = {
+        "diversity": {
+            "duplicate_pair_rate": 0.2,
+            "context_style_bucket_distribution": {
+                "editorial_official": 8,
+                "everyday": 1,
+                "school": 1,
+            },
+        }
+    }
+
+    assert quality_gate_reasons(audit) == [
+        "duplicate_pair_rate:0.2000>0.1500",
+        "everyday_context_share:0.1000<0.2000",
+        "editorial_official_context_share:0.8000>0.5000",
+    ]
 
 
 def _layer_marker(example) -> str:

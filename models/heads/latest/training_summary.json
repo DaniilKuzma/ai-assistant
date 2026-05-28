@@ -1,51 +1,83 @@
 {
-  "actual_train_steps": 3126,
+  "actual_train_steps": 6252,
   "artifact_consistency_check": true,
   "batch_size": 32,
-  "best_epoch": 2,
-  "best_metric": 0.93,
+  "best_epoch": 4,
+  "best_metric": 0.9645,
   "debug_model": false,
   "effective_batch_size": 32,
-  "epochs": 2,
+  "epochs": 4,
   "loss_history": [
     {
       "epoch": 1,
-      "gap_punctuation_loss": 0.12403105351505536,
-      "loss": 0.4839190354800747,
-      "rule_loss": 0.6481465546227158,
+      "gap_punctuation_loss": 0.1648770338796359,
+      "loss": 0.6142102075455876,
+      "rule_loss": 0.7676531714759648,
       "steps": 1563,
-      "token_edit_loss": 0.1406377915165465
+      "token_edit_loss": 0.18606179933300837
     },
     {
       "epoch": 2,
-      "gap_punctuation_loss": 0.0011391168404407044,
-      "loss": 0.032213244431366715,
-      "rule_loss": 0.09341135166671248,
+      "gap_punctuation_loss": 0.0012784243167652995,
+      "loss": 0.03331164389155133,
+      "rule_loss": 0.09579880412081668,
       "steps": 1563,
-      "token_edit_loss": 0.0028228976412453424
+      "token_edit_loss": 0.003037892226445574
+    },
+    {
+      "epoch": 3,
+      "gap_punctuation_loss": 0.00040268500899147554,
+      "loss": 0.015127055620910481,
+      "rule_loss": 0.044385402553350745,
+      "steps": 1563,
+      "token_edit_loss": 0.001328212281051333
+    },
+    {
+      "epoch": 4,
+      "gap_punctuation_loss": 0.00033492713862349793,
+      "loss": 0.010680776497144169,
+      "rule_loss": 0.03158138329681588,
+      "steps": 1563,
+      "token_edit_loss": 0.0008044485484677751
     }
   ],
   "samples_per_epoch": 50000,
-  "selected_epoch": 2,
-  "selected_metric": 0.93,
-  "selected_validation_loss": 0.011663012730423361,
+  "selected_epoch": 4,
+  "selected_metric": 0.9645,
+  "selected_validation_loss": 0.005498962364981708,
   "smoke": false,
-  "total_train_steps": 3126,
+  "total_train_steps": 6252,
   "validation_history": [
     {
-      "combined_score": 0.828,
+      "combined_score": 0.837,
       "epoch": 1,
-      "exact_match": 0.828,
-      "examples": 500,
-      "loss": 0.04749230248853564,
+      "exact_match": 0.837,
+      "examples": 2000,
+      "loss": 0.04524710160330869,
       "status": "ok"
     },
     {
-      "combined_score": 0.93,
+      "combined_score": 0.9335,
       "epoch": 2,
-      "exact_match": 0.93,
-      "examples": 500,
-      "loss": 0.011663012730423361,
+      "exact_match": 0.9335,
+      "examples": 2000,
+      "loss": 0.013945392307505244,
+      "status": "ok"
+    },
+    {
+      "combined_score": 0.961,
+      "epoch": 3,
+      "exact_match": 0.961,
+      "examples": 2000,
+      "loss": 0.00685489407624118,
+      "status": "ok"
+    },
+    {
+      "combined_score": 0.9645,
+      "epoch": 4,
+      "exact_match": 0.9645,
+      "examples": 2000,
+      "loss": 0.005498962364981708,
       "status": "ok"
     }
   ]

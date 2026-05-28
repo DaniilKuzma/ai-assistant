@@ -25,8 +25,8 @@
   realization, tokenization, thresholds, and `ScopeGuard`.
 - `src/evaluation/` - direct runtime/model evaluation over frozen JSONL.
 - `src/app/` - Streamlit GUI.
-- `src/docx/`, `src/memory/`, `src/preprocessing/`, `src/nlp/` - document,
-  memory, text-processing, and syntax support.
+- `src/docx/`, `src/memory/`, `src/preprocessing/`, `src/nlp/` - DOCX,
+  incremental document cache, text-processing, and syntax support.
 
 ## Entry Points
 

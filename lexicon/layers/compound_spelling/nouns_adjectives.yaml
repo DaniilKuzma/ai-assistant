@@ -78,7 +78,7 @@ entries:
     correct: северо-западный
     wrong_variants: [северо западный]
     semantic_hint: compound adjective for direction.
-    forbidden_contexts: ["северо и западный", "северо от города", "западный район"]
+    forbidden_contexts: ["северо и западный", "северо от города"]
     positive_templates:
       - "В отчёте описан {wrong} район."
       - "Карта показывала {wrong} ветер вечером."

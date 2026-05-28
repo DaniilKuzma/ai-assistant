@@ -121,6 +121,21 @@ def test_compound_spelling_hard_negatives_are_identity_examples() -> None:
             assert GeneratedExample.from_dict(example.to_dict()) == example
 
 
+def test_compound_spelling_postfix_hard_negatives_do_not_hide_real_hyphen_errors() -> None:
+    specs = load_compound_spelling_specs(ROOT / "lexicon" / "layers")
+    bad_fragment = "\u043a\u0442\u043e \u0442\u043e \u0441\u0434\u0435\u043b\u0430\u043b"
+
+    hard_negatives = [
+        case
+        for spec in specs
+        for case in spec.cases
+        if case.sub_rule_id == "postfix_to_libo_nibud" and case.mode == GenerationMode.HARD_NEGATIVE.value
+    ]
+
+    assert hard_negatives
+    assert all(bad_fragment not in case.source_text.casefold() for case in hard_negatives)
+
+
 def test_compound_spelling_generator_can_sample_batch_and_audit() -> None:
     config = load_config(ROOT / "configs" / "config.yaml")
     generator = online_generator_from_config(config, seed=101)

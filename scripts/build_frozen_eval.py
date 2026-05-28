@@ -153,6 +153,8 @@ def build_frozen_eval(
         "token_edit_count_distribution": diversity["token_edit_count_distribution"],
         "gap_edit_count_distribution": diversity["gap_edit_count_distribution"],
         "template_distribution": diversity["template_distribution"],
+        "context_style_bucket_distribution": diversity["context_style_bucket_distribution"],
+        "context_style_bucket_shares": diversity["context_style_bucket_shares"],
         "audit_failures_count": audit["failed_examples_count"],
         "audit_failure_reasons": audit["failure_reasons"],
         "first_failed_examples": audit["first_failed_examples"],

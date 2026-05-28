@@ -46,11 +46,19 @@ def tune_thresholds(
     selected["punctuation"] = _best_trial(punctuation_trials)["threshold"]
 
     per_rule_trials: dict[str, list[dict[str, Any]]] = {}
+    accepted_rule_thresholds: dict[str, float] = {}
     if sweep_per_rule:
+        selected["rule_thresholds"] = {}
+        baseline_summary = _evaluate_config(_config_with_thresholds(config, selected), dataset)
         for rule_id in _enabled_rule_ids(dataset):
             trials = _sweep_rule(config, dataset, grid, selected, rule_id)
             per_rule_trials[rule_id] = trials
-            selected.setdefault("rule_thresholds", {})[rule_id] = _best_trial(trials)["threshold"]
+            best_trial = _best_trial(trials)
+            if _is_meaningful_rule_improvement(best_trial, baseline_summary):
+                threshold = float(best_trial["threshold"])
+                selected.setdefault("rule_thresholds", {})[rule_id] = threshold
+                accepted_rule_thresholds[rule_id] = threshold
+                baseline_summary = _evaluate_config(_config_with_thresholds(config, selected), dataset)
 
     final_config = _config_with_thresholds(config, selected)
     final_summary = _evaluate_config(final_config, dataset)
@@ -75,6 +83,7 @@ def tune_thresholds(
         "token_edit_trials": token_trials,
         "punctuation_trials": punctuation_trials,
         "per_rule_trials": per_rule_trials,
+        "accepted_rule_thresholds": accepted_rule_thresholds,
     }
     report_path = Path(report_path)
     report_path.parent.mkdir(parents=True, exist_ok=True)
@@ -143,6 +152,15 @@ def _best_trial(trials: list[dict[str, Any]]) -> dict[str, Any]:
     if not trials:
         raise ValueError("threshold grid must not be empty")
     return max(trials, key=lambda trial: (float(trial["combined_score"]), float(trial["exact_match"]), -float(trial["threshold"])))
+
+
+def _is_meaningful_rule_improvement(candidate: dict[str, Any], baseline: dict[str, Any]) -> bool:
+    epsilon = 1e-12
+    return (
+        float(candidate["combined_score"]) > float(baseline["combined_score"]) + epsilon
+        and float(candidate["exact_match"]) >= float(baseline["exact_match"]) - epsilon
+        and float(candidate["overcorrection_rate"]) <= float(baseline["overcorrection_rate"]) + epsilon
+    )
 
 
 def _current_thresholds(config: dict[str, Any]) -> dict[str, Any]:

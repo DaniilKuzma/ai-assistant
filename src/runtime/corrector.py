@@ -368,8 +368,10 @@ DETERMINISTIC_MORPHEME_RULE_IDS = frozenset(
         "morpheme_suffixes",
         "morpheme_consonants",
         "morpheme_endings",
+        "morpheme_n_nn",
     }
 )
+CONTEXT_DEPENDENT_N_NN_SUB_RULE_IDS = frozenset({"dependent_word"})
 
 
 def _trusted_deterministic_entry(entry: CorrectionEntry, text: str) -> bool:
@@ -386,6 +388,8 @@ def _trusted_deterministic_entry(entry: CorrectionEntry, text: str) -> bool:
             pass
         elif not _is_unknown_single_russian_word(entry.source):
             return False
+    if rule_id == "morpheme_n_nn" and entry.sub_rule_id in CONTEXT_DEPENDENT_N_NN_SUB_RULE_IDS:
+        return False
     forbidden = entry.forbidden_contexts or ()
     if forbidden:
         lowered = text.casefold()

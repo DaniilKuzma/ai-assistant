@@ -44,6 +44,11 @@ def diversity_report(examples: Iterable[GeneratedExample]) -> dict[str, Any]:
     rule_distribution = Counter(example.primary_rule_id for example in example_list)
     sub_rule_distribution = Counter(_sub_rule_id(example) for example in example_list)
     template_distribution = Counter(_template_id(example) for example in example_list)
+    context_style_distribution = Counter(
+        bucket
+        for bucket in (_context_style_bucket(example) for example in example_list)
+        if bucket
+    )
     token_edit_counts = Counter(_logical_token_edit_count(example) for example in example_list)
     gap_edit_counts = Counter(_logical_gap_edit_count(example) for example in example_list)
 
@@ -83,6 +88,8 @@ def diversity_report(examples: Iterable[GeneratedExample]) -> dict[str, Any]:
         "token_edit_count_distribution": dict(sorted(token_edit_counts.items())),
         "gap_edit_count_distribution": dict(sorted(gap_edit_counts.items())),
         "template_distribution": dict(sorted(template_distribution.items())),
+        "context_style_bucket_distribution": dict(sorted(context_style_distribution.items())),
+        "context_style_bucket_shares": _share_distribution(context_style_distribution),
         "rule_distribution": dict(sorted(rule_distribution.items())),
         "sub_rule_distribution": dict(sorted(sub_rule_distribution.items())),
         "duplicate_diagnostics": duplicate_diagnostics,
@@ -205,6 +212,11 @@ def _template_id(example: GeneratedExample) -> str:
     return example.primary_rule_id
 
 
+def _context_style_bucket(example: GeneratedExample) -> str:
+    value = str(example.metadata.get("context_style_bucket") or "").strip()
+    return value
+
+
 def _logical_token_edit_count(example: GeneratedExample) -> int:
     try:
         return count_logical_token_edits(example.token_edit_labels)
@@ -227,6 +239,13 @@ def _average(values: Sequence[int] | Iterable[int]) -> float:
     if not value_list:
         return 0.0
     return sum(value_list) / len(value_list)
+
+
+def _share_distribution(counts: Counter[str]) -> dict[str, float]:
+    total = sum(counts.values())
+    if total <= 0:
+        return {}
+    return {key: value / total for key, value in sorted(counts.items())}
 
 
 __all__ = [

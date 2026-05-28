@@ -10,7 +10,7 @@ entries:
     correct: также
     wrong_variants: [так же]
     semantic_hint: additive conjunction meaning "also".
-    forbidden_contexts: ["так же, как", "так же точно", "так же быстро"]
+    forbidden_contexts: ["так же, как", "так же точно", "так же быстро", "так же аккуратно, как"]
     positive_templates:
       - "Редактор {wrong} проверил отчёт."
       - "Комиссия {wrong} изучила заявление после заседания."

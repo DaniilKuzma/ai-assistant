@@ -1,4 +1,5 @@
 from pathlib import Path
+import inspect
 import json
 import subprocess
 import sys
@@ -151,33 +152,21 @@ def test_direct_neural_backend_refuses_debug_marker_by_default(tmp_path: Path):
         DirectNeuralBackend.from_config(config)
 
 
-def test_streamlit_corrector_applies_memory_overrides_to_config_copy(tmp_path: Path, monkeypatch):
-    _reset_fakes()
-    config = {
-        "paths": {
-            "adapter_output_dir": str(tmp_path / "missing_adapter"),
-            "heads_output_dir": str(tmp_path / "missing_heads"),
-        },
-        "correction_memory": {
-            "enabled": False,
-            "storage_path": str(tmp_path / "memory.jsonl"),
-            "context_window_chars": 24,
-        },
-    }
+def test_streamlit_api_exposes_no_memory_or_user_response_helpers():
+    corrector_params = inspect.signature(streamlit_app.build_streamlit_corrector).parameters
+    cached_params = inspect.signature(streamlit_app._cached_streamlit_corrector).parameters
+    main_source = inspect.getsource(streamlit_app.main)
 
-    monkeypatch.setattr(streamlit_app, "load_config", lambda _path: config, raising=False)
-    monkeypatch.setattr(streamlit_app, "Corrector", FakeRuntimeCorrector)
-
-    result = streamlit_app.build_streamlit_corrector(tmp_path / "config.yaml", memory_enabled=True, doc_id="doc-7")
-
-    assert isinstance(result.corrector, FakeRuntimeCorrector)
-    assert FakeRuntimeCorrector.received_config["correction_memory"]["enabled"] is True
-    assert FakeRuntimeCorrector.received_config["correction_memory"]["doc_id"] == "doc-7"
-    assert config["correction_memory"].get("doc_id") is None
-    assert config["correction_memory"]["enabled"] is False
+    assert "memory_enabled" not in corrector_params
+    assert "doc_id" not in corrector_params
+    assert "memory_enabled" not in cached_params
+    assert "ID документа" not in main_source
+    assert "doc_id" not in main_source
+    obsolete_helper = "build_" + "feed" + "back_rows"
+    assert not hasattr(streamlit_app, obsolete_helper)
 
 
-def test_build_feedback_rows_returns_compact_edit_rows():
+def test_build_edit_rows_returns_compact_edit_rows():
     result = CorrectionResult(
         source_text="Она пришла сдесь утром.",
         corrected_text="Она пришла здесь утром.",
@@ -195,7 +184,7 @@ def test_build_feedback_rows_returns_compact_edit_rows():
         ],
     )
 
-    assert streamlit_app.build_feedback_rows(result) == [
+    assert streamlit_app.build_edit_rows(result.edits) == [
         {
             "source": "сдесь",
             "replacement": "здесь",
@@ -207,10 +196,8 @@ def test_build_feedback_rows_returns_compact_edit_rows():
     ]
 
 
-def test_get_incremental_cache_key_depends_on_normalized_doc_id():
-    assert streamlit_app.get_incremental_cache_key("doc-a") == "doc-a"
-    assert streamlit_app.get_incremental_cache_key("doc-a") != streamlit_app.get_incremental_cache_key("doc-b")
-    assert streamlit_app.get_incremental_cache_key("  ") == "default"
+def test_text_incremental_cache_key_is_internal_and_stable():
+    assert streamlit_app.text_incremental_cache_key() == "default_text"
 
 
 def test_build_incremental_summary_returns_segment_counts():
@@ -223,10 +210,34 @@ def test_build_incremental_summary_returns_segment_counts():
     }
 
 
-def test_docx_cache_key_depends_on_normalized_doc_id():
-    assert streamlit_app.docx_cache_key("doc-a") == "doc-a"
-    assert streamlit_app.docx_cache_key("doc-a") != streamlit_app.docx_cache_key("doc-b")
-    assert streamlit_app.docx_cache_key("  ") == "default"
+def test_docx_cache_key_uses_upload_name_without_exposing_document_id():
+    assert streamlit_app.docx_cache_key("file-a.docx") == "file-a.docx"
+    assert streamlit_app.docx_cache_key("file-a.docx") != streamlit_app.docx_cache_key("file-b.docx")
+    assert streamlit_app.docx_cache_key("  ") == "uploaded_docx"
+
+
+def test_docx_correction_requires_explicit_button():
+    main_source = inspect.getsource(streamlit_app.main)
+
+    assert "if docx_correction_requested(uploaded.name):" in main_source
+
+
+def test_docx_correction_requested_uses_primary_button(monkeypatch):
+    calls = []
+
+    def fake_button(label, **kwargs):
+        calls.append((label, kwargs))
+        return False
+
+    monkeypatch.setattr(streamlit_app, "st", SimpleNamespace(button=fake_button))
+
+    assert streamlit_app.docx_correction_requested("draft.docx") is False
+    assert calls == [
+        (
+            "Исправить DOCX",
+            {"type": "primary", "key": "correct_docx_draft.docx"},
+        )
+    ]
 
 
 def test_build_docx_incremental_summary_returns_paragraph_counts_and_total_edits():
