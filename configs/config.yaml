@@ -15,12 +15,12 @@ model:
 generation:
   mode: online_ast
   seed: 13
-  samples_per_epoch: 50000
+  samples_per_epoch: 75000
   frozen_eval:
-    val_examples: 2000
-    test_examples: 2000
-    regression_examples: 500
-    coverage_examples_per_rule: 5
+    val_examples: 5000
+    test_examples: 5000
+    regression_examples: 1500
+    coverage_examples_per_rule: 8
     output_dir: data/generated_eval
   enabled_rule_groups:
     - deterministic_orthography
@@ -126,15 +126,15 @@ training:
   batch_size: 32
   eval_batch_size: 64
   epochs: 4
-  learning_rate: 5.0e-5
+  learning_rate: 3.0e-5
   weight_decay: 0.01
-  warmup_ratio: 0.06
+  warmup_ratio: 0.08
   gradient_accumulation_steps: 1
   max_grad_norm: 1.0
   mixed_precision: true
   num_workers: 0
-  progress_log_interval_seconds: 300
-  progress_log_interval_steps: 1000000
+  progress_log_interval_seconds: 60
+  progress_log_interval_steps: 250
   save_each_epoch: true
   validate_each_epoch: true
   token_edit_loss_weight: 1.0

@@ -176,7 +176,7 @@ def test_build_frozen_eval_filters_train_existing_split_and_current_text_duplica
     }
 
 
-def test_build_frozen_eval_covers_all_enabled_positive_rules_when_count_allows(tmp_path: Path) -> None:
+def test_build_frozen_eval_covers_all_enabled_rules_when_count_allows(tmp_path: Path) -> None:
     config_path = _small_config(tmp_path)
     output = tmp_path / "val.jsonl"
     config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
@@ -185,7 +185,10 @@ def test_build_frozen_eval_covers_all_enabled_positive_rules_when_count_allows(t
         rule.info.rule_id
         for rule in generator.registry.enabled_rules(config)
         if rule.info.rule_id not in set(config["generation"].get("sampling_exclude_rule_ids", ()))
-        and rule.can_generate(GenerationMode.POSITIVE)
+        and any(
+            rule.can_generate(mode)
+            for mode in (GenerationMode.POSITIVE, GenerationMode.HARD_NEGATIVE, GenerationMode.CLEAN_IDENTITY)
+        )
     }
 
     manifest, examples = build_frozen_eval(

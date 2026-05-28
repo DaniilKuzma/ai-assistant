@@ -1,29 +1,30 @@
 {
   "audit_failure_reasons": {},
   "audit_failures_count": 0,
-  "average_token_count": 8.6475,
+  "average_token_count": 8.6892,
   "base_seed": 13,
-  "candidate_scan_count": 2787,
+  "candidate_scan_count": 8305,
   "context_style_bucket_distribution": {
-    "business": 147,
-    "editorial_official": 355,
-    "everyday": 390,
-    "school": 189,
-    "tech": 184
+    "business": 330,
+    "editorial_official": 990,
+    "everyday": 944,
+    "school": 441,
+    "tech": 363
   },
   "context_style_bucket_shares": {
-    "business": 0.11620553359683794,
-    "editorial_official": 0.28063241106719367,
-    "everyday": 0.308300395256917,
-    "school": 0.14940711462450593,
-    "tech": 0.14545454545454545
+    "business": 0.1075619295958279,
+    "editorial_official": 0.3226857887874837,
+    "everyday": 0.3076923076923077,
+    "school": 0.14374185136897003,
+    "tech": 0.11831812255541069
   },
-  "count": 2000,
-  "coverage_examples_count": 290,
+  "count": 5000,
+  "coverage_examples_count": 496,
   "coverage_missing_rule_ids": [],
   "coverage_required_rule_ids": [
     "casing_common_lowercase",
     "casing_documents_events",
+    "casing_formal_you_guard",
     "casing_geo_names",
     "casing_organizations",
     "casing_person_names",
@@ -42,6 +43,7 @@
     "dash_subject_predicate",
     "dialogue_author_before",
     "dialogue_author_inside_speech",
+    "dialogue_bracket_guards",
     "dialogue_speech_before_author",
     "dictionary_borrowed_words",
     "dictionary_common_misspellings",
@@ -73,6 +75,8 @@
     "quote_pairing",
     "semantic_comparative_context",
     "semantic_derived_prepositions",
+    "semantic_introductory_context",
+    "semantic_ne_ni",
     "semantic_service_words",
     "suffix_enn_yan",
     "suffix_its_ets",
@@ -84,507 +88,557 @@
   "coverage_train_text_dedupe_bypassed": true,
   "dedupe_indexed_existing_split_examples_count": 0,
   "dedupe_indexed_existing_split_paths": [],
-  "dedupe_indexed_train_examples_count": 200000,
-  "dedupe_skipped_count": 1077,
+  "dedupe_indexed_train_examples_count": 300000,
+  "dedupe_skipped_count": 3801,
   "dedupe_skipped_reasons": {
-    "source_text": 975,
-    "target_text": 1077
+    "source_text": 3471,
+    "target_text": 3801
   },
   "duplicate_pair_rate": 0.0,
   "duplicate_rate_by_layer": {
     "adversative": {
-      "count": 100,
+      "count": 299,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 100
+      "unique_pairs": 299
     },
     "casing": {
-      "count": 91,
+      "count": 239,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 91
+      "unique_pairs": 239
     },
     "compound_spelling": {
-      "count": 135,
+      "count": 311,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 135
+      "unique_pairs": 311
     },
     "dash_nominal": {
-      "count": 5,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 5
-    },
-    "dictionary_typo": {
-      "count": 201,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 201
-    },
-    "homogeneous_objects": {
-      "count": 107,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 107
-    },
-    "introductory": {
-      "count": 108,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 108
-    },
-    "morpheme": {
-      "count": 291,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 291
-    },
-    "quotation_dialogue": {
-      "count": 163,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 163
-    },
-    "semantic": {
-      "count": 102,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 102
-    },
-    "simple_transitive": {
-      "count": 112,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 112
-    },
-    "subordinate_that": {
-      "count": 103,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 103
-    },
-    "syntax_punctuation": {
-      "count": 289,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 289
-    },
-    "tsya_ttsya": {
-      "count": 193,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 193
-    }
-  },
-  "duplicate_rate_by_rule_id": {
-    "casing_common_lowercase": {
-      "count": 27,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 27
-    },
-    "casing_documents_events": {
-      "count": 13,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 13
-    },
-    "casing_formal_you_guard": {
-      "count": 3,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 3
-    },
-    "casing_geo_names": {
-      "count": 18,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 18
-    },
-    "casing_organizations": {
-      "count": 10,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 10
-    },
-    "casing_person_names": {
-      "count": 13,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 13
-    },
-    "casing_sentence_start": {
-      "count": 7,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 7
-    },
-    "comma_adversative": {
-      "count": 100,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 100
-    },
-    "comma_homogeneous": {
-      "count": 107,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 107
-    },
-    "comma_introductory": {
-      "count": 108,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 108
-    },
-    "comma_subordinate": {
-      "count": 103,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 103
-    },
-    "compound_adverbs": {
-      "count": 13,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 13
-    },
-    "compound_ne_spellings": {
-      "count": 20,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 20
-    },
-    "compound_nouns_adjectives": {
-      "count": 26,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 26
-    },
-    "compound_pol_polu": {
-      "count": 21,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 21
-    },
-    "compound_prepositions": {
-      "count": 23,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 23
-    },
-    "compound_pronouns_particles": {
-      "count": 17,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 17
-    },
-    "compound_service_words": {
-      "count": 15,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 15
-    },
-    "dash_subject_predicate": {
-      "count": 5,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 5
-    },
-    "dialogue_author_before": {
-      "count": 63,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 63
-    },
-    "dialogue_author_inside_speech": {
-      "count": 17,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 17
-    },
-    "dialogue_speech_before_author": {
-      "count": 36,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 36
-    },
-    "dictionary_borrowed_words": {
-      "count": 31,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 31
-    },
-    "dictionary_common_misspellings": {
-      "count": 28,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 28
-    },
-    "dictionary_domain_terms": {
-      "count": 31,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 31
-    },
-    "dictionary_normative_words": {
-      "count": 37,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 37
-    },
-    "final_punctuation": {
-      "count": 112,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 112
-    },
-    "morpheme_consonants": {
-      "count": 24,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 24
-    },
-    "morpheme_endings": {
-      "count": 21,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 21
-    },
-    "morpheme_hissing_vowels": {
-      "count": 22,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 22
-    },
-    "morpheme_n_nn": {
-      "count": 25,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 25
-    },
-    "morpheme_prefixes": {
-      "count": 23,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 23
-    },
-    "morpheme_root_vowels": {
-      "count": 30,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 30
-    },
-    "morpheme_soft_hard_signs": {
-      "count": 24,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 24
-    },
-    "morpheme_suffixes": {
-      "count": 25,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 25
-    },
-    "n_nn_basic": {
-      "count": 32,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 32
-    },
-    "punct_address_interjection": {
-      "count": 35,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 35
-    },
-    "punct_bsp": {
       "count": 9,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 9
     },
-    "punct_comparative_turns": {
-      "count": 16,
+    "dictionary_typo": {
+      "count": 437,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 16
+      "unique_pairs": 437
     },
-    "punct_complex_sentences": {
-      "count": 39,
+    "homogeneous_objects": {
+      "count": 326,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 39
+      "unique_pairs": 326
     },
-    "punct_dash_syntax": {
-      "count": 17,
+    "introductory": {
+      "count": 270,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 17
+      "unique_pairs": 270
     },
-    "punct_detached_adverbials": {
-      "count": 24,
+    "morpheme": {
+      "count": 698,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 24
+      "unique_pairs": 698
     },
-    "punct_detached_definitions": {
-      "count": 22,
+    "quotation_dialogue": {
+      "count": 389,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 22
+      "unique_pairs": 389
     },
-    "punct_final_marks": {
-      "count": 39,
+    "semantic": {
+      "count": 287,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 39
+      "unique_pairs": 287
     },
-    "punct_fixed_expression_guards": {
-      "count": 13,
+    "simple_transitive": {
+      "count": 323,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 13
+      "unique_pairs": 323
     },
-    "punct_homogeneous_extended": {
-      "count": 45,
+    "subordinate_that": {
+      "count": 296,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 45
+      "unique_pairs": 296
     },
-    "punct_introductory_extended": {
-      "count": 30,
+    "syntax_punctuation": {
+      "count": 716,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 30
-    },
-    "quote_extra_marks": {
-      "count": 19,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 19
-    },
-    "quote_normalization": {
-      "count": 12,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 12
-    },
-    "quote_pairing": {
-      "count": 16,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 16
-    },
-    "semantic_comparative_context": {
-      "count": 24,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 24
-    },
-    "semantic_derived_prepositions": {
-      "count": 36,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 36
-    },
-    "semantic_introductory_context": {
-      "count": 2,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
-    },
-    "semantic_service_words": {
-      "count": 40,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 40
-    },
-    "suffix_enn_yan": {
-      "count": 37,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 37
-    },
-    "suffix_its_ets": {
-      "count": 28,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 28
+      "unique_pairs": 716
     },
     "tsya_ttsya": {
-      "count": 193,
+      "count": 400,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 193
-    },
-    "typo_character_noise": {
-      "count": 28,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 28
-    },
-    "typo_keyboard_neighbor": {
-      "count": 28,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 28
-    },
-    "typo_space_noise": {
-      "count": 18,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 18
+      "unique_pairs": 400
     }
   },
-  "duplicate_rate_by_sub_rule_id": {
-    "address_final": {
-      "count": 6,
+  "duplicate_rate_by_rule_id": {
+    "casing_common_lowercase": {
+      "count": 57,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 6
+      "unique_pairs": 57
     },
-    "address_initial": {
-      "count": 10,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 10
-    },
-    "address_medial": {
-      "count": 6,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 6
-    },
-    "adjective_case_endings": {
-      "count": 4,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 4
-    },
-    "adjective_n": {
-      "count": 2,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
-    },
-    "adjective_nn": {
-      "count": 11,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 11
-    },
-    "adverbial_adverb_guard": {
-      "count": 2,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
-    },
-    "adversative_document_correction": {
-      "count": 28,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 28
-    },
-    "adversative_education_context": {
+    "casing_documents_events": {
       "count": 35,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 35
     },
-    "adversative_technical_interface": {
+    "casing_formal_you_guard": {
+      "count": 15,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 15
+    },
+    "casing_geo_names": {
+      "count": 43,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 43
+    },
+    "casing_organizations": {
+      "count": 38,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 38
+    },
+    "casing_person_names": {
+      "count": 42,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 42
+    },
+    "casing_sentence_start": {
+      "count": 9,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 9
+    },
+    "comma_adversative": {
+      "count": 299,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 299
+    },
+    "comma_homogeneous": {
+      "count": 326,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 326
+    },
+    "comma_introductory": {
+      "count": 270,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 270
+    },
+    "comma_subordinate": {
+      "count": 296,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 296
+    },
+    "compound_adverbs": {
+      "count": 38,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 38
+    },
+    "compound_ne_spellings": {
       "count": 37,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 37
     },
-    "agentstvo": {
-      "count": 1,
+    "compound_nouns_adjectives": {
+      "count": 58,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
+      "unique_pairs": 58
+    },
+    "compound_pol_polu": {
+      "count": 58,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 58
+    },
+    "compound_prepositions": {
+      "count": 43,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 43
+    },
+    "compound_pronouns_particles": {
+      "count": 36,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 36
+    },
+    "compound_service_words": {
+      "count": 41,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 41
+    },
+    "dash_subject_predicate": {
+      "count": 9,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 9
+    },
+    "dialogue_author_before": {
+      "count": 136,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 136
+    },
+    "dialogue_author_inside_speech": {
+      "count": 39,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 39
+    },
+    "dialogue_bracket_guards": {
+      "count": 9,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 9
+    },
+    "dialogue_speech_before_author": {
+      "count": 118,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 118
+    },
+    "dictionary_borrowed_words": {
+      "count": 56,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 56
+    },
+    "dictionary_common_misspellings": {
+      "count": 63,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 63
+    },
+    "dictionary_domain_terms": {
+      "count": 76,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 76
+    },
+    "dictionary_normative_words": {
+      "count": 79,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 79
+    },
+    "final_punctuation": {
+      "count": 323,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 323
+    },
+    "morpheme_consonants": {
+      "count": 56,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 56
+    },
+    "morpheme_endings": {
+      "count": 41,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 41
+    },
+    "morpheme_hissing_vowels": {
+      "count": 58,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 58
+    },
+    "morpheme_n_nn": {
+      "count": 57,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 57
+    },
+    "morpheme_prefixes": {
+      "count": 52,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 52
+    },
+    "morpheme_root_vowels": {
+      "count": 67,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 67
+    },
+    "morpheme_soft_hard_signs": {
+      "count": 56,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 56
+    },
+    "morpheme_suffixes": {
+      "count": 70,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 70
+    },
+    "n_nn_basic": {
+      "count": 72,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 72
+    },
+    "punct_address_interjection": {
+      "count": 90,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 90
+    },
+    "punct_bsp": {
+      "count": 16,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 16
+    },
+    "punct_comparative_turns": {
+      "count": 30,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 30
+    },
+    "punct_complex_sentences": {
+      "count": 104,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 104
+    },
+    "punct_dash_syntax": {
+      "count": 32,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 32
+    },
+    "punct_detached_adverbials": {
+      "count": 71,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 71
+    },
+    "punct_detached_definitions": {
+      "count": 51,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 51
+    },
+    "punct_final_marks": {
+      "count": 96,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 96
+    },
+    "punct_fixed_expression_guards": {
+      "count": 35,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 35
+    },
+    "punct_homogeneous_extended": {
+      "count": 111,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 111
+    },
+    "punct_introductory_extended": {
+      "count": 80,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 80
+    },
+    "quote_extra_marks": {
+      "count": 36,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 36
+    },
+    "quote_normalization": {
+      "count": 23,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 23
+    },
+    "quote_pairing": {
+      "count": 28,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 28
+    },
+    "semantic_comparative_context": {
+      "count": 58,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 58
+    },
+    "semantic_derived_prepositions": {
+      "count": 88,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 88
+    },
+    "semantic_introductory_context": {
+      "count": 13,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 13
+    },
+    "semantic_ne_ni": {
+      "count": 10,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 10
+    },
+    "semantic_service_words": {
+      "count": 118,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 118
+    },
+    "suffix_enn_yan": {
+      "count": 93,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 93
+    },
+    "suffix_its_ets": {
+      "count": 76,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 76
+    },
+    "tsya_ttsya": {
+      "count": 400,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 400
+    },
+    "typo_character_noise": {
+      "count": 62,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 62
+    },
+    "typo_keyboard_neighbor": {
+      "count": 59,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 59
+    },
+    "typo_space_noise": {
+      "count": 42,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 42
+    }
+  },
+  "duplicate_rate_by_sub_rule_id": {
+    "address_final": {
+      "count": 14,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 14
+    },
+    "address_initial": {
+      "count": 23,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 23
+    },
+    "address_medial": {
+      "count": 21,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 21
+    },
+    "adjective_case_endings": {
+      "count": 10,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 10
+    },
+    "adjective_n": {
+      "count": 6,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 6
+    },
+    "adjective_nn": {
+      "count": 22,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 22
+    },
+    "adverbial_adverb_guard": {
+      "count": 3,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 3
+    },
+    "adversative_document_correction": {
+      "count": 111,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 111
+    },
+    "adversative_education_context": {
+      "count": 101,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 101
+    },
+    "adversative_technical_interface": {
+      "count": 87,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 87
+    },
+    "agentstvo": {
+      "count": 4,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 4
     },
     "agentstvo_keyboard_neighbor": {
-      "count": 1,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
-    },
-    "agentstvo_missing_t": {
-      "count": 1,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
-    },
-    "akkaunt": {
       "count": 2,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 2
+    },
+    "agentstvo_missing_t": {
+      "count": 6,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 6
+    },
+    "agentstvo_split_space": {
+      "count": 3,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 3
+    },
+    "akkaunt": {
+      "count": 5,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 5
+    },
+    "akkaunt_insert": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
+    },
+    "akkaunt_keyboard_neighbor": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
     },
     "akkuratnyj": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
-    "akkuratnyj_one_k": {
+    "akkuratnyj_insert": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
+    },
+    "akkuratnyj_one_k": {
+      "count": 5,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 5
     },
     "akkuratnyj_split_space": {
-      "count": 1,
+      "count": 2,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
+      "unique_pairs": 2
+    },
+    "aktualnyj": {
+      "count": 2,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 2
     },
     "aktualnyj_insert": {
-      "count": 1,
+      "count": 2,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
+      "unique_pairs": 2
     },
     "aktualnyj_keyboard_neighbor": {
-      "count": 2,
+      "count": 4,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
+      "unique_pairs": 4
     },
     "aktualnyj_split_space": {
-      "count": 1,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
-    },
-    "algoritm": {
-      "count": 2,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
-    },
-    "already_final_guard": {
-      "count": 2,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
-    },
-    "alternating_hard_negative": {
-      "count": 1,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
-    },
-    "apellyaciya": {
       "count": 3,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 3
+    },
+    "algoritm": {
+      "count": 5,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 5
+    },
+    "algoritm_keyboard_neighbor": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
+    },
+    "algoritm_split_space": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
+    },
+    "already_final_guard": {
+      "count": 10,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 10
+    },
+    "already_normalized_quotes_guard": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
+    },
+    "alternating_hard_negative": {
+      "count": 6,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 6
+    },
+    "apellyaciya": {
+      "count": 4,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 4
     },
     "apellyaciya_insert": {
       "count": 1,
@@ -596,45 +650,55 @@
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
+    "apposition": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
+    },
+    "assistent": {
+      "count": 4,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 4
+    },
     "assistent_insert": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
-    "assistent_split_space": {
-      "count": 1,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
-    },
     "author_before_already_correct_guard": {
-      "count": 1,
+      "count": 2,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
+      "unique_pairs": 2
     },
     "author_before_missing_colon_quotes": {
-      "count": 26,
+      "count": 55,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 26
+      "unique_pairs": 55
     },
     "author_before_normalize_quotes": {
-      "count": 32,
+      "count": 71,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 32
+      "unique_pairs": 71
     },
     "author_inside_speech_already_correct_guard": {
-      "count": 1,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
-    },
-    "author_inside_speech_basic": {
-      "count": 16,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 16
-    },
-    "avtorizaciya": {
       "count": 3,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 3
+    },
+    "author_inside_speech_basic": {
+      "count": 36,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 36
+    },
+    "avtorizaciya": {
+      "count": 4,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 4
+    },
+    "avtorizaciya_insert": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
     },
     "avtorizaciya_split_space": {
       "count": 1,
@@ -647,9 +711,9 @@
       "unique_pairs": 1
     },
     "before_noun_no_cause_guard": {
-      "count": 3,
+      "count": 7,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 3
+      "unique_pairs": 7
     },
     "ber_bir": {
       "count": 3,
@@ -657,16 +721,36 @@
       "unique_pairs": 3
     },
     "biblioteka": {
-      "count": 2,
+      "count": 1,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
+      "unique_pairs": 1
+    },
+    "blest_blist": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
     },
     "bloger": {
+      "count": 4,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 4
+    },
+    "bloger_keyboard_neighbor": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
+    },
+    "bracket_guard_section": {
+      "count": 5,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 5
+    },
+    "bracket_guard_simple": {
       "count": 3,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 3
     },
-    "bloger_insert": {
+    "bsp_colon": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
@@ -677,39 +761,49 @@
       "unique_pairs": 2
     },
     "bsp_comma": {
+      "count": 3,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 3
+    },
+    "bsp_comma_sequence": {
       "count": 2,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 2
-    },
-    "bsp_comma_sequence": {
-      "count": 1,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
     },
     "bsp_dash": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
+    "bsp_dash_result": {
+      "count": 2,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 2
+    },
     "bsp_semicolon": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
-    "cha_shcha": {
-      "count": 2,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
-    },
-    "checked_unstressed": {
-      "count": 5,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 5
-    },
-    "chestnyj": {
+    "cause_before_noun": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
+    },
+    "cha_shcha": {
+      "count": 7,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 7
+    },
+    "checked_unstressed": {
+      "count": 6,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 6
+    },
+    "chestnyj": {
+      "count": 2,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 2
     },
     "chestnyj_insert": {
       "count": 1,
@@ -721,30 +815,35 @@
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 2
     },
-    "chestnyj_split_space": {
+    "chestnyj_replace": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
     "chet_chit": {
-      "count": 1,
+      "count": 3,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
+      "unique_pairs": 3
     },
     "chto_by_chto_bi": {
+      "count": 4,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 4
+    },
+    "chtoby_conjunction_merge": {
+      "count": 9,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 9
+    },
+    "chtoby_particle_split": {
       "count": 2,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 2
     },
-    "chtoby_conjunction_merge": {
-      "count": 6,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 6
-    },
     "chu_shchu": {
-      "count": 3,
+      "count": 9,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 3
+      "unique_pairs": 9
     },
     "chuvstvovat": {
       "count": 2,
@@ -752,29 +851,49 @@
       "unique_pairs": 2
     },
     "chuvstvovat_keyboard_neighbor": {
-      "count": 2,
+      "count": 1,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
+      "unique_pairs": 1
     },
     "chuvstvovat_missing_v": {
+      "count": 10,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 10
+    },
+    "chuvstvovat_split_space": {
       "count": 3,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 3
     },
     "ci_cy": {
-      "count": 4,
+      "count": 10,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 4
+      "unique_pairs": 10
     },
     "clean_address_initial": {
-      "count": 6,
+      "count": 14,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 6
+      "unique_pairs": 14
+    },
+    "clean_apposition": {
+      "count": 3,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 3
     },
     "clean_author_before_dialogue": {
       "count": 3,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 3
+    },
+    "clean_bracket_text": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
+    },
+    "clean_bsp_colon": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
     },
     "clean_bsp_dash": {
       "count": 1,
@@ -782,149 +901,154 @@
       "unique_pairs": 1
     },
     "clean_comparison": {
-      "count": 3,
+      "count": 1,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 3
+      "unique_pairs": 1
     },
     "clean_dash_nominal": {
-      "count": 5,
+      "count": 7,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 5
+      "unique_pairs": 7
     },
     "clean_final_statement": {
-      "count": 8,
+      "count": 10,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 8
+      "unique_pairs": 10
     },
     "clean_fixed_expression": {
+      "count": 9,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 9
+    },
+    "clean_gerund_phrase": {
+      "count": 10,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 10
+    },
+    "clean_homogeneous_series": {
+      "count": 16,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 16
+    },
+    "clean_introductory_medial": {
+      "count": 18,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 18
+    },
+    "clean_normalized_quotes": {
       "count": 2,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 2
     },
-    "clean_gerund_phrase": {
-      "count": 3,
+    "clean_quoted_term": {
+      "count": 2,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 3
+      "unique_pairs": 2
     },
-    "clean_homogeneous_series": {
+    "clean_speech_before_author": {
+      "count": 4,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 4
+    },
+    "clean_spp_chto": {
+      "count": 10,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 10
+    },
+    "clean_ssp_i": {
       "count": 8,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 8
-    },
-    "clean_introductory_medial": {
-      "count": 3,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 3
-    },
-    "clean_normalized_quotes": {
-      "count": 1,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
-    },
-    "clean_quoted_term": {
-      "count": 1,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
-    },
-    "clean_speech_before_author": {
-      "count": 2,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
-    },
-    "clean_spp_chto": {
-      "count": 3,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 3
-    },
-    "clean_ssp_i": {
-      "count": 2,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
     },
     "clean_unquoted_object": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
-    "clusters_dictionary": {
-      "count": 6,
+    "close_definition_guard": {
+      "count": 1,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 6
+      "unique_pairs": 1
+    },
+    "clusters_dictionary": {
+      "count": 11,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 11
     },
     "common_president_title": {
-      "count": 14,
+      "count": 29,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 14
+      "unique_pairs": 29
     },
     "common_role_mid_sentence": {
+      "count": 18,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 18
+    },
+    "common_secondary_member_guard": {
+      "count": 12,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 12
+    },
+    "common_weekday_month": {
+      "count": 5,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 5
+    },
+    "comparative_kak_appositive": {
+      "count": 54,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 54
+    },
+    "comparative_kak_role_guard": {
+      "count": 4,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 4
+    },
+    "compound_adjectives_color": {
       "count": 8,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 8
     },
-    "common_secondary_member_guard": {
-      "count": 6,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 6
-    },
-    "common_weekday_month": {
-      "count": 3,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 3
-    },
-    "comparative_kak_appositive": {
-      "count": 23,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 23
-    },
-    "comparative_kak_role_guard": {
-      "count": 1,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
-    },
-    "complex_conjunction_split": {
-      "count": 1,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
-    },
-    "compound_adjectives_color": {
-      "count": 3,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 3
-    },
     "compound_adjectives_directional": {
-      "count": 2,
+      "count": 8,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
+      "unique_pairs": 8
     },
     "compound_adjectives_education": {
+      "count": 9,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 9
+    },
+    "compound_adjectives_social": {
       "count": 7,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 7
     },
-    "compound_adjectives_social": {
-      "count": 4,
+    "compound_adjectives_technical": {
+      "count": 2,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 4
+      "unique_pairs": 2
     },
     "compound_first_parts": {
-      "count": 1,
+      "count": 5,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
+      "unique_pairs": 5
     },
     "compound_first_parts_tech": {
-      "count": 1,
+      "count": 5,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
+      "unique_pairs": 5
     },
     "compound_nouns": {
-      "count": 4,
+      "count": 6,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 4
+      "unique_pairs": 6
     },
     "conjunction_sentence_guard": {
-      "count": 1,
+      "count": 2,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
+      "unique_pairs": 2
     },
     "consonant_hard_negative": {
       "count": 1,
@@ -932,34 +1056,49 @@
       "unique_pairs": 1
     },
     "dash_nominal_curated_safe_pairs": {
-      "count": 5,
+      "count": 7,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 5
+      "unique_pairs": 7
+    },
+    "dash_nominal_verbal_predicate_trap": {
+      "count": 2,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 2
     },
     "dataset": {
+      "count": 4,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 4
+    },
+    "dataset_keyboard_neighbor": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
     "dataset_split_space": {
-      "count": 1,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
-    },
-    "delete_comma_bez_ustali": {
-      "count": 1,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
-    },
-    "delete_comma_kak_chasy": {
-      "count": 7,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 7
-    },
-    "delete_comma_spustya_rukava": {
       "count": 2,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 2
+    },
+    "delete_comma_bez_ustali": {
+      "count": 2,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 2
+    },
+    "delete_comma_kak_chasy": {
+      "count": 17,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 17
+    },
+    "delete_comma_kak_pravilo_guard": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
+    },
+    "delete_comma_spustya_rukava": {
+      "count": 5,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 5
     },
     "delete_extra_dash_subject_predicate": {
       "count": 1,
@@ -967,29 +1106,64 @@
       "unique_pairs": 1
     },
     "delete_extra_quotes": {
-      "count": 17,
+      "count": 33,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 17
+      "unique_pairs": 33
     },
     "dependent_word": {
+      "count": 6,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 6
+    },
+    "der_dir": {
       "count": 3,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 3
     },
     "distribyutor": {
+      "count": 5,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 5
+    },
+    "distribyutor_keyboard_neighbor": {
       "count": 2,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 2
     },
-    "distribyutor_keyboard_neighbor": {
+    "document_civil_code": {
+      "count": 4,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 4
+    },
+    "document_constitution_rf": {
+      "count": 4,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 4
+    },
+    "document_federal_law_numbered": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
-    "document_federal_law_numbered": {
+    "document_tax_code": {
+      "count": 5,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 5
+    },
+    "dokumentaciya": {
       "count": 4,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 4
+    },
+    "dokumentaciya_insert": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
+    },
+    "dokumentaciya_keyboard_neighbor": {
+      "count": 2,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 2
     },
     "dokumentaciya_split_space": {
       "count": 1,
@@ -997,44 +1171,59 @@
       "unique_pairs": 1
     },
     "double_consonants": {
-      "count": 8,
+      "count": 23,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 8
+      "unique_pairs": 23
     },
     "endings_hard_negative": {
-      "count": 1,
+      "count": 4,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
+      "unique_pairs": 4
     },
     "eto_vot_znachit_dash": {
-      "count": 1,
+      "count": 5,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
+      "unique_pairs": 5
+    },
+    "event_constitution_day": {
+      "count": 2,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 2
     },
     "event_great_patriotic_war": {
       "count": 4,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 4
     },
-    "event_victory_day": {
-      "count": 2,
+    "event_new_year": {
+      "count": 1,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
+      "unique_pairs": 1
+    },
+    "event_russia_day": {
+      "count": 3,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 3
+    },
+    "event_victory_day": {
+      "count": 6,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 6
     },
     "exception_n": {
+      "count": 7,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 7
+    },
+    "exception_nn": {
       "count": 2,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 2
     },
-    "exception_nn": {
-      "count": 1,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
-    },
     "exceptions_hard_negative": {
-      "count": 1,
+      "count": 5,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
+      "unique_pairs": 5
     },
     "expanded_introductory": {
       "count": 1,
@@ -1042,204 +1231,264 @@
       "unique_pairs": 1
     },
     "feminine_hissing_soft_sign": {
-      "count": 6,
+      "count": 5,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 6
+      "unique_pairs": 5
     },
     "final_dot": {
-      "count": 29,
+      "count": 76,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 29
+      "unique_pairs": 76
+    },
+    "fixed_expression_spustya_rukava_guard": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
+    },
+    "formal_dative_lowercase_acceptable_guard": {
+      "count": 2,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 2
     },
     "formal_you_uppercase_guard": {
-      "count": 1,
+      "count": 4,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
+      "unique_pairs": 4
     },
     "formal_your_lowercase_acceptable_guard": {
-      "count": 2,
+      "count": 9,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
+      "unique_pairs": 9
     },
     "frejmvork": {
-      "count": 2,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
-    },
-    "frejmvork_replace": {
-      "count": 2,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
-    },
-    "gar_gor": {
-      "count": 1,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
-    },
-    "geo_already_correct_guard": {
-      "count": 1,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
-    },
-    "geo_city_single": {
-      "count": 12,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 12
-    },
-    "geo_common_noun_guard": {
-      "count": 1,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
-    },
-    "geo_country_multiword": {
       "count": 3,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 3
     },
-    "geo_country_single": {
-      "count": 1,
+    "frejmvork_replace": {
+      "count": 3,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
+      "unique_pairs": 3
     },
-    "gerund_phrase": {
+    "gar_gor": {
+      "count": 2,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 2
+    },
+    "geo_already_correct_guard": {
+      "count": 2,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 2
+    },
+    "geo_city_kazan": {
+      "count": 9,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 9
+    },
+    "geo_city_nizhny_novgorod": {
+      "count": 3,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 3
+    },
+    "geo_city_samara": {
+      "count": 4,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 4
+    },
+    "geo_city_single": {
+      "count": 10,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 10
+    },
+    "geo_city_tula": {
       "count": 7,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 7
     },
-    "gerund_phrase_technical": {
-      "count": 12,
+    "geo_country_belarus": {
+      "count": 2,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 12
+      "unique_pairs": 2
+    },
+    "geo_country_multiword": {
+      "count": 2,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 2
+    },
+    "geo_country_single": {
+      "count": 4,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 4
+    },
+    "gerund_phrase": {
+      "count": 21,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 21
+    },
+    "gerund_phrase_technical": {
+      "count": 33,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 33
     },
     "grammatika": {
+      "count": 2,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 2
+    },
+    "grammatika_insert": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
     "grammatika_one_m": {
-      "count": 3,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 3
-    },
-    "hard_sign_after_prefix": {
-      "count": 5,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 5
-    },
-    "hissing_o_e_yo": {
-      "count": 7,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 7
-    },
-    "homogeneous_objects_document_work": {
-      "count": 34,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 34
-    },
-    "homogeneous_objects_education_work": {
-      "count": 42,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 42
-    },
-    "homogeneous_objects_technical_work": {
-      "count": 31,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 31
-    },
-    "hyphen_appositions": {
-      "count": 2,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
-    },
-    "hyphen_appositions_technical": {
-      "count": 2,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
-    },
-    "infinitive_dash": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
-    "interfejs": {
-      "count": 4,
+    "grammatika_split_space": {
+      "count": 2,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 4
+      "unique_pairs": 2
+    },
+    "hard_sign_after_prefix": {
+      "count": 18,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 18
+    },
+    "hissing_o_e_yo": {
+      "count": 13,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 13
+    },
+    "homogeneous_objects_document_work": {
+      "count": 107,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 107
+    },
+    "homogeneous_objects_education_work": {
+      "count": 114,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 114
+    },
+    "homogeneous_objects_technical_work": {
+      "count": 105,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 105
+    },
+    "hyphen_appositions": {
+      "count": 3,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 3
+    },
+    "hyphen_appositions_technical": {
+      "count": 5,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 5
+    },
+    "infinitive_dash": {
+      "count": 2,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 2
+    },
+    "interfejs": {
+      "count": 8,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 8
     },
     "interfejs_keyboard_neighbor": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
-    "introductory_document_review": {
-      "count": 49,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 49
-    },
-    "introductory_final": {
-      "count": 7,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 7
-    },
-    "introductory_homonym_guard": {
-      "count": 2,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
-    },
-    "introductory_initial": {
-      "count": 8,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 8
-    },
-    "introductory_medial": {
-      "count": 10,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 10
-    },
-    "introductory_safe_clause": {
-      "count": 59,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 59
-    },
-    "invariant_prefix_hard_negative": {
-      "count": 2,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
-    },
-    "iskusstvennyj_insert": {
+    "interfejs_split_space": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
-    "kak_comparison": {
-      "count": 10,
+    "introductory_document_review": {
+      "count": 133,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 10
+      "unique_pairs": 133
+    },
+    "introductory_final": {
+      "count": 17,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 17
+    },
+    "introductory_homonym_guard": {
+      "count": 13,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 13
+    },
+    "introductory_initial": {
+      "count": 29,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 29
+    },
+    "introductory_medial": {
+      "count": 14,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 14
+    },
+    "introductory_safe_clause": {
+      "count": 137,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 137
+    },
+    "invariant_prefix_hard_negative": {
+      "count": 7,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 7
+    },
+    "iskusstvennyj": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
+    },
+    "iskusstvennyj_one_s": {
+      "count": 7,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 7
+    },
+    "kak_comparison": {
+      "count": 21,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 21
     },
     "kak_never_guard": {
+      "count": 3,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 3
+    },
+    "kak_quality_guard": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
     "kas_kos": {
-      "count": 1,
+      "count": 5,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
+      "unique_pairs": 5
     },
     "koe_pronouns": {
-      "count": 4,
+      "count": 10,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 4
+      "unique_pairs": 10
     },
     "kollektiv": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
-    "kollektiv_one_l": {
-      "count": 2,
+    "kollektiv_keyboard_neighbor": {
+      "count": 1,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
+      "unique_pairs": 1
+    },
+    "kollektiv_one_l": {
+      "count": 8,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 8
     },
     "kollektiv_split_space": {
       "count": 1,
@@ -1247,9 +1496,9 @@
       "unique_pairs": 1
     },
     "kommentarij": {
-      "count": 1,
+      "count": 3,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
+      "unique_pairs": 3
     },
     "kommentarij_keyboard_neighbor": {
       "count": 2,
@@ -1257,9 +1506,9 @@
       "unique_pairs": 2
     },
     "kompetenciya": {
-      "count": 2,
+      "count": 5,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
+      "unique_pairs": 5
     },
     "kompetenciya_keyboard_neighbor": {
       "count": 1,
@@ -1271,7 +1520,17 @@
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
+    "konfiguraciya": {
+      "count": 4,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 4
+    },
     "konfiguraciya_insert": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
+    },
+    "konfiguraciya_keyboard_neighbor": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
@@ -1281,25 +1540,45 @@
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
-    "konfiguraciya_split_space": {
-      "count": 1,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
-    },
     "korpus": {
+      "count": 3,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 3
+    },
+    "korpus_split_space": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
     "korrektnyj": {
-      "count": 3,
+      "count": 5,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 3
+      "unique_pairs": 5
     },
-    "kvalifikaciya_keyboard_neighbor": {
+    "korrektura": {
+      "count": 5,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 5
+    },
+    "korrektura_insert": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
+    },
+    "korrektura_keyboard_neighbor": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
+    },
+    "korrektura_replace": {
+      "count": 2,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 2
+    },
+    "kvalifikaciya": {
+      "count": 4,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 4
     },
     "kvalifikaciya_replace": {
       "count": 1,
@@ -1312,49 +1591,49 @@
       "unique_pairs": 1
     },
     "lag_lozh": {
+      "count": 5,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 5
+    },
+    "lestnica": {
       "count": 4,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 4
     },
-    "lestnica": {
+    "lestnica_missing_t": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
-    "lestnica_missing_t": {
-      "count": 6,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 6
-    },
     "mak_mok": {
-      "count": 2,
+      "count": 1,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
+      "unique_pairs": 1
     },
     "marketing": {
-      "count": 4,
+      "count": 8,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 4
+      "unique_pairs": 8
     },
     "masculine_hissing_no_soft_sign": {
-      "count": 4,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 4
-    },
-    "menedzhment": {
-      "count": 3,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 3
-    },
-    "mer_mir": {
-      "count": 2,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
-    },
-    "missing_quote_pair_simple": {
       "count": 5,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 5
+    },
+    "menedzhment": {
+      "count": 7,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 7
+    },
+    "mer_mir": {
+      "count": 8,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 8
+    },
+    "missing_quote_pair_simple": {
+      "count": 15,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 15
     },
     "missing_quote_pair_title": {
       "count": 10,
@@ -1362,21 +1641,41 @@
       "unique_pairs": 10
     },
     "model": {
-      "count": 4,
+      "count": 6,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 4
+      "unique_pairs": 6
     },
-    "n_nn_basic": {
-      "count": 22,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 22
-    },
-    "n_nn_hard_negative": {
+    "model_insert": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
+    "model_keyboard_neighbor": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
+    },
+    "model_replace": {
+      "count": 2,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 2
+    },
+    "n_nn_basic": {
+      "count": 48,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 48
+    },
+    "n_nn_hard_negative": {
+      "count": 5,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 5
+    },
     "naperekor": {
+      "count": 3,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 3
+    },
+    "naperekor_insert": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
@@ -1386,35 +1685,55 @@
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
-    "naschet_about": {
-      "count": 2,
+    "naperekor_split_space": {
+      "count": 1,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
+      "unique_pairs": 1
+    },
+    "napodobie_na_podobie": {
+      "count": 3,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 3
+    },
+    "naschet_about": {
+      "count": 8,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 8
     },
     "naschet_na_schet": {
-      "count": 2,
+      "count": 3,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
+      "unique_pairs": 3
     },
     "navstrechu_na_vstrechu": {
-      "count": 3,
+      "count": 7,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 3
+      "unique_pairs": 7
     },
     "ne_adjectives": {
+      "count": 12,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 12
+    },
+    "ne_adverbs": {
       "count": 3,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 3
     },
-    "ne_adverbs": {
-      "count": 2,
+    "ne_chto_inoe_guard": {
+      "count": 3,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
+      "unique_pairs": 3
+    },
+    "ne_kto_inoy_guard": {
+      "count": 3,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 3
     },
     "ne_nouns": {
-      "count": 4,
+      "count": 6,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 4
+      "unique_pairs": 6
     },
     "ne_participles": {
       "count": 5,
@@ -1422,14 +1741,14 @@
       "unique_pairs": 5
     },
     "ne_verb": {
-      "count": 6,
+      "count": 11,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 6
+      "unique_pairs": 11
     },
     "nesmotrya_concessive": {
-      "count": 5,
+      "count": 13,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 5
+      "unique_pairs": 13
     },
     "nesmotrya_na_ne_smotrya_na": {
       "count": 2,
@@ -1437,74 +1756,94 @@
       "unique_pairs": 2
     },
     "nevziraya_na_ne_vziraya_na": {
-      "count": 2,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
-    },
-    "no_conjunction_series": {
-      "count": 32,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 32
-    },
-    "no_dash_subject_predicate_verb": {
-      "count": 1,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
-    },
-    "normal_manner_guard": {
-      "count": 1,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
-    },
-    "normalize_straight_quotes": {
-      "count": 11,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 11
-    },
-    "noun_declension_case": {
-      "count": 7,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 7
-    },
-    "noun_predicate_dash": {
-      "count": 8,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 8
-    },
-    "nu_ka": {
-      "count": 4,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 4
-    },
-    "object_without_quotes_guard": {
-      "count": 1,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
-    },
-    "obozhayu": {
-      "count": 1,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
-    },
-    "obozhayu_a": {
       "count": 3,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 3
     },
-    "obozhayu_keyboard_neighbor": {
+    "nichto_inoe_guard": {
+      "count": 3,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 3
+    },
+    "nikto_inoy_guard": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
+    },
+    "no_conjunction_series": {
+      "count": 77,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 77
+    },
+    "no_dash_subject_predicate_verb": {
+      "count": 2,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 2
+    },
+    "normalize_straight_quotes": {
+      "count": 20,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 20
+    },
+    "noun_declension_case": {
+      "count": 9,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 9
+    },
+    "noun_predicate_dash": {
+      "count": 14,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 14
+    },
+    "nu_ka": {
+      "count": 8,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 8
+    },
+    "numeral_predicate_dash": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
+    },
+    "object_without_quotes_guard": {
+      "count": 2,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 2
+    },
+    "obozhayu": {
+      "count": 2,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 2
+    },
+    "obozhayu_a": {
+      "count": 4,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 4
     },
     "obozhayu_replace": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
-    "oflajn": {
-      "count": 4,
+    "obozhayu_split_space": {
+      "count": 1,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 4
+      "unique_pairs": 1
+    },
+    "oflajn": {
+      "count": 8,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 8
+    },
+    "oflajn_keyboard_neighbor": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
+    },
+    "oflajn_transpose": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
     },
     "onlajn": {
       "count": 3,
@@ -1516,45 +1855,80 @@
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
-    "ordinary_event_words_guard": {
+    "ordinal_adverbs": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
-    "ordinary_law_guard": {
+    "ordinary_event_words_guard": {
       "count": 2,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 2
     },
+    "ordinary_law_guard": {
+      "count": 3,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 3
+    },
     "ordinary_ministry_guard": {
+      "count": 6,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 6
+    },
+    "ordinary_object_no_quotes_guard": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
     "ordinary_said_phrase_guard": {
+      "count": 5,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 5
+    },
+    "ordinary_university_guard": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
     "orfografiya": {
-      "count": 2,
+      "count": 3,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
+      "unique_pairs": 3
     },
     "orfografiya_insert": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
-    "organization_ministry": {
-      "count": 2,
+    "orfografiya_replace": {
+      "count": 1,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
+      "unique_pairs": 1
+    },
+    "organization_central_bank": {
+      "count": 5,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 5
+    },
+    "organization_constitutional_court": {
+      "count": 8,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 8
+    },
+    "organization_ministry": {
+      "count": 11,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 11
     },
     "organization_rgrtu": {
-      "count": 7,
+      "count": 4,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 7
+      "unique_pairs": 4
+    },
+    "organization_state_duma": {
+      "count": 3,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 3
     },
     "otchego_guard": {
       "count": 1,
@@ -1562,24 +1936,34 @@
       "unique_pairs": 1
     },
     "otchego_ot_chego": {
+      "count": 9,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 9
+    },
+    "ottogo_guard": {
       "count": 3,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 3
     },
-    "ottogo_guard": {
-      "count": 1,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
-    },
     "ottogo_ot_togo": {
-      "count": 1,
+      "count": 4,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
+      "unique_pairs": 4
     },
     "paired_voicing": {
-      "count": 2,
+      "count": 8,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
+      "unique_pairs": 8
+    },
+    "parallelnyj": {
+      "count": 5,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 5
+    },
+    "parallelnyj_insert": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
     },
     "parallelnyj_keyboard_neighbor": {
       "count": 1,
@@ -1587,69 +1971,104 @@
       "unique_pairs": 1
     },
     "participial_after_noun": {
-      "count": 19,
+      "count": 38,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 19
+      "unique_pairs": 38
     },
     "participle_nn": {
-      "count": 4,
+      "count": 6,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 4
+      "unique_pairs": 6
+    },
+    "per_pir": {
+      "count": 3,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 3
     },
     "periodicheski": {
-      "count": 2,
+      "count": 3,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
+      "unique_pairs": 3
     },
-    "periodicheski_split_space": {
+    "periodicheski_insert": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
+    },
+    "periodicheski_keyboard_neighbor": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
+    },
+    "person_alexey_orlov": {
+      "count": 9,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 9
+    },
+    "person_already_correct_guard": {
+      "count": 4,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 4
     },
     "person_anna_kuznetsova": {
       "count": 5,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 5
     },
-    "person_ivan_petrov": {
+    "person_elena_morozova": {
       "count": 5,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 5
     },
+    "person_ivan_petrov": {
+      "count": 4,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 4
+    },
     "person_maria_ivanova": {
-      "count": 3,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 3
-    },
-    "plav_plov_plyv": {
-      "count": 2,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
-    },
-    "po_adverb_emu": {
-      "count": 3,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 3
-    },
-    "po_adverb_omu": {
-      "count": 2,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
-    },
-    "po_adverb_ski": {
-      "count": 1,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
-    },
-    "po_adverb_tski": {
       "count": 7,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 7
     },
-    "podrobnyj": {
+    "person_olga_sokolova": {
+      "count": 6,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 6
+    },
+    "person_sergey_smirnov": {
       "count": 2,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 2
+    },
+    "plav_plov_plyv": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
+    },
+    "po_adverb_emu": {
+      "count": 6,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 6
+    },
+    "po_adverb_omu": {
+      "count": 10,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 10
+    },
+    "po_adverb_ski": {
+      "count": 7,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 7
+    },
+    "po_adverb_tski": {
+      "count": 11,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 11
+    },
+    "podrobnyj": {
+      "count": 4,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 4
     },
     "podrobnyj_split_space": {
       "count": 1,
@@ -1657,39 +2076,44 @@
       "unique_pairs": 1
     },
     "pol_before_capital": {
-      "count": 3,
+      "count": 7,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 3
+      "unique_pairs": 7
     },
     "pol_before_capital_region": {
-      "count": 4,
+      "count": 7,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 4
+      "unique_pairs": 7
     },
     "pol_before_l": {
-      "count": 1,
+      "count": 8,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
+      "unique_pairs": 8
     },
     "pol_before_l_education": {
-      "count": 1,
+      "count": 8,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
+      "unique_pairs": 8
     },
     "pol_before_vowel": {
-      "count": 5,
+      "count": 8,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 5
+      "unique_pairs": 8
     },
     "pol_before_vowel_document": {
-      "count": 3,
+      "count": 7,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 3
+      "unique_pairs": 7
     },
-    "polu_compounds_time": {
+    "polu_compounds": {
       "count": 4,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 4
+    },
+    "polu_compounds_time": {
+      "count": 9,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 9
     },
     "polzovatel": {
       "count": 1,
@@ -1697,56 +2121,76 @@
       "unique_pairs": 1
     },
     "poodinochke": {
-      "count": 2,
+      "count": 3,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
+      "unique_pairs": 3
     },
     "poodinochke_keyboard_neighbor": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
+    "poodinochke_split_space": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
+    },
     "postfix_to_libo_nibud": {
+      "count": 12,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 12
+    },
+    "potomu_chto_po_tomu_chto": {
+      "count": 2,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 2
+    },
+    "prazdnik": {
+      "count": 4,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 4
+    },
+    "prazdnik_missing_d": {
+      "count": 6,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 6
+    },
+    "pre_pri_hard_negative": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
+    },
+    "pre_pri_meaning": {
+      "count": 14,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 14
+    },
+    "prefix_z_s_deaf": {
       "count": 7,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 7
     },
-    "prazdnik": {
-      "count": 1,
+    "prefix_z_s_voiced": {
+      "count": 10,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
+      "unique_pairs": 10
     },
-    "prazdnik_keyboard_neighbor": {
-      "count": 1,
+    "prefixed_participle": {
+      "count": 16,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
+      "unique_pairs": 16
     },
-    "prazdnik_missing_d": {
+    "prilozhenie": {
       "count": 3,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 3
     },
-    "pre_pri_meaning": {
-      "count": 6,
+    "prilozhenie_keyboard_neighbor": {
+      "count": 1,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 6
+      "unique_pairs": 1
     },
-    "prefix_z_s_deaf": {
-      "count": 6,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 6
-    },
-    "prefix_z_s_voiced": {
-      "count": 5,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 5
-    },
-    "prefixed_participle": {
-      "count": 6,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 6
-    },
-    "prilozhenie": {
+    "prilozhenie_split_space": {
       "count": 2,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 2
@@ -1767,46 +2211,76 @@
       "unique_pairs": 1
     },
     "programma": {
-      "count": 2,
+      "count": 7,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
-    },
-    "programma_insert": {
-      "count": 1,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
+      "unique_pairs": 7
     },
     "promoushen": {
-      "count": 2,
+      "count": 5,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
+      "unique_pairs": 5
     },
     "promoushen_replace": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
-    "rast_rash_ros": {
+    "proper_name_uppercase_guard": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
+    },
+    "punktuaciya": {
       "count": 3,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 3
     },
-    "ravn_rovn": {
+    "punktuaciya_keyboard_neighbor": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
+    },
+    "punktuaciya_replace": {
       "count": 2,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 2
     },
-    "raz_roz": {
+    "punktuaciya_split_space": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
+    },
+    "rast_rash_ros": {
       "count": 4,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 4
     },
-    "razrabotchik": {
-      "count": 2,
+    "ravn_rovn": {
+      "count": 4,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
+      "unique_pairs": 4
+    },
+    "raz_roz": {
+      "count": 13,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 13
+    },
+    "razrabotchik": {
+      "count": 3,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 3
+    },
+    "razrabotchik_keyboard_neighbor": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
     },
     "reglament": {
+      "count": 3,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 3
+    },
+    "reglament_replace": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
@@ -1816,185 +2290,220 @@
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
-    "repeated_conjunction": {
-      "count": 1,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
-    },
-    "repeated_conjunction_technical": {
-      "count": 3,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 3
-    },
-    "resurs": {
-      "count": 3,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 3
-    },
-    "resurs_keyboard_neighbor": {
+    "repeated_adverbs": {
       "count": 2,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 2
     },
-    "rieltor": {
-      "count": 5,
+    "repeated_adverbs_process": {
+      "count": 1,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 5
+      "unique_pairs": 1
     },
-    "rieltor_keyboard_neighbor": {
+    "repeated_conjunction": {
+      "count": 3,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 3
+    },
+    "repeated_conjunction_technical": {
+      "count": 7,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 7
+    },
+    "resurs": {
+      "count": 4,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 4
+    },
+    "resurs_keyboard_neighbor": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
+    },
+    "rieltor": {
+      "count": 10,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 10
+    },
+    "rieltor_replace": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
     "sentence_after_period_basic": {
-      "count": 5,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 5
-    },
-    "sentence_start_basic": {
-      "count": 2,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
-    },
-    "sentence_start_uppercase_guard": {
-      "count": 2,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
-    },
-    "separating_soft_sign": {
       "count": 3,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 3
     },
-    "serdce": {
-      "count": 2,
+    "sentence_start_basic": {
+      "count": 6,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
+      "unique_pairs": 6
     },
-    "serdce_insert": {
+    "sentence_start_uppercase_guard": {
+      "count": 4,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 4
+    },
+    "separating_soft_sign": {
+      "count": 17,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 17
+    },
+    "serdce": {
+      "count": 4,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 4
+    },
+    "serdce_keyboard_neighbor": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
     "serdce_missing_d": {
-      "count": 3,
+      "count": 6,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 3
+      "unique_pairs": 6
+    },
+    "serdce_replace": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
     },
     "server": {
       "count": 2,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 2
     },
-    "server_insert": {
-      "count": 1,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
-    },
     "shablon": {
-      "count": 4,
+      "count": 6,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 4
+      "unique_pairs": 6
     },
     "shablon_keyboard_neighbor": {
+      "count": 3,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 3
+    },
+    "shablon_split_space": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
     "short_adjective_no_soft_sign": {
-      "count": 2,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
-    },
-    "short_participle": {
       "count": 3,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 3
     },
-    "short_participle_n": {
-      "count": 2,
+    "short_participle": {
+      "count": 5,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
+      "unique_pairs": 5
+    },
+    "short_participle_n": {
+      "count": 6,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 6
     },
     "simple_case_context": {
-      "count": 2,
+      "count": 5,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
+      "unique_pairs": 5
     },
     "simple_final_document_context": {
-      "count": 21,
+      "count": 65,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 21
+      "unique_pairs": 65
     },
     "simple_final_education_context": {
-      "count": 18,
+      "count": 51,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 18
+      "unique_pairs": 51
     },
     "simple_final_intransitive_context": {
-      "count": 12,
+      "count": 39,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 12
+      "unique_pairs": 39
     },
     "simple_final_statement": {
-      "count": 19,
+      "count": 51,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 19
+      "unique_pairs": 51
     },
     "simple_final_technical_context": {
-      "count": 23,
+      "count": 63,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 23
+      "unique_pairs": 63
     },
     "simple_final_user_interface_context": {
-      "count": 19,
+      "count": 54,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 19
+      "unique_pairs": 54
+    },
+    "single_gerund": {
+      "count": 3,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 3
     },
     "single_i_guard": {
-      "count": 1,
+      "count": 8,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
+      "unique_pairs": 8
     },
     "slovno_comparison": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
-    "speech_before_author_missing_comma_dash_only": {
-      "count": 16,
+    "space_identity": {
+      "count": 1,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 16
+      "unique_pairs": 1
+    },
+    "speech_before_author_already_correct_guard": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
+    },
+    "speech_before_author_missing_comma_dash_only": {
+      "count": 56,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 56
     },
     "speech_before_author_missing_quotes_comma_dash": {
-      "count": 18,
+      "count": 57,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 18
+      "unique_pairs": 57
+    },
+    "split_tokenizaciya": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
     },
     "spp_chto": {
-      "count": 2,
+      "count": 17,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
+      "unique_pairs": 17
     },
     "spp_esli": {
-      "count": 9,
+      "count": 21,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 9
+      "unique_pairs": 21
     },
     "spp_kogda": {
-      "count": 8,
+      "count": 14,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 8
+      "unique_pairs": 14
     },
     "ssp_a": {
-      "count": 6,
+      "count": 12,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 6
+      "unique_pairs": 12
     },
     "ssp_i": {
-      "count": 2,
+      "count": 10,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
+      "unique_pairs": 10
     },
     "stable_kak_chasy_guard": {
       "count": 1,
@@ -2002,119 +2511,144 @@
       "unique_pairs": 1
     },
     "subject_not_address_guard": {
-      "count": 7,
+      "count": 18,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 7
+      "unique_pairs": 18
     },
     "subordinate_that_check_showed_content": {
-      "count": 27,
+      "count": 71,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 27
+      "unique_pairs": 71
     },
     "subordinate_that_report_content": {
-      "count": 32,
+      "count": 101,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 32
+      "unique_pairs": 101
     },
     "subordinate_that_technical_observation": {
-      "count": 44,
+      "count": 124,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 44
+      "unique_pairs": 124
     },
     "suffix_an_yan_enn": {
-      "count": 1,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
-    },
-    "suffix_chiv_liv": {
-      "count": 1,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
-    },
-    "suffix_enn_yan": {
-      "count": 37,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 37
-    },
-    "suffix_hard_negative": {
-      "count": 2,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
-    },
-    "suffix_ink_enk": {
-      "count": 1,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
-    },
-    "suffix_its_ets": {
-      "count": 28,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 28
-    },
-    "suffix_its_ets_group": {
-      "count": 3,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 3
-    },
-    "suffix_k_sk": {
-      "count": 3,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 3
-    },
-    "suffix_ochk_echk": {
-      "count": 2,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
-    },
-    "suffix_ova_eva_yva_iva": {
       "count": 4,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 4
     },
-    "suffix_participles_ush_yush_ash_yash": {
-      "count": 2,
+    "suffix_chiv_liv": {
+      "count": 5,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
+      "unique_pairs": 5
     },
-    "takzhe_additive_merge": {
+    "suffix_ek_ik": {
+      "count": 5,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 5
+    },
+    "suffix_enn_yan": {
+      "count": 93,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 93
+    },
+    "suffix_ev_iv": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
+    },
+    "suffix_hard_negative": {
+      "count": 4,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 4
+    },
+    "suffix_ink_enk": {
       "count": 8,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 8
     },
-    "takzhe_comparison_split": {
-      "count": 11,
+    "suffix_its_ets": {
+      "count": 76,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 11
+      "unique_pairs": 76
     },
-    "takzhe_tak_zhe": {
-      "count": 4,
+    "suffix_its_ets_group": {
+      "count": 9,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 4
+      "unique_pairs": 9
     },
-    "ter_tir": {
+    "suffix_k_sk": {
+      "count": 6,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 6
+    },
+    "suffix_ochk_echk": {
+      "count": 5,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 5
+    },
+    "suffix_ova_eva_yva_iva": {
+      "count": 6,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 6
+    },
+    "suffix_participles_ush_yush_ash_yash": {
+      "count": 7,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 7
+    },
+    "takzhe_additive_merge": {
+      "count": 45,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 45
+    },
+    "takzhe_comparison_guard": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
-    "territoriya": {
+    "takzhe_comparison_split": {
+      "count": 18,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 18
+    },
+    "takzhe_tak_zhe": {
+      "count": 9,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 9
+    },
+    "ter_tir": {
       "count": 2,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 2
     },
-    "territoriya_one_r": {
+    "territoriya": {
       "count": 3,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 3
     },
-    "territoriya_split_space": {
+    "territoriya_insert": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
-    "testirovshchik": {
+    "territoriya_one_r": {
+      "count": 7,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 7
+    },
+    "territoriya_replace": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
+    },
+    "territoriya_split_space": {
+      "count": 2,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 2
+    },
+    "testirovshchik": {
+      "count": 4,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 4
     },
     "testirovshchik_keyboard_neighbor": {
       "count": 1,
@@ -2122,19 +2656,39 @@
       "unique_pairs": 1
     },
     "testirovshchik_replace": {
-      "count": 1,
+      "count": 2,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
+      "unique_pairs": 2
     },
     "tochno_comparison": {
+      "count": 3,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 3
+    },
+    "tokenizaciya": {
+      "count": 4,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 4
+    },
+    "tokenizaciya_insert": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
-    "tozhe_additive_merge": {
-      "count": 5,
+    "tokenizaciya_keyboard_neighbor": {
+      "count": 1,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 5
+      "unique_pairs": 1
+    },
+    "tokenizaciya_split_space": {
+      "count": 3,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 3
+    },
+    "tozhe_additive_merge": {
+      "count": 21,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 21
     },
     "tozhe_demonstrative_guard": {
       "count": 1,
@@ -2142,44 +2696,49 @@
       "unique_pairs": 1
     },
     "tozhe_demonstrative_split": {
-      "count": 2,
+      "count": 9,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
-    },
-    "tozhe_to_zhe": {
-      "count": 2,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
+      "unique_pairs": 9
     },
     "tsya_ttsya_controlled_document": {
-      "count": 82,
+      "count": 171,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 82
+      "unique_pairs": 171
     },
     "tsya_ttsya_controlled_person": {
-      "count": 111,
+      "count": 229,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 111
+      "unique_pairs": 229
     },
     "unchecked_dictionary": {
+      "count": 4,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 4
+    },
+    "unpronounced_consonants": {
+      "count": 13,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 13
+    },
+    "uprazhnenie": {
+      "count": 4,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 4
+    },
+    "uprazhnenie_insert": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
-    "unpronounced_consonants": {
-      "count": 7,
+    "uprazhnenie_keyboard_neighbor": {
+      "count": 1,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 7
+      "unique_pairs": 1
     },
-    "uprazhnenie": {
-      "count": 3,
+    "uprazhnenie_split_space": {
+      "count": 1,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 3
-    },
-    "uprazhnenie_insert": {
-      "count": 2,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
+      "unique_pairs": 1
     },
     "v_prodolzhenie_v_prodolzhenii": {
       "count": 2,
@@ -2187,51 +2746,61 @@
       "unique_pairs": 2
     },
     "v_techenie_literal_guard": {
-      "count": 2,
+      "count": 1,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
+      "unique_pairs": 1
     },
     "v_techenie_temporal": {
-      "count": 22,
+      "count": 56,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 22
+      "unique_pairs": 56
     },
     "v_techenie_v_techenii": {
-      "count": 4,
+      "count": 10,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 4
+      "unique_pairs": 10
     },
     "vedomost": {
+      "count": 6,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 6
+    },
+    "verb_em_im": {
       "count": 3,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 3
     },
-    "verb_em_im": {
-      "count": 4,
+    "verb_esh_ish": {
+      "count": 1,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 4
+      "unique_pairs": 1
     },
     "verb_et_it_infinitive": {
-      "count": 1,
+      "count": 2,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
+      "unique_pairs": 2
     },
     "verb_ete_ite": {
-      "count": 1,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
-    },
-    "verb_personal_endings": {
-      "count": 7,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 7
-    },
-    "verb_soft_sign": {
       "count": 4,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 4
     },
+    "verb_personal_endings": {
+      "count": 13,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 13
+    },
+    "verb_soft_sign": {
+      "count": 8,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 8
+    },
     "vperemeshku": {
+      "count": 3,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 3
+    },
+    "vperemeshku_insert": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
@@ -2241,45 +2810,55 @@
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
-    "vposledstvii": {
-      "count": 3,
+    "vperemeshku_replace": {
+      "count": 1,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 3
+      "unique_pairs": 1
+    },
+    "vposledstvii": {
+      "count": 4,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 4
+    },
+    "vposledstvii_insert": {
+      "count": 1,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 1
     },
     "vse_taki": {
-      "count": 2,
+      "count": 6,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
+      "unique_pairs": 6
     },
     "vsledstvie_causal": {
-      "count": 1,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
-    },
-    "vsledstvie_literal_guard": {
-      "count": 2,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
-    },
-    "vsledstvie_v_sledstvii": {
       "count": 3,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 3
     },
-    "vvidu_causal": {
+    "vsledstvie_literal_guard": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
     },
-    "vvidu_literal_guard": {
-      "count": 1,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
-    },
-    "vvidu_v_vidu": {
+    "vsledstvie_v_sledstvii": {
       "count": 5,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 5
+    },
+    "vvidu_causal": {
+      "count": 4,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 4
+    },
+    "vvidu_literal_guard": {
+      "count": 2,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 2
+    },
+    "vvidu_v_vidu": {
+      "count": 8,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 8
     },
     "zachem_guard": {
       "count": 1,
@@ -2287,9 +2866,19 @@
       "unique_pairs": 1
     },
     "zachem_merge": {
-      "count": 1,
+      "count": 2,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 1
+      "unique_pairs": 2
+    },
+    "zachem_za_chem": {
+      "count": 4,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 4
+    },
+    "zar_zor": {
+      "count": 2,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 2
     },
     "zato_adversative_merge": {
       "count": 1,
@@ -2297,840 +2886,1087 @@
       "unique_pairs": 1
     },
     "zato_preposition_split": {
-      "count": 2,
+      "count": 4,
       "duplicate_pair_rate": 0.0,
-      "unique_pairs": 2
+      "unique_pairs": 4
     },
     "zato_za_to": {
+      "count": 9,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 9
+    },
+    "zdes": {
       "count": 3,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 3
     },
-    "zdes_split_space": {
+    "zdes_insert": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
+    },
+    "zdes_s": {
+      "count": 2,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 2
     },
     "zheg_zhig": {
+      "count": 4,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 4
+    },
+    "zhi_shi": {
+      "count": 14,
+      "duplicate_pair_rate": 0.0,
+      "unique_pairs": 14
+    },
+    "znachit_verb_guard": {
       "count": 1,
       "duplicate_pair_rate": 0.0,
       "unique_pairs": 1
-    },
-    "zhi_shi": {
-      "count": 5,
-      "duplicate_pair_rate": 0.0,
-      "unique_pairs": 5
     }
   },
   "duplicate_source_rate": 0.0,
   "duplicate_target_rate": 0.0,
   "family_distribution": {
-    "adversative": 100,
-    "casing": 91,
-    "compound_spelling": 135,
-    "dash_nominal": 5,
-    "dictionary_typo": 201,
-    "homogeneous_objects": 107,
-    "introductory": 108,
-    "orthography_morphemic": 291,
-    "quotation_dialogue": 163,
-    "semantic": 102,
-    "simple_transitive": 112,
-    "subordinate_that": 103,
-    "syntax_punctuation": 289,
-    "tsya_ttsya": 193
+    "adversative": 299,
+    "casing": 239,
+    "compound_spelling": 311,
+    "dash_nominal": 9,
+    "dictionary_typo": 437,
+    "homogeneous_objects": 326,
+    "introductory": 270,
+    "orthography_morphemic": 698,
+    "quotation_dialogue": 389,
+    "semantic": 287,
+    "simple_transitive": 323,
+    "subordinate_that": 296,
+    "syntax_punctuation": 716,
+    "tsya_ttsya": 400
   },
   "first_failed_examples": [],
   "gap_edit_count_distribution": {
-    "0": 1186,
-    "1": 630,
-    "2": 168,
-    "3": 16
+    "0": 2801,
+    "1": 1770,
+    "2": 393,
+    "3": 36
   },
   "layer_distribution": {
-    "adversative": 100,
-    "casing": 91,
-    "compound_spelling": 135,
-    "dash_nominal": 5,
-    "dictionary_typo": 201,
-    "homogeneous_objects": 107,
-    "introductory": 108,
-    "morpheme": 291,
-    "quotation_dialogue": 163,
-    "semantic": 102,
-    "simple_transitive": 112,
-    "subordinate_that": 103,
-    "syntax_punctuation": 289,
-    "tsya_ttsya": 193
+    "adversative": 299,
+    "casing": 239,
+    "compound_spelling": 311,
+    "dash_nominal": 9,
+    "dictionary_typo": 437,
+    "homogeneous_objects": 326,
+    "introductory": 270,
+    "morpheme": 698,
+    "quotation_dialogue": 389,
+    "semantic": 287,
+    "simple_transitive": 323,
+    "subordinate_that": 296,
+    "syntax_punctuation": 716,
+    "tsya_ttsya": 400
   },
   "mode_distribution": {
-    "clean_identity": 138,
-    "hard_negative": 123,
-    "positive": 1739
+    "clean_identity": 352,
+    "hard_negative": 349,
+    "positive": 4299
   },
   "output_path": "D:\\projects\\ai-assistant\\data\\generated_eval\\val.jsonl",
   "rule_distribution": {
-    "casing_common_lowercase": 27,
-    "casing_documents_events": 13,
-    "casing_formal_you_guard": 3,
-    "casing_geo_names": 18,
-    "casing_organizations": 10,
-    "casing_person_names": 13,
-    "casing_sentence_start": 7,
-    "comma_adversative": 100,
-    "comma_homogeneous": 107,
-    "comma_introductory": 108,
-    "comma_subordinate": 103,
-    "compound_adverbs": 13,
-    "compound_ne_spellings": 20,
-    "compound_nouns_adjectives": 26,
-    "compound_pol_polu": 21,
-    "compound_prepositions": 23,
-    "compound_pronouns_particles": 17,
-    "compound_service_words": 15,
-    "dash_subject_predicate": 5,
-    "dialogue_author_before": 63,
-    "dialogue_author_inside_speech": 17,
-    "dialogue_speech_before_author": 36,
-    "dictionary_borrowed_words": 31,
-    "dictionary_common_misspellings": 28,
-    "dictionary_domain_terms": 31,
-    "dictionary_normative_words": 37,
-    "final_punctuation": 112,
-    "morpheme_consonants": 24,
-    "morpheme_endings": 21,
-    "morpheme_hissing_vowels": 22,
-    "morpheme_n_nn": 25,
-    "morpheme_prefixes": 23,
-    "morpheme_root_vowels": 30,
-    "morpheme_soft_hard_signs": 24,
-    "morpheme_suffixes": 25,
-    "n_nn_basic": 32,
-    "punct_address_interjection": 35,
-    "punct_bsp": 9,
-    "punct_comparative_turns": 16,
-    "punct_complex_sentences": 39,
-    "punct_dash_syntax": 17,
-    "punct_detached_adverbials": 24,
-    "punct_detached_definitions": 22,
-    "punct_final_marks": 39,
-    "punct_fixed_expression_guards": 13,
-    "punct_homogeneous_extended": 45,
-    "punct_introductory_extended": 30,
-    "quote_extra_marks": 19,
-    "quote_normalization": 12,
-    "quote_pairing": 16,
-    "semantic_comparative_context": 24,
-    "semantic_derived_prepositions": 36,
-    "semantic_introductory_context": 2,
-    "semantic_service_words": 40,
-    "suffix_enn_yan": 37,
-    "suffix_its_ets": 28,
-    "tsya_ttsya": 193,
-    "typo_character_noise": 28,
-    "typo_keyboard_neighbor": 28,
-    "typo_space_noise": 18
+    "casing_common_lowercase": 57,
+    "casing_documents_events": 35,
+    "casing_formal_you_guard": 15,
+    "casing_geo_names": 43,
+    "casing_organizations": 38,
+    "casing_person_names": 42,
+    "casing_sentence_start": 9,
+    "comma_adversative": 299,
+    "comma_homogeneous": 326,
+    "comma_introductory": 270,
+    "comma_subordinate": 296,
+    "compound_adverbs": 38,
+    "compound_ne_spellings": 37,
+    "compound_nouns_adjectives": 58,
+    "compound_pol_polu": 58,
+    "compound_prepositions": 43,
+    "compound_pronouns_particles": 36,
+    "compound_service_words": 41,
+    "dash_subject_predicate": 9,
+    "dialogue_author_before": 136,
+    "dialogue_author_inside_speech": 39,
+    "dialogue_bracket_guards": 9,
+    "dialogue_speech_before_author": 118,
+    "dictionary_borrowed_words": 56,
+    "dictionary_common_misspellings": 63,
+    "dictionary_domain_terms": 76,
+    "dictionary_normative_words": 79,
+    "final_punctuation": 323,
+    "morpheme_consonants": 56,
+    "morpheme_endings": 41,
+    "morpheme_hissing_vowels": 58,
+    "morpheme_n_nn": 57,
+    "morpheme_prefixes": 52,
+    "morpheme_root_vowels": 67,
+    "morpheme_soft_hard_signs": 56,
+    "morpheme_suffixes": 70,
+    "n_nn_basic": 72,
+    "punct_address_interjection": 90,
+    "punct_bsp": 16,
+    "punct_comparative_turns": 30,
+    "punct_complex_sentences": 104,
+    "punct_dash_syntax": 32,
+    "punct_detached_adverbials": 71,
+    "punct_detached_definitions": 51,
+    "punct_final_marks": 96,
+    "punct_fixed_expression_guards": 35,
+    "punct_homogeneous_extended": 111,
+    "punct_introductory_extended": 80,
+    "quote_extra_marks": 36,
+    "quote_normalization": 23,
+    "quote_pairing": 28,
+    "semantic_comparative_context": 58,
+    "semantic_derived_prepositions": 88,
+    "semantic_introductory_context": 13,
+    "semantic_ne_ni": 10,
+    "semantic_service_words": 118,
+    "suffix_enn_yan": 93,
+    "suffix_its_ets": 76,
+    "tsya_ttsya": 400,
+    "typo_character_noise": 62,
+    "typo_keyboard_neighbor": 59,
+    "typo_space_noise": 42
   },
   "seed": 10000013,
   "seed_offset": 10000000,
   "split": "val",
   "split_seed_overlap_with_train": false,
-  "split_seed_range_end": 10500302,
+  "split_seed_range_end": 10500508,
   "split_seed_range_start": 10000013,
   "sub_rule_distribution": {
-    "address_final": 6,
-    "address_initial": 10,
-    "address_medial": 6,
-    "adjective_case_endings": 4,
-    "adjective_n": 2,
-    "adjective_nn": 11,
-    "adverbial_adverb_guard": 2,
-    "adversative_document_correction": 28,
-    "adversative_education_context": 35,
-    "adversative_technical_interface": 37,
-    "agentstvo": 1,
-    "agentstvo_keyboard_neighbor": 1,
-    "agentstvo_missing_t": 1,
-    "akkaunt": 2,
+    "address_final": 14,
+    "address_initial": 23,
+    "address_medial": 21,
+    "adjective_case_endings": 10,
+    "adjective_n": 6,
+    "adjective_nn": 22,
+    "adverbial_adverb_guard": 3,
+    "adversative_document_correction": 111,
+    "adversative_education_context": 101,
+    "adversative_technical_interface": 87,
+    "agentstvo": 4,
+    "agentstvo_keyboard_neighbor": 2,
+    "agentstvo_missing_t": 6,
+    "agentstvo_split_space": 3,
+    "akkaunt": 5,
+    "akkaunt_insert": 1,
+    "akkaunt_keyboard_neighbor": 1,
     "akkuratnyj": 1,
-    "akkuratnyj_one_k": 1,
-    "akkuratnyj_split_space": 1,
-    "aktualnyj_insert": 1,
-    "aktualnyj_keyboard_neighbor": 2,
-    "aktualnyj_split_space": 1,
-    "algoritm": 2,
-    "already_final_guard": 2,
-    "alternating_hard_negative": 1,
-    "apellyaciya": 3,
+    "akkuratnyj_insert": 1,
+    "akkuratnyj_one_k": 5,
+    "akkuratnyj_split_space": 2,
+    "aktualnyj": 2,
+    "aktualnyj_insert": 2,
+    "aktualnyj_keyboard_neighbor": 4,
+    "aktualnyj_split_space": 3,
+    "algoritm": 5,
+    "algoritm_keyboard_neighbor": 1,
+    "algoritm_split_space": 1,
+    "already_final_guard": 10,
+    "already_normalized_quotes_guard": 1,
+    "alternating_hard_negative": 6,
+    "apellyaciya": 4,
     "apellyaciya_insert": 1,
     "apellyaciya_split_space": 1,
+    "apposition": 1,
+    "assistent": 4,
     "assistent_insert": 1,
-    "assistent_split_space": 1,
-    "author_before_already_correct_guard": 1,
-    "author_before_missing_colon_quotes": 26,
-    "author_before_normalize_quotes": 32,
-    "author_inside_speech_already_correct_guard": 1,
-    "author_inside_speech_basic": 16,
-    "avtorizaciya": 3,
+    "author_before_already_correct_guard": 2,
+    "author_before_missing_colon_quotes": 55,
+    "author_before_normalize_quotes": 71,
+    "author_inside_speech_already_correct_guard": 3,
+    "author_inside_speech_basic": 36,
+    "avtorizaciya": 4,
+    "avtorizaciya_insert": 1,
     "avtorizaciya_split_space": 1,
     "avtorizaciya_transpose": 1,
-    "before_noun_no_cause_guard": 3,
+    "before_noun_no_cause_guard": 7,
     "ber_bir": 3,
-    "biblioteka": 2,
-    "bloger": 3,
-    "bloger_insert": 1,
+    "biblioteka": 1,
+    "blest_blist": 1,
+    "bloger": 4,
+    "bloger_keyboard_neighbor": 1,
+    "bracket_guard_section": 5,
+    "bracket_guard_simple": 3,
+    "bsp_colon": 1,
     "bsp_colon_document": 2,
-    "bsp_comma": 2,
-    "bsp_comma_sequence": 1,
+    "bsp_comma": 3,
+    "bsp_comma_sequence": 2,
     "bsp_dash": 1,
+    "bsp_dash_result": 2,
     "bsp_semicolon": 1,
-    "cha_shcha": 2,
-    "checked_unstressed": 5,
-    "chestnyj": 1,
+    "cause_before_noun": 1,
+    "cha_shcha": 7,
+    "checked_unstressed": 6,
+    "chestnyj": 2,
     "chestnyj_insert": 1,
     "chestnyj_keyboard_neighbor": 2,
-    "chestnyj_split_space": 1,
-    "chet_chit": 1,
-    "chto_by_chto_bi": 2,
-    "chtoby_conjunction_merge": 6,
-    "chu_shchu": 3,
+    "chestnyj_replace": 1,
+    "chet_chit": 3,
+    "chto_by_chto_bi": 4,
+    "chtoby_conjunction_merge": 9,
+    "chtoby_particle_split": 2,
+    "chu_shchu": 9,
     "chuvstvovat": 2,
-    "chuvstvovat_keyboard_neighbor": 2,
-    "chuvstvovat_missing_v": 3,
-    "ci_cy": 4,
-    "clean_address_initial": 6,
+    "chuvstvovat_keyboard_neighbor": 1,
+    "chuvstvovat_missing_v": 10,
+    "chuvstvovat_split_space": 3,
+    "ci_cy": 10,
+    "clean_address_initial": 14,
+    "clean_apposition": 3,
     "clean_author_before_dialogue": 3,
+    "clean_bracket_text": 1,
+    "clean_bsp_colon": 1,
     "clean_bsp_dash": 1,
-    "clean_comparison": 3,
-    "clean_dash_nominal": 5,
-    "clean_final_statement": 8,
-    "clean_fixed_expression": 2,
-    "clean_gerund_phrase": 3,
-    "clean_homogeneous_series": 8,
-    "clean_introductory_medial": 3,
-    "clean_normalized_quotes": 1,
-    "clean_quoted_term": 1,
-    "clean_speech_before_author": 2,
-    "clean_spp_chto": 3,
-    "clean_ssp_i": 2,
+    "clean_comparison": 1,
+    "clean_dash_nominal": 7,
+    "clean_final_statement": 10,
+    "clean_fixed_expression": 9,
+    "clean_gerund_phrase": 10,
+    "clean_homogeneous_series": 16,
+    "clean_introductory_medial": 18,
+    "clean_normalized_quotes": 2,
+    "clean_quoted_term": 2,
+    "clean_speech_before_author": 4,
+    "clean_spp_chto": 10,
+    "clean_ssp_i": 8,
     "clean_unquoted_object": 1,
-    "clusters_dictionary": 6,
-    "common_president_title": 14,
-    "common_role_mid_sentence": 8,
-    "common_secondary_member_guard": 6,
-    "common_weekday_month": 3,
-    "comparative_kak_appositive": 23,
-    "comparative_kak_role_guard": 1,
-    "complex_conjunction_split": 1,
-    "compound_adjectives_color": 3,
-    "compound_adjectives_directional": 2,
-    "compound_adjectives_education": 7,
-    "compound_adjectives_social": 4,
-    "compound_first_parts": 1,
-    "compound_first_parts_tech": 1,
-    "compound_nouns": 4,
-    "conjunction_sentence_guard": 1,
+    "close_definition_guard": 1,
+    "clusters_dictionary": 11,
+    "common_president_title": 29,
+    "common_role_mid_sentence": 18,
+    "common_secondary_member_guard": 12,
+    "common_weekday_month": 5,
+    "comparative_kak_appositive": 54,
+    "comparative_kak_role_guard": 4,
+    "compound_adjectives_color": 8,
+    "compound_adjectives_directional": 8,
+    "compound_adjectives_education": 9,
+    "compound_adjectives_social": 7,
+    "compound_adjectives_technical": 2,
+    "compound_first_parts": 5,
+    "compound_first_parts_tech": 5,
+    "compound_nouns": 6,
+    "conjunction_sentence_guard": 2,
     "consonant_hard_negative": 1,
-    "dash_nominal_curated_safe_pairs": 5,
-    "dataset": 1,
-    "dataset_split_space": 1,
-    "delete_comma_bez_ustali": 1,
-    "delete_comma_kak_chasy": 7,
-    "delete_comma_spustya_rukava": 2,
+    "dash_nominal_curated_safe_pairs": 7,
+    "dash_nominal_verbal_predicate_trap": 2,
+    "dataset": 4,
+    "dataset_keyboard_neighbor": 1,
+    "dataset_split_space": 2,
+    "delete_comma_bez_ustali": 2,
+    "delete_comma_kak_chasy": 17,
+    "delete_comma_kak_pravilo_guard": 1,
+    "delete_comma_spustya_rukava": 5,
     "delete_extra_dash_subject_predicate": 1,
-    "delete_extra_quotes": 17,
-    "dependent_word": 3,
-    "distribyutor": 2,
-    "distribyutor_keyboard_neighbor": 1,
-    "document_federal_law_numbered": 4,
+    "delete_extra_quotes": 33,
+    "dependent_word": 6,
+    "der_dir": 3,
+    "distribyutor": 5,
+    "distribyutor_keyboard_neighbor": 2,
+    "document_civil_code": 4,
+    "document_constitution_rf": 4,
+    "document_federal_law_numbered": 1,
+    "document_tax_code": 5,
+    "dokumentaciya": 4,
+    "dokumentaciya_insert": 1,
+    "dokumentaciya_keyboard_neighbor": 2,
     "dokumentaciya_split_space": 1,
-    "double_consonants": 8,
-    "endings_hard_negative": 1,
-    "eto_vot_znachit_dash": 1,
+    "double_consonants": 23,
+    "endings_hard_negative": 4,
+    "eto_vot_znachit_dash": 5,
+    "event_constitution_day": 2,
     "event_great_patriotic_war": 4,
-    "event_victory_day": 2,
-    "exception_n": 2,
-    "exception_nn": 1,
-    "exceptions_hard_negative": 1,
+    "event_new_year": 1,
+    "event_russia_day": 3,
+    "event_victory_day": 6,
+    "exception_n": 7,
+    "exception_nn": 2,
+    "exceptions_hard_negative": 5,
     "expanded_introductory": 1,
-    "feminine_hissing_soft_sign": 6,
-    "final_dot": 29,
-    "formal_you_uppercase_guard": 1,
-    "formal_your_lowercase_acceptable_guard": 2,
-    "frejmvork": 2,
-    "frejmvork_replace": 2,
-    "gar_gor": 1,
-    "geo_already_correct_guard": 1,
-    "geo_city_single": 12,
-    "geo_common_noun_guard": 1,
-    "geo_country_multiword": 3,
-    "geo_country_single": 1,
-    "gerund_phrase": 7,
-    "gerund_phrase_technical": 12,
-    "grammatika": 1,
-    "grammatika_one_m": 3,
-    "hard_sign_after_prefix": 5,
-    "hissing_o_e_yo": 7,
-    "homogeneous_objects_document_work": 34,
-    "homogeneous_objects_education_work": 42,
-    "homogeneous_objects_technical_work": 31,
-    "hyphen_appositions": 2,
-    "hyphen_appositions_technical": 2,
-    "infinitive_dash": 1,
-    "interfejs": 4,
+    "feminine_hissing_soft_sign": 5,
+    "final_dot": 76,
+    "fixed_expression_spustya_rukava_guard": 1,
+    "formal_dative_lowercase_acceptable_guard": 2,
+    "formal_you_uppercase_guard": 4,
+    "formal_your_lowercase_acceptable_guard": 9,
+    "frejmvork": 3,
+    "frejmvork_replace": 3,
+    "gar_gor": 2,
+    "geo_already_correct_guard": 2,
+    "geo_city_kazan": 9,
+    "geo_city_nizhny_novgorod": 3,
+    "geo_city_samara": 4,
+    "geo_city_single": 10,
+    "geo_city_tula": 7,
+    "geo_country_belarus": 2,
+    "geo_country_multiword": 2,
+    "geo_country_single": 4,
+    "gerund_phrase": 21,
+    "gerund_phrase_technical": 33,
+    "grammatika": 2,
+    "grammatika_insert": 1,
+    "grammatika_one_m": 1,
+    "grammatika_split_space": 2,
+    "hard_sign_after_prefix": 18,
+    "hissing_o_e_yo": 13,
+    "homogeneous_objects_document_work": 107,
+    "homogeneous_objects_education_work": 114,
+    "homogeneous_objects_technical_work": 105,
+    "hyphen_appositions": 3,
+    "hyphen_appositions_technical": 5,
+    "infinitive_dash": 2,
+    "interfejs": 8,
     "interfejs_keyboard_neighbor": 1,
-    "introductory_document_review": 49,
-    "introductory_final": 7,
-    "introductory_homonym_guard": 2,
-    "introductory_initial": 8,
-    "introductory_medial": 10,
-    "introductory_safe_clause": 59,
-    "invariant_prefix_hard_negative": 2,
-    "iskusstvennyj_insert": 1,
-    "kak_comparison": 10,
-    "kak_never_guard": 1,
-    "kas_kos": 1,
-    "koe_pronouns": 4,
+    "interfejs_split_space": 1,
+    "introductory_document_review": 133,
+    "introductory_final": 17,
+    "introductory_homonym_guard": 13,
+    "introductory_initial": 29,
+    "introductory_medial": 14,
+    "introductory_safe_clause": 137,
+    "invariant_prefix_hard_negative": 7,
+    "iskusstvennyj": 1,
+    "iskusstvennyj_one_s": 7,
+    "kak_comparison": 21,
+    "kak_never_guard": 3,
+    "kak_quality_guard": 1,
+    "kas_kos": 5,
+    "koe_pronouns": 10,
     "kollektiv": 1,
-    "kollektiv_one_l": 2,
+    "kollektiv_keyboard_neighbor": 1,
+    "kollektiv_one_l": 8,
     "kollektiv_split_space": 1,
-    "kommentarij": 1,
+    "kommentarij": 3,
     "kommentarij_keyboard_neighbor": 2,
-    "kompetenciya": 2,
+    "kompetenciya": 5,
     "kompetenciya_keyboard_neighbor": 1,
     "kompetenciya_split_space": 1,
+    "konfiguraciya": 4,
     "konfiguraciya_insert": 1,
+    "konfiguraciya_keyboard_neighbor": 1,
     "konfiguraciya_replace": 1,
-    "konfiguraciya_split_space": 1,
-    "korpus": 1,
-    "korrektnyj": 3,
-    "kvalifikaciya_keyboard_neighbor": 1,
+    "korpus": 3,
+    "korpus_split_space": 1,
+    "korrektnyj": 5,
+    "korrektura": 5,
+    "korrektura_insert": 1,
+    "korrektura_keyboard_neighbor": 1,
+    "korrektura_replace": 2,
+    "kvalifikaciya": 4,
     "kvalifikaciya_replace": 1,
     "kvalifikaciya_split_space": 1,
-    "lag_lozh": 4,
-    "lestnica": 1,
-    "lestnica_missing_t": 6,
-    "mak_mok": 2,
-    "marketing": 4,
-    "masculine_hissing_no_soft_sign": 4,
-    "menedzhment": 3,
-    "mer_mir": 2,
-    "missing_quote_pair_simple": 5,
+    "lag_lozh": 5,
+    "lestnica": 4,
+    "lestnica_missing_t": 1,
+    "mak_mok": 1,
+    "marketing": 8,
+    "masculine_hissing_no_soft_sign": 5,
+    "menedzhment": 7,
+    "mer_mir": 8,
+    "missing_quote_pair_simple": 15,
     "missing_quote_pair_title": 10,
-    "model": 4,
-    "n_nn_basic": 22,
-    "n_nn_hard_negative": 1,
-    "naperekor": 1,
+    "model": 6,
+    "model_insert": 1,
+    "model_keyboard_neighbor": 1,
+    "model_replace": 2,
+    "n_nn_basic": 48,
+    "n_nn_hard_negative": 5,
+    "naperekor": 3,
+    "naperekor_insert": 1,
     "naperekor_keyboard_neighbor": 1,
-    "naschet_about": 2,
-    "naschet_na_schet": 2,
-    "navstrechu_na_vstrechu": 3,
-    "ne_adjectives": 3,
-    "ne_adverbs": 2,
-    "ne_nouns": 4,
+    "naperekor_split_space": 1,
+    "napodobie_na_podobie": 3,
+    "naschet_about": 8,
+    "naschet_na_schet": 3,
+    "navstrechu_na_vstrechu": 7,
+    "ne_adjectives": 12,
+    "ne_adverbs": 3,
+    "ne_chto_inoe_guard": 3,
+    "ne_kto_inoy_guard": 3,
+    "ne_nouns": 6,
     "ne_participles": 5,
-    "ne_verb": 6,
-    "nesmotrya_concessive": 5,
+    "ne_verb": 11,
+    "nesmotrya_concessive": 13,
     "nesmotrya_na_ne_smotrya_na": 2,
-    "nevziraya_na_ne_vziraya_na": 2,
-    "no_conjunction_series": 32,
-    "no_dash_subject_predicate_verb": 1,
-    "normal_manner_guard": 1,
-    "normalize_straight_quotes": 11,
-    "noun_declension_case": 7,
-    "noun_predicate_dash": 8,
-    "nu_ka": 4,
-    "object_without_quotes_guard": 1,
-    "obozhayu": 1,
-    "obozhayu_a": 3,
-    "obozhayu_keyboard_neighbor": 1,
+    "nevziraya_na_ne_vziraya_na": 3,
+    "nichto_inoe_guard": 3,
+    "nikto_inoy_guard": 1,
+    "no_conjunction_series": 77,
+    "no_dash_subject_predicate_verb": 2,
+    "normalize_straight_quotes": 20,
+    "noun_declension_case": 9,
+    "noun_predicate_dash": 14,
+    "nu_ka": 8,
+    "numeral_predicate_dash": 1,
+    "object_without_quotes_guard": 2,
+    "obozhayu": 2,
+    "obozhayu_a": 4,
     "obozhayu_replace": 1,
-    "oflajn": 4,
+    "obozhayu_split_space": 1,
+    "oflajn": 8,
+    "oflajn_keyboard_neighbor": 1,
+    "oflajn_transpose": 1,
     "onlajn": 3,
     "onlajn_insert": 1,
-    "ordinary_event_words_guard": 1,
-    "ordinary_law_guard": 2,
-    "ordinary_ministry_guard": 1,
-    "ordinary_said_phrase_guard": 1,
-    "orfografiya": 2,
+    "ordinal_adverbs": 1,
+    "ordinary_event_words_guard": 2,
+    "ordinary_law_guard": 3,
+    "ordinary_ministry_guard": 6,
+    "ordinary_object_no_quotes_guard": 1,
+    "ordinary_said_phrase_guard": 5,
+    "ordinary_university_guard": 1,
+    "orfografiya": 3,
     "orfografiya_insert": 1,
-    "organization_ministry": 2,
-    "organization_rgrtu": 7,
+    "orfografiya_replace": 1,
+    "organization_central_bank": 5,
+    "organization_constitutional_court": 8,
+    "organization_ministry": 11,
+    "organization_rgrtu": 4,
+    "organization_state_duma": 3,
     "otchego_guard": 1,
-    "otchego_ot_chego": 3,
-    "ottogo_guard": 1,
-    "ottogo_ot_togo": 1,
-    "paired_voicing": 2,
+    "otchego_ot_chego": 9,
+    "ottogo_guard": 3,
+    "ottogo_ot_togo": 4,
+    "paired_voicing": 8,
+    "parallelnyj": 5,
+    "parallelnyj_insert": 1,
     "parallelnyj_keyboard_neighbor": 1,
-    "participial_after_noun": 19,
-    "participle_nn": 4,
-    "periodicheski": 2,
-    "periodicheski_split_space": 1,
+    "participial_after_noun": 38,
+    "participle_nn": 6,
+    "per_pir": 3,
+    "periodicheski": 3,
+    "periodicheski_insert": 1,
+    "periodicheski_keyboard_neighbor": 1,
+    "person_alexey_orlov": 9,
+    "person_already_correct_guard": 4,
     "person_anna_kuznetsova": 5,
-    "person_ivan_petrov": 5,
-    "person_maria_ivanova": 3,
-    "plav_plov_plyv": 2,
-    "po_adverb_emu": 3,
-    "po_adverb_omu": 2,
-    "po_adverb_ski": 1,
-    "po_adverb_tski": 7,
-    "podrobnyj": 2,
+    "person_elena_morozova": 5,
+    "person_ivan_petrov": 4,
+    "person_maria_ivanova": 7,
+    "person_olga_sokolova": 6,
+    "person_sergey_smirnov": 2,
+    "plav_plov_plyv": 1,
+    "po_adverb_emu": 6,
+    "po_adverb_omu": 10,
+    "po_adverb_ski": 7,
+    "po_adverb_tski": 11,
+    "podrobnyj": 4,
     "podrobnyj_split_space": 1,
-    "pol_before_capital": 3,
-    "pol_before_capital_region": 4,
-    "pol_before_l": 1,
-    "pol_before_l_education": 1,
-    "pol_before_vowel": 5,
-    "pol_before_vowel_document": 3,
-    "polu_compounds_time": 4,
+    "pol_before_capital": 7,
+    "pol_before_capital_region": 7,
+    "pol_before_l": 8,
+    "pol_before_l_education": 8,
+    "pol_before_vowel": 8,
+    "pol_before_vowel_document": 7,
+    "polu_compounds": 4,
+    "polu_compounds_time": 9,
     "polzovatel": 1,
-    "poodinochke": 2,
+    "poodinochke": 3,
     "poodinochke_keyboard_neighbor": 1,
-    "postfix_to_libo_nibud": 7,
-    "prazdnik": 1,
-    "prazdnik_keyboard_neighbor": 1,
-    "prazdnik_missing_d": 3,
-    "pre_pri_meaning": 6,
-    "prefix_z_s_deaf": 6,
-    "prefix_z_s_voiced": 5,
-    "prefixed_participle": 6,
-    "prilozhenie": 2,
+    "poodinochke_split_space": 1,
+    "postfix_to_libo_nibud": 12,
+    "potomu_chto_po_tomu_chto": 2,
+    "prazdnik": 4,
+    "prazdnik_missing_d": 6,
+    "pre_pri_hard_negative": 1,
+    "pre_pri_meaning": 14,
+    "prefix_z_s_deaf": 7,
+    "prefix_z_s_voiced": 10,
+    "prefixed_participle": 16,
+    "prilozhenie": 3,
+    "prilozhenie_keyboard_neighbor": 1,
+    "prilozhenie_split_space": 2,
     "profession": 1,
     "profession_replace": 1,
     "profession_split_space": 1,
-    "programma": 2,
-    "programma_insert": 1,
-    "promoushen": 2,
+    "programma": 7,
+    "promoushen": 5,
     "promoushen_replace": 1,
-    "rast_rash_ros": 3,
-    "ravn_rovn": 2,
-    "raz_roz": 4,
-    "razrabotchik": 2,
-    "reglament": 1,
+    "proper_name_uppercase_guard": 1,
+    "punktuaciya": 3,
+    "punktuaciya_keyboard_neighbor": 1,
+    "punktuaciya_replace": 2,
+    "punktuaciya_split_space": 1,
+    "rast_rash_ros": 4,
+    "ravn_rovn": 4,
+    "raz_roz": 13,
+    "razrabotchik": 3,
+    "razrabotchik_keyboard_neighbor": 1,
+    "reglament": 3,
+    "reglament_replace": 1,
     "reglament_split_space": 1,
-    "repeated_conjunction": 1,
-    "repeated_conjunction_technical": 3,
-    "resurs": 3,
-    "resurs_keyboard_neighbor": 2,
-    "rieltor": 5,
-    "rieltor_keyboard_neighbor": 1,
-    "sentence_after_period_basic": 5,
-    "sentence_start_basic": 2,
-    "sentence_start_uppercase_guard": 2,
-    "separating_soft_sign": 3,
-    "serdce": 2,
-    "serdce_insert": 1,
-    "serdce_missing_d": 3,
+    "repeated_adverbs": 2,
+    "repeated_adverbs_process": 1,
+    "repeated_conjunction": 3,
+    "repeated_conjunction_technical": 7,
+    "resurs": 4,
+    "resurs_keyboard_neighbor": 1,
+    "rieltor": 10,
+    "rieltor_replace": 1,
+    "sentence_after_period_basic": 3,
+    "sentence_start_basic": 6,
+    "sentence_start_uppercase_guard": 4,
+    "separating_soft_sign": 17,
+    "serdce": 4,
+    "serdce_keyboard_neighbor": 1,
+    "serdce_missing_d": 6,
+    "serdce_replace": 1,
     "server": 2,
-    "server_insert": 1,
-    "shablon": 4,
-    "shablon_keyboard_neighbor": 1,
-    "short_adjective_no_soft_sign": 2,
-    "short_participle": 3,
-    "short_participle_n": 2,
-    "simple_case_context": 2,
-    "simple_final_document_context": 21,
-    "simple_final_education_context": 18,
-    "simple_final_intransitive_context": 12,
-    "simple_final_statement": 19,
-    "simple_final_technical_context": 23,
-    "simple_final_user_interface_context": 19,
-    "single_i_guard": 1,
+    "shablon": 6,
+    "shablon_keyboard_neighbor": 3,
+    "shablon_split_space": 1,
+    "short_adjective_no_soft_sign": 3,
+    "short_participle": 5,
+    "short_participle_n": 6,
+    "simple_case_context": 5,
+    "simple_final_document_context": 65,
+    "simple_final_education_context": 51,
+    "simple_final_intransitive_context": 39,
+    "simple_final_statement": 51,
+    "simple_final_technical_context": 63,
+    "simple_final_user_interface_context": 54,
+    "single_gerund": 3,
+    "single_i_guard": 8,
     "slovno_comparison": 1,
-    "speech_before_author_missing_comma_dash_only": 16,
-    "speech_before_author_missing_quotes_comma_dash": 18,
-    "spp_chto": 2,
-    "spp_esli": 9,
-    "spp_kogda": 8,
-    "ssp_a": 6,
-    "ssp_i": 2,
+    "space_identity": 1,
+    "speech_before_author_already_correct_guard": 1,
+    "speech_before_author_missing_comma_dash_only": 56,
+    "speech_before_author_missing_quotes_comma_dash": 57,
+    "split_tokenizaciya": 1,
+    "spp_chto": 17,
+    "spp_esli": 21,
+    "spp_kogda": 14,
+    "ssp_a": 12,
+    "ssp_i": 10,
     "stable_kak_chasy_guard": 1,
-    "subject_not_address_guard": 7,
-    "subordinate_that_check_showed_content": 27,
-    "subordinate_that_report_content": 32,
-    "subordinate_that_technical_observation": 44,
-    "suffix_an_yan_enn": 1,
-    "suffix_chiv_liv": 1,
-    "suffix_enn_yan": 37,
-    "suffix_hard_negative": 2,
-    "suffix_ink_enk": 1,
-    "suffix_its_ets": 28,
-    "suffix_its_ets_group": 3,
-    "suffix_k_sk": 3,
-    "suffix_ochk_echk": 2,
-    "suffix_ova_eva_yva_iva": 4,
-    "suffix_participles_ush_yush_ash_yash": 2,
-    "takzhe_additive_merge": 8,
-    "takzhe_comparison_split": 11,
-    "takzhe_tak_zhe": 4,
-    "ter_tir": 1,
-    "territoriya": 2,
-    "territoriya_one_r": 3,
-    "territoriya_split_space": 1,
-    "testirovshchik": 1,
+    "subject_not_address_guard": 18,
+    "subordinate_that_check_showed_content": 71,
+    "subordinate_that_report_content": 101,
+    "subordinate_that_technical_observation": 124,
+    "suffix_an_yan_enn": 4,
+    "suffix_chiv_liv": 5,
+    "suffix_ek_ik": 5,
+    "suffix_enn_yan": 93,
+    "suffix_ev_iv": 1,
+    "suffix_hard_negative": 4,
+    "suffix_ink_enk": 8,
+    "suffix_its_ets": 76,
+    "suffix_its_ets_group": 9,
+    "suffix_k_sk": 6,
+    "suffix_ochk_echk": 5,
+    "suffix_ova_eva_yva_iva": 6,
+    "suffix_participles_ush_yush_ash_yash": 7,
+    "takzhe_additive_merge": 45,
+    "takzhe_comparison_guard": 1,
+    "takzhe_comparison_split": 18,
+    "takzhe_tak_zhe": 9,
+    "ter_tir": 2,
+    "territoriya": 3,
+    "territoriya_insert": 1,
+    "territoriya_one_r": 7,
+    "territoriya_replace": 1,
+    "territoriya_split_space": 2,
+    "testirovshchik": 4,
     "testirovshchik_keyboard_neighbor": 1,
-    "testirovshchik_replace": 1,
-    "tochno_comparison": 1,
-    "tozhe_additive_merge": 5,
+    "testirovshchik_replace": 2,
+    "tochno_comparison": 3,
+    "tokenizaciya": 4,
+    "tokenizaciya_insert": 1,
+    "tokenizaciya_keyboard_neighbor": 1,
+    "tokenizaciya_split_space": 3,
+    "tozhe_additive_merge": 21,
     "tozhe_demonstrative_guard": 1,
-    "tozhe_demonstrative_split": 2,
-    "tozhe_to_zhe": 2,
-    "tsya_ttsya_controlled_document": 82,
-    "tsya_ttsya_controlled_person": 111,
-    "unchecked_dictionary": 1,
-    "unpronounced_consonants": 7,
-    "uprazhnenie": 3,
-    "uprazhnenie_insert": 2,
+    "tozhe_demonstrative_split": 9,
+    "tsya_ttsya_controlled_document": 171,
+    "tsya_ttsya_controlled_person": 229,
+    "unchecked_dictionary": 4,
+    "unpronounced_consonants": 13,
+    "uprazhnenie": 4,
+    "uprazhnenie_insert": 1,
+    "uprazhnenie_keyboard_neighbor": 1,
+    "uprazhnenie_split_space": 1,
     "v_prodolzhenie_v_prodolzhenii": 2,
-    "v_techenie_literal_guard": 2,
-    "v_techenie_temporal": 22,
-    "v_techenie_v_techenii": 4,
-    "vedomost": 3,
-    "verb_em_im": 4,
-    "verb_et_it_infinitive": 1,
-    "verb_ete_ite": 1,
-    "verb_personal_endings": 7,
-    "verb_soft_sign": 4,
-    "vperemeshku": 1,
+    "v_techenie_literal_guard": 1,
+    "v_techenie_temporal": 56,
+    "v_techenie_v_techenii": 10,
+    "vedomost": 6,
+    "verb_em_im": 3,
+    "verb_esh_ish": 1,
+    "verb_et_it_infinitive": 2,
+    "verb_ete_ite": 4,
+    "verb_personal_endings": 13,
+    "verb_soft_sign": 8,
+    "vperemeshku": 3,
+    "vperemeshku_insert": 1,
     "vperemeshku_keyboard_neighbor": 1,
-    "vposledstvii": 3,
-    "vse_taki": 2,
-    "vsledstvie_causal": 1,
-    "vsledstvie_literal_guard": 2,
-    "vsledstvie_v_sledstvii": 3,
-    "vvidu_causal": 1,
-    "vvidu_literal_guard": 1,
-    "vvidu_v_vidu": 5,
+    "vperemeshku_replace": 1,
+    "vposledstvii": 4,
+    "vposledstvii_insert": 1,
+    "vse_taki": 6,
+    "vsledstvie_causal": 3,
+    "vsledstvie_literal_guard": 1,
+    "vsledstvie_v_sledstvii": 5,
+    "vvidu_causal": 4,
+    "vvidu_literal_guard": 2,
+    "vvidu_v_vidu": 8,
     "zachem_guard": 1,
-    "zachem_merge": 1,
+    "zachem_merge": 2,
+    "zachem_za_chem": 4,
+    "zar_zor": 2,
     "zato_adversative_merge": 1,
-    "zato_preposition_split": 2,
-    "zato_za_to": 3,
-    "zdes_split_space": 1,
-    "zheg_zhig": 1,
-    "zhi_shi": 5
+    "zato_preposition_split": 4,
+    "zato_za_to": 9,
+    "zdes": 3,
+    "zdes_insert": 1,
+    "zdes_s": 2,
+    "zheg_zhig": 4,
+    "zhi_shi": 14,
+    "znachit_verb_guard": 1
   },
   "template_distribution": {
-    "address_final": 6,
-    "address_initial": 10,
-    "address_medial": 6,
-    "adverbial_adverb_guard": 2,
-    "adversative_document_correction": 28,
-    "adversative_education_context": 35,
-    "adversative_technical_interface": 37,
-    "agentstvo": 1,
-    "agentstvo_keyboard_neighbor": 1,
-    "agentstvo_missing_t": 1,
-    "akkaunt": 2,
+    "address_final": 14,
+    "address_initial": 23,
+    "address_medial": 21,
+    "adverbial_adverb_guard": 3,
+    "adversative_document_correction": 111,
+    "adversative_education_context": 101,
+    "adversative_technical_interface": 87,
+    "agentstvo": 4,
+    "agentstvo_keyboard_neighbor": 2,
+    "agentstvo_missing_t": 6,
+    "agentstvo_split_space": 3,
+    "akkaunt": 5,
+    "akkaunt_insert": 1,
+    "akkaunt_keyboard_neighbor": 1,
     "akkuratnyj": 1,
-    "akkuratnyj_one_k": 1,
-    "akkuratnyj_split_space": 1,
-    "aktualnyj_insert": 1,
-    "aktualnyj_keyboard_neighbor": 2,
-    "aktualnyj_split_space": 1,
-    "algoritm": 2,
-    "already_final_guard": 2,
-    "apellyaciya": 3,
+    "akkuratnyj_insert": 1,
+    "akkuratnyj_one_k": 5,
+    "akkuratnyj_split_space": 2,
+    "aktualnyj": 2,
+    "aktualnyj_insert": 2,
+    "aktualnyj_keyboard_neighbor": 4,
+    "aktualnyj_split_space": 3,
+    "algoritm": 5,
+    "algoritm_keyboard_neighbor": 1,
+    "algoritm_split_space": 1,
+    "already_final_guard": 10,
+    "already_normalized_quotes_guard": 1,
+    "apellyaciya": 4,
     "apellyaciya_insert": 1,
     "apellyaciya_split_space": 1,
+    "apposition": 1,
+    "assistent": 4,
     "assistent_insert": 1,
-    "assistent_split_space": 1,
-    "author_before_already_correct_guard": 1,
-    "author_before_missing_colon_quotes": 26,
-    "author_before_normalize_quotes": 32,
-    "author_inside_speech_already_correct_guard": 1,
-    "author_inside_speech_basic": 16,
-    "avtorizaciya": 3,
+    "author_before_already_correct_guard": 2,
+    "author_before_missing_colon_quotes": 55,
+    "author_before_normalize_quotes": 71,
+    "author_inside_speech_already_correct_guard": 3,
+    "author_inside_speech_basic": 36,
+    "avtorizaciya": 4,
+    "avtorizaciya_insert": 1,
     "avtorizaciya_split_space": 1,
     "avtorizaciya_transpose": 1,
-    "before_noun_no_cause_guard": 3,
-    "biblioteka": 2,
-    "bloger": 3,
-    "bloger_insert": 1,
+    "before_noun_no_cause_guard": 7,
+    "biblioteka": 1,
+    "bloger": 4,
+    "bloger_keyboard_neighbor": 1,
+    "bracket_guard_section": 5,
+    "bracket_guard_simple": 3,
+    "bsp_colon": 1,
     "bsp_colon_document": 2,
-    "bsp_comma": 2,
-    "bsp_comma_sequence": 1,
+    "bsp_comma": 3,
+    "bsp_comma_sequence": 2,
     "bsp_dash": 1,
+    "bsp_dash_result": 2,
     "bsp_semicolon": 1,
-    "chestnyj": 1,
+    "cause_before_noun": 1,
+    "chestnyj": 2,
     "chestnyj_insert": 1,
     "chestnyj_keyboard_neighbor": 2,
-    "chestnyj_split_space": 1,
-    "chto_by_chto_bi": 2,
-    "chtoby_conjunction_merge": 6,
+    "chestnyj_replace": 1,
+    "chto_by_chto_bi": 4,
+    "chtoby_conjunction_merge": 9,
+    "chtoby_particle_split": 2,
     "chuvstvovat": 2,
-    "chuvstvovat_keyboard_neighbor": 2,
-    "chuvstvovat_missing_v": 3,
-    "clean_address_initial": 6,
+    "chuvstvovat_keyboard_neighbor": 1,
+    "chuvstvovat_missing_v": 10,
+    "chuvstvovat_split_space": 3,
+    "clean_address_initial": 14,
+    "clean_apposition": 3,
     "clean_author_before_dialogue": 3,
+    "clean_bracket_text": 1,
+    "clean_bsp_colon": 1,
     "clean_bsp_dash": 1,
-    "clean_comparison": 3,
-    "clean_dash_nominal": 5,
-    "clean_final_statement": 8,
-    "clean_fixed_expression": 2,
-    "clean_gerund_phrase": 3,
-    "clean_homogeneous_series": 8,
-    "clean_introductory_medial": 3,
-    "clean_normalized_quotes": 1,
-    "clean_quoted_term": 1,
-    "clean_speech_before_author": 2,
-    "clean_spp_chto": 3,
-    "clean_ssp_i": 2,
+    "clean_comparison": 1,
+    "clean_dash_nominal": 7,
+    "clean_final_statement": 10,
+    "clean_fixed_expression": 9,
+    "clean_gerund_phrase": 10,
+    "clean_homogeneous_series": 16,
+    "clean_introductory_medial": 18,
+    "clean_normalized_quotes": 2,
+    "clean_quoted_term": 2,
+    "clean_speech_before_author": 4,
+    "clean_spp_chto": 10,
+    "clean_ssp_i": 8,
     "clean_unquoted_object": 1,
-    "common_president_title": 14,
-    "common_role_mid_sentence": 8,
-    "common_secondary_member_guard": 6,
-    "common_weekday_month": 3,
-    "comparative_kak_appositive": 23,
-    "comparative_kak_role_guard": 1,
-    "complex_conjunction_split": 1,
-    "compound_adjectives_color": 3,
-    "compound_adjectives_directional": 2,
-    "compound_adjectives_education": 7,
-    "compound_adjectives_social": 4,
-    "compound_first_parts": 1,
-    "compound_first_parts_tech": 1,
-    "compound_nouns": 4,
-    "conjunction_sentence_guard": 1,
-    "dash_nominal_curated_safe_pairs": 5,
-    "dataset": 1,
-    "dataset_split_space": 1,
-    "delete_comma_bez_ustali": 1,
-    "delete_comma_kak_chasy": 7,
-    "delete_comma_spustya_rukava": 2,
+    "close_definition_guard": 1,
+    "common_president_title": 29,
+    "common_role_mid_sentence": 18,
+    "common_secondary_member_guard": 12,
+    "common_weekday_month": 5,
+    "comparative_kak_appositive": 54,
+    "comparative_kak_role_guard": 4,
+    "compound_adjectives_color": 8,
+    "compound_adjectives_directional": 8,
+    "compound_adjectives_education": 9,
+    "compound_adjectives_social": 7,
+    "compound_adjectives_technical": 2,
+    "compound_first_parts": 5,
+    "compound_first_parts_tech": 5,
+    "compound_nouns": 6,
+    "conjunction_sentence_guard": 2,
+    "dash_nominal_curated_safe_pairs": 7,
+    "dash_nominal_verbal_predicate_trap": 2,
+    "dataset": 4,
+    "dataset_keyboard_neighbor": 1,
+    "dataset_split_space": 2,
+    "delete_comma_bez_ustali": 2,
+    "delete_comma_kak_chasy": 17,
+    "delete_comma_kak_pravilo_guard": 1,
+    "delete_comma_spustya_rukava": 5,
     "delete_extra_dash_subject_predicate": 1,
-    "delete_extra_quotes": 17,
-    "distribyutor": 2,
-    "distribyutor_keyboard_neighbor": 1,
-    "document_federal_law_numbered": 4,
+    "delete_extra_quotes": 33,
+    "distribyutor": 5,
+    "distribyutor_keyboard_neighbor": 2,
+    "document_civil_code": 4,
+    "document_constitution_rf": 4,
+    "document_federal_law_numbered": 1,
+    "document_tax_code": 5,
+    "dokumentaciya": 4,
+    "dokumentaciya_insert": 1,
+    "dokumentaciya_keyboard_neighbor": 2,
     "dokumentaciya_split_space": 1,
-    "eto_vot_znachit_dash": 1,
+    "eto_vot_znachit_dash": 5,
+    "event_constitution_day": 2,
     "event_great_patriotic_war": 4,
-    "event_victory_day": 2,
+    "event_new_year": 1,
+    "event_russia_day": 3,
+    "event_victory_day": 6,
     "expanded_introductory": 1,
-    "final_dot": 29,
-    "formal_you_uppercase_guard": 1,
-    "formal_your_lowercase_acceptable_guard": 2,
-    "frejmvork": 2,
-    "frejmvork_replace": 2,
-    "geo_already_correct_guard": 1,
-    "geo_city_single": 12,
-    "geo_common_noun_guard": 1,
-    "geo_country_multiword": 3,
-    "geo_country_single": 1,
-    "gerund_phrase": 7,
-    "gerund_phrase_technical": 12,
-    "grammatika": 1,
-    "grammatika_one_m": 3,
-    "homogeneous_objects_document_work": 34,
-    "homogeneous_objects_education_work": 42,
-    "homogeneous_objects_technical_work": 31,
-    "hyphen_appositions": 2,
-    "hyphen_appositions_technical": 2,
-    "infinitive_dash": 1,
-    "interfejs": 4,
+    "final_dot": 76,
+    "fixed_expression_spustya_rukava_guard": 1,
+    "formal_dative_lowercase_acceptable_guard": 2,
+    "formal_you_uppercase_guard": 4,
+    "formal_your_lowercase_acceptable_guard": 9,
+    "frejmvork": 3,
+    "frejmvork_replace": 3,
+    "geo_already_correct_guard": 2,
+    "geo_city_kazan": 9,
+    "geo_city_nizhny_novgorod": 3,
+    "geo_city_samara": 4,
+    "geo_city_single": 10,
+    "geo_city_tula": 7,
+    "geo_country_belarus": 2,
+    "geo_country_multiword": 2,
+    "geo_country_single": 4,
+    "gerund_phrase": 21,
+    "gerund_phrase_technical": 33,
+    "grammatika": 2,
+    "grammatika_insert": 1,
+    "grammatika_one_m": 1,
+    "grammatika_split_space": 2,
+    "homogeneous_objects_document_work": 107,
+    "homogeneous_objects_education_work": 114,
+    "homogeneous_objects_technical_work": 105,
+    "hyphen_appositions": 3,
+    "hyphen_appositions_technical": 5,
+    "infinitive_dash": 2,
+    "interfejs": 8,
     "interfejs_keyboard_neighbor": 1,
-    "introductory_document_review": 49,
-    "introductory_final": 7,
-    "introductory_homonym_guard": 2,
-    "introductory_initial": 8,
-    "introductory_medial": 10,
-    "introductory_safe_clause": 59,
-    "iskusstvennyj_insert": 1,
-    "kak_comparison": 10,
-    "kak_never_guard": 1,
-    "koe_pronouns": 4,
+    "interfejs_split_space": 1,
+    "introductory_document_review": 133,
+    "introductory_final": 17,
+    "introductory_homonym_guard": 13,
+    "introductory_initial": 29,
+    "introductory_medial": 14,
+    "introductory_safe_clause": 137,
+    "iskusstvennyj": 1,
+    "iskusstvennyj_one_s": 7,
+    "kak_comparison": 21,
+    "kak_never_guard": 3,
+    "kak_quality_guard": 1,
+    "koe_pronouns": 10,
     "kollektiv": 1,
-    "kollektiv_one_l": 2,
+    "kollektiv_keyboard_neighbor": 1,
+    "kollektiv_one_l": 8,
     "kollektiv_split_space": 1,
-    "kommentarij": 1,
+    "kommentarij": 3,
     "kommentarij_keyboard_neighbor": 2,
-    "kompetenciya": 2,
+    "kompetenciya": 5,
     "kompetenciya_keyboard_neighbor": 1,
     "kompetenciya_split_space": 1,
+    "konfiguraciya": 4,
     "konfiguraciya_insert": 1,
+    "konfiguraciya_keyboard_neighbor": 1,
     "konfiguraciya_replace": 1,
-    "konfiguraciya_split_space": 1,
-    "korpus": 1,
-    "korrektnyj": 3,
-    "kvalifikaciya_keyboard_neighbor": 1,
+    "korpus": 3,
+    "korpus_split_space": 1,
+    "korrektnyj": 5,
+    "korrektura": 5,
+    "korrektura_insert": 1,
+    "korrektura_keyboard_neighbor": 1,
+    "korrektura_replace": 2,
+    "kvalifikaciya": 4,
     "kvalifikaciya_replace": 1,
     "kvalifikaciya_split_space": 1,
-    "lestnica": 1,
-    "lestnica_missing_t": 6,
-    "marketing": 4,
-    "menedzhment": 3,
-    "missing_quote_pair_simple": 5,
+    "lestnica": 4,
+    "lestnica_missing_t": 1,
+    "marketing": 8,
+    "menedzhment": 7,
+    "missing_quote_pair_simple": 15,
     "missing_quote_pair_title": 10,
-    "model": 4,
-    "naperekor": 1,
+    "model": 6,
+    "model_insert": 1,
+    "model_keyboard_neighbor": 1,
+    "model_replace": 2,
+    "naperekor": 3,
+    "naperekor_insert": 1,
     "naperekor_keyboard_neighbor": 1,
-    "naschet_about": 2,
-    "naschet_na_schet": 2,
-    "navstrechu_na_vstrechu": 3,
-    "ne_adjectives": 3,
-    "ne_adverbs": 2,
-    "ne_nouns": 4,
+    "naperekor_split_space": 1,
+    "napodobie_na_podobie": 3,
+    "naschet_about": 8,
+    "naschet_na_schet": 3,
+    "navstrechu_na_vstrechu": 7,
+    "ne_adjectives": 12,
+    "ne_adverbs": 3,
+    "ne_chto_inoe_guard": 3,
+    "ne_kto_inoy_guard": 3,
+    "ne_nouns": 6,
     "ne_participles": 5,
-    "ne_verb": 6,
-    "nesmotrya_concessive": 5,
+    "ne_verb": 11,
+    "nesmotrya_concessive": 13,
     "nesmotrya_na_ne_smotrya_na": 2,
-    "nevziraya_na_ne_vziraya_na": 2,
-    "no_conjunction_series": 32,
-    "no_dash_subject_predicate_verb": 1,
-    "normal_manner_guard": 1,
-    "normalize_straight_quotes": 11,
-    "noun_predicate_dash": 8,
-    "nu_ka": 4,
-    "object_without_quotes_guard": 1,
-    "obozhayu": 1,
-    "obozhayu_a": 3,
-    "obozhayu_keyboard_neighbor": 1,
+    "nevziraya_na_ne_vziraya_na": 3,
+    "nichto_inoe_guard": 3,
+    "nikto_inoy_guard": 1,
+    "no_conjunction_series": 77,
+    "no_dash_subject_predicate_verb": 2,
+    "normalize_straight_quotes": 20,
+    "noun_predicate_dash": 14,
+    "nu_ka": 8,
+    "numeral_predicate_dash": 1,
+    "object_without_quotes_guard": 2,
+    "obozhayu": 2,
+    "obozhayu_a": 4,
     "obozhayu_replace": 1,
-    "oflajn": 4,
+    "obozhayu_split_space": 1,
+    "oflajn": 8,
+    "oflajn_keyboard_neighbor": 1,
+    "oflajn_transpose": 1,
     "onlajn": 3,
     "onlajn_insert": 1,
-    "ordinary_event_words_guard": 1,
-    "ordinary_law_guard": 2,
-    "ordinary_ministry_guard": 1,
-    "ordinary_said_phrase_guard": 1,
-    "orfografiya": 2,
+    "ordinal_adverbs": 1,
+    "ordinary_event_words_guard": 2,
+    "ordinary_law_guard": 3,
+    "ordinary_ministry_guard": 6,
+    "ordinary_object_no_quotes_guard": 1,
+    "ordinary_said_phrase_guard": 5,
+    "ordinary_university_guard": 1,
+    "orfografiya": 3,
     "orfografiya_insert": 1,
-    "organization_ministry": 2,
-    "organization_rgrtu": 7,
-    "orthography_action_quote": 10,
-    "orthography_adjective_safe_context": 69,
-    "orthography_business_quote": 57,
-    "orthography_education_quote": 68,
-    "orthography_everyday_quote": 24,
-    "orthography_noun_safe_context": 9,
-    "orthography_technical_quote": 26,
-    "orthography_word_quote": 28,
+    "orfografiya_replace": 1,
+    "organization_central_bank": 5,
+    "organization_constitutional_court": 8,
+    "organization_ministry": 11,
+    "organization_rgrtu": 4,
+    "organization_state_duma": 3,
+    "orthography_action_quote": 22,
+    "orthography_adjective_safe_context": 163,
+    "orthography_business_quote": 125,
+    "orthography_education_quote": 170,
+    "orthography_everyday_quote": 58,
+    "orthography_noun_safe_context": 14,
+    "orthography_technical_quote": 70,
+    "orthography_word_quote": 76,
     "otchego_guard": 1,
-    "otchego_ot_chego": 3,
-    "ottogo_guard": 1,
-    "ottogo_ot_togo": 1,
+    "otchego_ot_chego": 9,
+    "ottogo_guard": 3,
+    "ottogo_ot_togo": 4,
+    "parallelnyj": 5,
+    "parallelnyj_insert": 1,
     "parallelnyj_keyboard_neighbor": 1,
-    "participial_after_noun": 19,
-    "periodicheski": 2,
-    "periodicheski_split_space": 1,
+    "participial_after_noun": 38,
+    "periodicheski": 3,
+    "periodicheski_insert": 1,
+    "periodicheski_keyboard_neighbor": 1,
+    "person_alexey_orlov": 9,
+    "person_already_correct_guard": 4,
     "person_anna_kuznetsova": 5,
-    "person_ivan_petrov": 5,
-    "person_maria_ivanova": 3,
-    "po_adverb_emu": 3,
-    "po_adverb_omu": 2,
-    "po_adverb_ski": 1,
-    "po_adverb_tski": 7,
-    "podrobnyj": 2,
+    "person_elena_morozova": 5,
+    "person_ivan_petrov": 4,
+    "person_maria_ivanova": 7,
+    "person_olga_sokolova": 6,
+    "person_sergey_smirnov": 2,
+    "po_adverb_emu": 6,
+    "po_adverb_omu": 10,
+    "po_adverb_ski": 7,
+    "po_adverb_tski": 11,
+    "podrobnyj": 4,
     "podrobnyj_split_space": 1,
-    "pol_before_capital": 3,
-    "pol_before_capital_region": 4,
-    "pol_before_l": 1,
-    "pol_before_l_education": 1,
-    "pol_before_vowel": 5,
-    "pol_before_vowel_document": 3,
-    "polu_compounds_time": 4,
+    "pol_before_capital": 7,
+    "pol_before_capital_region": 7,
+    "pol_before_l": 8,
+    "pol_before_l_education": 8,
+    "pol_before_vowel": 8,
+    "pol_before_vowel_document": 7,
+    "polu_compounds": 4,
+    "polu_compounds_time": 9,
     "polzovatel": 1,
-    "poodinochke": 2,
+    "poodinochke": 3,
     "poodinochke_keyboard_neighbor": 1,
-    "postfix_to_libo_nibud": 7,
-    "prazdnik": 1,
-    "prazdnik_keyboard_neighbor": 1,
-    "prazdnik_missing_d": 3,
-    "prilozhenie": 2,
+    "poodinochke_split_space": 1,
+    "postfix_to_libo_nibud": 12,
+    "potomu_chto_po_tomu_chto": 2,
+    "prazdnik": 4,
+    "prazdnik_missing_d": 6,
+    "prilozhenie": 3,
+    "prilozhenie_keyboard_neighbor": 1,
+    "prilozhenie_split_space": 2,
     "profession": 1,
     "profession_replace": 1,
     "profession_split_space": 1,
-    "programma": 2,
-    "programma_insert": 1,
-    "promoushen": 2,
+    "programma": 7,
+    "promoushen": 5,
     "promoushen_replace": 1,
-    "razrabotchik": 2,
-    "reglament": 1,
+    "proper_name_uppercase_guard": 1,
+    "punktuaciya": 3,
+    "punktuaciya_keyboard_neighbor": 1,
+    "punktuaciya_replace": 2,
+    "punktuaciya_split_space": 1,
+    "razrabotchik": 3,
+    "razrabotchik_keyboard_neighbor": 1,
+    "reglament": 3,
+    "reglament_replace": 1,
     "reglament_split_space": 1,
-    "repeated_conjunction": 1,
-    "repeated_conjunction_technical": 3,
-    "resurs": 3,
-    "resurs_keyboard_neighbor": 2,
-    "rieltor": 5,
-    "rieltor_keyboard_neighbor": 1,
-    "sentence_after_period_basic": 5,
-    "sentence_start_basic": 2,
-    "sentence_start_uppercase_guard": 2,
-    "serdce": 2,
-    "serdce_insert": 1,
-    "serdce_missing_d": 3,
+    "repeated_adverbs": 2,
+    "repeated_adverbs_process": 1,
+    "repeated_conjunction": 3,
+    "repeated_conjunction_technical": 7,
+    "resurs": 4,
+    "resurs_keyboard_neighbor": 1,
+    "rieltor": 10,
+    "rieltor_replace": 1,
+    "sentence_after_period_basic": 3,
+    "sentence_start_basic": 6,
+    "sentence_start_uppercase_guard": 4,
+    "serdce": 4,
+    "serdce_keyboard_neighbor": 1,
+    "serdce_missing_d": 6,
+    "serdce_replace": 1,
     "server": 2,
-    "server_insert": 1,
-    "shablon": 4,
-    "shablon_keyboard_neighbor": 1,
-    "simple_final_document_context": 21,
-    "simple_final_education_context": 18,
-    "simple_final_intransitive_context": 12,
-    "simple_final_statement": 19,
-    "simple_final_technical_context": 23,
-    "simple_final_user_interface_context": 19,
-    "single_i_guard": 1,
+    "shablon": 6,
+    "shablon_keyboard_neighbor": 3,
+    "shablon_split_space": 1,
+    "simple_final_document_context": 65,
+    "simple_final_education_context": 51,
+    "simple_final_intransitive_context": 39,
+    "simple_final_statement": 51,
+    "simple_final_technical_context": 63,
+    "simple_final_user_interface_context": 54,
+    "single_gerund": 3,
+    "single_i_guard": 8,
     "slovno_comparison": 1,
-    "speech_before_author_missing_comma_dash_only": 16,
-    "speech_before_author_missing_quotes_comma_dash": 18,
-    "spp_chto": 2,
-    "spp_esli": 9,
-    "spp_kogda": 8,
-    "ssp_a": 6,
-    "ssp_i": 2,
+    "space_identity": 1,
+    "speech_before_author_already_correct_guard": 1,
+    "speech_before_author_missing_comma_dash_only": 56,
+    "speech_before_author_missing_quotes_comma_dash": 57,
+    "split_tokenizaciya": 1,
+    "spp_chto": 17,
+    "spp_esli": 21,
+    "spp_kogda": 14,
+    "ssp_a": 12,
+    "ssp_i": 10,
     "stable_kak_chasy_guard": 1,
-    "subject_not_address_guard": 7,
-    "subordinate_that_check_showed_content": 27,
-    "subordinate_that_report_content": 32,
-    "subordinate_that_technical_observation": 44,
-    "takzhe_additive_merge": 8,
-    "takzhe_comparison_split": 11,
-    "takzhe_tak_zhe": 4,
-    "territoriya": 2,
-    "territoriya_one_r": 3,
-    "territoriya_split_space": 1,
-    "testirovshchik": 1,
+    "subject_not_address_guard": 18,
+    "subordinate_that_check_showed_content": 71,
+    "subordinate_that_report_content": 101,
+    "subordinate_that_technical_observation": 124,
+    "takzhe_additive_merge": 45,
+    "takzhe_comparison_guard": 1,
+    "takzhe_comparison_split": 18,
+    "takzhe_tak_zhe": 9,
+    "territoriya": 3,
+    "territoriya_insert": 1,
+    "territoriya_one_r": 7,
+    "territoriya_replace": 1,
+    "territoriya_split_space": 2,
+    "testirovshchik": 4,
     "testirovshchik_keyboard_neighbor": 1,
-    "testirovshchik_replace": 1,
-    "tochno_comparison": 1,
-    "tozhe_additive_merge": 5,
+    "testirovshchik_replace": 2,
+    "tochno_comparison": 3,
+    "tokenizaciya": 4,
+    "tokenizaciya_insert": 1,
+    "tokenizaciya_keyboard_neighbor": 1,
+    "tokenizaciya_split_space": 3,
+    "tozhe_additive_merge": 21,
     "tozhe_demonstrative_guard": 1,
-    "tozhe_demonstrative_split": 2,
-    "tozhe_to_zhe": 2,
-    "tsya_ttsya_controlled_document": 82,
-    "tsya_ttsya_controlled_person": 111,
-    "uprazhnenie": 3,
-    "uprazhnenie_insert": 2,
+    "tozhe_demonstrative_split": 9,
+    "tsya_ttsya_controlled_document": 171,
+    "tsya_ttsya_controlled_person": 229,
+    "uprazhnenie": 4,
+    "uprazhnenie_insert": 1,
+    "uprazhnenie_keyboard_neighbor": 1,
+    "uprazhnenie_split_space": 1,
     "v_prodolzhenie_v_prodolzhenii": 2,
-    "v_techenie_literal_guard": 2,
-    "v_techenie_temporal": 22,
-    "v_techenie_v_techenii": 4,
-    "vedomost": 3,
-    "vperemeshku": 1,
+    "v_techenie_literal_guard": 1,
+    "v_techenie_temporal": 56,
+    "v_techenie_v_techenii": 10,
+    "vedomost": 6,
+    "vperemeshku": 3,
+    "vperemeshku_insert": 1,
     "vperemeshku_keyboard_neighbor": 1,
-    "vposledstvii": 3,
-    "vse_taki": 2,
-    "vsledstvie_causal": 1,
-    "vsledstvie_literal_guard": 2,
-    "vsledstvie_v_sledstvii": 3,
-    "vvidu_causal": 1,
-    "vvidu_literal_guard": 1,
-    "vvidu_v_vidu": 5,
+    "vperemeshku_replace": 1,
+    "vposledstvii": 4,
+    "vposledstvii_insert": 1,
+    "vse_taki": 6,
+    "vsledstvie_causal": 3,
+    "vsledstvie_literal_guard": 1,
+    "vsledstvie_v_sledstvii": 5,
+    "vvidu_causal": 4,
+    "vvidu_literal_guard": 2,
+    "vvidu_v_vidu": 8,
     "zachem_guard": 1,
-    "zachem_merge": 1,
+    "zachem_merge": 2,
+    "zachem_za_chem": 4,
     "zato_adversative_merge": 1,
-    "zato_preposition_split": 2,
-    "zato_za_to": 3,
-    "zdes_split_space": 1
+    "zato_preposition_split": 4,
+    "zato_za_to": 9,
+    "zdes": 3,
+    "zdes_insert": 1,
+    "zdes_s": 2,
+    "znachit_verb_guard": 1
   },
   "token_edit_count_distribution": {
-    "0": 1124,
-    "1": 851,
-    "2": 25
+    "0": 2994,
+    "1": 1923,
+    "2": 66,
+    "3": 9,
+    "4": 8
   },
   "top_duplicate_pairs": [],
-  "train_seed_range_end": 200013,
+  "train_seed_range_end": 300013,
   "train_seed_range_start": 13,
-  "unique_source_target_pairs": 2000
+  "unique_source_target_pairs": 5000
 }

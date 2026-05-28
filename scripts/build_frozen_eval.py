@@ -322,7 +322,7 @@ def _coverage_rule_ids(generator: Any) -> tuple[str, ...]:
     rule_ids = [
         rule.info.rule_id
         for rule in registry.enabled_rules(config)
-        if rule.info.rule_id not in excluded and rule.can_generate(GenerationMode.POSITIVE)
+        if rule.info.rule_id not in excluded and _coverage_modes(rule)
     ]
     return tuple(sorted(dict.fromkeys(rule_ids)))
 
@@ -332,12 +332,28 @@ def _sample_unique_rule_example(
     rule_id: str,
     deduper: _TextDeduper,
 ) -> GeneratedExample | None:
+    rule = getattr(getattr(generator, "registry", None), "get_rule", lambda _rule_id: None)(rule_id)
+    modes = _coverage_modes(rule)
+    if not modes:
+        return None
     for _ in range(100):
-        example = generator.sample(rule_id=rule_id, mode=GenerationMode.POSITIVE)
-        if deduper.duplicate_reasons(example):
-            continue
-        return example
+        for mode in modes:
+            example = generator.sample(rule_id=rule_id, mode=mode)
+            if deduper.duplicate_reasons(example):
+                continue
+            return example
     return None
+
+
+def _coverage_modes(rule: Any) -> tuple[GenerationMode, ...]:
+    if rule is None:
+        return ()
+    modes = tuple(
+        mode
+        for mode in (GenerationMode.POSITIVE, GenerationMode.HARD_NEGATIVE, GenerationMode.CLEAN_IDENTITY)
+        if rule.can_generate(mode)
+    )
+    return modes
 
 
 def _coverage_examples_per_rule(config: Any, *, required_count: int, count: int) -> int:
