@@ -137,7 +137,7 @@ class OnlineExampleGenerator:
                 last_rule_id = rule.info.rule_id
                 last_mode = selected_mode.value
                 example = rule.generate(builder, self.realizer, rng, selected_mode)
-                validated = self._validate_example(example, rule, selected_mode)
+                validated = self._validate_example(example, rule, selected_mode, rng)
                 return _with_generation_metadata(
                     validated,
                     generation_index=generation_index,
@@ -237,6 +237,7 @@ class OnlineExampleGenerator:
         example: GeneratedExample,
         rule: RuleProgram,
         mode: GenerationMode,
+        rng: RandomSource,
     ) -> GeneratedExample:
         if not isinstance(example, GeneratedExample):
             raise ValueError(f"Rule {rule.info.rule_id!r} returned {type(example).__name__}, not GeneratedExample.")
@@ -257,6 +258,7 @@ class OnlineExampleGenerator:
             raise ValueError("GeneratedExample primary_rule_id must appear in rule_ids.")
 
         validated = _with_rule_metadata_defaults(validated, rule, mode)
+        validated = _with_context_variation(validated, rng)
 
         pair_reasons = validate_generated_pair(validated)
         if pair_reasons:
@@ -438,6 +440,12 @@ def _with_rule_metadata_defaults(
     data = example.to_dict()
     data["metadata"] = metadata
     return GeneratedExample.from_dict(data)
+
+
+def _with_context_variation(example: GeneratedExample, rng: RandomSource) -> GeneratedExample:
+    from src.rule_layers.context_variation import contextualize_example
+
+    return contextualize_example(example, rng)
 
 
 def _expected_edit_counts(

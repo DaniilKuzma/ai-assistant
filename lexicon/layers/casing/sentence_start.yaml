@@ -47,6 +47,40 @@ slot_groups:
       subject_target: Тестировщик
     - subject_source: разработчик
       subject_target: Разработчик
+    - subject_source: программист
+      subject_target: Программист
+    - subject_source: архитектор
+      subject_target: Архитектор
+    - subject_source: технолог
+      subject_target: Технолог
+    - subject_source: механик
+      subject_target: Механик
+    - subject_source: врач
+      subject_target: Врач
+    - subject_source: библиотекарь
+      subject_target: Библиотекарь
+    - subject_source: журналист
+      subject_target: Журналист
+    - subject_source: стажёр
+      subject_target: Стажёр
+    - subject_source: модератор
+      subject_target: Модератор
+    - subject_source: организатор
+      subject_target: Организатор
+    - subject_source: координатор
+      subject_target: Координатор
+    - subject_source: аудитор
+      subject_target: Аудитор
+    - subject_source: юрист
+      subject_target: Юрист
+    - subject_source: бухгалтер
+      subject_target: Бухгалтер
+    - subject_source: наставник
+      subject_target: Наставник
+    - subject_source: архивариус
+      subject_target: Архивариус
+    - subject_source: документалист
+      subject_target: Документалист
   predicates:
     - predicate: проверил
       object: отчёт
@@ -68,6 +102,42 @@ slot_groups:
       object: строку
     - predicate: согласовал
       object: план
+    - predicate: отправил
+      object: письмо
+    - predicate: прочитал
+      object: инструкцию
+    - predicate: заполнил
+      object: форму
+    - predicate: распечатал
+      object: бланк
+    - predicate: подписал
+      object: акт
+    - predicate: изучил
+      object: регламент
+    - predicate: сравнил
+      object: версии
+    - predicate: уточнил
+      object: вопрос
+    - predicate: закрыл
+      object: заявку
+    - predicate: принял
+      object: решение
+    - predicate: составил
+      object: график
+    - predicate: добавил
+      object: комментарий
+    - predicate: проверил
+      object: журнал
+    - predicate: настроил
+      object: интерфейс
+    - predicate: создал
+      object: шаблон
+    - predicate: описал
+      object: проблему
+    - predicate: разобрал
+      object: пример
+    - predicate: сохранил
+      object: таблицу
 cases:
   positive:
     - sub_rule_id: sentence_start_basic

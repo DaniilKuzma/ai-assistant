@@ -20,7 +20,7 @@ from src.grammar_gen.diversity import sample_diverse_examples
 def quality_gate_reasons(
     audit: dict,
     *,
-    max_duplicate_pair_rate: float = 0.15,
+    max_duplicate_pair_rate: float = 0.015,
     min_everyday_context_share: float = 0.20,
     max_editorial_official_context_share: float = 0.50,
 ) -> list[str]:
@@ -54,7 +54,7 @@ def main() -> int:
     parser.add_argument("--max-attempts", type=int, default=8)
     parser.add_argument("--dedupe", action="store_true")
     parser.add_argument("--show-examples", action="store_true")
-    parser.add_argument("--max-duplicate-pair-rate", type=float, default=0.15)
+    parser.add_argument("--max-duplicate-pair-rate", type=float, default=0.015)
     parser.add_argument("--min-everyday-context-share", type=float, default=0.20)
     parser.add_argument("--max-editorial-official-context-share", type=float, default=0.50)
     args = parser.parse_args()

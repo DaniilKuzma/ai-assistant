@@ -257,9 +257,12 @@ def test_new_layers_duplicate_pair_rate_stays_below_threshold() -> None:
 @pytest.mark.parametrize(
     ("family", "max_duplicate_pair_rate"),
     (
-        ("quotation_dialogue", 0.20),
-        ("casing", 0.15),
-        ("semantic", 0.15),
+        ("compound_spelling", 0.05),
+        ("dictionary_typo", 0.05),
+        ("syntax_punctuation", 0.05),
+        ("quotation_dialogue", 0.08),
+        ("casing", 0.05),
+        ("semantic", 0.05),
     ),
 )
 def test_each_new_layer_2000_example_duplicate_pair_rate_stays_below_threshold(

@@ -36,6 +36,57 @@ patterns:
         - {id: webinar_event, subject: вебинар, predicate: событие}
         - {id: conference_event, subject: конференция, predicate: событие}
         - {id: training_event, subject: тренинг, predicate: событие}
+        - {id: note_message, subject: запись, predicate: сообщение}
+        - {id: notification_message, subject: уведомление, predicate: сообщение}
+        - {id: comment_message, subject: комментарий, predicate: сообщение}
+        - {id: remark_message, subject: замечание, predicate: сообщение}
+        - {id: conclusion_result, subject: вывод, predicate: результат}
+        - {id: outcome_result, subject: итог, predicate: результат}
+        - {id: decree_document, subject: постановление, predicate: документ}
+        - {id: order_document, subject: приказ, predicate: документ}
+        - {id: statement_document, subject: заявление, predicate: документ}
+        - {id: contract_document, subject: договор, predicate: документ}
+        - {id: certificate_document, subject: справка, predicate: документ}
+        - {id: license_document, subject: лицензия, predicate: документ}
+        - {id: ledger_document, subject: ведомость, predicate: документ}
+        - {id: table_file, subject: таблица, predicate: файл}
+        - {id: journal_document, subject: журнал, predicate: документ}
+        - {id: textbook_book, subject: учебник, predicate: книга}
+        - {id: novel_book, subject: роман, predicate: книга}
+        - {id: paragraph_text, subject: параграф, predicate: текст}
+        - {id: page_text, subject: страница, predicate: текст}
+        - {id: description_text, subject: описание, predicate: текст}
+        - {id: typo_error, subject: опечатка, predicate: ошибка}
+        - {id: failure_problem, subject: сбой, predicate: проблема}
+        - {id: risk_problem, subject: риск, predicate: проблема}
+        - {id: consultation_meeting, subject: консультация, predicate: встреча}
+        - {id: meeting_session, subject: совещание, predicate: встреча}
+        - {id: exam_event, subject: экзамен, predicate: событие}
+        - {id: olympiad_event, subject: олимпиада, predicate: событие}
+        - {id: concert_event, subject: концерт, predicate: событие}
+        - {id: holiday_event, subject: праздник, predicate: событие}
+        - {id: trip_event, subject: поездка, predicate: событие}
+        - {id: development_process, subject: разработка, predicate: процесс}
+        - {id: check_process, subject: проверка, predicate: процесс}
+        - {id: defense_event, subject: защита, predicate: событие}
+      optional_introductory_phrases:
+        - По сути
+        - В этом случае
+        - Для редактора
+        - В рабочей записи
+      optional_introductory_phrase_chance: 0.22
+      optional_document_phrases:
+        - для архива
+        - в рабочей записи
+        - для отчёта
+        - в кратком описании
+      optional_document_phrase_chance: 0.25
+      optional_second_clauses:
+        - редактор сохранил копию
+        - куратор добавил пояснение
+        - система отметила строку
+        - автор уточнил формулировку
+      optional_second_clause_chance: 0.22
 
   - id: dash_nominal_verbal_predicate_trap
     family: dash_nominal

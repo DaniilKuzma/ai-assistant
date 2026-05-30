@@ -319,13 +319,14 @@ def _render_dash_nominal(
         final_punctuation=".",
     )
     text = realizer.render_sentence(sentence).replace(" - ", " \u2014 ")
+    text, text_metadata = _apply_text_combinators(pattern, text, rng)
     return _rendered(
         pattern,
         text,
         sentence,
         realizer,
         safety_clauses=[],
-        extra_metadata={"dash_pair_id": sentence.pair_id},
+        extra_metadata={"dash_pair_id": sentence.pair_id, **text_metadata},
     )
 
 

@@ -21,7 +21,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Audit generation diversity for online grammar examples.")
     parser.add_argument("config")
     parser.add_argument("--count", type=int, default=2000)
-    parser.add_argument("--max-duplicate-pair-rate", type=float, default=0.12)
+    parser.add_argument("--max-duplicate-pair-rate", type=float, default=0.015)
     parser.add_argument("--max-attempts", type=int, default=16)
     parser.add_argument("--show-examples", action="store_true")
     args = parser.parse_args()

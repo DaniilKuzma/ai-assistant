@@ -21,6 +21,9 @@ from src.schema import GeneratedExample
 from src.schema.serialization import read_jsonl_examples, write_jsonl_examples
 
 
+_TRAIN_DEDUPER_CACHE: dict[str, frozenset[str]] = {}
+
+
 SPLIT_SEED_OFFSETS = {
     "val": 10_000_000,
     "test": 20_000_000,
@@ -247,6 +250,12 @@ class _TextDeduper:
             reasons.append("target_text")
         return reasons
 
+    def add_texts(self, texts: frozenset[str]) -> None:
+        self._seen_texts.update(texts)
+
+    def snapshot(self) -> frozenset[str]:
+        return frozenset(self._seen_texts)
+
 
 def _build_text_deduper(
     config: dict[str, Any],
@@ -259,9 +268,16 @@ def _build_text_deduper(
     deduper = _TextDeduper()
     train_examples_count = _train_example_count(config) if include_train else 0
     if train_examples_count > 0:
-        train_generator = online_generator_from_config(config, seed=base_seed)
-        for index in range(train_examples_count):
-            deduper.add(train_generator.sample_by_index(index))
+        cache_key = _train_deduper_cache_key(config, base_seed, train_examples_count)
+        cached_texts = _TRAIN_DEDUPER_CACHE.get(cache_key)
+        if cached_texts is None:
+            train_deduper = _TextDeduper()
+            train_generator = online_generator_from_config(config, seed=base_seed)
+            for index in range(train_examples_count):
+                train_deduper.add(train_generator.sample_by_index(index))
+            cached_texts = train_deduper.snapshot()
+            _TRAIN_DEDUPER_CACHE[cache_key] = cached_texts
+        deduper.add_texts(cached_texts)
 
     existing_split_paths = list(_existing_split_paths(output_path, split))
     existing_split_examples_count = 0
@@ -276,6 +292,16 @@ def _build_text_deduper(
         "existing_split_examples_count": existing_split_examples_count,
         "existing_split_paths": [str(path) for path in existing_split_paths],
     }
+
+
+def _train_deduper_cache_key(config: Mapping[str, Any], base_seed: int, train_examples_count: int) -> str:
+    relevant_config = {
+        "base_seed": base_seed,
+        "train_examples_count": train_examples_count,
+        "generation": config.get("generation", {}) if isinstance(config, Mapping) else {},
+        "training_epochs": (config.get("training", {}) or {}).get("epochs") if isinstance(config, Mapping) else None,
+    }
+    return json.dumps(relevant_config, ensure_ascii=False, sort_keys=True, default=str)
 
 
 def _sample_coverage_examples(

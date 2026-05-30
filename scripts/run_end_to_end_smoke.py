@@ -156,6 +156,10 @@ class _SmokeState:
         return self.output_dir / "val.jsonl"
 
     @property
+    def frozen_eval_config_path(self) -> Path:
+        return self.output_dir / "frozen_eval_smoke_config.yaml"
+
+    @property
     def training_config_path(self) -> Path:
         return self.output_dir / "training_smoke_config.yaml"
 
@@ -178,8 +182,10 @@ class _SmokeState:
         }
 
     def run_frozen_eval(self) -> dict[str, Any]:
+        config = _smoke_frozen_eval_config(load_config(self.config_path), self.count)
+        _write_yaml(self.frozen_eval_config_path, config)
         manifest, examples = build_frozen_eval(
-            config_path=self.config_path,
+            config_path=self.frozen_eval_config_path,
             split="val",
             count=self.count,
             output_path=self.val_path,
@@ -191,6 +197,7 @@ class _SmokeState:
         _write_json(manifest_path, manifest)
         return {
             "example_count": len(examples),
+            "config_path": str(self.frozen_eval_config_path),
             "dataset_path": str(self.val_path),
             "manifest_path": str(manifest_path),
             "audit_failures_count": manifest["audit_failures_count"],
@@ -309,6 +316,15 @@ def _smoke_training_config(config: dict[str, Any], output_dir: Path) -> dict[str
     paths["generated_eval_dir"] = str(output_dir)
     paths["adapter_output_dir"] = str(output_dir / "models" / "adapters")
     paths["heads_output_dir"] = str(output_dir / "models" / "heads")
+    return config_copy
+
+
+def _smoke_frozen_eval_config(config: dict[str, Any], count: int) -> dict[str, Any]:
+    config_copy = copy.deepcopy(config)
+    generation = config_copy.setdefault("generation", {})
+    training = config_copy.setdefault("training", {})
+    generation["samples_per_epoch"] = max(count, int(training.get("batch_size", 1) or 1))
+    training["epochs"] = 1
     return config_copy
 
 

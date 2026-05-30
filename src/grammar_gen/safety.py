@@ -28,7 +28,7 @@ REPEATED_PUNCTUATION_RE = re.compile(r"([,!?;:])\1+|\.{2}(?!\.)|\.{4,}")
 BROKEN_PUNCTUATION_SPACING_RE = re.compile(r"\s+[,.!?;:]|[,;:](?=\S)|[.!?](?=[А-Яа-яЁё])")
 BROKEN_QUOTE_SPACING_RE = re.compile(r"«\s+|\s+»")
 BROKEN_DIRECT_SPEECH_PUNCTUATION_RE = re.compile(r"»,[—-]")
-FINAL_PUNCTUATION_RE = re.compile(r"(\.\.\.|[.!?\u2026])$")
+FINAL_PUNCTUATION_RE = re.compile(r"(\.\.\.|[.!?\u2026])[»”)]*$")
 FINAL_PUNCTUATION_LABELS = {
     ".": "DOT",
     "?": "QUESTION",

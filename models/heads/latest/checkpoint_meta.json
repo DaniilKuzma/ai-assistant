@@ -6,11 +6,11 @@
   "heads_epoch": 4,
   "selected_epoch": 4,
   "validation": {
-    "combined_score": 0.9608,
+    "combined_score": 0.9568333333333333,
     "epoch": 4,
-    "exact_match": 0.9608,
-    "examples": 5000,
-    "loss": 0.005794399686134126,
+    "exact_match": 0.9568333333333333,
+    "examples": 6000,
+    "loss": 0.004503010724797508,
     "status": "ok"
   }
 }

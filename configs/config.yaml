@@ -15,12 +15,12 @@ model:
 generation:
   mode: online_ast
   seed: 13
-  samples_per_epoch: 75000
+  samples_per_epoch: 100000
   frozen_eval:
-    val_examples: 5000
-    test_examples: 5000
-    regression_examples: 1500
-    coverage_examples_per_rule: 8
+    val_examples: 6000
+    test_examples: 6000
+    regression_examples: 2000
+    coverage_examples_per_rule: 10
     output_dir: data/generated_eval
   enabled_rule_groups:
     - deterministic_orthography

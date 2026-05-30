@@ -5,7 +5,7 @@ from pathlib import Path
 
 from src.config.load_config import load_config
 from src.grammar_gen.audit import audit_batch
-from src.grammar_gen.diversity import duplicate_pair_rate, sample_diverse_examples
+from src.grammar_gen.diversity import diversity_report, duplicate_pair_rate, sample_diverse_examples
 from src.grammar_gen.factory import online_generator_from_config
 from src.schema import GeneratedExample, WordToken
 from scripts.audit_generator import quality_gate_reasons
@@ -13,6 +13,8 @@ from scripts.audit_generator import quality_gate_reasons
 
 ROOT = Path(__file__).resolve().parents[1]
 MAX_DUPLICATE_PAIR_RATE = 0.12
+MAX_RAW_DUPLICATE_PAIR_RATE = 0.015
+MAX_RULE_RAW_DUPLICATE_PAIR_RATE = 0.10
 ENABLED_LAYER_MARKERS = {
     "compound_spelling",
     "morpheme",
@@ -85,6 +87,25 @@ def test_context_variation_reports_everyday_style_without_official_dominance() -
     assert contextualized_count > 0
     assert buckets.get("everyday", 0) / contextualized_count >= 0.20
     assert buckets.get("editorial_official", 0) / contextualized_count <= 0.50
+
+
+def test_raw_5000_generation_stays_diverse_without_dedupe() -> None:
+    config = load_config(ROOT / "configs" / "config.yaml")
+    generator = online_generator_from_config(config, seed=config["generation"]["seed"])
+    examples = [generator.sample_by_index(index) for index in range(5000)]
+    audit = audit_batch(examples)
+    diversity = diversity_report(examples)
+
+    high_duplicate_rules = {
+        rule_id: stats
+        for rule_id, stats in diversity["duplicate_rate_by_rule_id"].items()
+        if stats["count"] >= 40
+        and stats["duplicate_pair_rate"] > MAX_RULE_RAW_DUPLICATE_PAIR_RATE
+    }
+
+    assert audit["failed_examples_count"] == 0
+    assert diversity["duplicate_pair_rate"] <= MAX_RAW_DUPLICATE_PAIR_RATE, diversity["duplicate_diagnostics"]
+    assert high_duplicate_rules == {}
 
 
 def test_diverse_generation_is_deterministic_without_mutating_sample_by_index() -> None:
@@ -161,7 +182,7 @@ def test_audit_quality_gate_rejects_duplicate_and_style_regressions() -> None:
     }
 
     assert quality_gate_reasons(audit) == [
-        "duplicate_pair_rate:0.2000>0.1500",
+        "duplicate_pair_rate:0.2000>0.0150",
         "everyday_context_share:0.1000<0.2000",
         "editorial_official_context_share:0.8000>0.5000",
     ]

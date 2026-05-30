@@ -288,10 +288,10 @@ def test_online_generator_1000_examples_have_no_safety_failures() -> None:
 def test_comma_subordinate_uses_only_safe_complement_main_clauses() -> None:
     generator = _generator()
     unsafe_patterns = (
-        re.compile(r"\bпров[её]л\b.*,\s+что\b", re.IGNORECASE),
-        re.compile(r"\bсравнил\b.*,\s+что\b", re.IGNORECASE),
-        re.compile(r"\bотправил\b.*,\s+что\b", re.IGNORECASE),
-        re.compile(r"\bсохранил\b.*,\s+что\b", re.IGNORECASE),
+        re.compile(r"\bпров[её]л\b[^:;.?!]*,\s+что\b", re.IGNORECASE),
+        re.compile(r"\bсравнил\b[^:;.?!]*,\s+что\b", re.IGNORECASE),
+        re.compile(r"\bотправил\b[^:;.?!]*,\s+что\b", re.IGNORECASE),
+        re.compile(r"\bсохранил\b[^:;.?!]*,\s+что\b", re.IGNORECASE),
     )
 
     examples = [
@@ -380,6 +380,39 @@ def test_dash_subject_predicate_uses_only_curated_pair_ids() -> None:
         "webinar_event",
         "conference_event",
         "training_event",
+        "note_message",
+        "notification_message",
+        "comment_message",
+        "remark_message",
+        "conclusion_result",
+        "outcome_result",
+        "decree_document",
+        "order_document",
+        "statement_document",
+        "contract_document",
+        "certificate_document",
+        "license_document",
+        "ledger_document",
+        "table_file",
+        "journal_document",
+        "textbook_book",
+        "novel_book",
+        "paragraph_text",
+        "page_text",
+        "description_text",
+        "typo_error",
+        "failure_problem",
+        "risk_problem",
+        "consultation_meeting",
+        "meeting_session",
+        "exam_event",
+        "olympiad_event",
+        "concert_event",
+        "holiday_event",
+        "trip_event",
+        "development_process",
+        "check_process",
+        "defense_event",
     }
 
     examples = [
@@ -396,11 +429,14 @@ def test_dash_subject_predicate_uses_only_curated_pair_ids() -> None:
 
     assert pair_ids <= allowed_pair_ids
     assert "" not in pair_ids
-    assert {example.target_text for example in examples}.isdisjoint(forbidden_targets)
+    assert all(
+        forbidden not in example.target_text
+        for example in examples
+        for forbidden in forbidden_targets
+    )
     assert all("—" in example.target_text for example in examples)
     assert all(
-        len(example.target_text.split("—", 1)[0].split()) == 1
-        and len(example.target_text.split("—", 1)[1].strip(" .").split()) <= 2
+        re.search(r"\b[А-ЯЁ][А-Яа-яЁё-]*\s+—\s+[А-Яа-яЁё-]+(?:\s+[А-Яа-яЁё-]+)?\b", example.target_text)
         for example in examples
     )
 
@@ -473,6 +509,32 @@ def test_mixed_5000_examples_have_strict_surface_quality_and_no_semantic_safety_
 
     assert audit["failed_examples_count"] == 0
     assert failures == []
+
+
+def test_dialogue_questions_do_not_use_declarative_speech_with_ask_verbs() -> None:
+    config = load_config(ROOT / "configs" / "config.yaml")
+    config["generation"]["enabled_rule_groups"] = ["quotation_dialogue"]
+    config["generation"]["mix"] = {"quotation_dialogue": 1.0}
+    config["generation"]["grammar"]["max_generation_retries"] = 100
+    generator = online_generator_from_config(config, seed=909)
+    examples = [generator.sample_by_index(index) for index in range(2000)]
+
+    bad_examples = [
+        (example.source_text, example.target_text)
+        for example in examples
+        if example.primary_rule_id.startswith("dialogue_")
+        and re.search(r"\bспросил[аи]?\b", example.target_text, re.IGNORECASE)
+        and "?" not in example.target_text
+    ]
+    report_subject_ask = [
+        (example.source_text, example.target_text)
+        for example in examples
+        if re.search(r"\b(?:отч[её]т|документ|текст|файл|задача|ошибка)\s+спросил", example.source_text, re.IGNORECASE)
+        or re.search(r"\b(?:отч[её]т|документ|текст|файл|задача|ошибка)\s+спросил", example.target_text, re.IGNORECASE)
+    ]
+
+    assert bad_examples == []
+    assert report_subject_ask == []
 
 
 def test_production_generator_10000_examples_quality_gate() -> None:

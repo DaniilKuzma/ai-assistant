@@ -12,15 +12,15 @@ def _join(*parts: str) -> str:
     return "".join(parts)
 
 
-def test_training_config_uses_50k_online_ast_morphemic_generation() -> None:
+def test_training_config_uses_100k_online_ast_morphemic_generation() -> None:
     config = load_config(ROOT / "configs" / "config.yaml")
     generation = config["generation"]
     training = config["training"]
 
-    assert generation["samples_per_epoch"] == 50_000
+    assert generation["samples_per_epoch"] == 100_000
     assert training["epochs"] == 4
     assert training["batch_size"] == 32
-    assert generation["samples_per_epoch"] * training["epochs"] == 200_000
+    assert generation["samples_per_epoch"] * training["epochs"] == 400_000
     assert generation["mode"] == "online_ast"
     assert "morpheme" in generation["enabled_rule_groups"]
     assert "orthography_morphemic" in generation["enabled_rule_groups"]

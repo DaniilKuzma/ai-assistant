@@ -177,8 +177,10 @@ def test_legacy_dash_subject_predicate_keeps_curated_core_shape() -> None:
     assert len(unique_pairs) >= 15
     assert all("—" in example.target_text for example in examples)
     assert all(
-        len(example.target_text.split("—", 1)[0].split()) == 1
-        and len(example.target_text.split("—", 1)[1].strip(" .").split()) <= 2
+        example.metadata.get("construction_id") == "dash_nominal_curated_safe_pairs"
+        and example.metadata.get("dash_pair_id")
+        and example.source_text.count("—") == 0
+        and example.target_text.count("—") == 1
         for example in examples
     )
 

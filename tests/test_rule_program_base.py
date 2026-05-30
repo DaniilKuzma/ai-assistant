@@ -123,8 +123,11 @@ def test_online_example_generator_samples_from_dummy_rule() -> None:
     assert example.primary_rule_id == "ne_verb"
     assert example.mode == GenerationMode.POSITIVE.value
     assert example.source_text == example.target_text
-    assert example.token_edit_labels == ["KEEP", "KEEP", "KEEP"]
-    assert example.gap_labels == ["NONE", "NONE", "DOT"]
+    assert "\u041e\u043d \u0437\u043d\u0430\u043b \u043e\u0442\u0432\u0435\u0442." in example.source_text
+    assert len(example.token_edit_labels) == len(example.source_tokens)
+    assert set(example.token_edit_labels) == {"KEEP"}
+    assert len(example.gap_labels) == len(example.source_tokens)
+    assert example.gap_labels[-1] == "DOT"
 
 
 def test_online_example_generator_enforces_generated_example_invariants() -> None:

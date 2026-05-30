@@ -35,7 +35,7 @@ RULE_IDS = frozenset(
 )
 PHENOMENA = frozenset({"quote_pairing", "quote_normalization", "dialogue", "bracket_guard"})
 TOKEN_LABELS = frozenset({"CAPITALIZE"})
-GAP_LABELS = frozenset({"COLON", "DOT", "COMMA_DASH"})
+GAP_LABELS = frozenset({"COLON", "DOT", "QUESTION", "COMMA_DASH"})
 BOUNDARY_LABEL_ALIASES: Mapping[str, tuple[str, str]] = {
     "INSERT_OPEN_QUOTE_BEFORE": ("boundary_before", "INSERT_OPEN_QUOTE"),
     "DELETE_OPEN_QUOTE_BEFORE": ("boundary_before", "DELETE_OPEN_QUOTE"),
@@ -132,6 +132,8 @@ def _expanded_cases(
     for value_map in values:
         source_text = _render(source_template, value_map, path)
         target_text = _render(target_template, value_map, path)
+        if _asks_without_question(value_map, source_text, target_text):
+            continue
         token_operations = tuple(
             _operation_from_mapping(item, path, value_map, default_kind="token")
             for item in raw_token_operations
@@ -179,6 +181,13 @@ def _expanded_cases(
             )
         )
     return tuple(cases)
+
+
+def _asks_without_question(values: Mapping[str, str], source_text: str, target_text: str) -> bool:
+    verb = str(values.get("speech_verb") or "").casefold()
+    if verb not in {"спросил", "спросила"}:
+        return False
+    return "?" not in source_text and "?" not in target_text
 
 
 def _operation_from_mapping(

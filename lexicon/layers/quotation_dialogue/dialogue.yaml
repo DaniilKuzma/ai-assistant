@@ -196,6 +196,52 @@ rules:
           metadata:
             phenomenon: dialogue
             operation: author_before_missing_colon_quotes
+        - sub_rule_id: author_before_question_missing_colon_quotes
+          slot_groups:
+            author_forms:
+              - speaker: Редактор
+                author_after: редактор
+                speech_verb: спросил
+              - speaker: Мария
+                author_after: Мария
+                speech_verb: спросила
+              - speaker: Студент
+                author_after: студент
+                speech_verb: спросил
+              - speaker: Ассистент
+                author_after: ассистент
+                speech_verb: спросил
+            speech_phrases:
+              - speech_lower: проект готов
+                speech_cap: Проект готов
+                speech_last: готов
+              - speech_lower: отчёт проверен
+                speech_cap: Отчёт проверен
+                speech_last: проверен
+              - speech_lower: файл загружен
+                speech_cap: Файл загружен
+                speech_last: загружен
+              - speech_lower: документ принят
+                speech_cap: Документ принят
+                speech_last: принят
+          source_template: "{speaker} {speech_verb} {speech_lower}"
+          target_template: "{speaker} {speech_verb}: «{speech_cap}?»"
+          token_operations:
+            - label: CAPITALIZE
+              source_pattern: "{speech_lower}"
+          gap_operations:
+            - label: COLON
+              source_pattern: "{speech_verb}"
+            - label: QUESTION
+              source_pattern: "{speech_last}"
+          boundary_operations:
+            - label: INSERT_OPEN_QUOTE_BEFORE
+              source_pattern: "{speech_lower}"
+            - label: INSERT_CLOSE_QUOTE_AFTER
+              source_pattern: "{speech_last}"
+          metadata:
+            phenomenon: dialogue
+            operation: author_before_question_missing_colon_quotes
         - sub_rule_id: author_before_normalize_quotes
           source_template: "{speaker} {speech_verb}: \"{speech_cap}\"."
           target_template: "{speaker} {speech_verb}: «{speech_cap}»."
@@ -541,20 +587,20 @@ rules:
           author_after: ассистент
           speech_verb: написал
       interrupted_speech:
-        - speech_first_cap: Проект
-          speech_tail: готов
-        - speech_first_cap: Отчёт
-          speech_tail: проверен
-        - speech_first_cap: Текст
-          speech_tail: исправлен
-        - speech_first_cap: Файл
-          speech_tail: загружен
-        - speech_first_cap: Задача
-          speech_tail: выполнена
-        - speech_first_cap: Ошибка
-          speech_tail: найдена
-        - speech_first_cap: Документ
-          speech_tail: принят
+        - speech_first_cap: Да
+          speech_tail: готово
+        - speech_first_cap: Верно
+          speech_tail: проверено
+        - speech_first_cap: Хорошо
+          speech_tail: исправлено
+        - speech_first_cap: Сейчас
+          speech_tail: загружено
+        - speech_first_cap: Конечно
+          speech_tail: выполнено
+        - speech_first_cap: Именно
+          speech_tail: найдено
+        - speech_first_cap: Итак
+          speech_tail: принято
     cases:
       positive:
         - sub_rule_id: author_inside_speech_basic

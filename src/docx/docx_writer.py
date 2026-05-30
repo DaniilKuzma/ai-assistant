@@ -9,11 +9,15 @@ from docx import Document
 def write_paragraphs_like(source_path: str | Path, output_path: str | Path, paragraphs: list[str]) -> None:
     document = Document(source_path)
     for paragraph, text in zip(document.paragraphs, paragraphs, strict=False):
-        if paragraph.runs:
-            _write_text_preserving_runs(paragraph, text)
-        else:
-            paragraph.text = text
+        write_paragraph_text(paragraph, text)
     document.save(output_path)
+
+
+def write_paragraph_text(paragraph, text: str) -> None:  # type: ignore[no-untyped-def]
+    if paragraph.runs:
+        _write_text_preserving_runs(paragraph, text)
+    else:
+        paragraph.text = text
 
 
 def _write_text_preserving_runs(paragraph, corrected_text: str) -> None:  # type: ignore[no-untyped-def]
@@ -79,3 +83,6 @@ def _run_index_for_position(run_spans: list[tuple[int, int]], position: int, ori
         if position == start:
             return index
     return len(run_spans) - 1
+
+
+__all__ = ["write_paragraph_text", "write_paragraphs_like"]
