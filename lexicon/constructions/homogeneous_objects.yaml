@@ -1,0 +1,76 @@
+patterns:
+  - id: homogeneous_objects_document_work
+    family: homogeneous_objects
+    surface: "{subject} проверил {object1}, {object2} и {object3}."
+    roles:
+      subject:
+        semantic_classes: [person]
+      object:
+        semantic_classes: [document, report, text, calculation, task, file, book]
+        case: accs
+    allowed_rule_ids: [comma_homogeneous]
+    allowed_frame_ids:
+      - check_document
+      - read_text
+      - sign_document
+      - open_file
+      - edit_text
+      - upload_file
+      - forward_message
+      - form_report
+      - analyze_report_detail
+      - compare_data_flow
+    metadata:
+      render_type: homogeneous_objects
+
+  - id: homogeneous_objects_technical_work
+    family: homogeneous_objects
+    surface: "{subject} загрузил {object1}, {object2} и {object3}."
+    roles:
+      subject:
+        semantic_classes: [person, organization, software_agent]
+      object:
+        semantic_classes: [file, data, document, report]
+        case: accs
+    allowed_rule_ids: [comma_homogeneous]
+    allowed_frame_ids:
+      - upload_file
+      - attach_document
+      - export_data
+      - analyze_report_detail
+      - compare_data_flow
+    metadata:
+      render_type: homogeneous_objects
+
+  - id: homogeneous_objects_education_work
+    family: homogeneous_objects
+    surface: "{subject} объяснил {object1}, {object2} и {object3}."
+    roles:
+      subject:
+        semantic_classes: [person, organization]
+      object:
+        semantic_classes: [task, question, rule, text, book]
+        case: accs
+    allowed_rule_ids: [comma_homogeneous]
+    allowed_frame_ids:
+      - explain_rule_detail
+      - explain_rule_repeat
+      - clarify_question
+      - check_file_repeat
+    metadata:
+      render_type: homogeneous_objects
+
+  - id: homogeneous_objects_single_conjunction_trap
+    family: homogeneous_objects
+    surface: "Студент прочитал книгу и отчёт."
+    roles:
+      context:
+        semantic_classes: [text]
+    allowed_rule_ids: [comma_homogeneous]
+    metadata:
+      render_type: fixed_text
+      context_only: true
+      trap_type: single_conjunction
+      texts:
+        - "Студент прочитал книгу и отчёт."
+        - "Редактор проверил отчёт и письмо."

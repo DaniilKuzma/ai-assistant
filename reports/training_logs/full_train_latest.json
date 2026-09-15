@@ -1,0 +1,7 @@
+﻿{
+    "log_path":  "D:\\projects\\ai-assistant\\reports\\training_logs\\full_train_20260526_011220.out.log",
+    "pid":  5344,
+    "command":  "PYTHONPATH=. python -u -m src.training.train configs/config.yaml",
+    "err_path":  "D:\\projects\\ai-assistant\\reports\\training_logs\\full_train_20260526_011220.progress.log",
+    "started_at":  "2026-05-26T01:12:21.0196728+03:00"
+}

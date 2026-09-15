@@ -1,0 +1,99 @@
+rule_id: casing_common_lowercase
+description: Controlled lowercase normalization for common words with extra capitals.
+slots:
+  role_prefix:
+    - Редактор встретил
+    - Корректор заметил
+    - Автор упомянул
+    - Методист пригласил
+    - Эксперт процитировал
+    - Секретарь записал
+  role_suffix:
+    - утром
+    - в отчёте
+    - на встрече
+    - после проверки
+    - в заметке
+    - перед совещанием
+  weekday_prefix:
+    - Редактор отметил
+    - Автор записал
+    - Методист указал
+    - Эксперт проверил
+    - Секретарь добавил
+    - Корректор увидел
+cases:
+  positive:
+    - sub_rule_id: common_role_mid_sentence
+      source_template: "{role_prefix} Директора {role_suffix}."
+      target_template: "{role_prefix} директора {role_suffix}."
+      expected_token_edit_count: 1
+      token_operations:
+        - label: LOWERCASE
+          source_pattern: Директора
+          target_pattern: директора
+      metadata:
+        phenomenon: common_lowercase
+        operation: lowercase_common_word
+        casing_class: common_role
+    - sub_rule_id: common_president_title
+      source_template: "{role_prefix} Президента {role_suffix}."
+      target_template: "{role_prefix} президента {role_suffix}."
+      expected_token_edit_count: 1
+      token_operations:
+        - label: LOWERCASE
+          source_pattern: Президента
+          target_pattern: президента
+      metadata:
+        phenomenon: common_lowercase
+        operation: lowercase_common_word
+        casing_class: common_title
+    - sub_rule_id: common_weekday_month
+      source_template: "{weekday_prefix} Понедельник и Январь в примере."
+      target_template: "{weekday_prefix} понедельник и январь в примере."
+      expected_token_edit_count: 2
+      token_operations:
+        - label: LOWERCASE
+          source_pattern: Понедельник
+          target_pattern: понедельник
+        - label: LOWERCASE
+          source_pattern: Январь
+          target_pattern: январь
+      metadata:
+        phenomenon: common_lowercase
+        operation: lowercase_common_word
+        casing_class: weekday_month
+  hard_negative:
+    - sub_rule_id: sentence_start_uppercase_guard
+      source: "Директор проверил отчёт."
+      target: "Директор проверил отчёт."
+      expected_token_edit_count: 0
+      metadata:
+        phenomenon: sentence_start_guard
+        operation: identity_guard
+        casing_class: sentence_start
+    - sub_rule_id: proper_name_uppercase_guard
+      source: "Редактор встретил Анну утром."
+      target: "Редактор встретил Анну утром."
+      expected_token_edit_count: 0
+      metadata:
+        phenomenon: proper_name_guard
+        operation: identity_guard
+        casing_class: person_name
+    - sub_rule_id: abbreviation_uppercase_guard
+      source: "Система сравнила РФ, США, ИИ и ООО."
+      target: "Система сравнила РФ, США, ИИ и ООО."
+      expected_token_edit_count: 0
+      metadata:
+        phenomenon: abbreviation_guard
+        operation: identity_guard
+        casing_class: abbreviation
+  clean_identity:
+    - sub_rule_id: sentence_start_uppercase_guard
+      source: "Президент подписал документ."
+      target: "Президент подписал документ."
+      expected_token_edit_count: 0
+      metadata:
+        phenomenon: sentence_start_guard
+        operation: clean_identity
+        casing_class: sentence_start

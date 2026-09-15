@@ -1,0 +1,14 @@
+# Exact trusted common misspellings. Runtime still needs model-predicted labels.
+entries:
+  - {rule_id: dictionary_common_misspellings, sub_rule_id: grammatika_one_m, correct: грамматика, wrong_variants: [граматика], typo_ops: [delete, duplicate]}
+  - {rule_id: dictionary_common_misspellings, sub_rule_id: akkuratnyj_one_k, correct: аккуратный, wrong_variants: [акуратный], typo_ops: [delete, duplicate]}
+  - {rule_id: dictionary_common_misspellings, sub_rule_id: iskusstvennyj_one_s, correct: искусственный, wrong_variants: [искуственный], typo_ops: [delete, duplicate]}
+  - {rule_id: dictionary_common_misspellings, sub_rule_id: territoriya_one_r, correct: территория, wrong_variants: [територия], typo_ops: [delete, duplicate]}
+  - {rule_id: dictionary_common_misspellings, sub_rule_id: kollektiv_one_l, correct: коллектив, wrong_variants: [колектив], typo_ops: [delete, duplicate]}
+  - {rule_id: dictionary_common_misspellings, sub_rule_id: zdes_s, correct: здесь, wrong_variants: [сдесь], typo_ops: [replace]}
+  - {rule_id: dictionary_common_misspellings, sub_rule_id: obozhayu_a, correct: обожаю, wrong_variants: [обажаю], typo_ops: [replace]}
+  - {rule_id: dictionary_common_misspellings, sub_rule_id: lestnica_missing_t, correct: лестница, wrong_variants: [лесница], typo_ops: [delete]}
+  - {rule_id: dictionary_common_misspellings, sub_rule_id: serdce_missing_d, correct: сердце, wrong_variants: [серце], typo_ops: [delete]}
+  - {rule_id: dictionary_common_misspellings, sub_rule_id: prazdnik_missing_d, correct: праздник, wrong_variants: [прасник], typo_ops: [delete]}
+  - {rule_id: dictionary_common_misspellings, sub_rule_id: agentstvo_missing_t, correct: агентство, wrong_variants: [агенство], typo_ops: [delete]}
+  - {rule_id: dictionary_common_misspellings, sub_rule_id: chuvstvovat_missing_v, correct: чувствовать, wrong_variants: [чуствовать], typo_ops: [delete]}

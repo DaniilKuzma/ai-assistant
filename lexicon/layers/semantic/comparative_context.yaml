@@ -1,0 +1,105 @@
+# Semantic contexts for comma decisions around "как".
+rule_id: semantic_comparative_context
+description: Semantic guards and safe appositive comma cases for "как".
+slots:
+  actor: [Студент, Автор, Куратор, Проверяющий]
+  object: [отчёт, текст, файл]
+  error: [ошибку, опечатку, неточность]
+cases:
+  positive:
+    - sub_rule_id: comparative_kak_appositive
+      source_template: "{actor} как опытный редактор заметил {error}."
+      target_template: "{actor}, как опытный редактор, заметил {error}."
+      gap_operations:
+        - label: COMMA
+          source_pattern: "{actor} как"
+        - label: COMMA
+          source_pattern: "редактор заметил"
+      expected_gap_edit_count: 2
+      metadata: &comparative_appositive_meta
+        semantic_case_type: comparison
+        ambiguity_pair: "как_роль/как_обособление"
+        semantic_signal: "приложение с причинно-пояснительным оттенком"
+        operation: gap_guard
+        source: "как опытный редактор"
+        target: "как опытный редактор"
+        legacy_overlap: false
+        compound_overlap: false
+    - sub_rule_id: comparative_kak_appositive
+      source_template: "{actor} как внимательный корректор быстро нашёл {error}."
+      target_template: "{actor}, как внимательный корректор, быстро нашёл {error}."
+      gap_operations:
+        - label: COMMA
+          source_pattern: "{actor} как"
+        - label: COMMA
+          source_pattern: "корректор быстро"
+      expected_gap_edit_count: 2
+      metadata:
+        <<: *comparative_appositive_meta
+        source: "как внимательный корректор"
+        target: "как внимательный корректор"
+    - sub_rule_id: comparative_kak_appositive
+      source_template: "{actor} как старший эксперт проверил {object} повторно."
+      target_template: "{actor}, как старший эксперт, проверил {object} повторно."
+      gap_operations:
+        - label: COMMA
+          source_pattern: "{actor} как"
+        - label: COMMA
+          source_pattern: "эксперт проверил"
+      expected_gap_edit_count: 2
+      metadata:
+        <<: *comparative_appositive_meta
+        source: "как старший эксперт"
+        target: "как старший эксперт"
+    - sub_rule_id: comparative_kak_appositive
+      source_template: "{actor} как ответственный ассистент сохранил {object} вовремя."
+      target_template: "{actor}, как ответственный ассистент, сохранил {object} вовремя."
+      gap_operations:
+        - label: COMMA
+          source_pattern: "{actor} как"
+        - label: COMMA
+          source_pattern: "ассистент сохранил"
+      expected_gap_edit_count: 2
+      metadata:
+        <<: *comparative_appositive_meta
+        source: "как ответственный ассистент"
+        target: "как ответственный ассистент"
+    - sub_rule_id: comparative_kak_appositive
+      source_template: "{actor} как опытный методист объяснил правило группе."
+      target_template: "{actor}, как опытный методист, объяснил правило группе."
+      gap_operations:
+        - label: COMMA
+          source_pattern: "{actor} как"
+        - label: COMMA
+          source_pattern: "методист объяснил"
+      expected_gap_edit_count: 2
+      metadata:
+        <<: *comparative_appositive_meta
+        source: "как опытный методист"
+        target: "как опытный методист"
+
+  hard_negative:
+    - sub_rule_id: comparative_kak_role_guard
+      source: "Он работал как редактор."
+      target: "Он работал как редактор."
+      metadata: &comparative_guard_meta
+        semantic_case_type: guard
+        ambiguity_pair: "как_роль/как_обособление"
+        semantic_signal: "оборот с «как» обозначает роль или качество без обособления"
+        operation: gap_guard
+        source: "как"
+        target: "как"
+        legacy_overlap: false
+        compound_overlap: false
+    - sub_rule_id: comparative_kak_role_guard
+      source: "Ошибка выглядела как обычная опечатка."
+      target: "Ошибка выглядела как обычная опечатка."
+      metadata: *comparative_guard_meta
+    - sub_rule_id: comparative_kak_role_guard
+      source: "Студент выступал как представитель группы."
+      target: "Студент выступал как представитель группы."
+      metadata: *comparative_guard_meta
+    - sub_rule_id: comparative_kak_role_guard
+      source: "Файл сохранился как черновик."
+      target: "Файл сохранился как черновик."
+      metadata: *comparative_guard_meta

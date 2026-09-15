@@ -1,0 +1,70 @@
+rule_id: punct_introductory_extended
+description: Extended introductory word punctuation.
+slots:
+  actor: [Редактор, Студент, Учитель, Секретарь]
+  word: [конечно, возможно, вероятно, кстати]
+  object: [отчёт, текст, файл, план]
+cases:
+  positive:
+    - sub_rule_id: introductory_initial
+      source_template: "{word} {actor} проверил {object}."
+      target_template: "{word}, {actor} проверил {object}."
+      gap_operations:
+        - label: COMMA
+          source_pattern: "{word}"
+      metadata:
+        subtype: introductory_word
+        position: initial
+    - sub_rule_id: introductory_medial
+      source_template: "{actor} {word} проверил {object}."
+      target_template: "{actor}, {word}, проверил {object}."
+      gap_operations:
+        - label: COMMA
+          source_pattern: "{actor}"
+        - label: COMMA
+          source_pattern: "{word}"
+      expected_gap_edit_count: 2
+      metadata:
+        subtype: introductory_word
+        position: medial
+    - sub_rule_id: introductory_final
+      source_template: "{actor} проверил {object} {word}."
+      target_template: "{actor} проверил {object}, {word}."
+      gap_operations:
+        - label: COMMA
+          source_pattern: "{object}"
+      metadata:
+        subtype: introductory_word
+        position: final
+    - sub_rule_id: expanded_introductory
+      source: "По мнению комиссии отчёт готов."
+      target: "По мнению комиссии, отчёт готов."
+      gap_operations:
+        - label: COMMA
+          source_pattern: "комиссии"
+      metadata:
+        subtype: expanded_introductory
+        position: initial
+  hard_negative:
+    - sub_rule_id: normal_adverb_guard
+      source: "Документ действительно содержит факт."
+      target: "Документ действительно содержит факт."
+      metadata:
+        guard: homonymous_non_introductory
+    - sub_rule_id: normal_manner_guard
+      source: "Система точно показала результат."
+      target: "Система точно показала результат."
+      metadata:
+        guard: homonymous_non_introductory
+    - sub_rule_id: znachit_verb_guard
+      source: "Это слово значит многое."
+      target: "Это слово значит многое."
+      metadata:
+        guard: homonymous_non_introductory
+  clean_identity:
+    - sub_rule_id: clean_introductory_medial
+      source_template: "{actor}, {word}, проверил {object}."
+      target_template: "{actor}, {word}, проверил {object}."
+      metadata:
+        subtype: clean_introductory
+        position: medial

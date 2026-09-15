@@ -1,0 +1,19 @@
+{
+  "adapter_path": "",
+  "allow_fallback": true,
+  "backend_kind": "deterministic_fallback",
+  "changed_when_needed": 0.0,
+  "char_accuracy": 0.9833255255958968,
+  "edit_f1": 0.0,
+  "edit_precision": 0.0,
+  "edit_recall": 0.0,
+  "exact_match": 0.112,
+  "example_count": 500,
+  "heads_path": "",
+  "model_loaded": false,
+  "overcorrection_rate": 0.0,
+  "rejected_by_scope_guard": 0,
+  "rejected_by_threshold": 0,
+  "selected_epoch": null,
+  "unchanged_when_clean": 1.0
+}

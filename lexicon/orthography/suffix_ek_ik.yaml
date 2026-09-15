@@ -1,0 +1,12 @@
+rule_spec:
+  rule_id: suffix_ek_ik
+  orfogrammka_id: orthography.suffix_ek_ik
+  family: suffix_ek_ik
+  pos: NOUN
+  site_type: suffix
+  requires: [case, number, stress_position]
+  correct_patterns: ["-ек-", "-ик-"]
+  wrong_patterns: ["-ик-", "-ек-"]
+  explanation_id: suffix_ek_ik
+  model_role: deterministic_replace
+lexeme_cards: []

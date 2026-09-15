@@ -1,0 +1,19 @@
+{
+  "adapter_path": "D:\\projects\\ai-assistant\\models\\adapters\\latest",
+  "allow_fallback": false,
+  "backend_kind": "direct_neural",
+  "changed_when_needed": 0.9797297297297297,
+  "char_accuracy": 0.9949444002383611,
+  "edit_f1": 0.9842271293375395,
+  "edit_precision": 0.9936305732484076,
+  "edit_recall": 0.975,
+  "exact_match": 0.776,
+  "example_count": 500,
+  "heads_path": "D:\\projects\\ai-assistant\\models\\heads\\latest\\heads.pt",
+  "model_loaded": true,
+  "overcorrection_rate": 0.0,
+  "rejected_by_scope_guard": 0,
+  "rejected_by_threshold": 9,
+  "selected_epoch": 2,
+  "unchanged_when_clean": 1.0
+}

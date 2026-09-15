@@ -1,0 +1,178 @@
+{"scope": "in_scope", "source": "Он незнал ответа.", "tags": ["ne_verb"], "target": "Он не знал ответа."}
+{"scope": "in_scope", "source": "Редактор непроверил отчёт.", "tags": ["ne_verb"], "target": "Редактор не проверил отчёт."}
+{"scope": "in_scope", "source": "Команда несогласовала план.", "tags": ["ne_verb"], "target": "Команда не согласовала план."}
+{"scope": "in_scope", "source": "Студент непонял правило.", "tags": ["ne_verb"], "target": "Студент не понял правило."}
+{"scope": "in_scope", "source": "Автор ненаписал письмо.", "tags": ["ne_verb"], "target": "Автор не написал письмо."}
+{"scope": "in_scope", "source": "Инженер незакрыл файл.", "tags": ["ne_verb"], "target": "Инженер не закрыл файл."}
+{"scope": "in_scope", "source": "Секретарь неподписала заявку.", "tags": ["ne_verb"], "target": "Секретарь не подписала заявку."}
+{"scope": "in_scope", "source": "Учитель непрочитал текст.", "tags": ["ne_verb"], "target": "Учитель не прочитал текст."}
+{"scope": "in_scope", "source": "Менеджер неотправил сообщение.", "tags": ["ne_verb"], "target": "Менеджер не отправил сообщение."}
+{"scope": "in_scope", "source": "Врач несказал диагноз.", "tags": ["ne_verb"], "target": "Врач не сказал диагноз."}
+{"scope": "in_scope", "source": "Бухгалтер несверил расчёт.", "tags": ["ne_verb"], "target": "Бухгалтер не сверил расчёт."}
+{"scope": "in_scope", "source": "Модератор неудалил пробел.", "tags": ["ne_verb"], "target": "Модератор не удалил пробел."}
+{"scope": "in_scope", "source": "Он ненавидел шум.", "tags": ["ne_verb", "hard_negative"], "target": "Он ненавидел шум."}
+{"scope": "in_scope", "source": "Она негодовала весь день.", "tags": ["ne_verb", "hard_negative"], "target": "Она негодовала весь день."}
+{"scope": "in_scope", "source": "Пациент недомогал утром.", "tags": ["ne_verb", "hard_negative"], "target": "Пациент недомогал утром."}
+{"scope": "in_scope", "source": "Автор недоумевал молча.", "tags": ["ne_verb", "hard_negative"], "target": "Автор недоумевал молча."}
+{"scope": "in_scope", "source": "Это неймётся редактору.", "tags": ["ne_verb", "hard_negative"], "target": "Это неймётся редактору."}
+{"scope": "in_scope", "source": "Студент не знал ответа.", "tags": ["ne_verb", "hard_negative"], "target": "Студент не знал ответа."}
+{"scope": "in_scope", "source": "Редактор не проверил отчёт.", "tags": ["ne_verb", "hard_negative"], "target": "Редактор не проверил отчёт."}
+{"scope": "in_scope", "source": "Команда не согласовала план.", "tags": ["ne_verb", "hard_negative"], "target": "Команда не согласовала план."}
+{"scope": "in_scope", "source": "Учитель не прочитал текст.", "tags": ["ne_verb", "hard_negative"], "target": "Учитель не прочитал текст."}
+{"scope": "in_scope", "source": "Менеджер не отправил сообщение.", "tags": ["ne_verb", "hard_negative"], "target": "Менеджер не отправил сообщение."}
+{"scope": "in_scope", "source": "Врач не сказал диагноз.", "tags": ["ne_verb", "hard_negative"], "target": "Врач не сказал диагноз."}
+{"scope": "in_scope", "source": "Бухгалтер не сверил расчёт.", "tags": ["ne_verb", "hard_negative"], "target": "Бухгалтер не сверил расчёт."}
+{"scope": "in_scope", "source": "Автор так же проверил отчёт.", "tags": ["takzhe_tak_zhe"], "target": "Автор также проверил отчёт."}
+{"scope": "in_scope", "source": "Она так же отправила письмо.", "tags": ["takzhe_tak_zhe"], "target": "Она также отправила письмо."}
+{"scope": "in_scope", "source": "Мы так же исправили ошибку.", "tags": ["takzhe_tak_zhe"], "target": "Мы также исправили ошибку."}
+{"scope": "in_scope", "source": "Документ так же содержит правило.", "tags": ["takzhe_tak_zhe"], "target": "Документ также содержит правило."}
+{"scope": "in_scope", "source": "Редактор так же добавил запятую.", "tags": ["takzhe_tak_zhe"], "target": "Редактор также добавил запятую."}
+{"scope": "in_scope", "source": "Команда так же утвердила план.", "tags": ["takzhe_tak_zhe"], "target": "Команда также утвердила план."}
+{"scope": "in_scope", "source": "Он также, как и вчера, пришёл рано.", "tags": ["takzhe_tak_zhe"], "target": "Он так же, как и вчера, пришёл рано."}
+{"scope": "in_scope", "source": "Сделай так же, как в примере.", "tags": ["takzhe_tak_zhe"], "target": "Сделай так же, как в примере."}
+{"scope": "in_scope", "source": "Она пишет так же аккуратно.", "tags": ["takzhe_tak_zhe"], "target": "Она пишет так же аккуратно."}
+{"scope": "in_scope", "source": "Мы поступили так же.", "tags": ["takzhe_tak_zhe"], "target": "Мы поступили так же."}
+{"scope": "in_scope", "source": "Он выглядел так же спокойно.", "tags": ["takzhe_tak_zhe"], "target": "Он выглядел так же спокойно."}
+{"scope": "in_scope", "source": "Текст остался так же короток.", "tags": ["takzhe_tak_zhe"], "target": "Текст остался так же короток."}
+{"scope": "in_scope", "source": "Я то же проверил документ.", "tags": ["tozhe_to_zhe"], "target": "Я тоже проверил документ."}
+{"scope": "in_scope", "source": "Она то же пришла вовремя.", "tags": ["tozhe_to_zhe"], "target": "Она тоже пришла вовремя."}
+{"scope": "in_scope", "source": "Мы то же исправили ошибку.", "tags": ["tozhe_to_zhe"], "target": "Мы тоже исправили ошибку."}
+{"scope": "in_scope", "source": "Редактор то же заметил опечатку.", "tags": ["tozhe_to_zhe"], "target": "Редактор тоже заметил опечатку."}
+{"scope": "in_scope", "source": "Автор то же добавил точку.", "tags": ["tozhe_to_zhe"], "target": "Автор тоже добавил точку."}
+{"scope": "in_scope", "source": "Команда то же завершила задачу.", "tags": ["tozhe_to_zhe"], "target": "Команда тоже завершила задачу."}
+{"scope": "in_scope", "source": "Он сказал то же, что и вчера.", "tags": ["tozhe_to_zhe"], "target": "Он сказал то же, что и вчера."}
+{"scope": "in_scope", "source": "Повтори то же правило.", "tags": ["tozhe_to_zhe"], "target": "Повтори то же правило."}
+{"scope": "in_scope", "source": "Мы сделали то же упражнение.", "tags": ["tozhe_to_zhe"], "target": "Мы сделали то же упражнение."}
+{"scope": "in_scope", "source": "Она выбрала то же решение.", "tags": ["tozhe_to_zhe"], "target": "Она выбрала то же решение."}
+{"scope": "in_scope", "source": "Это то же письмо.", "tags": ["tozhe_to_zhe"], "target": "Это то же письмо."}
+{"scope": "in_scope", "source": "Он прочитал то же сообщение.", "tags": ["tozhe_to_zhe"], "target": "Он прочитал то же сообщение."}
+{"scope": "in_scope", "source": "Документ короткий за то понятный.", "tags": ["zato_za_to"], "target": "Документ короткий, зато понятный."}
+{"scope": "in_scope", "source": "Он устал за то закончил работу.", "tags": ["zato_za_to"], "target": "Он устал, зато закончил работу."}
+{"scope": "in_scope", "source": "Правило сложное за то полезное.", "tags": ["zato_za_to"], "target": "Правило сложное, зато полезное."}
+{"scope": "in_scope", "source": "Отчёт небольшой за то точный.", "tags": ["zato_za_to"], "target": "Отчёт небольшой, зато точный."}
+{"scope": "in_scope", "source": "Задача трудная за то важная.", "tags": ["zato_za_to"], "target": "Задача трудная, зато важная."}
+{"scope": "in_scope", "source": "Файл старый за то полный.", "tags": ["zato_za_to"], "target": "Файл старый, зато полный."}
+{"scope": "in_scope", "source": "Спасибо за то письмо.", "tags": ["zato_za_to"], "target": "Спасибо за то письмо."}
+{"scope": "in_scope", "source": "Он отвечал за то решение.", "tags": ["zato_za_to"], "target": "Он отвечал за то решение."}
+{"scope": "in_scope", "source": "Мы заплатили за то окно.", "tags": ["zato_za_to"], "target": "Мы заплатили за то окно."}
+{"scope": "in_scope", "source": "Она держалась за то поручение.", "tags": ["zato_za_to"], "target": "Она держалась за то поручение."}
+{"scope": "in_scope", "source": "Редактор похвалил за то исправление.", "tags": ["zato_za_to"], "target": "Редактор похвалил за то исправление."}
+{"scope": "in_scope", "source": "Команда боролась за то право.", "tags": ["zato_za_to"], "target": "Команда боролась за то право."}
+{"scope": "in_scope", "source": "Он хочет учится.", "tags": ["tsya_ttsya"], "target": "Он хочет учиться."}
+{"scope": "in_scope", "source": "Она стала ошибатся.", "tags": ["tsya_ttsya"], "target": "Она стала ошибаться."}
+{"scope": "in_scope", "source": "Нужно возвращатся домой.", "tags": ["tsya_ttsya"], "target": "Нужно возвращаться домой."}
+{"scope": "in_scope", "source": "Важно готовится заранее.", "tags": ["tsya_ttsya"], "target": "Важно готовиться заранее."}
+{"scope": "in_scope", "source": "Врач начал сомневатся.", "tags": ["tsya_ttsya"], "target": "Врач начал сомневаться."}
+{"scope": "in_scope", "source": "Автор должен старатся.", "tags": ["tsya_ttsya"], "target": "Автор должен стараться."}
+{"scope": "in_scope", "source": "Он учиться быстро.", "tags": ["tsya_ttsya"], "target": "Он учится быстро."}
+{"scope": "in_scope", "source": "Она возвращаться утром.", "tags": ["tsya_ttsya"], "target": "Она возвращается утром."}
+{"scope": "in_scope", "source": "Редактор ошибаться редко.", "tags": ["tsya_ttsya"], "target": "Редактор ошибается редко."}
+{"scope": "in_scope", "source": "Студент готовиться к уроку.", "tags": ["tsya_ttsya"], "target": "Студент готовится к уроку."}
+{"scope": "in_scope", "source": "Автор сомневаться в ответе.", "tags": ["tsya_ttsya"], "target": "Автор сомневается в ответе."}
+{"scope": "in_scope", "source": "Команда стараться каждый день.", "tags": ["tsya_ttsya"], "target": "Команда старается каждый день."}
+{"scope": "in_scope", "source": "Кто то проверил отчёт.", "tags": ["hyphen_particles"], "target": "Кто-то проверил отчёт."}
+{"scope": "in_scope", "source": "Где то пропала запятая.", "tags": ["hyphen_particles"], "target": "Где-то пропала запятая."}
+{"scope": "in_scope", "source": "Что то изменилось.", "tags": ["hyphen_particles"], "target": "Что-то изменилось."}
+{"scope": "in_scope", "source": "Кто либо ответил на вопрос.", "tags": ["hyphen_particles"], "target": "Кто-либо ответил на вопрос."}
+{"scope": "in_scope", "source": "Где либо осталась ошибка.", "tags": ["hyphen_particles"], "target": "Где-либо осталась ошибка."}
+{"scope": "in_scope", "source": "Когда нибудь мы исправим текст.", "tags": ["hyphen_particles"], "target": "Когда-нибудь мы исправим текст."}
+{"scope": "in_scope", "source": "Кто нибудь прочитал письмо.", "tags": ["hyphen_particles"], "target": "Кто-нибудь прочитал письмо."}
+{"scope": "in_scope", "source": "Кое кто заметил опечатку.", "tags": ["hyphen_particles"], "target": "Кое-кто заметил опечатку."}
+{"scope": "in_scope", "source": "Кое где нужна запятая.", "tags": ["hyphen_particles"], "target": "Кое-где нужна запятая."}
+{"scope": "in_scope", "source": "Он сделал по дружески.", "tags": ["hyphen_particles"], "target": "Он сделал по-дружески."}
+{"scope": "in_scope", "source": "Она говорила по русски.", "tags": ["hyphen_particles"], "target": "Она говорила по-русски."}
+{"scope": "in_scope", "source": "Документ оформлен по новому.", "tags": ["hyphen_particles"], "target": "Документ оформлен по-новому."}
+{"scope": "in_scope", "source": "Он знал что делать.", "tags": ["comma_subordinate"], "target": "Он знал, что делать."}
+{"scope": "in_scope", "source": "Редактор сказал что отчёт готов.", "tags": ["comma_subordinate"], "target": "Редактор сказал, что отчёт готов."}
+{"scope": "in_scope", "source": "Мы увидели что текст изменился.", "tags": ["comma_subordinate"], "target": "Мы увидели, что текст изменился."}
+{"scope": "in_scope", "source": "Автор понял что нужна точка.", "tags": ["comma_subordinate"], "target": "Автор понял, что нужна точка."}
+{"scope": "in_scope", "source": "Она заметила что файл открыт.", "tags": ["comma_subordinate"], "target": "Она заметила, что файл открыт."}
+{"scope": "in_scope", "source": "Он пришёл когда началось собрание.", "tags": ["comma_subordinate"], "target": "Он пришёл, когда началось собрание."}
+{"scope": "in_scope", "source": "Мы ушли потому что работа закончилась.", "tags": ["comma_subordinate"], "target": "Мы ушли, потому что работа закончилась."}
+{"scope": "in_scope", "source": "Она спросила когда будет ответ.", "tags": ["comma_subordinate"], "target": "Она спросила, когда будет ответ."}
+{"scope": "in_scope", "source": "Редактор проверил если есть ошибка.", "tags": ["comma_subordinate"], "target": "Редактор проверил, если есть ошибка."}
+{"scope": "in_scope", "source": "Команда решила что план готов.", "tags": ["comma_subordinate"], "target": "Команда решила, что план готов."}
+{"scope": "in_scope", "source": "Он молчал хотя знал ответ.", "tags": ["comma_subordinate"], "target": "Он молчал, хотя знал ответ."}
+{"scope": "in_scope", "source": "Мы продолжили чтобы завершить отчёт.", "tags": ["comma_subordinate"], "target": "Мы продолжили, чтобы завершить отчёт."}
+{"scope": "in_scope", "source": "Автор уточнил где стоит запятая.", "tags": ["comma_subordinate"], "target": "Автор уточнил, где стоит запятая."}
+{"scope": "in_scope", "source": "Она помнила почему файл закрыт.", "tags": ["comma_subordinate"], "target": "Она помнила, почему файл закрыт."}
+{"scope": "in_scope", "source": "Конечно отчёт готов.", "tags": ["comma_introductory"], "target": "Конечно, отчёт готов."}
+{"scope": "in_scope", "source": "Возможно текст изменился.", "tags": ["comma_introductory"], "target": "Возможно, текст изменился."}
+{"scope": "in_scope", "source": "Например правило работает.", "tags": ["comma_introductory"], "target": "Например, правило работает."}
+{"scope": "in_scope", "source": "К счастью ошибка исправлена.", "tags": ["comma_introductory"], "target": "К счастью, ошибка исправлена."}
+{"scope": "in_scope", "source": "По мнению автора запятая нужна.", "tags": ["comma_introductory"], "target": "По мнению автора, запятая нужна."}
+{"scope": "in_scope", "source": "Вероятно файл открыт.", "tags": ["comma_introductory"], "target": "Вероятно, файл открыт."}
+{"scope": "in_scope", "source": "Отчёт конечно готов.", "tags": ["comma_introductory"], "target": "Отчёт, конечно, готов."}
+{"scope": "in_scope", "source": "Текст возможно изменился.", "tags": ["comma_introductory"], "target": "Текст, возможно, изменился."}
+{"scope": "in_scope", "source": "Правило например работает.", "tags": ["comma_introductory"], "target": "Правило, например, работает."}
+{"scope": "in_scope", "source": "Ошибка к счастью исправлена.", "tags": ["comma_introductory"], "target": "Ошибка, к счастью, исправлена."}
+{"scope": "in_scope", "source": "Запятая по мнению автора нужна.", "tags": ["comma_introductory"], "target": "Запятая, по мнению автора, нужна."}
+{"scope": "in_scope", "source": "Файл вероятно открыт.", "tags": ["comma_introductory"], "target": "Файл, вероятно, открыт."}
+{"scope": "in_scope", "source": "Редактор проверил текст отчёт и письмо.", "tags": ["comma_homogeneous"], "target": "Редактор проверил текст, отчёт и письмо."}
+{"scope": "in_scope", "source": "Она купила ручку тетрадь и книгу.", "tags": ["comma_homogeneous"], "target": "Она купила ручку, тетрадь и книгу."}
+{"scope": "in_scope", "source": "В файле были таблица схема и список.", "tags": ["comma_homogeneous"], "target": "В файле были таблица, схема и список."}
+{"scope": "in_scope", "source": "Автор исправил ошибку опечатку и пробел.", "tags": ["comma_homogeneous"], "target": "Автор исправил ошибку, опечатку и пробел."}
+{"scope": "in_scope", "source": "Мы обсудили план сроки и бюджет.", "tags": ["comma_homogeneous"], "target": "Мы обсудили план, сроки и бюджет."}
+{"scope": "in_scope", "source": "Текст был точным ясным и коротким.", "tags": ["comma_homogeneous"], "target": "Текст был точным, ясным и коротким."}
+{"scope": "in_scope", "source": "Ответ был быстрым вежливым и полным.", "tags": ["comma_homogeneous"], "target": "Ответ был быстрым, вежливым и полным."}
+{"scope": "in_scope", "source": "Документ содержит правила примеры и исключения.", "tags": ["comma_homogeneous"], "target": "Документ содержит правила, примеры и исключения."}
+{"scope": "in_scope", "source": "Отчёт включает выводы факты и таблицы.", "tags": ["comma_homogeneous"], "target": "Отчёт включает выводы, факты и таблицы."}
+{"scope": "in_scope", "source": "Система проверила файл текст и форму.", "tags": ["comma_homogeneous"], "target": "Система проверила файл, текст и форму."}
+{"scope": "in_scope", "source": "План учитывает сроки риски и задачи.", "tags": ["comma_homogeneous"], "target": "План учитывает сроки, риски и задачи."}
+{"scope": "in_scope", "source": "Письмо содержит вопрос просьбу и подпись.", "tags": ["comma_homogeneous"], "target": "Письмо содержит вопрос, просьбу и подпись."}
+{"scope": "in_scope", "source": "Текст короткий но понятный.", "tags": ["comma_adversative"], "target": "Текст короткий, но понятный."}
+{"scope": "in_scope", "source": "Он устал но закончил работу.", "tags": ["comma_adversative"], "target": "Он устал, но закончил работу."}
+{"scope": "in_scope", "source": "Отчёт готов но требует проверки.", "tags": ["comma_adversative"], "target": "Отчёт готов, но требует проверки."}
+{"scope": "in_scope", "source": "Правило простое но важное.", "tags": ["comma_adversative"], "target": "Правило простое, но важное."}
+{"scope": "in_scope", "source": "Она спешила но ответила на заявку.", "tags": ["comma_adversative"], "target": "Она спешила, но ответила на заявку."}
+{"scope": "in_scope", "source": "Файл открыт но пуст.", "tags": ["comma_adversative"], "target": "Файл открыт, но пуст."}
+{"scope": "in_scope", "source": "Документ длинный а вывод короткий.", "tags": ["comma_adversative"], "target": "Документ длинный, а вывод короткий."}
+{"scope": "in_scope", "source": "Ошибка мала а последствия заметны.", "tags": ["comma_adversative"], "target": "Ошибка мала, а последствия заметны."}
+{"scope": "in_scope", "source": "Файл открыт а архив закрыт.", "tags": ["comma_adversative"], "target": "Файл открыт, а архив закрыт."}
+{"scope": "in_scope", "source": "Письмо пришло а ответа нет.", "tags": ["comma_adversative"], "target": "Письмо пришло, а ответа нет."}
+{"scope": "in_scope", "source": "Срок близко а план не готов.", "tags": ["comma_adversative"], "target": "Срок близко, а план не готов."}
+{"scope": "in_scope", "source": "Текст исправлен а таблица нет.", "tags": ["comma_adversative"], "target": "Текст исправлен, а таблица нет."}
+{"scope": "in_scope", "source": "Отчёт это документ.", "tags": ["dash_subject_predicate"], "target": "Отчёт — документ."}
+{"scope": "in_scope", "source": "Закон это правило.", "tags": ["dash_subject_predicate"], "target": "Закон — правило."}
+{"scope": "in_scope", "source": "Ошибка это проблема.", "tags": ["dash_subject_predicate"], "target": "Ошибка — проблема."}
+{"scope": "in_scope", "source": "Заявка это документ.", "tags": ["dash_subject_predicate"], "target": "Заявка — документ."}
+{"scope": "in_scope", "source": "Протокол это документ.", "tags": ["dash_subject_predicate"], "target": "Протокол — документ."}
+{"scope": "in_scope", "source": "Инструкция это текст.", "tags": ["dash_subject_predicate"], "target": "Инструкция — текст."}
+{"scope": "in_scope", "source": "Собрание это событие.", "tags": ["dash_subject_predicate"], "target": "Собрание — событие."}
+{"scope": "in_scope", "source": "План это документ.", "tags": ["dash_subject_predicate"], "target": "План — документ."}
+{"scope": "in_scope", "source": "Ответ это сообщение.", "tags": ["dash_subject_predicate"], "target": "Ответ — сообщение."}
+{"scope": "in_scope", "source": "Файл это документ.", "tags": ["dash_subject_predicate"], "target": "Файл — документ."}
+{"scope": "in_scope", "source": "Правило это требование.", "tags": ["dash_subject_predicate"], "target": "Правило — требование."}
+{"scope": "in_scope", "source": "Таблица это данные.", "tags": ["dash_subject_predicate"], "target": "Таблица — данные."}
+{"scope": "in_scope", "source": "Отчёт готов", "tags": ["final_punctuation"], "target": "Отчёт готов."}
+{"scope": "in_scope", "source": "Когда будет ответ", "tags": ["final_punctuation"], "target": "Когда будет ответ?"}
+{"scope": "in_scope", "source": "Проверьте файл", "tags": ["final_punctuation"], "target": "Проверьте файл."}
+{"scope": "in_scope", "source": "Как исправить ошибку", "tags": ["final_punctuation"], "target": "Как исправить ошибку?"}
+{"scope": "in_scope", "source": "Текст изменился", "tags": ["final_punctuation"], "target": "Текст изменился."}
+{"scope": "in_scope", "source": "Ответьте на заявку", "tags": ["final_punctuation"], "target": "Ответьте на заявку."}
+{"scope": "in_scope", "source": "Где находится отчёт", "tags": ["final_punctuation"], "target": "Где находится отчёт?"}
+{"scope": "in_scope", "source": "Это важное правило", "tags": ["final_punctuation"], "target": "Это важное правило."}
+{"scope": "in_scope", "source": "Файл открыт", "tags": ["final_punctuation"], "target": "Файл открыт."}
+{"scope": "in_scope", "source": "Почему нет запятой", "tags": ["final_punctuation"], "target": "Почему нет запятой?"}
+{"scope": "in_scope", "source": "Документ сохранён", "tags": ["final_punctuation"], "target": "Документ сохранён."}
+{"scope": "in_scope", "source": "Кто проверил письмо", "tags": ["final_punctuation"], "target": "Кто проверил письмо?"}
+{"scope": "in_scope", "source": "Он не знал ответа.", "tags": ["clean"], "target": "Он не знал ответа."}
+{"scope": "in_scope", "source": "Редактор также проверил отчёт.", "tags": ["clean"], "target": "Редактор также проверил отчёт."}
+{"scope": "in_scope", "source": "Сделай так же, как в примере.", "tags": ["clean"], "target": "Сделай так же, как в примере."}
+{"scope": "in_scope", "source": "Она тоже пришла вовремя.", "tags": ["clean"], "target": "Она тоже пришла вовремя."}
+{"scope": "in_scope", "source": "Он сказал то же, что и вчера.", "tags": ["clean"], "target": "Он сказал то же, что и вчера."}
+{"scope": "in_scope", "source": "Документ короткий, зато понятный.", "tags": ["clean"], "target": "Документ короткий, зато понятный."}
+{"scope": "in_scope", "source": "Спасибо за то письмо.", "tags": ["clean"], "target": "Спасибо за то письмо."}
+{"scope": "in_scope", "source": "Он хочет учиться.", "tags": ["clean"], "target": "Он хочет учиться."}
+{"scope": "in_scope", "source": "Она учится быстро.", "tags": ["clean"], "target": "Она учится быстро."}
+{"scope": "in_scope", "source": "Кто-то проверил отчёт.", "tags": ["clean"], "target": "Кто-то проверил отчёт."}
+{"scope": "in_scope", "source": "Он знал, что делать.", "tags": ["clean"], "target": "Он знал, что делать."}
+{"scope": "in_scope", "source": "Конечно, отчёт готов.", "tags": ["clean"], "target": "Конечно, отчёт готов."}
+{"scope": "in_scope", "source": "Отчёт, конечно, готов.", "tags": ["clean"], "target": "Отчёт, конечно, готов."}
+{"scope": "in_scope", "source": "Текст короткий, но понятный.", "tags": ["clean"], "target": "Текст короткий, но понятный."}
+{"scope": "in_scope", "source": "Документ длинный, а вывод короткий.", "tags": ["clean"], "target": "Документ длинный, а вывод короткий."}
+{"scope": "in_scope", "source": "Отчёт — документ.", "tags": ["clean"], "target": "Отчёт — документ."}
+{"scope": "in_scope", "source": "Отчёт готов.", "tags": ["clean"], "target": "Отчёт готов."}
+{"scope": "in_scope", "source": "Когда будет ответ?", "tags": ["clean"], "target": "Когда будет ответ?"}
+{"scope": "in_scope", "source": "Данные показывают факт.", "tags": ["clean"], "target": "Данные показывают факт."}
+{"scope": "in_scope", "source": "Медсестра ответила на заявку.", "tags": ["clean"], "target": "Медсестра ответила на заявку."}

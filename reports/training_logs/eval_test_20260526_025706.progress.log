@@ -1,0 +1,5 @@
+[evaluation] loading corrector dataset=data\generated_eval\test.jsonl examples=5000
+evaluate test.jsonl [------------------------]   0.0% 0/5000 elapsed=00:00:00
+evaluate test.jsonl [------------------------]   0.3% 16/5000 elapsed=00:00:30 exact=1.0000 rows=16
+evaluate test.jsonl [------------------------]   0.6% 32/5000 elapsed=00:01:00 exact=1.0000 rows=32
+evaluate test.jsonl [------------------------]   1.0% 48/5000 elapsed=00:01:31 exact=0.9792 rows=48

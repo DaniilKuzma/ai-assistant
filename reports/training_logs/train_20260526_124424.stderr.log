@@ -1,0 +1,26 @@
+[training] loading tokenizer and model
+[training] device=cuda cuda_available=True epochs=2 samples_per_epoch=50000 batch_size=32 steps_per_epoch=1563 total_train_steps=3126 amp=True
+train epoch 1/2 [------------------------]   0.0% 0/1563 elapsed=00:00:00
+train epoch 1/2 [###---------------------]  11.5% 180/1563 elapsed=00:01:00 loss=3.1528 token=1.1725 gap=1.0003 rule=2.6000 lr=0.0000
+train epoch 1/2 [######------------------]  23.2% 363/1563 elapsed=00:02:00 loss=1.6658 token=0.6049 gap=0.5057 rule=1.5135 lr=0.0001
+train epoch 1/2 [########----------------]  34.9% 546/1563 elapsed=00:03:00 loss=1.1168 token=0.4051 gap=0.3371 rule=1.0241 lr=0.0001
+train epoch 1/2 [###########-------------]  46.6% 729/1563 elapsed=00:04:00 loss=0.8398 token=0.3043 gap=0.2528 rule=0.7739 lr=0.0001
+train epoch 1/2 [##############----------]  57.6% 901/1563 elapsed=00:05:00 loss=0.6811 token=0.2466 gap=0.2047 rule=0.6299 lr=0.0001
+train epoch 1/2 [#################-------]  69.0% 1079/1563 elapsed=00:06:00 loss=0.5699 token=0.2061 gap=0.1710 rule=0.5285 lr=0.0001
+train epoch 1/2 [###################-----]  79.7% 1246/1563 elapsed=00:07:00 loss=0.4944 token=0.1786 gap=0.1481 rule=0.4600 lr=0.0001
+train epoch 1/2 [######################--]  91.4% 1429/1563 elapsed=00:08:01 loss=0.4317 token=0.1558 gap=0.1292 rule=0.4028 lr=0.0001
+train epoch 1/2 [########################] 100.0% 1563/1563 elapsed=00:08:45 loss=0.3951 token=0.1425 gap=0.1181 rule=0.3693 lr=0.0001
+validate epoch 1/2 [------------------------]   0.0% 0/5000 elapsed=00:00:00
+validate epoch 1/2 [########################] 100.0% 5000/5000 elapsed=00:00:18 loss=0.0061 exact=0.9882
+train epoch 2/2 [------------------------]   0.0% 0/1563 elapsed=00:00:00
+train epoch 2/2 [###---------------------]  11.6% 181/1563 elapsed=00:01:00 loss=0.0035 token=0.0005 gap=0.0002 rule=0.0093 lr=0.0001
+train epoch 2/2 [######------------------]  23.3% 364/1563 elapsed=00:02:00 loss=0.0037 token=0.0005 gap=0.0004 rule=0.0089 lr=0.0001
+train epoch 2/2 [########----------------]  35.0% 547/1563 elapsed=00:03:00 loss=0.0035 token=0.0005 gap=0.0003 rule=0.0089 lr=0.0001
+train epoch 2/2 [###########-------------]  46.6% 729/1563 elapsed=00:04:00 loss=0.0035 token=0.0005 gap=0.0003 rule=0.0088 lr=0.0001
+train epoch 2/2 [##############----------]  58.3% 911/1563 elapsed=00:05:00 loss=0.0034 token=0.0004 gap=0.0003 rule=0.0088 lr=0.0001
+train epoch 2/2 [#################-------]  70.0% 1094/1563 elapsed=00:06:00 loss=0.0034 token=0.0004 gap=0.0003 rule=0.0089 lr=0.0001
+train epoch 2/2 [####################----]  81.7% 1277/1563 elapsed=00:07:01 loss=0.0033 token=0.0004 gap=0.0002 rule=0.0088 lr=0.0001
+train epoch 2/2 [######################--]  93.4% 1460/1563 elapsed=00:08:01 loss=0.0033 token=0.0003 gap=0.0002 rule=0.0089 lr=0.0001
+train epoch 2/2 [########################] 100.0% 1563/1563 elapsed=00:08:34 loss=0.0032 token=0.0003 gap=0.0002 rule=0.0088 lr=0.0001
+validate epoch 2/2 [------------------------]   0.0% 0/5000 elapsed=00:00:00
+validate epoch 2/2 [########################] 100.0% 5000/5000 elapsed=00:00:18 loss=0.0020 exact=0.9934

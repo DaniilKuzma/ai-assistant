@@ -1,0 +1,616 @@
+# Semantic service-word disambiguation.
+rule_id: semantic_service_words
+description: Semantic disambiguation for service-word spellings.
+slots:
+  actor: [Студент, Редактор, Ассистент, Куратор]
+  object: [отчёт, текст, файл]
+  error: [ошибку, опечатку, неточность]
+cases:
+  positive:
+    - sub_rule_id: takzhe_additive_merge
+      source_template: "{actor} проверил {object}, так же исправил {error}."
+      target_template: "{actor} проверил {object}, также исправил {error}."
+      token_operations: &takzhe_merge_op
+        - label: MERGE_TAK_ZHE_TO_TAKZHE
+          source_pattern: "так же"
+          target_pattern: "также"
+      metadata: &takzhe_additive_meta
+        semantic_case_type: additive
+        ambiguity_pair: "также/так_же"
+        semantic_signal: "добавочное значение, можно заменить на «тоже»"
+        operation: merge
+        source: "так же"
+        target: "также"
+        legacy_overlap: true
+        compound_overlap: true
+    - sub_rule_id: takzhe_additive_merge
+      source_template: "{actor} прочитал {object} и так же отметил {error}."
+      target_template: "{actor} прочитал {object} и также отметил {error}."
+      token_operations: *takzhe_merge_op
+      metadata: *takzhe_additive_meta
+    - sub_rule_id: takzhe_additive_merge
+      source_template: "{actor} загрузил {object}, так же сохранил результат."
+      target_template: "{actor} загрузил {object}, также сохранил результат."
+      token_operations: *takzhe_merge_op
+      metadata: *takzhe_additive_meta
+    - sub_rule_id: takzhe_additive_merge
+      source_template: "{actor} сверил {object}, а так же подготовил комментарий."
+      target_template: "{actor} сверил {object}, а также подготовил комментарий."
+      token_operations: *takzhe_merge_op
+      metadata: *takzhe_additive_meta
+    - sub_rule_id: takzhe_additive_merge
+      source_template: "{actor} открыл {object}, так же проверил вложение."
+      target_template: "{actor} открыл {object}, также проверил вложение."
+      token_operations: *takzhe_merge_op
+      metadata: *takzhe_additive_meta
+
+    - sub_rule_id: takzhe_comparison_split
+      source_template: "{actor} сделал также, как преподаватель."
+      target_template: "{actor} сделал так же, как преподаватель."
+      token_operations: &takzhe_split_op
+        - label: SPLIT_TAKZHE_TO_TAK_ZHE
+          source_pattern: "также"
+          target_pattern: "так же"
+      metadata: &takzhe_comparison_meta
+        semantic_case_type: comparison
+        ambiguity_pair: "также/так_же"
+        semantic_signal: "сравнение с союзом «как»"
+        operation: split
+        source: "также"
+        target: "так же"
+        legacy_overlap: true
+        compound_overlap: true
+    - sub_rule_id: takzhe_comparison_split
+      source_template: "{actor} оформил {object} также, как эксперт."
+      target_template: "{actor} оформил {object} так же, как эксперт."
+      token_operations: *takzhe_split_op
+      metadata: *takzhe_comparison_meta
+    - sub_rule_id: takzhe_comparison_split
+      source_template: "{actor} настроил файл также, как наставник."
+      target_template: "{actor} настроил файл так же, как наставник."
+      token_operations: *takzhe_split_op
+      metadata: *takzhe_comparison_meta
+    - sub_rule_id: takzhe_comparison_split
+      source_template: "{actor} проверил {object} также тщательно, как коллега."
+      target_template: "{actor} проверил {object} так же тщательно, как коллега."
+      token_operations: *takzhe_split_op
+      metadata: *takzhe_comparison_meta
+    - sub_rule_id: takzhe_comparison_split
+      source_template: "{actor} разметил {object} также аккуратно, как образец."
+      target_template: "{actor} разметил {object} так же аккуратно, как образец."
+      token_operations: *takzhe_split_op
+      metadata: *takzhe_comparison_meta
+
+    - sub_rule_id: tozhe_additive_merge
+      source_template: "{actor} то же проверил файл."
+      target_template: "{actor} тоже проверил файл."
+      token_operations: &tozhe_merge_op
+        - label: MERGE_TO_ZHE_TO_TOZHE
+          source_pattern: "то же"
+          target_pattern: "тоже"
+      metadata: &tozhe_additive_meta
+        semantic_case_type: additive
+        ambiguity_pair: "тоже/то_же"
+        semantic_signal: "добавочное значение, можно заменить на «также»"
+        operation: merge
+        source: "то же"
+        target: "тоже"
+        legacy_overlap: true
+        compound_overlap: true
+    - sub_rule_id: tozhe_additive_merge
+      source_template: "{actor} то же отправил {object}."
+      target_template: "{actor} тоже отправил {object}."
+      token_operations: *tozhe_merge_op
+      metadata: *tozhe_additive_meta
+    - sub_rule_id: tozhe_additive_merge
+      source_template: "{actor} то же заметил {error}."
+      target_template: "{actor} тоже заметил {error}."
+      token_operations: *tozhe_merge_op
+      metadata: *tozhe_additive_meta
+    - sub_rule_id: tozhe_additive_merge
+      source_template: "{actor} то же сохранил результат."
+      target_template: "{actor} тоже сохранил результат."
+      token_operations: *tozhe_merge_op
+      metadata: *tozhe_additive_meta
+    - sub_rule_id: tozhe_additive_merge
+      source_template: "{actor} то же прочитал комментарий."
+      target_template: "{actor} тоже прочитал комментарий."
+      token_operations: *tozhe_merge_op
+      metadata: *tozhe_additive_meta
+
+    - sub_rule_id: tozhe_demonstrative_split
+      source_template: "{actor} выбрал тоже задание."
+      target_template: "{actor} выбрал то же задание."
+      token_operations: &tozhe_split_op
+        - label: SPLIT_TOZHE_TO_TO_ZHE
+          source_pattern: "тоже"
+          target_pattern: "то же"
+      metadata: &tozhe_demonstrative_meta
+        semantic_case_type: demonstrative
+        ambiguity_pair: "тоже/то_же"
+        semantic_signal: "указательное местоимение «то» с частицей «же»"
+        operation: split
+        source: "тоже"
+        target: "то же"
+        legacy_overlap: true
+        compound_overlap: true
+    - sub_rule_id: tozhe_demonstrative_split
+      source_template: "{actor} открыл тоже письмо."
+      target_template: "{actor} открыл то же письмо."
+      token_operations: *tozhe_split_op
+      metadata: *tozhe_demonstrative_meta
+    - sub_rule_id: tozhe_demonstrative_split
+      source_template: "{actor} оставил тоже решение."
+      target_template: "{actor} оставил то же решение."
+      token_operations: *tozhe_split_op
+      metadata: *tozhe_demonstrative_meta
+    - sub_rule_id: tozhe_demonstrative_split
+      source_template: "{actor} проверил тоже упражнение."
+      target_template: "{actor} проверил то же упражнение."
+      token_operations: *tozhe_split_op
+      metadata: *tozhe_demonstrative_meta
+    - sub_rule_id: tozhe_demonstrative_split
+      source_template: "{actor} получил тоже уведомление."
+      target_template: "{actor} получил то же уведомление."
+      token_operations: *tozhe_split_op
+      metadata: *tozhe_demonstrative_meta
+
+    - sub_rule_id: zato_adversative_merge
+      source_template: "Отчёт был сложным, за то полезным."
+      target_template: "Отчёт был сложным, зато полезным."
+      token_operations: &zato_merge_op
+        - label: MERGE_ZA_TO_TO_ZATO
+          source_pattern: "за то"
+          target_pattern: "зато"
+      metadata: &zato_adversative_meta
+        semantic_case_type: comparison
+        ambiguity_pair: "зато/за_то"
+        semantic_signal: "противительное значение союза «зато»"
+        operation: merge
+        source: "за то"
+        target: "зато"
+        legacy_overlap: true
+        compound_overlap: true
+    - sub_rule_id: zato_adversative_merge
+      source_template: "Текст был коротким, за то точным."
+      target_template: "Текст был коротким, зато точным."
+      token_operations: *zato_merge_op
+      metadata: *zato_adversative_meta
+    - sub_rule_id: zato_adversative_merge
+      source_template: "Файл открылся поздно, за то сохранил данные."
+      target_template: "Файл открылся поздно, зато сохранил данные."
+      token_operations: *zato_merge_op
+      metadata: *zato_adversative_meta
+    - sub_rule_id: zato_adversative_merge
+      source_template: "Доклад задержали, за то успели проверить факты."
+      target_template: "Доклад задержали, зато успели проверить факты."
+      token_operations: *zato_merge_op
+      metadata: *zato_adversative_meta
+    - sub_rule_id: zato_adversative_merge
+      source_template: "Сервис работал медленно, за то вернул результат."
+      target_template: "Сервис работал медленно, зато вернул результат."
+      token_operations: *zato_merge_op
+      metadata: *zato_adversative_meta
+
+    - sub_rule_id: zato_preposition_split
+      source_template: "Комиссия голосовала зато решение."
+      target_template: "Комиссия голосовала за то решение."
+      token_operations: &zato_split_op
+        - label: SPLIT_ZATO_TO_ZA_TO
+          source_pattern: "зато"
+          target_pattern: "за то"
+      metadata: &zato_preposition_meta
+        semantic_case_type: demonstrative
+        ambiguity_pair: "зато/за_то"
+        semantic_signal: "предлог «за» с указательным местоимением"
+        operation: split
+        source: "зато"
+        target: "за то"
+        legacy_overlap: true
+        compound_overlap: true
+    - sub_rule_id: zato_preposition_split
+      source_template: "{actor} отвечал зато письмо."
+      target_template: "{actor} отвечал за то письмо."
+      token_operations: *zato_split_op
+      metadata: *zato_preposition_meta
+    - sub_rule_id: zato_preposition_split
+      source_template: "{actor} получил замечание зато нарушение."
+      target_template: "{actor} получил замечание за то нарушение."
+      token_operations: *zato_split_op
+      metadata: *zato_preposition_meta
+    - sub_rule_id: zato_preposition_split
+      source_template: "{actor} отвечал зато задание."
+      target_template: "{actor} отвечал за то задание."
+      token_operations: *zato_split_op
+      metadata: *zato_preposition_meta
+    - sub_rule_id: zato_preposition_split
+      source_template: "{actor} проголосовал зато предложение."
+      target_template: "{actor} проголосовал за то предложение."
+      token_operations: *zato_split_op
+      metadata: *zato_preposition_meta
+
+    - sub_rule_id: chtoby_conjunction_merge
+      source_template: "Редактор попросил, что бы студент исправил текст."
+      target_template: "Редактор попросил, чтобы студент исправил текст."
+      token_operations: &chtoby_merge_op
+        - label: SPAN_REPLACE_BY_LEXICON
+          source_pattern: "что бы"
+          target_pattern: "чтобы"
+      metadata: &chtoby_conjunction_meta
+        semantic_case_type: causal
+        ambiguity_pair: "чтобы/что_бы"
+        semantic_signal: "подчинительный союз цели"
+        operation: span_replace
+        source: "что бы"
+        target: "чтобы"
+        legacy_overlap: false
+        compound_overlap: true
+    - sub_rule_id: chtoby_conjunction_merge
+      source_template: "Преподаватель объяснил, что бы группа проверила отчёт."
+      target_template: "Преподаватель объяснил, чтобы группа проверила отчёт."
+      token_operations: *chtoby_merge_op
+      metadata: *chtoby_conjunction_meta
+    - sub_rule_id: chtoby_conjunction_merge
+      source_template: "{actor} напомнил, что бы команда сохранила файл."
+      target_template: "{actor} напомнил, чтобы команда сохранила файл."
+      token_operations: *chtoby_merge_op
+      metadata: *chtoby_conjunction_meta
+    - sub_rule_id: chtoby_conjunction_merge
+      source_template: "{actor} попросил, что бы коллега открыл протокол."
+      target_template: "{actor} попросил, чтобы коллега открыл протокол."
+      token_operations: *chtoby_merge_op
+      metadata: *chtoby_conjunction_meta
+    - sub_rule_id: chtoby_conjunction_merge
+      source_template: "Куратор сказал, что бы редактор обновил таблицу."
+      target_template: "Куратор сказал, чтобы редактор обновил таблицу."
+      token_operations: *chtoby_merge_op
+      metadata: *chtoby_conjunction_meta
+
+    - sub_rule_id: potomu_chto_merge
+      source_template: "Совещание перенесли, по тому что директор задержался."
+      target_template: "Совещание перенесли, потому что директор задержался."
+      token_operations: &potomu_chto_merge_op
+        - label: SPAN_REPLACE_BY_LEXICON
+          source_pattern: "по тому что"
+          target_pattern: "потому что"
+      metadata: &potomu_chto_meta
+        semantic_case_type: causal
+        ambiguity_pair: "потому_что/по_тому_что"
+        semantic_signal: "причинный союз"
+        operation: span_replace
+        source: "по тому что"
+        target: "потому что"
+        legacy_overlap: false
+        compound_overlap: true
+    - sub_rule_id: potomu_chto_merge
+      source_template: "Отчёт вернули, по тому что в таблице была ошибка."
+      target_template: "Отчёт вернули, потому что в таблице была ошибка."
+      token_operations: *potomu_chto_merge_op
+      metadata: *potomu_chto_meta
+    - sub_rule_id: potomu_chto_merge
+      source_template: "Файл не открыли, по тому что архив был повреждён."
+      target_template: "Файл не открыли, потому что архив был повреждён."
+      token_operations: *potomu_chto_merge_op
+      metadata: *potomu_chto_meta
+    - sub_rule_id: potomu_chto_merge
+      source_template: "Проверку продлили, по тому что данных не хватило."
+      target_template: "Проверку продлили, потому что данных не хватило."
+      token_operations: *potomu_chto_merge_op
+      metadata: *potomu_chto_meta
+    - sub_rule_id: potomu_chto_merge
+      source_template: "Заседание закрыли, по тому что вопрос решили."
+      target_template: "Заседание закрыли, потому что вопрос решили."
+      token_operations: *potomu_chto_merge_op
+      metadata: *potomu_chto_meta
+
+    - sub_rule_id: ottogo_merge
+      source_template: "Отчёт задержали, от того комиссия ждала подпись."
+      target_template: "Отчёт задержали, оттого комиссия ждала подпись."
+      token_operations: &ottogo_merge_op
+        - label: SPAN_REPLACE_BY_LEXICON
+          source_pattern: "от того"
+          target_pattern: "оттого"
+      metadata: &ottogo_meta
+        semantic_case_type: causal
+        ambiguity_pair: "оттого/от_того"
+        semantic_signal: "наречие причины"
+        operation: span_replace
+        source: "от того"
+        target: "оттого"
+        legacy_overlap: false
+        compound_overlap: true
+    - sub_rule_id: ottogo_merge
+      source_template: "Файл не открылся, от того архив был повреждён."
+      target_template: "Файл не открылся, оттого архив был повреждён."
+      token_operations: *ottogo_merge_op
+      metadata: *ottogo_meta
+    - sub_rule_id: ottogo_merge
+      source_template: "Система работала медленно, от того данные были большими."
+      target_template: "Система работала медленно, оттого данные были большими."
+      token_operations: *ottogo_merge_op
+      metadata: *ottogo_meta
+    - sub_rule_id: ottogo_merge
+      source_template: "Редактор устал, от того пропустил мелкую ошибку."
+      target_template: "Редактор устал, оттого пропустил мелкую ошибку."
+      token_operations: *ottogo_merge_op
+      metadata: *ottogo_meta
+    - sub_rule_id: ottogo_merge
+      source_template: "Документ задержался, от того срок изменили."
+      target_template: "Документ задержался, оттого срок изменили."
+      token_operations: *ottogo_merge_op
+      metadata: *ottogo_meta
+
+    - sub_rule_id: otchego_merge
+      source_template: "Редактор понял, от чего возникла ошибка."
+      target_template: "Редактор понял, отчего возникла ошибка."
+      token_operations: &otchego_merge_op
+        - label: SPAN_REPLACE_BY_LEXICON
+          source_pattern: "от чего"
+          target_pattern: "отчего"
+      metadata: &otchego_meta
+        semantic_case_type: causal
+        ambiguity_pair: "отчего/от_чего"
+        semantic_signal: "вопросительно-причинное наречие"
+        operation: span_replace
+        source: "от чего"
+        target: "отчего"
+        legacy_overlap: false
+        compound_overlap: true
+    - sub_rule_id: otchego_merge
+      source_template: "Комиссия выяснила, от чего задержали проект."
+      target_template: "Комиссия выяснила, отчего задержали проект."
+      token_operations: *otchego_merge_op
+      metadata: *otchego_meta
+    - sub_rule_id: otchego_merge
+      source_template: "Инженер объяснил, от чего зависла система."
+      target_template: "Инженер объяснил, отчего зависла система."
+      token_operations: *otchego_merge_op
+      metadata: *otchego_meta
+    - sub_rule_id: otchego_merge
+      source_template: "Куратор спросил, от чего изменился срок."
+      target_template: "Куратор спросил, отчего изменился срок."
+      token_operations: *otchego_merge_op
+      metadata: *otchego_meta
+    - sub_rule_id: otchego_merge
+      source_template: "Автор не понял, от чего исчез абзац."
+      target_template: "Автор не понял, отчего исчез абзац."
+      token_operations: *otchego_merge_op
+      metadata: *otchego_meta
+
+    - sub_rule_id: zachem_merge
+      source_template: "Редактор спросил, за чем изменили форму."
+      target_template: "Редактор спросил, зачем изменили форму."
+      token_operations: &zachem_merge_op
+        - label: SPAN_REPLACE_BY_LEXICON
+          source_pattern: "за чем"
+          target_pattern: "зачем"
+      metadata: &zachem_meta
+        semantic_case_type: causal
+        ambiguity_pair: "зачем/за_чем"
+        semantic_signal: "наречие цели или причины"
+        operation: span_replace
+        source: "за чем"
+        target: "зачем"
+        legacy_overlap: false
+        compound_overlap: true
+    - sub_rule_id: zachem_merge
+      source_template: "Комиссия уточнила, за чем перенесли заседание."
+      target_template: "Комиссия уточнила, зачем перенесли заседание."
+      token_operations: *zachem_merge_op
+      metadata: *zachem_meta
+    - sub_rule_id: zachem_merge
+      source_template: "Инженер объяснил, за чем обновили сервис."
+      target_template: "Инженер объяснил, зачем обновили сервис."
+      token_operations: *zachem_merge_op
+      metadata: *zachem_meta
+    - sub_rule_id: zachem_merge
+      source_template: "Секретарь записал, за чем пришёл посетитель."
+      target_template: "Секретарь записал, зачем пришёл посетитель."
+      token_operations: *zachem_merge_op
+      metadata: *zachem_meta
+    - sub_rule_id: zachem_merge
+      source_template: "Автор спросил, за чем удалили пример."
+      target_template: "Автор спросил, зачем удалили пример."
+      token_operations: *zachem_merge_op
+      metadata: *zachem_meta
+
+  hard_negative:
+    - sub_rule_id: takzhe_comparison_guard
+      source: "Студент сделал так же, как преподаватель."
+      target: "Студент сделал так же, как преподаватель."
+      metadata: &takzhe_guard_meta
+        semantic_case_type: guard
+        ambiguity_pair: "также/так_же"
+        semantic_signal: "уже корректное сравнение с «как»"
+        operation: gap_guard
+        source: "так же"
+        target: "так же"
+        legacy_overlap: true
+        compound_overlap: true
+    - sub_rule_id: takzhe_comparison_guard
+      source: "Редактор оформил текст так же, как эксперт."
+      target: "Редактор оформил текст так же, как эксперт."
+      metadata: *takzhe_guard_meta
+    - sub_rule_id: takzhe_comparison_guard
+      source: "Ассистент сохранил файл так же, как наставник."
+      target: "Ассистент сохранил файл так же, как наставник."
+      metadata: *takzhe_guard_meta
+    - sub_rule_id: takzhe_comparison_guard
+      source: "Эксперт проверил отчёт так же тщательно, как вчера."
+      target: "Эксперт проверил отчёт так же тщательно, как вчера."
+      metadata: *takzhe_guard_meta
+
+    - sub_rule_id: tozhe_demonstrative_guard
+      source: "Студент выбрал то же задание."
+      target: "Студент выбрал то же задание."
+      metadata: &tozhe_guard_meta
+        semantic_case_type: guard
+        ambiguity_pair: "тоже/то_же"
+        semantic_signal: "указательное местоимение уже написано раздельно"
+        operation: gap_guard
+        source: "то же"
+        target: "то же"
+        legacy_overlap: true
+        compound_overlap: true
+    - sub_rule_id: tozhe_demonstrative_guard
+      source: "Редактор открыл то же письмо."
+      target: "Редактор открыл то же письмо."
+      metadata: *tozhe_guard_meta
+    - sub_rule_id: tozhe_demonstrative_guard
+      source: "Ассистент оставил то же решение."
+      target: "Ассистент оставил то же решение."
+      metadata: *tozhe_guard_meta
+    - sub_rule_id: tozhe_demonstrative_guard
+      source: "Эксперт проверил то же упражнение."
+      target: "Эксперт проверил то же упражнение."
+      metadata: *tozhe_guard_meta
+
+    - sub_rule_id: zato_preposition_guard
+      source: "Комиссия голосовала за то решение."
+      target: "Комиссия голосовала за то решение."
+      metadata: &zato_guard_meta
+        semantic_case_type: guard
+        ambiguity_pair: "зато/за_то"
+        semantic_signal: "предлог с указательным местоимением уже написан раздельно"
+        operation: gap_guard
+        source: "за то"
+        target: "за то"
+        legacy_overlap: true
+        compound_overlap: true
+    - sub_rule_id: zato_preposition_guard
+      source: "Редактор отвечал за то письмо."
+      target: "Редактор отвечал за то письмо."
+      metadata: *zato_guard_meta
+    - sub_rule_id: zato_preposition_guard
+      source: "Ассистент получил замечание за то нарушение."
+      target: "Ассистент получил замечание за то нарушение."
+      metadata: *zato_guard_meta
+    - sub_rule_id: zato_preposition_guard
+      source: "Эксперт проголосовал за то предложение."
+      target: "Эксперт проголосовал за то предложение."
+      metadata: *zato_guard_meta
+
+    - sub_rule_id: chtoby_particle_split
+      source: "Что бы ни случилось, редактор проверит отчёт."
+      target: "Что бы ни случилось, редактор проверит отчёт."
+      metadata: &chtoby_guard_meta
+        semantic_case_type: guard
+        ambiguity_pair: "чтобы/что_бы"
+        semantic_signal: "местоимение «что» с частицей «бы», не союз"
+        operation: gap_guard
+        source: "что бы"
+        target: "что бы"
+        legacy_overlap: false
+        compound_overlap: true
+    - sub_rule_id: chtoby_particle_split
+      source: "Редактор спросил, что бы ещё исправить."
+      target: "Редактор спросил, что бы ещё исправить."
+      metadata: *chtoby_guard_meta
+    - sub_rule_id: chtoby_particle_split
+      source: "Студент думал, что бы ещё проверить."
+      target: "Студент думал, что бы ещё проверить."
+      metadata: *chtoby_guard_meta
+    - sub_rule_id: chtoby_particle_split
+      source: "Комиссия решила, что бы такое добавить."
+      target: "Комиссия решила, что бы такое добавить."
+      metadata: *chtoby_guard_meta
+
+    - sub_rule_id: potomu_chto_guard
+      source: "По тому, что видно на схеме, ошибка была в расчёте."
+      target: "По тому, что видно на схеме, ошибка была в расчёте."
+      metadata: &potomu_guard_meta
+        semantic_case_type: guard
+        ambiguity_pair: "потому_что/по_тому_что"
+        semantic_signal: "предлог с указательным местоимением и союзом"
+        operation: gap_guard
+        source: "по тому, что"
+        target: "по тому, что"
+        legacy_overlap: false
+        compound_overlap: true
+    - sub_rule_id: potomu_chto_guard
+      source: "Редактор судил по тому, что написано в справке."
+      target: "Редактор судил по тому, что написано в справке."
+      metadata: *potomu_guard_meta
+    - sub_rule_id: potomu_chto_guard
+      source: "Комиссия сверила вывод по тому, что указано в протоколе."
+      target: "Комиссия сверила вывод по тому, что указано в протоколе."
+      metadata: *potomu_guard_meta
+    - sub_rule_id: potomu_chto_guard
+      source: "Ассистент восстановил порядок по тому, что осталось в журнале."
+      target: "Ассистент восстановил порядок по тому, что осталось в журнале."
+      metadata: *potomu_guard_meta
+
+    - sub_rule_id: ottogo_guard
+      source: "Курьер отошёл от того дома."
+      target: "Курьер отошёл от того дома."
+      metadata: &ottogo_guard_meta
+        semantic_case_type: guard
+        ambiguity_pair: "оттого/от_того"
+        semantic_signal: "предлог «от» с указательным местоимением"
+        operation: gap_guard
+        source: "от того"
+        target: "от того"
+        legacy_overlap: false
+        compound_overlap: true
+    - sub_rule_id: ottogo_guard
+      source: "Комиссия отказалась от того решения."
+      target: "Комиссия отказалась от того решения."
+      metadata: *ottogo_guard_meta
+    - sub_rule_id: ottogo_guard
+      source: "Редактор получил письмо от того автора."
+      target: "Редактор получил письмо от того автора."
+      metadata: *ottogo_guard_meta
+    - sub_rule_id: ottogo_guard
+      source: "Ассистент начал проверку от того раздела."
+      target: "Ассистент начал проверку от того раздела."
+      metadata: *ottogo_guard_meta
+
+    - sub_rule_id: otchego_guard
+      source: "Комиссия уточнила, от чего зависит срок."
+      target: "Комиссия уточнила, от чего зависит срок."
+      metadata: &otchego_guard_meta
+        semantic_case_type: guard
+        ambiguity_pair: "отчего/от_чего"
+        semantic_signal: "предлог «от» с местоимением"
+        operation: gap_guard
+        source: "от чего"
+        target: "от чего"
+        legacy_overlap: false
+        compound_overlap: true
+    - sub_rule_id: otchego_guard
+      source: "Редактор записал, от чего отказались участники."
+      target: "Редактор записал, от чего отказались участники."
+      metadata: *otchego_guard_meta
+    - sub_rule_id: otchego_guard
+      source: "Инженер показал, от чего защищает фильтр."
+      target: "Инженер показал, от чего защищает фильтр."
+      metadata: *otchego_guard_meta
+    - sub_rule_id: otchego_guard
+      source: "Ассистент понял, от чего зависит результат."
+      target: "Ассистент понял, от чего зависит результат."
+      metadata: *otchego_guard_meta
+
+    - sub_rule_id: zachem_guard
+      source: "Редактор проверил, за чем следит система."
+      target: "Редактор проверил, за чем следит система."
+      metadata: &zachem_guard_meta
+        semantic_case_type: guard
+        ambiguity_pair: "зачем/за_чем"
+        semantic_signal: "предлог «за» с местоимением"
+        operation: gap_guard
+        source: "за чем"
+        target: "за чем"
+        legacy_overlap: false
+        compound_overlap: true
+    - sub_rule_id: zachem_guard
+      source: "Комиссия выяснила, за чем стоит этот запрос."
+      target: "Комиссия выяснила, за чем стоит этот запрос."
+      metadata: *zachem_guard_meta
+    - sub_rule_id: zachem_guard
+      source: "Секретарь записал, за чем пришёл посетитель."
+      target: "Секретарь записал, за чем пришёл посетитель."
+      metadata: *zachem_guard_meta
+    - sub_rule_id: zachem_guard
+      source: "Ассистент уточнил, за чем наблюдает оператор."
+      target: "Ассистент уточнил, за чем наблюдает оператор."
+      metadata: *zachem_guard_meta

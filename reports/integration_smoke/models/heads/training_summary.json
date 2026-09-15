@@ -1,0 +1,33 @@
+{
+  "actual_train_steps": 2,
+  "artifact_consistency_check": true,
+  "batch_size": 2,
+  "best_epoch": 1,
+  "best_metric": null,
+  "debug_model": true,
+  "effective_batch_size": 2,
+  "epochs": 1,
+  "loss_history": [
+    {
+      "epoch": 1,
+      "gap_punctuation_loss": 2.47455096244812,
+      "loss": 7.5112996101379395,
+      "rule_loss": 3.945642828941345,
+      "steps": 2,
+      "token_edit_loss": 3.358145236968994
+    }
+  ],
+  "samples_per_epoch": 4,
+  "selected_epoch": 1,
+  "selected_metric": null,
+  "selected_validation_loss": null,
+  "smoke": true,
+  "total_train_steps": 2,
+  "validation_history": [
+    {
+      "epoch": 1,
+      "reason": "validate_each_epoch=false",
+      "status": "skipped"
+    }
+  ]
+}

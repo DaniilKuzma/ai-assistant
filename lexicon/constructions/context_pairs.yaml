@@ -1,0 +1,122 @@
+patterns:
+  - id: ne_verb_lexicalized_trap
+    family: context_pairs
+    surface: "Студент ненавидел шум."
+    roles:
+      context:
+        semantic_classes: [text]
+    allowed_rule_ids: [ne_verb]
+    metadata:
+      render_type: fixed_text
+      context_only: true
+      trap_type: lexicalized_ne_verb
+      texts:
+        - "Студент ненавидел шум."
+        - "Комиссия негодовала после заседания."
+
+  - id: takzhe_comparison_trap
+    family: context_pairs
+    surface: "{subject} сделал так же, как эксперт."
+    roles:
+      subject:
+        semantic_classes: [person]
+    allowed_rule_ids: [takzhe_tak_zhe]
+    metadata:
+      render_type: takzhe_comparison
+      context_only: true
+      trap_type: comparison_tak_zhe
+
+  - id: tozhe_same_trap
+    family: context_pairs
+    surface: "{subject} выбрал то же самое."
+    roles:
+      subject:
+        semantic_classes: [person]
+    allowed_rule_ids: [tozhe_to_zhe]
+    metadata:
+      render_type: tozhe_same
+      context_only: true
+
+  - id: zato_preposition_trap
+    family: context_pairs
+    surface: "{subject} голосовал за то решение."
+    roles:
+      subject:
+        semantic_classes: [person, organization]
+    allowed_rule_ids: [zato_za_to]
+    metadata:
+      render_type: zato_preposition
+      context_only: true
+
+  - id: hyphen_particles_context
+    family: context_pairs
+    surface: "Кто-то проверил отчёт."
+    roles:
+      subject:
+        semantic_classes: [person]
+    allowed_rule_ids: [hyphen_particles]
+    metadata:
+      render_type: hyphen_particle
+      predicate_frame_ids: [check_document, read_text, open_file, sign_document, send_message, receive_message]
+      cases:
+        - {target_subject: Кто-то, source_subject: Кто то, token_sequence: [Кто, то], token_label: HYPHENATE_PARTICLE_TO}
+        - {target_subject: Кто-либо, source_subject: Кто либо, token_sequence: [Кто, либо], token_label: HYPHENATE_PARTICLE_LIBO}
+        - {target_subject: Кто-нибудь, source_subject: Кто нибудь, token_sequence: [Кто, нибудь], token_label: HYPHENATE_PARTICLE_NIBUD}
+
+  - id: hyphen_koe_context
+    family: context_pairs
+    surface: "Кое-кто проверил отчёт."
+    roles:
+      subject:
+        semantic_classes: [person]
+    allowed_rule_ids: [hyphen_koe]
+    metadata:
+      render_type: hyphen_koe
+      predicate_frame_ids: [check_document, read_text, open_file, sign_document, send_message, receive_message]
+
+  - id: hyphen_po_adverb_context
+    family: context_pairs
+    surface: "{subject} писал по-русски."
+    roles:
+      subject:
+        semantic_classes: [person]
+    allowed_rule_ids: [hyphen_po_adverb]
+    metadata:
+      render_type: po_adverb
+      verb_lemmas: [говорить, писать, ответить, спросить]
+
+  - id: hyphen_particles_negative_context
+    family: context_pairs
+    surface: "То решение осталось важным."
+    roles:
+      context:
+        semantic_classes: [text]
+    allowed_rule_ids: [hyphen_particles]
+    metadata:
+      render_type: fixed_text
+      context_only: true
+      texts:
+        - "То решение осталось важным."
+        - "Либо эксперт, либо студент проверил отчёт."
+
+  - id: hyphen_koe_negative_context
+    family: context_pairs
+    surface: "{subject} кое у кого спросил."
+    roles:
+      subject:
+        semantic_classes: [person]
+    allowed_rule_ids: [hyphen_koe]
+    metadata:
+      render_type: hyphen_koe_negative
+      context_only: true
+
+  - id: hyphen_po_adverb_negative_context
+    family: context_pairs
+    surface: "{subject} шёл по русской дороге."
+    roles:
+      subject:
+        semantic_classes: [person]
+    allowed_rule_ids: [hyphen_po_adverb]
+    metadata:
+      render_type: po_adverb_negative
+      context_only: true

@@ -1,0 +1,320 @@
+# Semantic derived-preposition disambiguation.
+rule_id: semantic_derived_prepositions
+description: Semantic disambiguation for derived prepositions and literal noun phrases.
+slots:
+  actor_lc: [редактор, студент, ассистент, эксперт]
+  actor: [Редактор, Студент, Ассистент, Эксперт]
+  document: [отчёт, протокол, текст]
+  period: [часа, недели, месяца]
+cases:
+  positive:
+    - sub_rule_id: v_techenie_temporal
+      source_template: "В течении {period} {actor_lc} проверил {document}."
+      target_template: "В течение {period} {actor_lc} проверил {document}."
+      token_operations: &v_techenie_op
+        - label: SPAN_REPLACE_BY_LEXICON
+          source_pattern: "в течении"
+          target_pattern: "в течение"
+      metadata: &v_techenie_meta
+        semantic_case_type: temporal
+        ambiguity_pair: "в_течение/в_течении"
+        semantic_signal: "временное значение «за период»"
+        operation: span_replace
+        source: "в течении"
+        target: "в течение"
+        legacy_overlap: false
+        compound_overlap: true
+    - sub_rule_id: v_techenie_temporal
+      source_template: "{actor} исправил {document} в течении {period}."
+      target_template: "{actor} исправил {document} в течение {period}."
+      token_operations: *v_techenie_op
+      metadata: *v_techenie_meta
+    - sub_rule_id: v_techenie_temporal
+      source_template: "В течении {period} комиссия изучила {document}."
+      target_template: "В течение {period} комиссия изучила {document}."
+      token_operations: *v_techenie_op
+      metadata: *v_techenie_meta
+    - sub_rule_id: v_techenie_temporal
+      source_template: "Замечание устранили в течении {period}."
+      target_template: "Замечание устранили в течение {period}."
+      token_operations: *v_techenie_op
+      metadata: *v_techenie_meta
+    - sub_rule_id: v_techenie_temporal
+      source_template: "Ответ подготовили в течении {period} после проверки."
+      target_template: "Ответ подготовили в течение {period} после проверки."
+      token_operations: *v_techenie_op
+      metadata: *v_techenie_meta
+
+    - sub_rule_id: vsledstvie_causal
+      source_template: "В следствии ошибки {document} отклонили."
+      target_template: "Вследствие ошибки {document} отклонили."
+      token_operations: &vsledstvie_op
+        - label: SPAN_REPLACE_BY_LEXICON
+          source_pattern: "в следствии"
+          target_pattern: "вследствие"
+      metadata: &vsledstvie_meta
+        semantic_case_type: causal
+        ambiguity_pair: "вследствие/в_следствии"
+        semantic_signal: "причинный производный предлог"
+        operation: span_replace
+        source: "в следствии"
+        target: "вследствие"
+        legacy_overlap: false
+        compound_overlap: true
+    - sub_rule_id: vsledstvie_causal
+      source_template: "Заседание перенесли в следствии болезни докладчика."
+      target_template: "Заседание перенесли вследствие болезни докладчика."
+      token_operations: *vsledstvie_op
+      metadata: *vsledstvie_meta
+    - sub_rule_id: vsledstvie_causal
+      source_template: "Срок изменили в следствии задержки поставки."
+      target_template: "Срок изменили вследствие задержки поставки."
+      token_operations: *vsledstvie_op
+      metadata: *vsledstvie_meta
+    - sub_rule_id: vsledstvie_causal
+      source_template: "Документ вернули в следствии ошибки в расчёте."
+      target_template: "Документ вернули вследствие ошибки в расчёте."
+      token_operations: *vsledstvie_op
+      metadata: *vsledstvie_meta
+    - sub_rule_id: vsledstvie_causal
+      source_template: "Проверку остановили в следствии сбоя сервиса."
+      target_template: "Проверку остановили вследствие сбоя сервиса."
+      token_operations: *vsledstvie_op
+      metadata: *vsledstvie_meta
+
+    - sub_rule_id: naschet_about
+      source_template: "{actor} спросил на счёт оплаты."
+      target_template: "{actor} спросил насчёт оплаты."
+      token_operations: &naschet_op
+        - label: SPAN_REPLACE_BY_LEXICON
+          source_pattern: "на счёт"
+          target_pattern: "насчёт"
+      metadata: &naschet_meta
+        semantic_case_type: literal
+        ambiguity_pair: "насчёт/на_счёт"
+        semantic_signal: "производный предлог в значении «о»"
+        operation: span_replace
+        source: "на счёт"
+        target: "насчёт"
+        legacy_overlap: false
+        compound_overlap: true
+    - sub_rule_id: naschet_about
+      source_template: "Комиссия договорилась на счёт сроков."
+      target_template: "Комиссия договорилась насчёт сроков."
+      token_operations: *naschet_op
+      metadata: *naschet_meta
+    - sub_rule_id: naschet_about
+      source_template: "{actor} уточнил на счёт обновления сервиса."
+      target_template: "{actor} уточнил насчёт обновления сервиса."
+      token_operations: *naschet_op
+      metadata: *naschet_meta
+    - sub_rule_id: naschet_about
+      source_template: "Секретарь написал на счёт встречи."
+      target_template: "Секретарь написал насчёт встречи."
+      token_operations: *naschet_op
+      metadata: *naschet_meta
+    - sub_rule_id: naschet_about
+      source_template: "Куратор спросил на счёт нового задания."
+      target_template: "Куратор спросил насчёт нового задания."
+      token_operations: *naschet_op
+      metadata: *naschet_meta
+
+    - sub_rule_id: vvidu_causal
+      source_template: "В виду ошибки {document} вернули."
+      target_template: "Ввиду ошибки {document} вернули."
+      token_operations: &vvidu_op
+        - label: SPAN_REPLACE_BY_LEXICON
+          source_pattern: "в виду"
+          target_pattern: "ввиду"
+      metadata: &vvidu_meta
+        semantic_case_type: causal
+        ambiguity_pair: "ввиду/в_виду"
+        semantic_signal: "причинный производный предлог"
+        operation: span_replace
+        source: "в виду"
+        target: "ввиду"
+        legacy_overlap: false
+        compound_overlap: true
+    - sub_rule_id: vvidu_causal
+      source_template: "Совещание отменили в виду болезни докладчика."
+      target_template: "Совещание отменили ввиду болезни докладчика."
+      token_operations: *vvidu_op
+      metadata: *vvidu_meta
+    - sub_rule_id: vvidu_causal
+      source_template: "Срок продлили в виду задержки проверки."
+      target_template: "Срок продлили ввиду задержки проверки."
+      token_operations: *vvidu_op
+      metadata: *vvidu_meta
+    - sub_rule_id: vvidu_causal
+      source_template: "Отчёт сократили в виду нового лимита."
+      target_template: "Отчёт сократили ввиду нового лимита."
+      token_operations: *vvidu_op
+      metadata: *vvidu_meta
+    - sub_rule_id: vvidu_causal
+      source_template: "Файл закрыли в виду ошибки доступа."
+      target_template: "Файл закрыли ввиду ошибки доступа."
+      token_operations: *vvidu_op
+      metadata: *vvidu_meta
+
+    - sub_rule_id: nesmotrya_concessive
+      source_template: "Не смотря на усталость, {actor_lc} проверил {document}."
+      target_template: "Несмотря на усталость, {actor_lc} проверил {document}."
+      token_operations: &nesmotrya_op
+        - label: SPAN_REPLACE_BY_LEXICON
+          source_pattern: "не смотря на"
+          target_pattern: "несмотря на"
+      metadata: &nesmotrya_meta
+        semantic_case_type: concession
+        ambiguity_pair: "несмотря_на/не_смотря_на"
+        semantic_signal: "уступительный производный предлог"
+        operation: span_replace
+        source: "не смотря на"
+        target: "несмотря на"
+        legacy_overlap: false
+        compound_overlap: true
+    - sub_rule_id: nesmotrya_concessive
+      source_template: "Не смотря на задержку, комиссия приняла {document}."
+      target_template: "Несмотря на задержку, комиссия приняла {document}."
+      token_operations: *nesmotrya_op
+      metadata: *nesmotrya_meta
+    - sub_rule_id: nesmotrya_concessive
+      source_template: "Не смотря на дождь, эксперт приехал вовремя."
+      target_template: "Несмотря на дождь, эксперт приехал вовремя."
+      token_operations: *nesmotrya_op
+      metadata: *nesmotrya_meta
+    - sub_rule_id: nesmotrya_concessive
+      source_template: "{actor} дочитал {document}, не смотря на шум."
+      target_template: "{actor} дочитал {document}, несмотря на шум."
+      token_operations: *nesmotrya_op
+      metadata: *nesmotrya_meta
+    - sub_rule_id: nesmotrya_concessive
+      source_template: "Группа завершила проверку, не смотря на усталость."
+      target_template: "Группа завершила проверку, несмотря на усталость."
+      token_operations: *nesmotrya_op
+      metadata: *nesmotrya_meta
+
+  hard_negative:
+    - sub_rule_id: v_techenie_literal_guard
+      source: "В течении реки заметили мусор."
+      target: "В течении реки заметили мусор."
+      metadata: &v_techenie_guard_meta
+        semantic_case_type: guard
+        ambiguity_pair: "в_течение/в_течении"
+        semantic_signal: "буквальное существительное «течение»"
+        operation: gap_guard
+        source: "в течении"
+        target: "в течении"
+        legacy_overlap: false
+        compound_overlap: true
+    - sub_rule_id: v_techenie_literal_guard
+      source: "В течении ручья были водоросли."
+      target: "В течении ручья были водоросли."
+      metadata: *v_techenie_guard_meta
+    - sub_rule_id: v_techenie_literal_guard
+      source: "В течении Волги изменился уровень воды."
+      target: "В течении Волги изменился уровень воды."
+      metadata: *v_techenie_guard_meta
+    - sub_rule_id: v_techenie_literal_guard
+      source: "В течении канала нашли мусор."
+      target: "В течении канала нашли мусор."
+      metadata: *v_techenie_guard_meta
+
+    - sub_rule_id: vsledstvie_literal_guard
+      source: "В следствии по делу появились документы."
+      target: "В следствии по делу появились документы."
+      metadata: &vsledstvie_guard_meta
+        semantic_case_type: guard
+        ambiguity_pair: "вследствие/в_следствии"
+        semantic_signal: "существительное «следствие» с предлогом"
+        operation: gap_guard
+        source: "в следствии"
+        target: "в следствии"
+        legacy_overlap: false
+        compound_overlap: true
+    - sub_rule_id: vsledstvie_literal_guard
+      source: "В следствии участвовал опытный эксперт."
+      target: "В следствии участвовал опытный эксперт."
+      metadata: *vsledstvie_guard_meta
+    - sub_rule_id: vsledstvie_literal_guard
+      source: "В следствии появились важные показания."
+      target: "В следствии появились важные показания."
+      metadata: *vsledstvie_guard_meta
+    - sub_rule_id: vsledstvie_literal_guard
+      source: "В следствии по делу нашли ошибку."
+      target: "В следствии по делу нашли ошибку."
+      metadata: *vsledstvie_guard_meta
+
+    - sub_rule_id: naschet_literal_guard
+      source: "Студент положил деньги на счёт."
+      target: "Студент положил деньги на счёт."
+      metadata: &naschet_guard_meta
+        semantic_case_type: guard
+        ambiguity_pair: "насчёт/на_счёт"
+        semantic_signal: "буквальный банковский счёт"
+        operation: gap_guard
+        source: "на счёт"
+        target: "на счёт"
+        legacy_overlap: false
+        compound_overlap: true
+    - sub_rule_id: naschet_literal_guard
+      source: "Компания внесла оплату на банковский счёт."
+      target: "Компания внесла оплату на банковский счёт."
+      metadata: *naschet_guard_meta
+    - sub_rule_id: naschet_literal_guard
+      source: "Бухгалтер посмотрел на счёт клиента."
+      target: "Бухгалтер посмотрел на счёт клиента."
+      metadata: *naschet_guard_meta
+    - sub_rule_id: naschet_literal_guard
+      source: "Деньги перевели на счёт в банке."
+      target: "Деньги перевели на счёт в банке."
+      metadata: *naschet_guard_meta
+
+    - sub_rule_id: vvidu_literal_guard
+      source: "Редактор имел в виду другой файл."
+      target: "Редактор имел в виду другой файл."
+      metadata: &vvidu_guard_meta
+        semantic_case_type: guard
+        ambiguity_pair: "ввиду/в_виду"
+        semantic_signal: "устойчивое сочетание «иметь в виду»"
+        operation: gap_guard
+        source: "в виду"
+        target: "в виду"
+        legacy_overlap: false
+        compound_overlap: true
+    - sub_rule_id: vvidu_literal_guard
+      source: "Комиссия решила держать в виду новый план."
+      target: "Комиссия решила держать в виду новый план."
+      metadata: *vvidu_guard_meta
+    - sub_rule_id: vvidu_literal_guard
+      source: "Корабль стоял в виду города."
+      target: "Корабль стоял в виду города."
+      metadata: *vvidu_guard_meta
+    - sub_rule_id: vvidu_literal_guard
+      source: "Ассистент просил иметь в виду этот срок."
+      target: "Ассистент просил иметь в виду этот срок."
+      metadata: *vvidu_guard_meta
+
+    - sub_rule_id: nesmotrya_literal_guard
+      source: "Студент шёл, не смотря на экран."
+      target: "Студент шёл, не смотря на экран."
+      metadata: &nesmotrya_guard_meta
+        semantic_case_type: guard
+        ambiguity_pair: "несмотря_на/не_смотря_на"
+        semantic_signal: "деепричастие с отрицанием и буквальным зрением"
+        operation: gap_guard
+        source: "не смотря на"
+        target: "не смотря на"
+        legacy_overlap: false
+        compound_overlap: true
+    - sub_rule_id: nesmotrya_literal_guard
+      source: "Инженер отвечал, не смотря на доску."
+      target: "Инженер отвечал, не смотря на доску."
+      metadata: *nesmotrya_guard_meta
+    - sub_rule_id: nesmotrya_literal_guard
+      source: "Редактор подписал письмо, не смотря на окно."
+      target: "Редактор подписал письмо, не смотря на окно."
+      metadata: *nesmotrya_guard_meta
+    - sub_rule_id: nesmotrya_literal_guard
+      source: "Учитель говорил, не смотря на экран."
+      target: "Учитель говорил, не смотря на экран."
+      metadata: *nesmotrya_guard_meta

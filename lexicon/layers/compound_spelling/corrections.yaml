@@ -1,0 +1,57 @@
+# Runtime correction lexicon for compound_spelling.
+# Each entry is intentionally explicit: source, target, grouped rule_id,
+# exact sub_rule_id, and normalized operation.
+corrections:
+  - {source: "так же", target: "также", rule_id: compound_service_words, sub_rule_id: takzhe_tak_zhe, operation: merge}
+  - {source: "то же", target: "тоже", rule_id: compound_service_words, sub_rule_id: tozhe_to_zhe, operation: merge}
+  - {source: "что бы", target: "чтобы", rule_id: compound_service_words, sub_rule_id: chto_by_chto_bi, operation: merge}
+  - {source: "за то", target: "зато", rule_id: compound_service_words, sub_rule_id: zato_za_to, operation: merge}
+  - {source: "по тому что", target: "потому что", rule_id: compound_service_words, sub_rule_id: potomu_chto_po_tomu_chto, operation: merge}
+  - {source: "от того", target: "оттого", rule_id: compound_service_words, sub_rule_id: ottogo_ot_togo, operation: merge}
+  - {source: "от чего", target: "отчего", rule_id: compound_service_words, sub_rule_id: otchego_ot_chego, operation: merge}
+  - {source: "за чем", target: "зачем", rule_id: compound_service_words, sub_rule_id: zachem_za_chem, operation: merge}
+
+  - {source: "в течении", target: "в течение", rule_id: compound_prepositions, sub_rule_id: v_techenie_v_techenii, operation: split}
+  - {source: "в продолжении", target: "в продолжение", rule_id: compound_prepositions, sub_rule_id: v_prodolzhenie_v_prodolzhenii, operation: split}
+  - {source: "в следствии", target: "вследствие", rule_id: compound_prepositions, sub_rule_id: vsledstvie_v_sledstvii, operation: merge}
+  - {source: "на счёт", target: "насчёт", rule_id: compound_prepositions, sub_rule_id: naschet_na_schet, operation: merge}
+  - {source: "в виду", target: "ввиду", rule_id: compound_prepositions, sub_rule_id: vvidu_v_vidu, operation: merge}
+  - {source: "на подобие", target: "наподобие", rule_id: compound_prepositions, sub_rule_id: napodobie_na_podobie, operation: merge}
+  - {source: "на встречу", target: "навстречу", rule_id: compound_prepositions, sub_rule_id: navstrechu_na_vstrechu, operation: merge}
+  - {source: "не смотря на", target: "несмотря на", rule_id: compound_prepositions, sub_rule_id: nesmotrya_na_ne_smotrya_na, operation: merge}
+  - {source: "не взирая на", target: "невзирая на", rule_id: compound_prepositions, sub_rule_id: nevziraya_na_ne_vziraya_na, operation: merge}
+
+  - {source: "кое кто", target: "кое-кто", rule_id: compound_pronouns_particles, sub_rule_id: koe_pronouns, operation: hyphenate}
+  - {source: "кто нибудь", target: "кто-нибудь", rule_id: compound_pronouns_particles, sub_rule_id: postfix_to_libo_nibud, operation: hyphenate}
+  - {source: "кто либо", target: "кто-либо", rule_id: compound_pronouns_particles, sub_rule_id: postfix_to_libo_nibud, operation: hyphenate}
+  - {source: "кто то", target: "кто-то", rule_id: compound_pronouns_particles, sub_rule_id: postfix_to_libo_nibud, operation: hyphenate}
+  - {source: "ну ка", target: "ну-ка", rule_id: compound_pronouns_particles, sub_rule_id: nu_ka, operation: hyphenate}
+  - {source: "всё таки", target: "всё-таки", rule_id: compound_pronouns_particles, sub_rule_id: vse_taki, operation: hyphenate}
+
+  - {source: "по новому", target: "по-новому", rule_id: compound_adverbs, sub_rule_id: po_adverb_omu, operation: hyphenate}
+  - {source: "по русски", target: "по-русски", rule_id: compound_adverbs, sub_rule_id: po_adverb_ski, operation: hyphenate}
+  - {source: "тихо тихо", target: "тихо-тихо", rule_id: compound_adverbs, sub_rule_id: repeated_adverbs, operation: hyphenate}
+  - {source: "во первых", target: "во-первых", rule_id: compound_adverbs, sub_rule_id: ordinal_adverbs, operation: hyphenate}
+  - {source: "коекак", target: "кое-как", rule_id: compound_adverbs, sub_rule_id: dict_replace_koe_kak, operation: replace}
+  - {source: "по прежнему", target: "по-прежнему", rule_id: compound_adverbs, sub_rule_id: ambiguity_guard, operation: hyphenate}
+  - {source: "по прежнему", target: "попрежнему", rule_id: compound_adverbs, sub_rule_id: ambiguity_guard, operation: merge}
+
+  - {source: "лесо степь", target: "лесостепь", rule_id: compound_nouns_adjectives, sub_rule_id: compound_nouns, operation: merge}
+  - {source: "врач терапевт", target: "врач-терапевт", rule_id: compound_nouns_adjectives, sub_rule_id: hyphen_appositions, operation: hyphenate}
+  - {source: "мини отель", target: "мини-отель", rule_id: compound_nouns_adjectives, sub_rule_id: compound_first_parts, operation: hyphenate}
+  - {source: "социально экономический", target: "социально-экономический", rule_id: compound_nouns_adjectives, sub_rule_id: compound_adjectives_social, operation: hyphenate}
+  - {source: "северо западный", target: "северо-западный", rule_id: compound_nouns_adjectives, sub_rule_id: compound_adjectives_directional, operation: hyphenate}
+  - {source: "ярко красный", target: "ярко-красный", rule_id: compound_nouns_adjectives, sub_rule_id: compound_adjectives_color, operation: hyphenate}
+
+  - {source: "пол яблока", target: "пол-яблока", rule_id: compound_pol_polu, sub_rule_id: pol_before_vowel, operation: hyphenate}
+  - {source: "пол лимона", target: "пол-лимона", rule_id: compound_pol_polu, sub_rule_id: pol_before_l, operation: hyphenate}
+  - {source: "пол Москвы", target: "пол-Москвы", rule_id: compound_pol_polu, sub_rule_id: pol_before_capital, operation: hyphenate}
+  - {source: "полу финал", target: "полуфинал", rule_id: compound_pol_polu, sub_rule_id: polu_compounds, operation: merge}
+
+  - {source: "незнает", target: "не знает", rule_id: compound_ne_spellings, sub_rule_id: ne_verb, operation: split}
+  - {source: "непроверил", target: "не проверил", rule_id: compound_ne_spellings, sub_rule_id: ne_verb, operation: split}
+  - {source: "невидел", target: "не видел", rule_id: compound_ne_spellings, sub_rule_id: ne_verb, operation: split}
+  - {source: "не правда", target: "неправда", rule_id: compound_ne_spellings, sub_rule_id: ne_nouns, operation: merge}
+  - {source: "не большой", target: "небольшой", rule_id: compound_ne_spellings, sub_rule_id: ne_adjectives, operation: merge}
+  - {source: "не трудно", target: "нетрудно", rule_id: compound_ne_spellings, sub_rule_id: ne_adverbs, operation: merge}
+  - {source: "не прочитанный", target: "непрочитанный", rule_id: compound_ne_spellings, sub_rule_id: ne_participles, operation: merge}

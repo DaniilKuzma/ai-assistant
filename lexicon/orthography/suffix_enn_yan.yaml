@@ -1,0 +1,167 @@
+rule_spec:
+  rule_id: suffix_enn_yan
+  orfogrammka_id: orthography.suffix_enn_yan
+  family: suffix_enn_yan
+  pos: ADJF
+  site_type: suffix
+  requires: [derivational_base, semantic_context, exception_group]
+  correct_patterns: ["-енн-", "-ян-", "-ан-"]
+  wrong_patterns: ["-ян-", "-ан-", "-енн-"]
+  explanation_id: suffix_enn_yan
+  model_role: context_disambiguation
+lexeme_cards:
+  - rule_id: suffix_enn_yan
+    correct_lemma: буквенный
+    wrong_lemma: буквяный
+    pos: ADJF
+    gender: masc
+    semantic_class: text
+    derivational_base: буква
+    correct_site: енн
+    wrong_site: ян
+    forms:
+      nomn_masc_sing: {correct: буквенный, wrong: буквяный}
+    safe_contexts:
+      - {context_class: derivational, template: "Редактор проверил слово «{word}».", construction_id: orthography_word_quote}
+    explanation_id: suffix_enn_yan
+  - rule_id: suffix_enn_yan
+    correct_lemma: лиственный
+    wrong_lemma: листвяный
+    pos: ADJF
+    gender: masc
+    semantic_class: object
+    derivational_base: листва
+    correct_site: енн
+    wrong_site: ян
+    forms:
+      nomn_masc_sing: {correct: лиственный, wrong: листвяный}
+    safe_contexts:
+      - {context_class: derivational, template: "В словаре указано слово «{word}».", construction_id: orthography_word_quote}
+    explanation_id: suffix_enn_yan
+  - rule_id: suffix_enn_yan
+    correct_lemma: лекарственный
+    wrong_lemma: лекарствяный
+    pos: ADJF
+    gender: masc
+    semantic_class: object
+    derivational_base: лекарство
+    correct_site: енн
+    wrong_site: ян
+    forms:
+      nomn_masc_sing: {correct: лекарственный, wrong: лекарствяный}
+    safe_contexts:
+      - {context_class: derivational, template: "Редактор проверил слово «{word}».", construction_id: orthography_word_quote}
+    explanation_id: suffix_enn_yan
+  - rule_id: suffix_enn_yan
+    correct_lemma: мысленный
+    wrong_lemma: мысляный
+    pos: ADJF
+    gender: masc
+    semantic_class: abstract
+    derivational_base: мысль
+    correct_site: енн
+    wrong_site: ян
+    forms:
+      nomn_masc_sing: {correct: мысленный, wrong: мысляный}
+    safe_contexts:
+      - {context_class: derivational, template: "В словаре указано слово «{word}».", construction_id: orthography_word_quote}
+    explanation_id: suffix_enn_yan
+  - rule_id: suffix_enn_yan
+    correct_lemma: кожаный
+    wrong_lemma: коженный
+    pos: ADJF
+    gender: masc
+    semantic_class: object
+    derivational_base: кожа
+    correct_site: ан
+    wrong_site: енн
+    forms:
+      nomn_masc_sing: {correct: кожаный, wrong: коженный}
+    safe_contexts:
+      - {context_class: material, template: "В словаре указано слово «{word}».", construction_id: orthography_word_quote}
+    explanation_id: suffix_enn_yan
+  - rule_id: suffix_enn_yan
+    correct_lemma: глиняный
+    wrong_lemma: глиненный
+    pos: ADJF
+    gender: masc
+    semantic_class: object
+    derivational_base: глина
+    correct_site: ян
+    wrong_site: енн
+    forms:
+      nomn_masc_sing: {correct: глиняный, wrong: глиненный}
+    safe_contexts:
+      - {context_class: material, template: "Редактор проверил слово «{word}».", construction_id: orthography_word_quote}
+    explanation_id: suffix_enn_yan
+  - rule_id: suffix_enn_yan
+    correct_lemma: серебряный
+    wrong_lemma: серебренный
+    pos: ADJF
+    gender: masc
+    semantic_class: object
+    derivational_base: серебро
+    correct_site: ян
+    wrong_site: енн
+    forms:
+      nomn_masc_sing: {correct: серебряный, wrong: серебренный}
+    safe_contexts:
+      - {context_class: material, template: "В словаре указано слово «{word}».", construction_id: orthography_word_quote}
+    explanation_id: suffix_enn_yan
+  - rule_id: suffix_enn_yan
+    correct_lemma: масляный
+    wrong_lemma: масленый
+    pos: ADJF
+    gender: masc
+    semantic_class: food
+    derivational_base: масло
+    correct_site: ян
+    wrong_site: ен
+    forms:
+      nomn_masc_sing: {correct: масляный, wrong: масленый}
+    safe_contexts:
+      - {context_class: oil, template: "На столе стоял {word} раствор.", construction_id: orthography_adjective_safe_context}
+    explanation_id: suffix_enn_yan
+  - rule_id: suffix_enn_yan
+    correct_lemma: масленый
+    wrong_lemma: масляный
+    pos: ADJF
+    gender: masc
+    semantic_class: food
+    derivational_base: масло
+    correct_site: ен
+    wrong_site: ян
+    forms:
+      nomn_masc_sing: {correct: масленый, wrong: масляный}
+    safe_contexts:
+      - {context_class: food, template: "На тарелке лежал {word} блин.", construction_id: orthography_adjective_safe_context}
+      - {context_class: smeared, template: "На столе лежал {word} нож.", construction_id: orthography_adjective_safe_context}
+    explanation_id: suffix_enn_yan
+  - rule_id: suffix_enn_yan
+    correct_lemma: ветреный
+    wrong_lemma: ветреный
+    pos: ADJF
+    gender: masc
+    semantic_class: abstract
+    exception_group: vetreny_exception
+    correct_site: ен
+    wrong_site: ен
+    forms:
+      nomn_masc_sing: {correct: ветреный, wrong: ветреный}
+    hard_negative_contexts:
+      - {context_class: weather_exception, template: "Сегодня был {word} день.", construction_id: orthography_adjective_safe_context}
+    explanation_id: suffix_enn_yan
+  - rule_id: suffix_enn_yan
+    correct_lemma: ветряной
+    wrong_lemma: ветряной
+    pos: ADJF
+    gender: masc
+    semantic_class: object
+    exception_group: wind_power
+    correct_site: ян
+    wrong_site: ян
+    forms:
+      nomn_masc_sing: {correct: ветряной, wrong: ветряной}
+    hard_negative_contexts:
+      - {context_class: wind_power, template: "Инженер проверил {word} двигатель.", construction_id: orthography_adjective_safe_context}
+    explanation_id: suffix_enn_yan

@@ -1,0 +1,206 @@
+rule_id: casing_sentence_start
+description: Controlled sentence-start capitalization cases.
+weight: 0.55
+slot_groups:
+  sentence_subjects:
+    - subject_source: редактор
+      subject_target: Редактор
+    - subject_source: корректор
+      subject_target: Корректор
+    - subject_source: методист
+      subject_target: Методист
+    - subject_source: эксперт
+      subject_target: Эксперт
+    - subject_source: автор
+      subject_target: Автор
+    - subject_source: студент
+      subject_target: Студент
+    - subject_source: преподаватель
+      subject_target: Преподаватель
+    - subject_source: пользователь
+      subject_target: Пользователь
+    - subject_source: инженер
+      subject_target: Инженер
+    - subject_source: секретарь
+      subject_target: Секретарь
+    - subject_source: куратор
+      subject_target: Куратор
+    - subject_source: аналитик
+      subject_target: Аналитик
+    - subject_source: руководитель
+      subject_target: Руководитель
+    - subject_source: специалист
+      subject_target: Специалист
+    - subject_source: администратор
+      subject_target: Администратор
+    - subject_source: инспектор
+      subject_target: Инспектор
+    - subject_source: консультант
+      subject_target: Консультант
+    - subject_source: дизайнер
+      subject_target: Дизайнер
+    - subject_source: менеджер
+      subject_target: Менеджер
+    - subject_source: оператор
+      subject_target: Оператор
+    - subject_source: тестировщик
+      subject_target: Тестировщик
+    - subject_source: разработчик
+      subject_target: Разработчик
+    - subject_source: программист
+      subject_target: Программист
+    - subject_source: архитектор
+      subject_target: Архитектор
+    - subject_source: технолог
+      subject_target: Технолог
+    - subject_source: механик
+      subject_target: Механик
+    - subject_source: врач
+      subject_target: Врач
+    - subject_source: библиотекарь
+      subject_target: Библиотекарь
+    - subject_source: журналист
+      subject_target: Журналист
+    - subject_source: стажёр
+      subject_target: Стажёр
+    - subject_source: модератор
+      subject_target: Модератор
+    - subject_source: организатор
+      subject_target: Организатор
+    - subject_source: координатор
+      subject_target: Координатор
+    - subject_source: аудитор
+      subject_target: Аудитор
+    - subject_source: юрист
+      subject_target: Юрист
+    - subject_source: бухгалтер
+      subject_target: Бухгалтер
+    - subject_source: наставник
+      subject_target: Наставник
+    - subject_source: архивариус
+      subject_target: Архивариус
+    - subject_source: документалист
+      subject_target: Документалист
+  predicates:
+    - predicate: проверил
+      object: отчёт
+    - predicate: сверил
+      object: текст
+    - predicate: подготовил
+      object: документ
+    - predicate: открыл
+      object: файл
+    - predicate: сохранил
+      object: пример
+    - predicate: обновил
+      object: запись
+    - predicate: загрузил
+      object: справку
+    - predicate: исправил
+      object: ошибку
+    - predicate: отметил
+      object: строку
+    - predicate: согласовал
+      object: план
+    - predicate: отправил
+      object: письмо
+    - predicate: прочитал
+      object: инструкцию
+    - predicate: заполнил
+      object: форму
+    - predicate: распечатал
+      object: бланк
+    - predicate: подписал
+      object: акт
+    - predicate: изучил
+      object: регламент
+    - predicate: сравнил
+      object: версии
+    - predicate: уточнил
+      object: вопрос
+    - predicate: закрыл
+      object: заявку
+    - predicate: принял
+      object: решение
+    - predicate: составил
+      object: график
+    - predicate: добавил
+      object: комментарий
+    - predicate: проверил
+      object: журнал
+    - predicate: настроил
+      object: интерфейс
+    - predicate: создал
+      object: шаблон
+    - predicate: описал
+      object: проблему
+    - predicate: разобрал
+      object: пример
+    - predicate: сохранил
+      object: таблицу
+cases:
+  positive:
+    - sub_rule_id: sentence_start_basic
+      source_template: "{subject_source} {predicate} {object}."
+      target_template: "{subject_target} {predicate} {object}."
+      expected_token_edit_count: 1
+      token_operations:
+        - label: CAPITALIZE
+          source_pattern: "{subject_source}"
+          target_pattern: "{subject_target}"
+      metadata:
+        phenomenon: sentence_start
+        operation: capitalize_sentence_start
+        casing_class: sentence_start
+        disable_context_variation: true
+    - sub_rule_id: sentence_after_period_basic
+      source_template: "Отчёт готов. {subject_source} {predicate} {object}."
+      target_template: "Отчёт готов. {subject_target} {predicate} {object}."
+      expected_token_edit_count: 1
+      token_operations:
+        - label: CAPITALIZE
+          source_pattern: "{subject_source}"
+          target_pattern: "{subject_target}"
+      metadata:
+        phenomenon: sentence_start_after_period
+        operation: capitalize_after_period
+        casing_class: sentence_start
+        disable_context_variation: true
+  hard_negative:
+    - sub_rule_id: already_correct_start_guard
+      source: "Редактор проверил отчёт."
+      target: "Редактор проверил отчёт."
+      expected_token_edit_count: 0
+      metadata:
+        phenomenon: sentence_start
+        operation: identity_guard
+        casing_class: sentence_start
+        disable_context_variation: true
+    - sub_rule_id: abbreviation_start_guard
+      source: "РФ утвердила порядок."
+      target: "РФ утвердила порядок."
+      expected_token_edit_count: 0
+      metadata:
+        phenomenon: abbreviation_guard
+        operation: identity_guard
+        casing_class: abbreviation
+        disable_context_variation: true
+    - sub_rule_id: numeric_start_guard
+      source: "2026 год начался спокойно."
+      target: "2026 год начался спокойно."
+      expected_token_edit_count: 0
+      metadata:
+        phenomenon: numeric_start_guard
+        operation: identity_guard
+        casing_class: numeric_start
+        disable_context_variation: true
+  clean_identity:
+    - sub_rule_id: already_correct_start_guard
+      source: "Корректор сверил текст."
+      target: "Корректор сверил текст."
+      expected_token_edit_count: 0
+      metadata:
+        phenomenon: sentence_start
+        operation: clean_identity
+        casing_class: sentence_start
+        disable_context_variation: true

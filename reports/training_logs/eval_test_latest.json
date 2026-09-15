@@ -1,0 +1,7 @@
+﻿{
+    "log_path":  "D:\\projects\\ai-assistant\\reports\\training_logs\\eval_test_20260526_030925.out.log",
+    "pid":  5060,
+    "command":  "PYTHONPATH=. python -u scripts/evaluate_model.py configs/config.yaml --dataset data/generated_eval/test.jsonl --output reports/eval_test",
+    "err_path":  "D:\\projects\\ai-assistant\\reports\\training_logs\\eval_test_20260526_030925.progress.log",
+    "started_at":  "2026-05-26T03:09:25.9160650+03:00"
+}

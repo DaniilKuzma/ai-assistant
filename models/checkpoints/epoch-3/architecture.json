@@ -1,0 +1,5 @@
+{
+  "architecture": "direct_edit_tagger_v1",
+  "debug_model": false,
+  "epoch": 3
+}

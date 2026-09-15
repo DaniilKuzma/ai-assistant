@@ -1,0 +1,12 @@
+rule_spec:
+  rule_id: contextual_suffix_pairs
+  orfogrammka_id: orthography.contextual_suffix_pairs
+  family: contextual_suffix_pairs
+  pos: ADJF
+  site_type: suffix
+  requires: [semantic_context]
+  correct_patterns: ["contextual_suffix"]
+  wrong_patterns: ["contextual_suffix"]
+  explanation_id: contextual_suffix_pairs
+  model_role: context_disambiguation
+lexeme_cards: []
